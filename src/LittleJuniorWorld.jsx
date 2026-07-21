@@ -507,7 +507,7 @@ function buildWorld() {
   list.push({ id: "bank", kind: "bank", x: 1000, y: 640, r: 65, label: "🏦 중앙은행" });
   list.push({ id: "board", kind: "board", x: 1585, y: 700, r: 60, label: "📋 게시판" });
   // 대형건물(상단)
-  const bigPos = { app: [960, 320], underwear: [1250, 270], socks: [1560, 300], CS: [1330, 500] };
+  const bigPos = { app: [960, 320], underwear: [1250, 270], socks: [1560, 300], cs: [1330, 500] };
   BIG_BUILDINGS.forEach((b) => list.push({ id: b.id, kind: "big", x: bigPos[b.id][0], y: bigPos[b.id][1], r: 75, label: `${b.icon} ${b.name}`, meta: b }));
   // 집(좌측 클러스터)
   const hPos = [[470, 560], [730, 545], [455, 780], [720, 775], [470, 1000], [730, 1000], [470, 1210], [730, 1210]];
