@@ -1,0 +1,20 @@
+{
+  "name": "little-junior-world",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "작은 주니어 네이버 · 오픈월드 에디션 (스타듀밸리풍 16비트 업무 시뮬레이터 프로토타입)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.11"
+  }
+}
