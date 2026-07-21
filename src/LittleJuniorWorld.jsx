@@ -30,11 +30,18 @@ const GEM_TO_WON = 10000;
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
 const BIG_BUILDINGS = [
-  { id: "app", name: "어플", icon: "📱", color: "#5b8def", colorDk: "#3f6bc4",
+  { id: "alba", name: "알바", icon: "🛠", color: "#7a8b99", colorDk: "#5c6b78",
+    categories: ["네이버", "영상", "기타"],
     quests: [
-      { id: "app1", title: "일일 버그 리포트 처리", desc: "밤새 쌓인 크래시 리포트 정리", reward: 18, duration: 1800, repeat: true },
-      { id: "app2", title: "신규 화면 QA", desc: "이번 배포분 화면을 점검", reward: 24, duration: 2400, repeat: true },
-      { id: "app3", title: "v2.0 정식 출시 준비", desc: "대규모 릴리스 마무리 (1회)", reward: 80, duration: 3400, repeat: false },
+      { id: "ab_n1", cat: "네이버", title: "블로그 포스팅", desc: "협찬 블로그 글 1건 작성", reward: 12, duration: 1600, repeat: true },
+      { id: "ab_n2", cat: "네이버", title: "스마트스토어 상품 등록", desc: "신규 상품 상세페이지 등록", reward: 14, duration: 1800, repeat: true },
+      { id: "ab_n3", cat: "네이버", title: "카페 이벤트 운영", desc: "네이버 카페 이벤트 글 관리 (1회)", reward: 40, duration: 2600, repeat: false },
+      { id: "ab_v1", cat: "영상", title: "유튜브 영상 편집", desc: "10분 분량 컷 편집", reward: 16, duration: 2000, repeat: true },
+      { id: "ab_v2", cat: "영상", title: "릴스 자막 달기", desc: "숏폼 3개에 자막 삽입", reward: 11, duration: 1500, repeat: true },
+      { id: "ab_v3", cat: "영상", title: "브랜드 홍보영상 납품", desc: "클라이언트 최종본 납품 (1회)", reward: 55, duration: 3000, repeat: false },
+      { id: "ab_e1", cat: "기타", title: "포장/발송 지원", desc: "주문 건 포장·송장 처리", reward: 12, duration: 1400, repeat: true },
+      { id: "ab_e2", cat: "기타", title: "매장 진열 정리", desc: "매대 리필 및 정리", reward: 17, duration: 2000, repeat: true },
+      { id: "ab_e3", cat: "기타", title: "월간 재고 실사", desc: "전체 재고 실사 (1회)", reward: 60, duration: 3000, repeat: false },
     ] },
   { id: "underwear", name: "항균속옷", icon: "🩲", color: "#d76b96", colorDk: "#b24d78",
     quests: [
@@ -772,11 +779,22 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 
 /* ======================= 대형건물(퀘스트) ======================= */
 function BigBuildingView({ b, qs, day, onRun, onBack }) {
+  const [activeCat, setActiveCat] = useState(null);
+  const cats = b.categories || null;
+  const curCat = cats ? (cats.includes(activeCat) ? activeCat : cats[0]) : null;
+  const shownQuests = cats ? b.quests.filter((q) => q.cat === curCat) : b.quests;
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
       <TitleBar icon={b.icon} title={b.name} sub="업무(반복) 퀘스트는 하루 1회 · 다음 날 초기화" onBack={onBack} bg={b.color} fg={C.white} />
       <div style={{ padding: 16, background: `repeating-linear-gradient(0deg, ${C.parch} 0 40px, ${C.parchLine} 40px 80px)`, display: "grid", gap: 12 }}>
-        {b.quests.map((q) => {
+        {cats && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {cats.map((cat) => (
+              <PxButton key={cat} tone={cat === curCat ? "good" : "wood"} onClick={() => setActiveCat(cat)} style={{ padding: "8px 16px", fontSize: 13 }}>{cat}</PxButton>
+            ))}
+          </div>
+        )}
+        {shownQuests.map((q) => {
           const st = qs[q.id] || {};
           const doneToday = q.repeat ? st.doneDay === day : st.doneOnce;
           let label = q.repeat ? "업무 시작 ▶" : "수행 ▶";
