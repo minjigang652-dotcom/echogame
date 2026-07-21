@@ -1,405 +1,285 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 
 /* =============================================================================
-   작은 주니어 네이버 : 주민센터 에디션
-   - 스타듀밸리풍 16비트 도트 메타버스 업무 시뮬레이터 (프로토타입)
-   - 단일 파일 React SPA. 외부 의존성 없음(순수 React).
-   - 마을의 중심은 주민센터(허브) — 큰 테이블(대화/채팅) + 회의실 3개(예약/잠금/화상)
-     + 커피포트/자판기/정수기, 그리고 환전 창구(기존 은행 기능 유지)
-   - 대형건물 4곳(어플/항균속옷/항균양말/알바) = 업무 퀘스트. 반복 퀘스트는 "하루 1회"
-     완료하면 다음날 자동 초기화(날짜 비교 방식, localStorage에 저장되어 실제로
-     하루가 지나면 다시 수행할 수 있습니다)
-   - 집 8채(정인/창민/도희/유리/민지/희정/의준/호정) = 침대·소파·티비·책상, 책상은 개인 메모장
-   - 소형건물 5곳: 감사의 방 / 마음의 방 / 몰입의 방 / 수면의 방 / 흡연의 방
-   - 게시판(목조 패널): 캘린더(2026년 7월, 31일 빨간 동그라미) + 공지사항
-   - 재화: ⭐ 스타 젬 (Star Gem)
-   =============================================================================
-   ⚠️ 안내: '환전'은 전부 시뮬레이션입니다. 실제 금전 거래·출금 기능이 아니며
-   프로토타입의 리워드 정산 UI 흐름을 보여주기 위한 데모입니다.
+   작은 주니어 네이버 : 오픈월드 에디션 (프로토타입)
+   - 스타듀밸리풍 16비트 도트. 카메라가 캐릭터를 따라 움직이는 마을.
+   - 마을 중심 = 주민센터(별장/독채). 그 주변에 대형건물/집/소형건물/은행/게시판.
+   - 강 너머엔 치앙마이(렌트 하우스).
+   - 각 건물·집·방은 별도 내부 화면. 주민센터/집/방 내부에서도 캐릭터로 이동.
+   ---------------------------------------------------------------------------
+   ⚠️ 모든 화폐/환전/렌트/통화 UI는 시뮬레이션이며 실제 거래·통신이 아닙니다.
+   ⚠️ 채팅·회의 참가자는 단일 유저 데모용 목업(가짜 NPC)입니다.
 ============================================================================= */
 
-/* -------------------------- 디자인 토큰(팔레트) --------------------------- */
+/* -------------------------- 팔레트 --------------------------- */
 const C = {
-  ink: "#2a1e14",
-  inkSoft: "#4a382a",
-  grass: "#6ab04c",
-  grassDark: "#57a03d",
-  grassShadow: "#3f7d2c",
-  path: "#c9a25f",
-  pathDark: "#a9814a",
-  parch: "#f3e2bd",
-  parchLine: "#e6ce9a",
-  parchEdge: "#c39a54",
-  wood: "#8b5a2b",
-  woodDark: "#6b4423",
-  gem: "#ffcb2b",
-  gemGlow: "#ffe680",
-  bankRoof: "#3a8fb7",
-  bankRoofDk: "#2b6c8f",
-  hallRoof: "#c0563a",
-  hallRoofDk: "#96412c",
-  water: "#4bb4d8",
-  white: "#fff7e6",
-  danger: "#c0563a",
-  good: "#4e9a3a",
-  locked: "#8f4a4a",
-  unlocked: "#4e9a3a",
-  floor: "#e6cf9d",
-  floorLine: "#d3b87d",
+  ink: "#2a1e14", inkSoft: "#4a382a",
+  grass: "#6ab04c", grassDark: "#57a03d", grassShadow: "#3f7d2c",
+  path: "#c9a25f", pathDark: "#a9814a",
+  parch: "#f3e2bd", parchLine: "#e6ce9a", parchEdge: "#c39a54",
+  wood: "#8b5a2b", woodDark: "#6b4423",
+  gem: "#ffcb2b", gemGlow: "#ffe680",
+  bankRoof: "#3a8fb7", bankRoofDk: "#2b6c8f",
+  water: "#4bb4d8", waterDk: "#2e8fb3",
+  white: "#fff7e6", danger: "#c0563a", good: "#4e9a3a",
+  villa: "#7bbf8f", villaDk: "#5a9a6d",
 };
 
 const GEM_TO_WON = 10000;
-const COOLDOWN_MS = 1200;
 
-/* ------------------------------ 날짜 유틸 --------------------------------- */
-function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-function uid() {
-  return Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
-}
-
-/* ------------------------------ 저장/불러오기 ------------------------------ */
-const SAVE_KEY = "ljt-save-v2";
-function loadSave() {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-function writeSave(data) {
-  try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-  } catch {
-    /* 저장 공간이 없으면 조용히 무시 (프로토타입) */
-  }
-}
-
-/* ============================== 마을 데이터 =============================== */
-
-const LARGE_BUILDINGS = [
-  {
-    id: "app",
-    name: "어플",
-    subtitle: "서비스 개발팀",
-    icon: "📱",
-    roof: "#3a8fb7",
-    roofDk: "#2b6c8f",
-    wall: "#dfeaf2",
-    blurb: "우리 앱의 버그를 잡고 기능을 다듬는 곳.",
+/* -------------------------- 데이터 --------------------------- */
+// 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
+const BIG_BUILDINGS = [
+  { id: "app", name: "어플", icon: "📱", color: "#5b8def", colorDk: "#3f6bc4",
     quests: [
-      { id: "app1", title: "버그 리포트 처리", desc: "쌓인 버그 티켓을 하나씩 정리", reward: 10, duration: 1400, repeat: true },
-      { id: "app2", title: "앱스토어 리뷰 답글", desc: "사용자 리뷰에 진심 어린 답글 작성", reward: 12, duration: 1600, repeat: true },
-      { id: "app3", title: "푸시 알림 캠페인 발송", desc: "타겟팅된 푸시 알림 발송 준비", reward: 16, duration: 2000, repeat: true },
-      { id: "app4", title: "신규 기능 런칭", desc: "이번 스프린트 대형 기능을 배포", reward: 60, duration: 3200, repeat: false },
-    ],
-  },
-  {
-    id: "antiwear",
-    name: "항균속옷",
-    subtitle: "항균 이너웨어 생산팀",
-    icon: "🩲",
-    roof: "#8e5a9e",
-    roofDk: "#6f4480",
-    wall: "#eee0f0",
-    blurb: "원단 항균 처리부터 품질 검수까지 책임지는 곳.",
+      { id: "app1", title: "일일 버그 리포트 처리", desc: "밤새 쌓인 크래시 리포트 정리", reward: 18, duration: 1800, repeat: true },
+      { id: "app2", title: "신규 화면 QA", desc: "이번 배포분 화면을 점검", reward: 24, duration: 2400, repeat: true },
+      { id: "app3", title: "v2.0 정식 출시 준비", desc: "대규모 릴리스 마무리 (1회)", reward: 80, duration: 3400, repeat: false },
+    ] },
+  { id: "underwear", name: "항균속옷", icon: "🩲", color: "#d76b96", colorDk: "#b24d78",
     quests: [
-      { id: "aw1", title: "원단 항균 테스트", desc: "신규 원단 샘플 항균력 측정", reward: 11, duration: 1500, repeat: true },
-      { id: "aw2", title: "생산라인 품질검수", desc: "라인별 불량률 체크 및 기록", reward: 14, duration: 1800, repeat: true },
-      { id: "aw3", title: "포장 라벨 부착", desc: "출고 전 라벨 부착 및 최종 확인", reward: 9, duration: 1200, repeat: true },
-      { id: "aw4", title: "항균속옷 신제품 출시", desc: "신규 라인업 최종 승인 및 출시", reward: 65, duration: 3300, repeat: false },
-    ],
-  },
-  {
-    id: "antisocks",
-    name: "항균양말",
-    subtitle: "항균 삭스 생산팀",
-    icon: "🧦",
-    roof: "#3fa07a",
-    roofDk: "#2f7d5e",
-    wall: "#dcefe2",
-    blurb: "발냄새 걱정 끝, 항균 양말을 만드는 곳.",
+      { id: "uw1", title: "원단 항균 테스트", desc: "샘플 원단 항균 수치 측정", reward: 16, duration: 1700, repeat: true },
+      { id: "uw2", title: "봉제 라인 점검", desc: "당일 생산 라인 품질 확인", reward: 22, duration: 2300, repeat: true },
+      { id: "uw3", title: "신제품 인증 획득", desc: "항균 인증 마크 취득 (1회)", reward: 75, duration: 3300, repeat: false },
+    ] },
+  { id: "socks", name: "항균양말", icon: "🧦", color: "#e0a13d", colorDk: "#bd8226",
     quests: [
-      { id: "as1", title: "양말 항균 코팅", desc: "코팅 공정 투입 및 결과 확인", reward: 10, duration: 1400, repeat: true },
-      { id: "as2", title: "사이즈별 검수", desc: "사이즈 편차를 하나씩 검사", reward: 13, duration: 1700, repeat: true },
-      { id: "as3", title: "재고 정리", desc: "창고 재고를 정리하고 라벨링", reward: 9, duration: 1200, repeat: true },
-      { id: "as4", title: "항균양말 시즌 컬렉션 출시", desc: "시즌 컬렉션 최종 출시 확정", reward: 58, duration: 3100, repeat: false },
-    ],
-  },
-  {
-    id: "albar",
-    name: "알바",
-    subtitle: "매장 아르바이트",
-    icon: "🛒",
-    roof: "#d9a441",
-    roofDk: "#b7842c",
-    wall: "#f6ecd0",
-    blurb: "매장을 지키고 손님을 응대하는 곳.",
+      { id: "sk1", title: "발수 코팅 도포", desc: "양말 표면 코팅 작업", reward: 15, duration: 1600, repeat: true },
+      { id: "sk2", title: "사이즈별 검수", desc: "S~XL 규격 검수", reward: 21, duration: 2200, repeat: true },
+      { id: "sk3", title: "시즌 컬렉션 런칭", desc: "가을 컬렉션 출시 (1회)", reward: 70, duration: 3200, repeat: false },
+    ] },
+  { id: "alba", name: "알바", icon: "🛠", color: "#7a8b99", colorDk: "#5c6b78",
     quests: [
-      { id: "al1", title: "매장 정리", desc: "진열대와 매대를 깔끔하게 정돈", reward: 8, duration: 1100, repeat: true },
-      { id: "al2", title: "포스기 마감", desc: "하루 매출을 정산하고 마감", reward: 12, duration: 1600, repeat: true },
-      { id: "al3", title: "재고 발주 체크", desc: "부족한 물품을 확인하고 발주", reward: 10, duration: 1400, repeat: true },
-      { id: "al4", title: "알바 우수사원 선정", desc: "이번 달 우수 근무자를 선정", reward: 50, duration: 2800, repeat: false },
-    ],
-  },
+      { id: "ab1", title: "포장/발송 지원", desc: "주문 건 포장·송장 처리", reward: 12, duration: 1400, repeat: true },
+      { id: "ab2", title: "매장 진열 정리", desc: "매대 리필 및 정리", reward: 17, duration: 2000, repeat: true },
+      { id: "ab3", title: "월간 재고 실사", desc: "전체 재고 실사 (1회)", reward: 60, duration: 3000, repeat: false },
+    ] },
 ];
 
 const HOUSES = [
-  { id: "h1", name: "정인이네", owner: "정인", roof: "#c0563a", roofDk: "#96412c", wall: "#f1dcc0" },
-  { id: "h2", name: "창민이네", owner: "창민", roof: "#3a8fb7", roofDk: "#2b6c8f", wall: "#dcecf3" },
-  { id: "h3", name: "도희네", owner: "도희", roof: "#8e5a9e", roofDk: "#6f4480", wall: "#ecdcf0" },
-  { id: "h4", name: "유리네", owner: "유리", roof: "#3fa07a", roofDk: "#2f7d5e", wall: "#dcf0e5" },
-  { id: "h5", name: "민지네", owner: "민지", roof: "#d9a441", roofDk: "#b7842c", wall: "#f6ecd2" },
-  { id: "h6", name: "희정이네", owner: "희정", roof: "#c77dab", roofDk: "#a0568a", wall: "#f7e2ee" },
-  { id: "h7", name: "의준이네", owner: "의준", roof: "#6c7fd6", roofDk: "#4c5cb0", wall: "#e2e6f8" },
-  { id: "h8", name: "호정이네", owner: "호정", roof: "#7fb03f", roofDk: "#5c8a29", wall: "#e5f1d5" },
+  { id: "h1", name: "정인이네", roof: "#c0563a", roofDk: "#9c4028", wall: "#e9c98f" },
+  { id: "h2", name: "창민이네", roof: "#3fa07a", roofDk: "#2f7d5e", wall: "#d9e6c7" },
+  { id: "h3", name: "도희네", roof: "#8e5a9e", roofDk: "#6f4480", wall: "#e7cfe9" },
+  { id: "h4", name: "유리네", roof: "#d9a441", roofDk: "#b7842c", wall: "#f1e2b0" },
+  { id: "h5", name: "민지네", roof: "#5b8def", roofDk: "#3f6bc4", wall: "#d3e0f7" },
+  { id: "h6", name: "희정이네", roof: "#d76b96", roofDk: "#b24d78", wall: "#f6d8e5" },
+  { id: "h7", name: "의준이네", roof: "#4bb4d8", roofDk: "#2e8fb3", wall: "#cdeaf4" },
+  { id: "h8", name: "호종이네", roof: "#9a7b4f", roofDk: "#7a5f38", wall: "#ecdcc0" },
 ];
-
-const SMALL_BUILDINGS = [
-  { id: "gratitude", name: "감사의 방", icon: "🙏", roof: "#d9a441", roofDk: "#b7842c", wall: "#f6ecd2", blurb: "고마운 마음을 물건과 편지로 전하는 곳" },
-  { id: "heart", name: "마음의 방", icon: "💌", roof: "#c77dab", roofDk: "#a0568a", wall: "#f7e2ee", blurb: "퇴근길 마음속 이야기를 살짝 털어놓는 곳" },
-  { id: "focus", name: "몰입의 방", icon: "🎯", roof: "#3a8fb7", roofDk: "#2b6c8f", wall: "#dcecf3", blurb: "각자 퀘스트하며 함께 허들링하는 곳" },
-  { id: "sleep", name: "수면의 방", icon: "😴", roof: "#6c7fd6", roofDk: "#4c5cb0", wall: "#e2e6f8", blurb: "휴식·집중 중 — 조용히 해주세요" },
-  { id: "smoking", name: "흡연의 방", icon: "🚬", roof: "#8a8a8a", roofDk: "#666666", wall: "#e4e4e4", blurb: "잠깐 바람 쐬러 나가는 곳" },
-];
-
-const MEETING_ROOMS = [
-  { id: "m1", name: "회의실 1", cap: 6 },
-  { id: "m2", name: "회의실 2", cap: 8 },
-  { id: "m3", name: "회의실 3", cap: 4 },
-];
-const TIME_SLOTS = Array.from({ length: 10 }, (_, i) => `${9 + i}:00`); // 09:00~18:00
-
-const NOTICES = [
-  { id: "n1", date: "2026-07-02", title: "7월 정기 워크숍 안내", body: "7월 정기 워크숍이 진행됩니다. 참석 대상자는 주민센터 회의실 1로 모여주세요. 준비물은 없으며 편하게 참석하시면 됩니다." },
-  { id: "n2", date: "2026-07-10", title: "항균양말 시즌 컬렉션 킥오프", body: "항균양말 팀의 시즌 컬렉션 프로젝트가 시작됩니다. 관련 퀘스트가 대형건물 '항균양말'에 추가되었으니 확인해주세요." },
-  { id: "n3", date: "2026-07-18", title: "감사의 방 이용 안내", body: "감사의 방에서 편지지와 케이크를 스타 젬으로 구매하실 수 있습니다. 동료에게 감사 편지를 남겨보세요." },
-  { id: "n4", date: "2026-07-31", title: "7월 월간 정산 마감", body: "7월 월간 스타 젬 정산이 마감됩니다. 정산은 주민센터 환전 창구에서 가능합니다. 마감 전 꼭 확인해주세요." },
-];
-
-const MOCK_EVENTS = {
-  "2026-07-02": ["정기 워크숍 (회의실 1, 10:00)"],
-  "2026-07-10": ["항균양말 시즌 컬렉션 킥오프"],
-  "2026-07-15": ["중간 점검 미팅 (회의실 2, 14:00)"],
-  "2026-07-18": ["감사의 방 오픈 이벤트"],
-  "2026-07-24": ["전체 회식 (회의실 3, 18:30)"],
-  "2026-07-31": ["🔴 월간 정산 마감일"],
-};
 
 const SHOP_ITEMS = [
-  { id: "letter", name: "편지지", icon: "✉️", cost: 4, desc: "정성스러운 손편지지 한 세트" },
-  { id: "cake", name: "케이크", icon: "🍰", cost: 15, desc: "작은 축하를 전하는 조각 케이크" },
-  { id: "flower", name: "꽃 한 송이", icon: "🌷", cost: 6, desc: "책상 위에 두면 기분이 좋아지는" },
-  { id: "card", name: "감사 카드", icon: "💳", cost: 3, desc: "짧지만 따뜻한 카드" },
+  { id: "letter", name: "편지지", emoji: "✉️", price: 2 },
+  { id: "cake", name: "케이크", emoji: "🍰", price: 5 },
+  { id: "flower", name: "꽃다발", emoji: "💐", price: 4 },
+  { id: "coffee", name: "커피 기프티콘", emoji: "☕", price: 3 },
+  { id: "choco", name: "초콜릿", emoji: "🍫", price: 2 },
+  { id: "candle", name: "향초", emoji: "🕯️", price: 3 },
 ];
 
-/* ============================== 재사용 UI 조각 ============================= */
-function Panel({ children, style, className = "" }) {
+const RENT_HOUSES = [
+  { id: "r1", name: "치앙마이 A동", rent: 30, roof: "#e0a13d", roofDk: "#bd8226", wall: "#f1e2b0" },
+  { id: "r2", name: "치앙마이 B동", rent: 45, roof: "#3fa07a", roofDk: "#2f7d5e", wall: "#d9e6c7" },
+  { id: "r3", name: "치앙마이 C동", rent: 60, roof: "#5b8def", roofDk: "#3f6bc4", wall: "#d3e0f7" },
+  { id: "r4", name: "치앙마이 리버뷰", rent: 90, roof: "#d76b96", roofDk: "#b24d78", wall: "#f6d8e5" },
+];
+
+const ANNOUNCEMENTS = [
+  { id: "a1", title: "7월 워크샵 안내", date: "2026-07-10", body: "31일 만나요~~" },
+  { id: "a2", title: "치앙마이 한 달 살기 신청", date: "2026-07-12", body: "강 건너 치앙마이 하우스 렌트 신청을 받습니다. 렌트비는 스타 젬으로 결제되며, 리버뷰 동은 조기 마감될 수 있습니다." },
+  { id: "a3", title: "감사의 방 리뉴얼", date: "2026-07-18", body: "감사의 방 선반에 신규 상품(향초, 꽃다발)이 입고되었습니다. 감사 칠판에 포스트잇도 자유롭게 붙여주세요." },
+  { id: "a4", title: "게임 개발중..", date: "2026-07-20", body: "좀만 기다려주세용" },
+  { id: "a5", title: "월말 결산 & 정산 안내", date: "2026-07-28", body: "7월 31일 월말 결산이 있습니다. 중앙은행에서 보유 젬을 확인하고 정산(환전)을 진행해 주세요." },
+];
+
+const CAL_EVENTS = {
+  "2026-07-10": ["10:00 전사 워크샵(대회의실)"],
+  "2026-07-15": ["14:00 어플 v2.0 스프린트 리뷰"],
+  "2026-07-22": ["11:00 항균속옷 인증 미팅", "16:00 몰입의 방 허들"],
+  "2026-07-28": ["월말 결산 시작"],
+  "2026-07-31": ["7시 롯데호텔 라센느"],
+};
+
+/* ======================= 스프라이트 ======================= */
+function Villa({ size = 220 }) {
   return (
-    <div
-      className={"pnl " + className}
-      style={{
-        background: C.parch,
-        border: `4px solid ${C.ink}`,
-        boxShadow: `inset 0 0 0 3px ${C.parchEdge}, 6px 6px 0 rgba(0,0,0,0.25)`,
-        ...style,
-      }}
-    >
-      {children}
+    <svg width={size} height={size * 0.72} viewBox="0 0 60 44" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <rect x="4" y="16" width="52" height="24" fill={C.parch} stroke={C.ink} strokeWidth="1" />
+      <polygon points="30,2 58,16 2,16" fill={C.villa} />
+      <polygon points="30,2 58,16 52,16 30,6 8,16 2,16" fill={C.villaDk} />
+      <polygon points="30,2 58,16 2,16" fill="none" stroke={C.ink} strokeWidth="1" />
+      {/* 깃발 */}
+      <rect x="29" y="0" width="1" height="4" fill={C.ink} />
+      <polygon points="30,0 36,2 30,4" fill={C.gem} />
+      {/* 기둥 */}
+      {[8, 18, 42, 52].map((x) => <rect key={x} x={x} y="19" width="4" height="18" fill={C.white} stroke={C.ink} strokeWidth="0.4" />)}
+      {/* 문 */}
+      <rect x="26" y="24" width="8" height="16" fill={C.woodDark} stroke={C.ink} strokeWidth="0.5" />
+      <rect x="32" y="31" width="1" height="1" fill={C.gem} />
+      {/* 창 */}
+      <rect x="12" y="22" width="6" height="6" fill={C.water} stroke={C.ink} strokeWidth="0.5" />
+      <rect x="42" y="22" width="6" height="6" fill={C.water} stroke={C.ink} strokeWidth="0.5" />
+      <rect x="4" y="38" width="52" height="2" fill={C.parchEdge} />
+    </svg>
+  );
+}
+
+function BigBuilding({ color, colorDk, size = 150 }) {
+  return (
+    <svg width={size} height={size * 1.1} viewBox="0 0 40 44" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <rect x="4" y="6" width="32" height="34" fill={color} stroke={C.ink} strokeWidth="1" />
+      <rect x="4" y="6" width="32" height="4" fill={colorDk} />
+      {/* 창문 격자 */}
+      {[11, 18, 25, 32].map((y) => [8, 16, 24].map((x) => (
+        <rect key={x + "-" + y} x={x} y={y} width="5" height="4" fill={C.water} stroke={C.ink} strokeWidth="0.4" />
+      )))}
+      {/* 문 */}
+      <rect x="15" y="32" width="10" height="8" fill={C.woodDark} stroke={C.ink} strokeWidth="0.5" />
+      <rect x="4" y="40" width="32" height="2" fill={colorDk} />
+    </svg>
+  );
+}
+
+function PixelHouse({ roof, roofDk, wall, size = 96 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <polygon points="16,2 30,12 2,12" fill={roof} />
+      <polygon points="16,2 30,12 26,12 16,6 6,12 2,12" fill={roofDk} />
+      <rect x="5" y="12" width="22" height="16" fill={wall} stroke={C.ink} strokeWidth="1" />
+      <rect x="13" y="19" width="6" height="9" fill={C.woodDark} />
+      <rect x="17" y="23" width="1" height="1" fill={C.gem} />
+      <rect x="8" y="15" width="4" height="4" fill={C.water} stroke={C.ink} strokeWidth="0.5" />
+      <rect x="20" y="15" width="4" height="4" fill={C.water} stroke={C.ink} strokeWidth="0.5" />
+      <polygon points="16,2 30,12 2,12" fill="none" stroke={C.ink} strokeWidth="1" />
+    </svg>
+  );
+}
+
+function SmallHut({ tint, size = 90 }) {
+  return (
+    <svg width={size} height={size * 0.85} viewBox="0 0 28 24" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <rect x="3" y="9" width="22" height="14" fill={C.parch} stroke={C.ink} strokeWidth="1" />
+      <polygon points="14,2 26,9 2,9" fill={tint} stroke={C.ink} strokeWidth="1" />
+      <rect x="11" y="15" width="6" height="8" fill={C.woodDark} stroke={C.ink} strokeWidth="0.5" />
+      <rect x="5" y="12" width="4" height="3" fill={C.water} />
+    </svg>
+  );
+}
+
+function PixelBank({ size = 150 }) {
+  return (
+    <svg width={size} height={size * 0.9} viewBox="0 0 48 40" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <polygon points="24,2 46,14 2,14" fill={C.bankRoof} />
+      <polygon points="24,2 46,14 40,14 24,6 8,14 2,14" fill={C.bankRoofDk} />
+      <polygon points="24,2 46,14 2,14" fill="none" stroke={C.ink} strokeWidth="1" />
+      <rect x="5" y="14" width="38" height="22" fill={C.parch} stroke={C.ink} strokeWidth="1" />
+      {[9, 17, 25, 33].map((x) => <rect key={x} x={x} y="17" width="4" height="16" fill={C.white} stroke={C.ink} strokeWidth="0.5" />)}
+      <rect x="3" y="34" width="42" height="2" fill={C.parchEdge} />
+      <rect x="22" y="8" width="4" height="4" fill={C.gem} stroke={C.ink} strokeWidth="0.5" />
+    </svg>
+  );
+}
+
+function Board({ size = 120 }) {
+  return (
+    <svg width={size} height={size * 0.9} viewBox="0 0 40 36" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <rect x="7" y="26" width="4" height="10" fill={C.woodDark} />
+      <rect x="29" y="26" width="4" height="10" fill={C.woodDark} />
+      <rect x="3" y="4" width="34" height="24" fill={C.wood} stroke={C.ink} strokeWidth="1" />
+      <rect x="3" y="4" width="34" height="24" fill="none" stroke={C.woodDark} strokeWidth="2" />
+      <rect x="7" y="8" width="26" height="3" fill={C.parch} />
+      <rect x="7" y="14" width="18" height="3" fill={C.parch} />
+      <rect x="7" y="20" width="22" height="3" fill={C.gem} />
+    </svg>
+  );
+}
+
+function Signpost({ size = 90 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 30 30" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <rect x="14" y="8" width="3" height="20" fill={C.woodDark} />
+      <rect x="4" y="6" width="22" height="8" fill={C.wood} stroke={C.ink} strokeWidth="1" />
+      <polygon points="26,6 30,10 26,14" fill={C.wood} stroke={C.ink} strokeWidth="1" />
+    </svg>
+  );
+}
+
+function Facility({ color, colorDk, icon, size = 160 }) {
+  return (
+    <div style={{ position: "relative", width: size, textAlign: "center" }}>
+      <svg width={size} height={size * 0.72} viewBox="0 0 44 32" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+        <rect x="3" y="8" width="38" height="22" fill={color} stroke={C.ink} strokeWidth="1" />
+        <rect x="3" y="8" width="38" height="5" fill={colorDk} />
+        {[8, 16, 28, 34].map((x) => <rect key={x} x={x} y="16" width="5" height="6" fill={C.white} stroke={C.ink} strokeWidth="0.4" />)}
+        <rect x="19" y="22" width="8" height="8" fill={C.woodDark} stroke={C.ink} strokeWidth="0.5" />
+        <rect x="3" y="30" width="38" height="2" fill={colorDk} />
+      </svg>
+      <div style={{ position: "absolute", top: 2, left: "50%", transform: "translateX(-50%)", fontSize: 22 }}>{icon}</div>
     </div>
   );
 }
 
-function PxButton({ children, onClick, disabled, tone = "wood", style, title }) {
-  const tones = {
-    wood: { bg: C.wood, bgDk: C.woodDark, fg: C.white },
-    gold: { bg: C.gem, bgDk: "#d9a41f", fg: C.ink },
-    good: { bg: C.good, bgDk: "#3c7a2c", fg: C.white },
-    danger: { bg: C.danger, bgDk: "#96412c", fg: C.white },
-    ink: { bg: "#4a382a", bgDk: "#2a1e14", fg: C.white },
-    bank: { bg: C.bankRoof, bgDk: C.bankRoofDk, fg: C.white },
-  }[tone];
+/* 방향 표지판(방향어 없이 목적지만) */
+function DirSign({ text, color = C.wood }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className="px-btn"
-      style={{
-        fontFamily: "'DotGothic16', monospace",
-        color: tones.fg,
-        background: disabled ? "#9a8f7d" : tones.bg,
-        border: `3px solid ${C.ink}`,
-        boxShadow: disabled ? "none" : `0 4px 0 ${disabled ? "#6b6355" : tones.bgDk}`,
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.75 : 1,
-        ...style,
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-function GemBadge({ amount, big }) {
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
-      <span className="gem-spin" style={{ fontSize: big ? 22 : 15 }}>⭐</span>
-      <b style={{ color: "#a86e13", fontSize: big ? 22 : 15 }}>{Number(amount).toLocaleString()}</b>
-    </span>
-  );
-}
-
-function Modal({ onClose, children, maxWidth = 460 }) {
-  return (
-    <div
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 80, padding: 16 }}
-      onClick={onClose}
-    >
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth }}>
-        {children}
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div style={{ background: color, color: C.white, border: `2px solid ${C.ink}`, padding: "3px 8px", fontSize: 11, fontWeight: "bold", whiteSpace: "nowrap", boxShadow: `0 2px 0 ${C.woodDark}` }}>{text}</div>
+      <div style={{ width: 6, height: 22, background: C.woodDark, border: `1px solid ${C.ink}` }} />
     </div>
   );
 }
 
-function ScreenHeader({ title, subtitle, icon, onBack, right }) {
+/* 동상: 황혼의 파수꾼 */
+function Statue({ size = 90 }) {
   return (
-    <Panel style={{ padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <PxButton tone="ink" onClick={onBack} style={{ padding: "8px 12px", fontSize: 12 }}>← 나가기</PxButton>
-        <span style={{ fontSize: 22 }}>{icon}</span>
-        <div>
-          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, lineHeight: 1.6 }}>{title}</div>
-          {subtitle && <div style={{ fontSize: 12, color: C.inkSoft }}>{subtitle}</div>}
-        </div>
-      </div>
-      {right}
-    </Panel>
+    <svg width={size} height={size * 1.3} viewBox="0 0 20 26" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <rect x="3" y="22" width="14" height="4" fill="#8a8a8a" stroke={C.ink} strokeWidth="0.5" />
+      <rect x="5" y="19" width="10" height="3" fill="#a0a0a0" stroke={C.ink} strokeWidth="0.5" />
+      <rect x="7" y="8" width="6" height="11" fill="#b8b8b8" stroke={C.ink} strokeWidth="0.5" />
+      <rect x="8" y="3" width="4" height="5" fill="#c4c4c4" stroke={C.ink} strokeWidth="0.5" />
+      <rect x="6" y="11" width="2" height="6" fill="#9a9a9a" />
+      <rect x="12" y="11" width="2" height="6" fill="#9a9a9a" />
+      <rect x="8" y="1" width="4" height="2" fill="#8a8a8a" />
+    </svg>
   );
 }
 
-/* ============================== 픽셀풍 건물 스프라이트 ===================== */
-/* SVG 대신 CSS 블록으로 구성된 경량 도트풍 스프라이트 (지붕+벽+문+창) */
-function Sprite({ roof, roofDk, wall, icon, w = 96, h = 84, label, badge }) {
+/* NPC: 봉준호 (수트 + 긴머리 + 안경) */
+function ManBong({ size = 40 }) {
   return (
-    <div style={{ position: "relative", width: w, display: "flex", flexDirection: "column", alignItems: "center" }}>
-      {badge && (
-        <div style={{ position: "absolute", top: -14, right: -6, background: C.danger, color: C.white, fontSize: 10, padding: "2px 5px", border: `2px solid ${C.ink}`, zIndex: 2 }}>
-          {badge}
-        </div>
-      )}
-      {/* 지붕 */}
-      <div
-        style={{
-          width: 0,
-          height: 0,
-          borderLeft: `${w / 2 + 6}px solid transparent`,
-          borderRight: `${w / 2 + 6}px solid transparent`,
-          borderBottom: `${h * 0.34}px solid ${roof}`,
-          filter: `drop-shadow(0 3px 0 ${roofDk})`,
-        }}
-      />
-      {/* 벽 */}
-      <div
-        style={{
-          width: w,
-          height: h * 0.62,
-          background: wall,
-          border: `3px solid ${C.ink}`,
-          borderTop: "none",
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxSizing: "border-box",
-        }}
-      >
-        <span style={{ fontSize: w * 0.34 }}>{icon}</span>
-        {/* 문 */}
-        <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: w * 0.24, height: h * 0.26, background: C.woodDark, border: `2px solid ${C.ink}`, borderBottom: "none" }} />
-      </div>
-      {label && (
-        <div style={{ marginTop: 6, background: C.ink, color: C.white, fontSize: 11, padding: "3px 8px", borderRadius: 3, whiteSpace: "nowrap", textAlign: "center" }}>
-          {label}
-        </div>
-      )}
-    </div>
+    <svg width={size} height={size * 1.3} viewBox="0 0 17 22" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <rect x="3" y="1" width="11" height="8" fill="#2a2a2a" />{/* 긴머리 */}
+      <rect x="5" y="3" width="7" height="6" fill="#f4c9a0" stroke={C.ink} strokeWidth="0.4" />
+      <rect x="3" y="7" width="2" height="6" fill="#2a2a2a" />
+      <rect x="12" y="7" width="2" height="6" fill="#2a2a2a" />
+      {/* 안경 */}
+      <rect x="5" y="5" width="2" height="2" fill="none" stroke={C.ink} strokeWidth="0.6" />
+      <rect x="10" y="5" width="2" height="2" fill="none" stroke={C.ink} strokeWidth="0.6" />
+      {/* 수트 */}
+      <rect x="4" y="9" width="9" height="9" fill="#2b3a4a" stroke={C.ink} strokeWidth="0.5" />
+      <polygon points="8,9 9,9 8.5,13" fill={C.white} />
+      <rect x="8" y="9" width="1" height="6" fill="#c0563a" />{/* 넥타이 */}
+      <rect x="5" y="18" width="3" height="4" fill="#20303a" />
+      <rect x="9" y="18" width="3" height="4" fill="#20303a" />
+    </svg>
   );
 }
 
-function HallSprite({ w = 190, h = 140 }) {
+function Tree() {
   return (
-    <div style={{ position: "relative", width: w, display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <div
-        style={{
-          width: 0,
-          height: 0,
-          borderLeft: `${w / 2 + 10}px solid transparent`,
-          borderRight: `${w / 2 + 10}px solid transparent`,
-          borderBottom: `${h * 0.32}px solid ${C.hallRoof}`,
-          filter: `drop-shadow(0 4px 0 ${C.hallRoofDk})`,
-        }}
-      />
-      <div
-        style={{
-          width: w,
-          height: h * 0.62,
-          background: C.parch,
-          border: `4px solid ${C.ink}`,
-          borderTop: "none",
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-        }}
-      >
-        {[9, 17, 25].map((_, i) => (
-          <div key={i} style={{ width: 10, height: h * 0.4, background: C.white, border: `2px solid ${C.ink}` }} />
-        ))}
-        <span style={{ position: "absolute", top: 6, fontSize: 22 }}>🏛️</span>
-        <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: w * 0.22, height: h * 0.3, background: C.woodDark, border: `2px solid ${C.ink}`, borderBottom: "none" }} />
-      </div>
-      <div style={{ marginTop: 6, background: C.hallRoofDk, color: C.white, fontSize: 12, padding: "4px 10px", fontFamily: "'Press Start 2P', monospace" }}>
-        주민센터
-      </div>
-    </div>
+    <svg width="46" height="56" viewBox="0 0 21 26" shapeRendering="crispEdges">
+      <rect x="9" y="16" width="3" height="9" fill={C.woodDark} />
+      <polygon points="10,0 19,11 2,11" fill={C.grassShadow} />
+      <polygon points="10,4 18,14 3,14" fill={C.grassDark} />
+      <polygon points="10,8 17,17 4,17" fill={C.grass} />
+      <polygon points="10,0 19,11 2,11" fill="none" stroke={C.ink} strokeWidth="0.6" />
+    </svg>
   );
 }
 
-function BoardSprite({ w = 74, h = 60 }) {
-  return (
-    <div style={{ width: w, display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <div
-        style={{
-          width: w,
-          height: h,
-          background: "repeating-linear-gradient(90deg, #a9764a 0 8px, #93643c 8px 16px)",
-          border: `3px solid ${C.ink}`,
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <span style={{ fontSize: 22 }}>📌</span>
-      </div>
-      <div style={{ width: 6, height: 16, background: C.woodDark, border: `2px solid ${C.ink}`, borderTop: "none" }} />
-      <div style={{ marginTop: 4, background: C.ink, color: C.white, fontSize: 10, padding: "2px 6px" }}>게시판</div>
-    </div>
-  );
-}
-
-/* 플레이어 캐릭터 */
-function Hero({ facing = 1, moving = false }) {
+function Hero({ facing = 1, moving = false, size = 34 }) {
   return (
     <div aria-hidden style={{ transform: `scaleX(${facing})` }}>
-      <svg width="30" height="38" viewBox="0 0 17 21" shapeRendering="crispEdges" className={moving ? "hero-bob" : ""}>
+      <svg width={size} height={size * 1.24} viewBox="0 0 17 21" shapeRendering="crispEdges" className={moving ? "hero-bob" : ""}>
         <rect x="5" y="1" width="7" height="6" fill="#f4c9a0" stroke={C.ink} strokeWidth="0.6" />
         <rect x="4" y="0" width="9" height="3" fill={C.woodDark} />
         <rect x="6" y="4" width="1" height="1" fill={C.ink} />
@@ -414,1311 +294,1294 @@ function Hero({ facing = 1, moving = false }) {
   );
 }
 
-/* ============================== 걷기/카메라 훅 ============================= */
-/* worldW/H: 월드 크기(px) · viewW/H: 화면(뷰포트) 크기(px) · spots: 입장 지점들 */
-function useWalker({ worldW, worldH, viewW, viewH, spots, initial, active }) {
-  const [pos, setPos] = useState(initial);
+/* ======================= 공용 UI ======================= */
+const fmt = (n) => (Number.isInteger(n) ? n.toLocaleString() : n.toLocaleString(undefined, { maximumFractionDigits: 1 }));
+
+function Panel({ children, style }) {
+  return (
+    <div style={{ background: C.parch, border: `4px solid ${C.ink}`, boxShadow: `inset 0 0 0 3px ${C.parchEdge}, 6px 6px 0 rgba(0,0,0,0.25)`, ...style }}>
+      {children}
+    </div>
+  );
+}
+
+function PxButton({ children, onClick, disabled, tone = "wood", style, title }) {
+  const tones = {
+    wood: { bg: C.wood, bgDk: C.woodDark, fg: C.white },
+    gold: { bg: C.gem, bgDk: "#d9a41f", fg: C.ink },
+    good: { bg: C.good, bgDk: "#3c7a2c", fg: C.white },
+    danger: { bg: C.danger, bgDk: "#96412c", fg: C.white },
+    blue: { bg: C.bankRoof, bgDk: C.bankRoofDk, fg: C.white },
+    ink: { bg: "#4a382a", bgDk: "#2a1e14", fg: C.white },
+  }[tone];
+  return (
+    <button onClick={onClick} disabled={disabled} title={title} className="px-btn"
+      style={{ fontFamily: "'DotGothic16', monospace", color: tones.fg, background: disabled ? "#9a8f7d" : tones.bg,
+        border: `3px solid ${C.ink}`, boxShadow: disabled ? "none" : `0 4px 0 ${tones.bgDk}`,
+        cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.7 : 1, ...style }}>
+      {children}
+    </button>
+  );
+}
+
+function GemBadge({ amount, big }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+      <span className="gem-spin" style={{ fontSize: big ? 22 : 15 }}>⭐</span>
+      <b style={{ color: "#a86e13", fontSize: big ? 22 : 15 }}>{fmt(amount)}</b>
+    </span>
+  );
+}
+
+function TitleBar({ icon, title, sub, onBack, right, bg = C.parch, fg = C.ink }) {
+  return (
+    <div style={{ padding: "12px 16px", background: bg, color: fg, borderBottom: `4px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        {icon && <span style={{ fontSize: 26 }}>{icon}</span>}
+        <div>
+          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11 }}>{title}</div>
+          {sub && <div style={{ fontSize: 12, marginTop: 4, color: fg === C.ink ? C.inkSoft : "rgba(255,255,255,0.9)" }}>{sub}</div>}
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        {right}
+        {onBack && <PxButton tone="ink" onClick={onBack} style={{ padding: "8px 12px", fontSize: 12 }}>← 나가기</PxButton>}
+      </div>
+    </div>
+  );
+}
+
+/* ======================= 이동 가능한 룸(내부) ======================= */
+/* furniture: {id,x,y,w,h,label,emoji,color?,onInteract?,toast?} 좌표는 룸 px 기준 */
+function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, start, onBack, paused = false, children, headerBg = C.parch, banner = null, bubble = null }) {
+  const [pos, setPos] = useState(start || { x: roomW / 2, y: roomH - 60 });
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
+  const [toast, setToast] = useState(null);
   const keys = useRef({});
   const posRef = useRef(pos);
-  const rafRef = useRef(null);
-  const spotsRef = useRef(spots);
-  spotsRef.current = spots;
+  const nearRef = useRef(null);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+  const furRef = useRef(furniture);
+  furRef.current = furniture;
+
+  const showToast = useCallback((t) => { setToast(t); window.clearTimeout(showToast._t); showToast._t = window.setTimeout(() => setToast(null), 1600); }, []);
 
   useEffect(() => {
-    posRef.current = initial;
-    setPos(initial);
-    // eslint-disable-next-line
-  }, [worldW, worldH]);
-
-  useEffect(() => {
-    if (!active) return undefined;
     const norm = (k) => (k.length === 1 ? k.toLowerCase() : k);
     const down = (e) => {
       const raw = e.key.toLowerCase();
-      if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(raw)) e.preventDefault();
-      keys.current[norm(e.key)] = true;
+      if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d"].includes(raw)) e.preventDefault();
+      if (pausedRef.current) return;
+      const k = norm(e.key);
+      if (k === " ") {
+        const n = nearRef.current;
+        if (n) {
+          const f = furRef.current.find((x) => x.id === n);
+          if (f) { if (f.onInteract) f.onInteract(); if (f.toast) showToast(f.toast); }
+        }
+        return;
+      }
+      keys.current[k] = true;
     };
     const up = (e) => { keys.current[norm(e.key)] = false; };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
-
-    let last = performance.now();
-    function loop(t) {
-      const dt = Math.min(32, t - last);
-      last = t;
-      const k = keys.current;
-      let dx = 0, dy = 0;
-      if (k["arrowleft"] || k["a"]) dx -= 1;
-      if (k["arrowright"] || k["d"]) dx += 1;
-      if (k["arrowup"] || k["w"]) dy -= 1;
-      if (k["arrowdown"] || k["s"]) dy += 1;
-
-      if (dx || dy) {
-        const len = Math.hypot(dx, dy) || 1;
-        const speed = 0.26 * dt;
-        let nx = posRef.current.x + (dx / len) * speed;
-        let ny = posRef.current.y + (dy / len) * speed;
-        nx = Math.max(30, Math.min(worldW - 30, nx));
-        ny = Math.max(30, Math.min(worldH - 30, ny));
-        posRef.current = { x: nx, y: ny };
-        setPos({ x: nx, y: ny });
-        setMoving(true);
-        if (dx !== 0) setFacing(dx > 0 ? 1 : -1);
-      } else {
-        setMoving(false);
-      }
-
-      let bestId = null, bestD = Infinity;
-      spotsRef.current.forEach((s) => {
-        const d = Math.hypot(posRef.current.x - s.cx, posRef.current.y - s.cy);
-        if (d < s.r && d < bestD) { bestD = d; bestId = s.id; }
-      });
-      setNear((prev) => (prev === bestId ? prev : bestId));
-
-      rafRef.current = requestAnimationFrame(loop);
-    }
-    rafRef.current = requestAnimationFrame(loop);
-    return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
-      cancelAnimationFrame(rafRef.current);
-    };
-  }, [active, worldW, worldH]);
-
-  const camX = Math.max(0, Math.min(Math.max(0, worldW - viewW), pos.x - viewW / 2));
-  const camY = Math.max(0, Math.min(Math.max(0, worldH - viewH), pos.y - viewH / 2));
-
-  return { pos, setPos, facing, moving, near, camX, camY };
-}
-
-/* 스페이스/엔터 입장 단축키 */
-function useEnterKey(nearId, onEnter, active) {
-  useEffect(() => {
-    if (!active) return undefined;
-    const h = (e) => {
-      if ((e.key === " " || e.key === "Enter") && nearId) {
-        e.preventDefault();
-        onEnter(nearId);
-      }
-    };
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, [active, nearId, onEnter]);
-}
-
-/* ============================== 뷰포트(카메라) 프레임 ====================== */
-function CameraFrame({ viewW, viewH, worldW, worldH, camX, camY, floorStyle, children }) {
-  return (
-    <div
-      style={{
-        width: "100%",
-        maxWidth: viewW,
-        height: viewH,
-        margin: "0 auto",
-        overflow: "hidden",
-        position: "relative",
-        border: `4px solid ${C.ink}`,
-        boxShadow: `inset 0 0 0 3px ${C.parchEdge}, 6px 6px 0 rgba(0,0,0,0.25)`,
-        ...floorStyle,
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          left: -camX,
-          top: -camY,
-          width: worldW,
-          height: worldH,
-          transition: "left .05s linear, top .05s linear",
-        }}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function EnterPrompt({ text = "스페이스로 입장" }) {
-  return (
-    <div
-      className="enter-prompt"
-      style={{
-        position: "absolute", left: "50%", bottom: "100%", transform: "translateX(-50%)",
-        background: C.ink, color: C.white, fontSize: 11, padding: "4px 8px", whiteSpace: "nowrap", marginBottom: 6,
-      }}
-    >
-      {text}
-    </div>
-  );
-}
-
-/* ============================== 메인 앱 =================================== */
-export default function App() {
-  const saved = useRef(loadSave());
-
-  const [screen, setScreen] = useState({ type: "town" }); // town | townhall | meeting | building | house | small
-  const [gems, setGems] = useState(saved.current?.gems ?? 30);
-  const [lifetime, setLifetime] = useState(saved.current?.lifetime ?? 0);
-  const [exchanged, setExchanged] = useState(saved.current?.exchanged ?? 0);
-  const [history, setHistory] = useState(saved.current?.history ?? []);
-
-  // 퀘스트 상태: { [buildingId]: { [qid]: {running,progress,completedDate,doneForever} } }
-  const [quests, setQuests] = useState(() => {
-    if (saved.current?.quests) return saved.current.quests;
-    const o = {};
-    LARGE_BUILDINGS.forEach((b) => {
-      o[b.id] = {};
-      b.quests.forEach((q) => { o[b.id][q.id] = { running: false, progress: 0, completedDate: null, doneForever: false }; });
-    });
-    return o;
-  });
-
-  const [houseNotes, setHouseNotes] = useState(saved.current?.houseNotes ?? {});
-  const [gratitudeNotes, setGratitudeNotes] = useState(saved.current?.gratitudeNotes ?? []);
-  const [heartNotes, setHeartNotes] = useState(saved.current?.heartNotes ?? []);
-  const [inventory, setInventory] = useState(saved.current?.inventory ?? {});
-  const [rooms, setRooms] = useState(() => { if (saved.current?.rooms) return saved.current.rooms;
-    const o = {};
-    MEETING_ROOMS.forEach((r) => { o[r.id] = { locked: false, reservations: [], screenShare: false, cam: false, call: false }; });
-    return o;
-  });
-  const [hallChat, setHallChat] = useState(saved.current?.hallChat ?? [
-    { id: uid(), who: "시스템", text: "주민센터 큰 테이블에 오신 걸 환영해요! 여기서 자유롭게 이야기 나눠요 :)" },
-  ]);
-  const [focusChat, setFocusChat] = useState(saved.current?.focusChat ?? []);
-  const [myStatus, setMyStatus] = useState(saved.current?.myStatus ?? { smoking: false, mode: "집중중" });
-
-  const [popups, setPopups] = useState([]);
-  const popupSeq = useRef(0);
-  const timers = useRef({});
-  const [now, setNow] = useState(Date.now());
-
-  // 저장된 마을 좌표
-  const [townPos] = useState(saved.current?.townPos ?? { x: 1300, y: 1230 });
-
-  // 폰트 주입
-  useEffect(() => {
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap";
-    document.head.appendChild(link);
-    return () => { document.head.removeChild(link); };
-  }, []);
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
+  }, [showToast]);
 
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 400);
-    return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => () => Object.values(timers.current).forEach(clearInterval), []);
-
-  // 자동 저장
-  useEffect(() => {
-    writeSave({ gems, lifetime, exchanged, history, quests, houseNotes, gratitudeNotes, heartNotes, inventory, rooms, hallChat, focusChat, myStatus });
-  }, [gems, lifetime, exchanged, history, quests, houseNotes, gratitudeNotes, heartNotes, inventory, rooms, hallChat, focusChat, myStatus]);
-
-  /* --- 퀘스트 실행 --- */
-  function runQuest(buildingId, q) {
-    const st = quests[buildingId]?.[q.id];
-    if (!st || st.running) return;
-    const today = todayStr();
-    if (q.repeat && st.completedDate === today) return;
-    if (!q.repeat && st.doneForever) return;
-
-    setQuests((p) => ({ ...p, [buildingId]: { ...p[buildingId], [q.id]: { ...p[buildingId][q.id], running: true, progress: 0 } } }));
-
-    const step = 40;
-    const inc = 100 / (q.duration / step);
-    const timerKey = `${buildingId}:${q.id}`;
-    timers.current[timerKey] = setInterval(() => {
-      setQuests((p) => {
-        const cur = p[buildingId][q.id];
-        const np = cur.progress + inc;
-        if (np >= 100) {
-          clearInterval(timers.current[timerKey]);
-          delete timers.current[timerKey];
-          setGems((g) => g + q.reward);
-          setLifetime((l) => l + q.reward);
-          spawnPopup(q.reward);
-          return {
-            ...p,
-            [buildingId]: {
-              ...p[buildingId],
-              [q.id]: {
-                running: false,
-                progress: 100,
-                completedDate: q.repeat ? todayStr() : cur.completedDate,
-                doneForever: q.repeat ? false : true,
-              },
-            },
-          };
+    let raf;
+    const SPEED = 3.2;
+    const loop = () => {
+      if (!pausedRef.current) {
+        const k = keys.current;
+        let { x, y } = posRef.current;
+        let dx = 0, dy = 0;
+        if (k["ArrowLeft"] || k["a"]) dx -= 1;
+        if (k["ArrowRight"] || k["d"]) dx += 1;
+        if (k["ArrowUp"] || k["w"]) dy -= 1;
+        if (k["ArrowDown"] || k["s"]) dy += 1;
+        if (dx || dy) {
+          const len = Math.hypot(dx, dy) || 1;
+          x += (dx / len) * SPEED; y += (dy / len) * SPEED;
+          x = Math.max(20, Math.min(roomW - 20, x));
+          y = Math.max(30, Math.min(roomH - 24, y));
+          posRef.current = { x, y }; setPos({ x, y });
+          if (dx < 0) setFacing(-1); else if (dx > 0) setFacing(1);
         }
-        return { ...p, [buildingId]: { ...p[buildingId], [q.id]: { ...cur, progress: np } } };
-      });
-    }, step);
-  }
+        setMoving(Boolean(dx || dy));
+        // 근접 판정 (가구 사각형과의 거리)
+        let found = null;
+        for (const f of furRef.current) {
+          const cx = f.x + f.w / 2, cy = f.y + f.h / 2;
+          if (Math.abs(x - cx) < f.w / 2 + 34 && Math.abs(y - cy) < f.h / 2 + 40) { found = f.id; break; }
+        }
+        if (found !== nearRef.current) { nearRef.current = found; setNear(found); }
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [roomW, roomH]);
 
-  function spawnPopup(amount) {
-    const id = ++popupSeq.current;
-    const xOffset = 40 + Math.random() * 20;
-    setPopups((p) => [...p, { id, amount, x: xOffset }]);
-    setTimeout(() => setPopups((p) => p.filter((x) => x.id !== id)), 1100);
-  }
-
-  function doExchange({ amount, type }) {
-    setGems((g) => g - amount);
-    setExchanged((e) => e + amount);
-    const rec = { id: Date.now(), amount, won: amount * GEM_TO_WON, type, time: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }) };
-    setHistory((h) => [rec, ...h]);
-  }
-
-  function buyItem(item) {
-    if (gems < item.cost) return false;
-    setGems((g) => g - item.cost);
-    setInventory((inv) => ({ ...inv, [item.id]: (inv[item.id] || 0) + 1 }));
-    return true;
-  }
-
-  const go = useCallback((next) => setScreen(next), []);
+  const nearFur = furniture.find((f) => f.id === near);
 
   return (
-    <div
-      style={{
-        fontFamily: "'DotGothic16', monospace",
-        minHeight: "100vh",
-        background: `repeating-linear-gradient(45deg, ${C.grass} 0 24px, ${C.grassDark} 24px 48px)`,
-        color: C.ink,
-        padding: "14px",
-        boxSizing: "border-box",
-      }}
-    >
-      <StyleBlock />
-
-      {/* ---- 상단 HUD ---- */}
-      <div style={{ maxWidth: 940, margin: "0 auto 12px" }}>
-        <Panel style={{ padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 22 }}>🌱</span>
-            <div>
-              <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, color: C.inkSoft, lineHeight: 1.6 }}>LITTLE JUNIOR TOWN</div>
-              <div style={{ fontSize: 13, color: C.inkSoft }}>작은 주니어 네이버 · 주민센터 에디션</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 11, color: C.inkSoft }}>보유 스타 젬</div>
-              <GemBadge amount={gems} big />
-            </div>
-          </div>
-        </Panel>
-      </div>
-
-      {/* ---- 화면 전환 ---- */}
-      <div style={{ maxWidth: 940, margin: "0 auto" }}>
-        {screen.type === "town" && (
-          <TownView
-            initial={townPos}
-            onEnterHall={() => go({ type: "townhall" })}
-            onEnterBuilding={(id) => go({ type: "building", id })}
-            onEnterHouse={(id) => go({ type: "house", id })}
-            onEnterSmall={(id) => go({ type: "small", id })}
-          />
-        )}
-
-        {screen.type === "townhall" && (
-          <TownHallView
-            onBack={() => go({ type: "town" })}
-            onEnterMeeting={(id) => go({ type: "meeting", id })}
-            onEnterBank={() => go({ type: "bank" })}
-            hallChat={hallChat}
-            setHallChat={setHallChat}
-          />
-        )}
-
-        {screen.type === "meeting" && (
-          <MeetingRoomView
-            room={MEETING_ROOMS.find((r) => r.id === screen.id)}
-            state={rooms[screen.id]}
-            setState={(updater) => setRooms((p) => ({ ...p, [screen.id]: typeof updater === "function" ? updater(p[screen.id]) : updater }))}
-            onBack={() => go({ type: "townhall" })}
-          />
-        )}
-
-        {screen.type === "building" && (
-          <BuildingView
-            building={LARGE_BUILDINGS.find((b) => b.id === screen.id)}
-            quests={quests[screen.id]}
-            now={now}
-            popups={popups}
-            onRun={(q) => runQuest(screen.id, q)}
-            onBack={() => go({ type: "town" })}
-          />
-        )}
-
-        {screen.type === "house" && (
-          <HouseView
-            house={HOUSES.find((h) => h.id === screen.id)}
-            note={houseNotes[screen.id] || ""}
-            setNote={(text) => setHouseNotes((p) => ({ ...p, [screen.id]: text }))}
-            onBack={() => go({ type: "town" })}
-          />
-        )}
-
-        {screen.type === "small" && screen.id === "gratitude" && (
-          <GratitudeRoomView
-            gems={gems}
-            onBuy={buyItem}
-            notes={gratitudeNotes}
-            onAddNote={(n) => setGratitudeNotes((p) => [{ id: uid(), ...n }, ...p])}
-            onBack={() => go({ type: "town" })}
-          />
-        )}
-
-        {screen.type === "small" && screen.id === "heart" && (
-          <HeartRoomView
-            gems={gems}
-            onPay={(cost) => { if (gems < cost) return false; setGems((g) => g - cost); return true; }}
-            notes={heartNotes}
-            onAddNote={(text) => setHeartNotes((p) => [{ id: uid(), text, time: new Date().toLocaleString("ko-KR") }, ...p])}
-            onBack={() => go({ type: "town" })}
-          />
-        )}
-
-        {screen.type === "small" && screen.id === "focus" && (
-          <FocusRoomView
-            quests={quests}
-            chat={focusChat}
-            setChat={setFocusChat}
-            onGoBuilding={(id) => go({ type: "building", id })}
-            onBack={() => go({ type: "town" })}
-          />
-        )}
-
-        {screen.type === "small" && screen.id === "sleep" && <SleepRoomView onBack={() => go({ type: "town" })} />}
-
-        {screen.type === "small" && screen.id === "smoking" && (
-          <SmokingRoomView status={myStatus} setStatus={setMyStatus} onBack={() => go({ type: "town" })} />
-        )}
-
-        {screen.type === "bank" && (
-          <BankView
-            gems={gems}
-            lifetime={lifetime}
-            exchanged={exchanged}
-            history={history}
-            onExchange={doExchange}
-            onBack={() => go({ type: "townhall" })}
-          />
-        )}
-      </div>
-
-      <div style={{ maxWidth: 940, margin: "14px auto 0", textAlign: "center", fontSize: 11, color: "rgba(42,30,20,0.65)" }}>
-        프로토타입 데모 · 모든 &lsquo;환전/정산&rsquo;은 시뮬레이션이며 실제 금전 거래가 아닙니다.
-      </div>
-    </div>
-  );
-}
-
-/* ============================== 마을 맵(허브) 뷰 =========================== */
-function TownView({ initial, onEnterHall, onEnterBuilding, onEnterHouse, onEnterSmall }) {
-  const worldW = 2600, worldH = 1700;
-  const viewW = 900, viewH = 520;
-
-  const hall = { cx: 1300, cy: 760 };
-  const largeSpots = [
-    { b: LARGE_BUILDINGS[0], cx: 1950, cy: 480 },
-    { b: LARGE_BUILDINGS[1], cx: 2320, cy: 480 },
-    { b: LARGE_BUILDINGS[2], cx: 1950, cy: 820 },
-    { b: LARGE_BUILDINGS[3], cx: 2320, cy: 820 },
-  ];
-  const houseSpots = [
-    { h: HOUSES[0], cx: 260, cy: 320 },
-    { h: HOUSES[1], cx: 560, cy: 320 },
-    { h: HOUSES[2], cx: 860, cy: 320 },
-    { h: HOUSES[3], cx: 1160, cy: 320 },
-    { h: HOUSES[4], cx: 260, cy: 620 },
-    { h: HOUSES[5], cx: 560, cy: 620 },
-    { h: HOUSES[6], cx: 860, cy: 620 },
-    { h: HOUSES[7], cx: 1160, cy: 620 },
-  ];
-  const smallSpots = [
-    { s: SMALL_BUILDINGS[0], cx: 400, cy: 1350 },
-    { s: SMALL_BUILDINGS[1], cx: 750, cy: 1400 },
-    { s: SMALL_BUILDINGS[2], cx: 1100, cy: 1350 },
-    { s: SMALL_BUILDINGS[3], cx: 1450, cy: 1400 },
-    { s: SMALL_BUILDINGS[4], cx: 1800, cy: 1350 },
-  ];
-  const board = { cx: 1620, cy: 1080 };
-
-  const spots = useMemo(() => ([
-    { type: "hall", id: "hall", cx: hall.cx, cy: hall.cy + 60, r: 100 },
-    ...largeSpots.map((s) => ({ type: "building", id: s.b.id, cx: s.cx, cy: s.cy + 55, r: 85 })),
-    ...houseSpots.map((s) => ({ type: "house", id: s.h.id, cx: s.cx, cy: s.cy + 45, r: 75 })),
-    ...smallSpots.map((s) => ({ type: "small", id: s.s.id, cx: s.cx, cy: s.cy + 40, r: 75 })),
-    { type: "board", id: "board", cx: board.cx, cy: board.cy + 30, r: 65 },
-    // eslint-disable-next-line
-  ]), []);
-
-  const [boardOpen, setBoardOpen] = useState(false);
-
-  const { pos, facing, moving, near, camX, camY } = useWalker({ worldW, worldH, viewW, viewH, spots, initial, active: !boardOpen });
-
-  const enterHandler = useCallback((id) => {
-    if (id === "hall") return onEnterHall();
-    if (id === "board") return setBoardOpen(true);
-    const largeMatch = largeSpots.find((s) => s.b.id === id);
-    if (largeMatch) return onEnterBuilding(id);
-    const houseMatch = houseSpots.find((s) => s.h.id === id);
-    if (houseMatch) return onEnterHouse(id);
-    const smallMatch = smallSpots.find((s) => s.s.id === id);
-    if (smallMatch) return onEnterSmall(id);
-    // eslint-disable-next-line
-  }, [onEnterHall, onEnterBuilding, onEnterHouse, onEnterSmall]);
-
-  useEnterKey(near, enterHandler, !boardOpen);
-
-  return (
-    <div>
-      <Panel style={{ padding: "8px 14px", marginBottom: 10, fontSize: 12, color: C.inkSoft, textAlign: "center" }}>
-        방향키 / WASD로 이동 · 가까이 가서 <b>스페이스</b> 또는 건물을 <b>클릭</b>해서 입장하세요 🏠
-      </Panel>
-
-      <CameraFrame
-        viewW={viewW} viewH={viewH} worldW={worldW} worldH={worldH} camX={camX} camY={camY}
-        floorStyle={{ background: `repeating-linear-gradient(45deg, ${C.grass} 0 26px, ${C.grassDark} 26px 52px)` }}
-      >
-        {/* 오솔길 */}
-        <div style={{ position: "absolute", left: hall.cx - 620, top: hall.cy + 55, width: 1240, height: 26, background: C.path, opacity: 0.85 }} />
-        <div style={{ position: "absolute", left: hall.cx - 10, top: 260, width: 26, height: hall.cy - 260 + 40, background: C.path, opacity: 0.85 }} />
-        <div style={{ position: "absolute", left: hall.cx - 10, top: hall.cy, width: 26, height: 420, background: C.path, opacity: 0.85 }} />
-
-        {/* 주민센터 */}
-        <button
-          onClick={() => enterHandler("hall")}
-          className="map-obj house-obj"
-          style={{ position: "absolute", left: hall.cx, top: hall.cy, transform: "translate(-50%,-30%)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-        >
-          {near === "hall" && <EnterPrompt />}
-          <HallSprite />
-        </button>
-
-        {/* 대형건물 4곳 */}
-        {largeSpots.map((s) => (
-          <button
-            key={s.b.id}
-            onClick={() => enterHandler(s.b.id)}
-            className="map-obj house-obj"
-            style={{ position: "absolute", left: s.cx, top: s.cy, transform: "translate(-50%,-30%)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-          >
-            {near === s.b.id && <EnterPrompt />}
-            <Sprite roof={s.b.roof} roofDk={s.b.roofDk} wall={s.b.wall} icon={s.b.icon} w={104} h={92} label={s.b.name} />
-          </button>
-        ))}
-
-        {/* 집 8채 */}
-        {houseSpots.map((s) => (
-          <button
-            key={s.h.id}
-            onClick={() => enterHandler(s.h.id)}
-            className="map-obj house-obj"
-            style={{ position: "absolute", left: s.cx, top: s.cy, transform: "translate(-50%,-30%)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-          >
-            {near === s.h.id && <EnterPrompt />}
-            <Sprite roof={s.h.roof} roofDk={s.h.roofDk} wall={s.h.wall} icon="🏠" w={78} h={68} label={s.h.name} />
-          </button>
-        ))}
-
-        {/* 소형건물 5곳 */}
-        {smallSpots.map((s) => (
-          <button
-            key={s.s.id}
-            onClick={() => enterHandler(s.s.id)}
-            className="map-obj house-obj"
-            style={{ position: "absolute", left: s.cx, top: s.cy, transform: "translate(-50%,-30%)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-          >
-            {near === s.s.id && <EnterPrompt />}
-            <Sprite roof={s.s.roof} roofDk={s.s.roofDk} wall={s.s.wall} icon={s.s.icon} w={64} h={56} label={s.s.name} />
-          </button>
-        ))}
-
-        {/* 게시판 */}
-        <button
-          onClick={() => enterHandler("board")}
-          className="map-obj house-obj"
-          style={{ position: "absolute", left: board.cx, top: board.cy, transform: "translate(-50%,-30%)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-        >
-          {near === "board" && <EnterPrompt />}
-          <BoardSprite />
-        </button>
-
-        {/* 플레이어 */}
-        <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-70%)", zIndex: 5 }}>
-          <Hero facing={facing} moving={moving} />
-        </div>
-      </CameraFrame>
-
-      {boardOpen && <BulletinBoardModal onClose={() => setBoardOpen(false)} />}
-    </div>
-  );
-}
-
-/* ============================== 주민센터 내부 ============================== */
-function TownHallView({ onBack, onEnterMeeting, onEnterBank, hallChat, setHallChat }) {
-  const worldW = 1500, worldH = 820;
-  const viewW = 900, viewH = 480;
-
-  const bigTable = { cx: 380, cy: 480 };
-  const coffee = { cx: 150, cy: 250 };
-  const vending = { cx: 260, cy: 250 };
-  const water = { cx: 370, cy: 250 };
-  const bankDesk = { cx: 1300, cy: 620 };
-  const roomDoors = [
-    { r: MEETING_ROOMS[0], cx: 950, cy: 240 },
-    { r: MEETING_ROOMS[1], cx: 1180, cy: 240 },
-    { r: MEETING_ROOMS[2], cx: 1410, cy: 240 },
-  ];
-
-  const spots = useMemo(() => ([
-    { type: "table", id: "table", cx: bigTable.cx, cy: bigTable.cy, r: 110 },
-    { type: "amenity", id: "coffee", cx: coffee.cx, cy: coffee.cy, r: 55 },
-    { type: "amenity", id: "vending", cx: vending.cx, cy: vending.cy, r: 55 },
-    { type: "amenity", id: "water", cx: water.cx, cy: water.cy, r: 55 },
-    { type: "bank", id: "bank", cx: bankDesk.cx, cy: bankDesk.cy, r: 90 },
-    ...roomDoors.map((d) => ({ type: "meeting", id: d.r.id, cx: d.cx, cy: d.cy + 40, r: 75 })),
-    // eslint-disable-next-line
-  ]), []);
-
-  const [chatOpen, setChatOpen] = useState(false);
-  const [amenityMsg, setAmenityMsg] = useState(null);
-
-  const { pos, facing, moving, near } = useWalker({
-    worldW, worldH, viewW, viewH, spots, initial: { x: 380, y: 620 }, active: !chatOpen,
-  });
-  const camX = Math.max(0, Math.min(worldW - viewW, pos.x - viewW / 2));
-  const camY = Math.max(0, Math.min(worldH - viewH, pos.y - viewH / 2));
-
-  const enterHandler = useCallback((id) => {
-    if (id === "table") { setChatOpen(true); return; }
-    if (id === "bank") { onEnterBank(); return; }
-    if (id === "coffee") { setAmenityMsg("☕ 따뜻한 커피 한 잔, 잠깐 쉬어가요."); return; }
-    if (id === "vending") { setAmenityMsg("🥤 자판기에서 시원한 음료를 뽑았어요!"); return; }
-    if (id === "water") { setAmenityMsg("🚰 시원한 물 한 잔 마시고 다시 힘내볼까요."); return; }
-    const room = MEETING_ROOMS.find((r) => r.id === id);
-    if (room) { onEnterMeeting(id); return; }
-  }, [onEnterBank, onEnterMeeting]);
-
-  useEnterKey(near, enterHandler, !chatOpen);
-
-  useEffect(() => {
-    if (!amenityMsg) return undefined;
-    const t = setTimeout(() => setAmenityMsg(null), 1800);
-    return () => clearTimeout(t);
-  }, [amenityMsg]);
-
-  return (
-    <div>
-      <ScreenHeader title="주민센터" subtitle="마을의 중심 — 큰 테이블 · 회의실 3개 · 환전 창구" icon="🏛️" onBack={onBack} />
-      <Panel style={{ padding: "8px 14px", marginBottom: 10, fontSize: 12, color: C.inkSoft, textAlign: "center" }}>
-        이동 후 <b>스페이스</b> 또는 오브젝트를 <b>클릭</b> — 큰 테이블(대화/채팅) · 회의실 문(예약/화상) · 탕비실 · 환전 창구
-      </Panel>
-
-      <CameraFrame viewW={viewW} viewH={viewH} worldW={worldW} worldH={worldH} camX={camX} camY={camY} floorStyle={{ background: `repeating-linear-gradient(0deg, ${C.floor} 0 20px, ${C.floorLine} 20px 21px)` }}>
-        {/* 탕비실 구역 */}
-        <div style={{ position: "absolute", left: 60, top: 140, width: 380, height: 170, border: `3px dashed ${C.parchEdge}` }} />
-        <div style={{ position: "absolute", left: 70, top: 148, fontSize: 11, color: C.inkSoft }}>탕비실</div>
-        {[
-          { pos: coffee, icon: "☕", label: "커피포트" },
-          { pos: vending, icon: "🥤", label: "자판기" },
-          { pos: water, icon: "🚰", label: "정수기" },
-        ].map((a) => (
-          <button key={a.label} onClick={() => enterHandler(a.label === "커피포트" ? "coffee" : a.label === "자판기" ? "vending" : "water")}
-            className="map-obj" style={{ position: "absolute", left: a.pos.cx, top: a.pos.cy, transform: "translate(-50%,-50%)", background: "none", border: "none", cursor: "pointer" }}>
-            {near === (a.label === "커피포트" ? "coffee" : a.label === "자판기" ? "vending" : "water") && <EnterPrompt />}
-            <div style={{ width: 60, height: 70, background: C.white, border: `3px solid ${C.ink}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
-              <span style={{ fontSize: 26 }}>{a.icon}</span>
-              <span style={{ fontSize: 9 }}>{a.label}</span>
-            </div>
-          </button>
-        ))}
-
-        {/* 큰 테이블 */}
-        <button onClick={() => enterHandler("table")} className="map-obj" style={{ position: "absolute", left: bigTable.cx, top: bigTable.cy, transform: "translate(-50%,-50%)", background: "none", border: "none", cursor: "pointer" }}>
-          {near === "table" && <EnterPrompt text="스페이스로 대화/채팅 참여" />}
-          <div style={{ width: 260, height: 140, background: "#c9975f", border: `4px solid ${C.ink}`, borderRadius: 70, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `inset 0 0 0 4px #b1824c` }}>
-            <span style={{ fontSize: 30 }}>🪑🗣️🪑</span>
-          </div>
-          <div style={{ textAlign: "center", marginTop: 4, fontSize: 11, background: C.ink, color: C.white, padding: "2px 8px", display: "inline-block" }}>큰 테이블</div>
-        </button>
-
-        {/* 회의실 문 3개 */}
-        {roomDoors.map((d) => (
-          <button key={d.r.id} onClick={() => enterHandler(d.r.id)} className="map-obj" style={{ position: "absolute", left: d.cx, top: d.cy, transform: "translate(-50%,-40%)", background: "none", border: "none", cursor: "pointer" }}>
-            {near === d.r.id && <EnterPrompt />}
-            <Sprite roof={C.bankRoof} roofDk={C.bankRoofDk} wall="#eef4f8" icon="🚪" w={92} h={84} label={d.r.name} />
-          </button>
-        ))}
-
-        {/* 환전 창구 */}
-        <button onClick={() => enterHandler("bank")} className="map-obj" style={{ position: "absolute", left: bankDesk.cx, top: bankDesk.cy, transform: "translate(-50%,-50%)", background: "none", border: "none", cursor: "pointer" }}>
-          {near === "bank" && <EnterPrompt />}
-          <div style={{ width: 150, height: 90, background: C.parch, border: `4px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 4 }}>
-            <span style={{ fontSize: 26 }}>🏦</span>
-            <span style={{ fontSize: 11 }}>환전 창구</span>
-          </div>
-        </button>
-
-        {/* 플레이어 */}
-        <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-70%)", zIndex: 5 }}>
-          <Hero facing={facing} moving={moving} />
-        </div>
-      </CameraFrame>
-
-      {amenityMsg && (
-        <div style={{ maxWidth: 900, margin: "10px auto 0" }}>
-          <Panel style={{ padding: "10px 14px", fontSize: 13, textAlign: "center" }}>{amenityMsg}</Panel>
-        </div>
-      )}
-
-      {chatOpen && <TableChatModal messages={hallChat} setMessages={setHallChat} onClose={() => setChatOpen(false)} />}
-    </div>
-  );
-}
-
-function TableChatModal({ messages, setMessages, onClose, title = "큰 테이블 대화" }) {
-  const [text, setText] = useState("");
-  const listRef = useRef(null);
-  useEffect(() => { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }, [messages]);
-  function send() {
-    const t = text.trim();
-    if (!t) return;
-    setMessages((p) => [...p, { id: uid(), who: "나", text: t }]);
-    setText("");
-  }
-  return (
-    <Modal onClose={onClose} maxWidth={520}>
-      <Panel style={{ padding: 16 }}>
-        <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 12 }}>🗣️ {title}</div>
-        <div ref={listRef} style={{ height: 260, overflowY: "auto", background: C.white, border: `3px solid ${C.ink}`, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-          {messages.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", marginTop: 20 }}>아직 대화가 없어요. 첫 메시지를 남겨보세요!</div>}
-          {messages.map((m) => (
-            <div key={m.id} style={{ fontSize: 13 }}>
-              <b style={{ color: m.who === "나" ? C.good : C.bankRoof }}>{m.who}</b> <span style={{ color: C.inkSoft }}>·</span> {m.text}
-            </div>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") send(); }}
-            placeholder="메시지를 입력하세요"
-            style={{ flex: 1, padding: "10px", fontFamily: "'DotGothic16', monospace", fontSize: 14, border: `3px solid ${C.ink}`, background: C.white, color: C.ink }}
-          />
-          <PxButton tone="good" onClick={send} style={{ padding: "10px 16px" }}>전송</PxButton>
-        </div>
-        <div style={{ marginTop: 10, textAlign: "right" }}>
-          <PxButton tone="ink" onClick={onClose} style={{ padding: "8px 14px", fontSize: 12 }}>닫기</PxButton>
-        </div>
-      </Panel>
-    </Modal>
-  );
-}
-
-/* ============================== 회의실 화면 ================================ */
-function MeetingRoomView({ room, state, setState, onBack }) {
-  const [form, setForm] = useState({ title: "", who: "", slot: TIME_SLOTS[0] });
-  const today = todayStr();
-
-  if (!room || !state) return null;
-
-  function book() {
-    if (!form.title.trim() || !form.who.trim()) return;
-    if (state.reservations.some((r) => r.slot === form.slot && r.date === today)) return;
-    setState((p) => ({ ...p, reservations: [...p.reservations, { id: uid(), date: today, slot: form.slot, title: form.title.trim(), who: form.who.trim() }] }));
-    setForm({ title: "", who: "", slot: TIME_SLOTS[0] });
-  }
-  function cancelRes(id) {
-    setState((p) => ({ ...p, reservations: p.reservations.filter((r) => r.id !== id) }));
-  }
-  function toggleLock() { setState((p) => ({ ...p, locked: !p.locked })); }
-
-  const todays = state.reservations.filter((r) => r.date === today).sort((a, b) => TIME_SLOTS.indexOf(a.slot) - TIME_SLOTS.indexOf(b.slot));
-  const bookedSlots = new Set(todays.map((r) => r.slot));
-
-  return (
-    <div>
-      <ScreenHeader
-        title={room.name}
-        subtitle={`정원 ${room.cap}명 · ${state.locked ? "🔒 잠김" : "🔓 열림"}`}
-        icon="🚪"
-        onBack={onBack}
-        right={<PxButton tone={state.locked ? "danger" : "good"} onClick={toggleLock} style={{ padding: "8px 14px", fontSize: 12 }}>{state.locked ? "🔒 잠금 해제" : "🔓 방 잠그기"}</PxButton>}
-      />
-
-      {/* 회의실은 다른 건물처럼 별도 화면으로 표시됩니다 */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 12 }}>
-        <Panel style={{ padding: 16 }}>
-          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, marginBottom: 10 }}>📹 화상회의</div>
-          <div style={{ background: "#1c1c1c", height: 220, position: "relative", border: `3px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-            {state.locked && (
-              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", color: C.white, fontSize: 13 }}>
-                🔒 잠긴 방입니다
-              </div>
-            )}
-            <div style={{ color: C.white, textAlign: "center", fontSize: 13 }}>
-              {state.call ? (state.cam ? "🧑 내 카메라 On" : "🔇 카메라 Off · 통화 중") : "통화 대기 중"}
-              {state.screenShare && <div style={{ marginTop: 8, background: "#2a2a2a", padding: "10px 16px", fontSize: 11 }}>🖥️ 화면 공유 중...</div>}
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-            <PxButton tone={state.call ? "danger" : "good"} onClick={() => setState((p) => ({ ...p, call: !p.call }))} style={{ padding: "10px 14px", fontSize: 12 }}>
-              {state.call ? "📴 통화 종료" : "📞 통화 시작"}
-            </PxButton>
-            <PxButton tone={state.cam ? "gold" : "wood"} disabled={!state.call} onClick={() => setState((p) => ({ ...p, cam: !p.cam }))} style={{ padding: "10px 14px", fontSize: 12 }}>
-              {state.cam ? "🧑 얼굴 On" : "🙈 얼굴 Off"}
-            </PxButton>
-            <PxButton tone={state.screenShare ? "gold" : "wood"} disabled={!state.call} onClick={() => setState((p) => ({ ...p, screenShare: !p.screenShare }))} style={{ padding: "10px 14px", fontSize: 12 }}>
-              {state.screenShare ? "🖥️ 공유 중지" : "🖥️ 화면 공유"}
-            </PxButton>
-          </div>
-        </Panel>
-
-        <Panel style={{ padding: 16 }}>
-          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, marginBottom: 10 }}>📅 오늘 예약 ({today})</div>
-          <div style={{ display: "grid", gap: 6, maxHeight: 150, overflowY: "auto" }}>
-            {todays.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft }}>오늘 예약이 없습니다.</div>}
-            {todays.map((r) => (
-              <div key={r.id} style={{ background: C.white, border: `2px solid ${C.ink}`, padding: "6px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
-                <span><b>{r.slot}</b> · {r.title} ({r.who})</span>
-                <button onClick={() => cancelRes(r.id)} style={{ background: "none", border: "none", color: C.danger, cursor: "pointer", fontSize: 12 }}>취소</button>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ marginTop: 14, borderTop: `2px dashed ${C.parchEdge}`, paddingTop: 12 }}>
-            <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 6 }}>새 예약</div>
-            <div style={{ display: "grid", gap: 6 }}>
-              <input placeholder="회의 제목" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                style={{ padding: 8, fontFamily: "'DotGothic16', monospace", border: `2px solid ${C.ink}`, background: C.white }} />
-              <input placeholder="예약자 이름" value={form.who} onChange={(e) => setForm((f) => ({ ...f, who: e.target.value }))}
-                style={{ padding: 8, fontFamily: "'DotGothic16', monospace", border: `2px solid ${C.ink}`, background: C.white }} />
-              <select value={form.slot} onChange={(e) => setForm((f) => ({ ...f, slot: e.target.value }))}
-                style={{ padding: 8, fontFamily: "'DotGothic16', monospace", border: `2px solid ${C.ink}`, background: C.white }}>
-                {TIME_SLOTS.map((s) => (
-                  <option key={s} value={s} disabled={bookedSlots.has(s)}>{s} {bookedSlots.has(s) ? "(예약됨)" : ""}</option>
-                ))}
-              </select>
-              <PxButton tone="good" onClick={book} style={{ padding: "10px", fontSize: 12 }}>✅ 예약하기</PxButton>
-            </div>
-          </div>
-        </Panel>
-      </div>
-    </div>
-  );
-}
-
-/* ============================== 대형건물(퀘스트) 화면 ======================= */
-function BuildingView({ building, quests, now, popups, onRun, onBack }) {
-  if (!building || !quests) return null;
-  const today = todayStr();
-  return (
-    <div>
-      <ScreenHeader title={building.name} subtitle={building.subtitle} icon={building.icon} onBack={onBack} />
-      <Panel style={{ padding: 16, position: "relative" }}>
-        <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 12 }}>{building.blurb}</div>
-        <div style={{ display: "grid", gap: 10 }}>
-          {building.quests.map((q) => {
-            const st = quests[q.id];
-            const doneToday = q.repeat && st.completedDate === today;
-            const doneForever = !q.repeat && st.doneForever;
-            const locked = doneToday || doneForever;
+    <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <TitleBar icon={icon} title={title} sub={sub || "⬆⬇⬅➡ 이동 · 가구 앞에서 Space 상호작용"} onBack={onBack} bg={headerBg} />
+      {banner}
+      <div style={{ position: "relative", width: "100%", overflow: "hidden" }}>
+        <div style={{ position: "relative", width: roomW, height: roomH, margin: "0 auto", background: bg, borderBottom: `3px solid ${C.ink}` }}>
+          {/* 가구 */}
+          {furniture.map((f) => {
+            const active = f.id === near;
             return (
-              <div key={q.id} style={{ background: C.white, border: `3px solid ${C.ink}`, padding: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                  <div>
-                    <div style={{ fontWeight: "bold", fontSize: 14 }}>
-                      {q.title} {q.repeat ? <span style={{ fontSize: 10, background: C.bankRoof, color: C.white, padding: "2px 6px", marginLeft: 4 }}>매일 반복</span> : <span style={{ fontSize: 10, background: C.gem, color: C.ink, padding: "2px 6px", marginLeft: 4 }}>1회성</span>}
-                    </div>
-                    <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 3 }}>{q.desc}</div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <GemBadge amount={q.reward} />
-                    <PxButton
-                      tone={locked ? "ink" : "good"}
-                      disabled={st.running || locked}
-                      onClick={() => onRun(q)}
-                      style={{ padding: "9px 14px", fontSize: 12 }}
-                    >
-                      {doneForever ? "완료됨" : doneToday ? "오늘 완료 ✓" : st.running ? "진행 중..." : "수행하기"}
-                    </PxButton>
-                  </div>
-                </div>
-                {st.running && (
-                  <div style={{ marginTop: 8, height: 10, background: C.parchLine, border: `2px solid ${C.ink}` }}>
-                    <div style={{ width: `${st.progress}%`, height: "100%", background: C.good, transition: "width .05s linear" }} />
-                  </div>
-                )}
-                {doneToday && <div style={{ marginTop: 6, fontSize: 11, color: C.inkSoft }}>내일 다시 수행할 수 있어요.</div>}
+              <div key={f.id} style={{ position: "absolute", left: f.x, top: f.y, width: f.w, height: f.h,
+                background: f.color || "#c9a15f", border: `3px solid ${C.ink}`,
+                boxShadow: active ? `0 0 0 3px ${C.gem}` : "inset 0 0 0 2px rgba(255,255,255,0.25)",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+                <span style={{ fontSize: Math.min(f.w, f.h) > 46 ? 26 : 18, lineHeight: 1 }}>{f.emoji}</span>
+                <span style={{ fontSize: 10, color: C.ink, marginTop: 2, fontWeight: "bold" }}>{f.label}</span>
               </div>
             );
           })}
-        </div>
-
-        {popups.map((p) => (
-          <div key={p.id} className="gem-pop" style={{ position: "absolute", left: `${p.x}%`, top: 40, fontFamily: "'Press Start 2P', monospace", fontSize: 13, color: "#a86e13", pointerEvents: "none" }}>
-            +{p.amount}⭐
-          </div>
-        ))}
-      </Panel>
-    </div>
-  );
-}
-
-/* ============================== 집 내부 화면 ================================ */
-function HouseView({ house, note, setNote, onBack }) {
-  const [deskOpen, setDeskOpen] = useState(false);
-  const [flash, setFlash] = useState(null);
-  if (!house) return null;
-
-  function poke(msg) {
-    setFlash(msg);
-    setTimeout(() => setFlash(null), 1400);
-  }
-
-  return (
-    <div>
-      <ScreenHeader title={house.name} subtitle={`${house.owner}의 집`} icon="🏠" onBack={onBack} />
-      <Panel style={{ padding: 16 }}>
-        <div style={{ position: "relative", width: "100%", maxWidth: 760, margin: "0 auto", height: 380, background: C.floor, border: `4px solid ${C.ink}`, boxShadow: `inset 0 0 0 4px ${C.floorLine}` }}>
-          {/* 벽지 라인 */}
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 60, background: house.wall, borderBottom: `3px solid ${C.ink}` }} />
-
-          {/* 침대 */}
-          <button onClick={() => poke("🛏️ 폭신폭신, 잠깐 눕고 싶네요.")} style={{ position: "absolute", left: 24, top: 80, background: "none", border: "none", cursor: "pointer" }}>
-            <div style={{ width: 130, height: 90, background: "#e8a6a6", border: `3px solid ${C.ink}`, position: "relative" }}>
-              <div style={{ position: "absolute", left: 6, top: 6, width: 34, height: 24, background: C.white, border: `2px solid ${C.ink}` }} />
-            </div>
-            <div style={{ textAlign: "center", fontSize: 11, marginTop: 4 }}>침대</div>
-          </button>
-
-          {/* 소파 */}
-          <button onClick={() => poke("🛋️ 폭 앉으니 편안해요.")} style={{ position: "absolute", left: 220, top: 220, background: "none", border: "none", cursor: "pointer" }}>
-            <div style={{ width: 140, height: 70, background: "#8fae6b", border: `3px solid ${C.ink}`, borderRadius: 8 }} />
-            <div style={{ textAlign: "center", fontSize: 11, marginTop: 4 }}>소파</div>
-          </button>
-
-          {/* 티비 */}
-          <button onClick={() => poke("📺 오늘 저녁 뉴스가 나오고 있어요.")} style={{ position: "absolute", left: 250, top: 90, background: "none", border: "none", cursor: "pointer" }}>
-            <div style={{ width: 100, height: 66, background: "#2a2a2a", border: `3px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.white, fontSize: 18 }}>📺</div>
-            <div style={{ textAlign: "center", fontSize: 11, marginTop: 4 }}>티비</div>
-          </button>
-
-          {/* 책상 */}
-          <button onClick={() => setDeskOpen(true)} style={{ position: "absolute", right: 24, top: 220, background: "none", border: "none", cursor: "pointer" }}>
-            <div style={{ width: 150, height: 80, background: C.wood, border: `3px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.white, fontSize: 22 }}>📝</div>
-            <div style={{ textAlign: "center", fontSize: 11, marginTop: 4 }}>책상 (메모장)</div>
-          </button>
-        </div>
-
-        {flash && <div style={{ marginTop: 12, textAlign: "center", fontSize: 13, color: C.inkSoft }}>{flash}</div>}
-      </Panel>
-
-      {deskOpen && (
-        <Modal onClose={() => setDeskOpen(false)} maxWidth={480}>
-          <Panel style={{ padding: 16 }}>
-            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 10 }}>📝 {house.owner}의 메모장</div>
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="여기에 개인 메모를 자유롭게 남겨보세요..."
-              rows={8}
-              style={{ width: "100%", boxSizing: "border-box", padding: 10, fontFamily: "'DotGothic16', monospace", fontSize: 14, border: `3px solid ${C.ink}`, background: C.white, resize: "vertical" }}
-            />
-            <div style={{ marginTop: 10, textAlign: "right" }}>
-              <PxButton tone="good" onClick={() => setDeskOpen(false)} style={{ padding: "9px 16px", fontSize: 12 }}>저장하고 닫기</PxButton>
-            </div>
-          </Panel>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-/* ============================== 감사의 방 ================================== */
-function GratitudeRoomView({ gems, onBuy, notes, onAddNote, onBack }) {
-  const [shopOpen, setShopOpen] = useState(false);
-  const [noteOpen, setNoteOpen] = useState(false);
-  const [form, setForm] = useState({ to: "", message: "" });
-  const [buyFlash, setBuyFlash] = useState(null);
-
-  function submitNote() {
-    if (!form.to.trim() || !form.message.trim()) return;
-    onAddNote({ to: form.to.trim(), message: form.message.trim() });
-    setForm({ to: "", message: "" });
-    setNoteOpen(false);
-  }
-
-  return (
-    <div>
-      <ScreenHeader title="감사의 방" subtitle="고마운 마음을 물건과 편지로 전해요" icon="🙏" onBack={onBack} />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Panel style={{ padding: 16 }}>
-          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, marginBottom: 10 }}>🧓 선반 &amp; 테이블</div>
-          <button onClick={() => setShopOpen(true)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer" }}>
-            <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-              <div style={{ width: 90, height: 130, background: "#c9975f", border: `3px solid ${C.ink}`, display: "grid", gridTemplateRows: "repeat(3,1fr)", gap: 4, padding: 4 }}>
-                <div style={{ background: C.white, border: `1px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>✉️</div>
-                <div style={{ background: C.white, border: `1px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🍰</div>
-                <div style={{ background: C.white, border: `1px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🌷</div>
+          {/* 플레이어 */}
+          <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-70%)", zIndex: 6, pointerEvents: "none" }}>
+            {bubble && (
+              <div className="chat-bubble" style={{ position: "absolute", bottom: "112%", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", maxWidth: 220, background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>
+                {bubble}
               </div>
-              <div style={{ width: 120, height: 60, background: C.wood, border: `3px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>🧓</div>
+            )}
+            {nearFur && !bubble && (
+              <div className="enter-prompt" style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 4, whiteSpace: "nowrap", background: C.ink, color: C.gem, border: `2px solid ${C.gem}`, fontSize: 10, padding: "2px 6px" }}>
+                Space · {nearFur.label}
+              </div>
+            )}
+            <Hero facing={facing} moving={moving} size={30} />
+          </div>
+          {/* 토스트 */}
+          {toast && (
+            <div className="gem-pop" style={{ position: "absolute", left: "50%", top: 16, transform: "translateX(-50%)", background: C.ink, color: C.white, border: `2px solid ${C.gem}`, padding: "6px 10px", fontSize: 12, zIndex: 8 }}>
+              {toast}
             </div>
-            <div style={{ marginTop: 8, fontSize: 12, color: C.inkSoft }}>클릭해서 물건을 구매해보세요</div>
-          </button>
-        </Panel>
+          )}
+        </div>
+      </div>
+      {children /* 패널/모달 오버레이 */}
+    </Panel>
+  );
+}
 
-        <Panel style={{ padding: 16 }}>
-          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, marginBottom: 10 }}>🗒️ 감사 칠판</div>
-          <button onClick={() => setNoteOpen(true)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer" }}>
-            <div style={{ minHeight: 150, background: "#3a4a3a", border: `4px solid ${C.woodDark}`, padding: 10, display: "flex", flexWrap: "wrap", gap: 6, alignContent: "flex-start" }}>
-              {notes.length === 0 && <div style={{ color: "#dfe8df", fontSize: 12 }}>아직 붙은 감사 편지가 없어요. 클릭해서 첫 편지를 남겨보세요!</div>}
-              {notes.map((n) => (
-                <div key={n.id} style={{ background: "#fff4a8", width: 110, minHeight: 80, padding: 6, fontSize: 10, border: `1px solid #d8c866`, transform: `rotate(${(n.id.charCodeAt(0) % 5) - 2}deg)`, boxShadow: "2px 2px 3px rgba(0,0,0,0.3)" }}>
-                  <b>To. {n.to}</b>
-                  <div style={{ marginTop: 4 }}>{n.message}</div>
-                </div>
-              ))}
-            </div>
-          </button>
+/* 룸 위에 뜨는 모달(공용) */
+function RoomModal({ title, onClose, children, maxW = 460 }) {
+  return (
+    <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, padding: 12 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: maxW, maxHeight: "88%", overflow: "auto" }}>
+        <Panel style={{ padding: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11 }}>{title}</div>
+            <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+          </div>
+          {children}
         </Panel>
       </div>
-
-      {shopOpen && (
-        <Modal onClose={() => setShopOpen(false)} maxWidth={480}>
-          <Panel style={{ padding: 16 }}>
-            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 10 }}>🛍️ 물건 구매 (보유 {gems}⭐)</div>
-            <div style={{ display: "grid", gap: 8 }}>
-              {SHOP_ITEMS.map((it) => (
-                <div key={it.id} style={{ background: C.white, border: `2px solid ${C.ink}`, padding: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <div style={{ fontSize: 13 }}>{it.icon} <b>{it.name}</b></div>
-                    <div style={{ fontSize: 11, color: C.inkSoft }}>{it.desc}</div>
-                  </div>
-                  <PxButton tone="gold" disabled={gems < it.cost} onClick={() => { const ok = onBuy(it); setBuyFlash(ok ? `${it.name} 구매 완료!` : "젬이 부족해요"); setTimeout(() => setBuyFlash(null), 1200); }} style={{ padding: "8px 12px", fontSize: 12 }}>
-                    {it.cost}⭐
-                  </PxButton>
-                </div>
-              ))}
-            </div>
-            {buyFlash && <div style={{ marginTop: 10, textAlign: "center", fontSize: 12, color: C.good }}>{buyFlash}</div>}
-            <div style={{ marginTop: 12, textAlign: "right" }}>
-              <PxButton tone="ink" onClick={() => setShopOpen(false)} style={{ padding: "8px 14px", fontSize: 12 }}>닫기</PxButton>
-            </div>
-          </Panel>
-        </Modal>
-      )}
-
-      {noteOpen && (
-        <Modal onClose={() => setNoteOpen(false)} maxWidth={420}>
-          <Panel style={{ padding: 16 }}>
-            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 10 }}>💌 감사 편지 남기기</div>
-            <input placeholder="누구에게? (예: 도희)" value={form.to} onChange={(e) => setForm((f) => ({ ...f, to: e.target.value }))}
-              style={{ width: "100%", boxSizing: "border-box", padding: 8, fontFamily: "'DotGothic16', monospace", border: `2px solid ${C.ink}`, marginBottom: 8 }} />
-            <textarea placeholder="감사한 마음을 적어주세요" rows={4} value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
-              style={{ width: "100%", boxSizing: "border-box", padding: 8, fontFamily: "'DotGothic16', monospace", border: `2px solid ${C.ink}` }} />
-            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              <PxButton tone="ink" onClick={() => setNoteOpen(false)} style={{ flex: 1, padding: 10, fontSize: 12 }}>취소</PxButton>
-              <PxButton tone="good" onClick={submitNote} style={{ flex: 1, padding: 10, fontSize: 12 }}>칠판에 붙이기</PxButton>
-            </div>
-          </Panel>
-        </Modal>
-      )}
     </div>
   );
 }
 
-/* ============================== 마음의 방 ================================== */
-function HeartRoomView({ gems, onPay, notes, onAddNote, onBack }) {
-  const [open, setOpen] = useState(false);
-  const [cost, setCost] = useState(0.5);
-  const [text, setText] = useState("");
-  const [msg, setMsg] = useState(null);
+/* ======================= 월드(카메라 추적) ======================= */
+function buildWorld() {
+  const list = [];
+  // 중심 주민센터
+  list.push({ id: "center", kind: "center", x: 1300, y: 760, r: 90, label: "🏛 주민센터", sub: "마을 중심 · 회의/모임" });
+  // 은행 / 게시판
+  list.push({ id: "bank", kind: "bank", x: 1000, y: 640, r: 65, label: "🏦 중앙은행" });
+  list.push({ id: "board", kind: "board", x: 1585, y: 700, r: 60, label: "📋 게시판" });
+  // 대형건물(상단)
+  const bigPos = { app: [960, 320], underwear: [1250, 270], socks: [1560, 300], alba: [1330, 500] };
+  BIG_BUILDINGS.forEach((b) => list.push({ id: b.id, kind: "big", x: bigPos[b.id][0], y: bigPos[b.id][1], r: 75, label: `${b.icon} ${b.name}`, meta: b }));
+  // 집(좌측 클러스터)
+  const hPos = [[470, 560], [730, 545], [455, 780], [720, 775], [470, 1000], [730, 1000], [470, 1210], [730, 1210]];
+  HOUSES.forEach((h, i) => list.push({ id: h.id, kind: "house", x: hPos[i][0], y: hPos[i][1], r: 58, label: h.name, meta: h }));
+  // 소형건물(우측 클러스터)
+  const smalls = [
+    { id: "thanks", label: "🙏 감사의 방", tint: "#e0a13d", x: 1770, y: 560 },
+    { id: "heart", label: "💌 마음의 방", tint: "#d76b96", x: 1985, y: 660 },
+    { id: "listening", label: "🎵 리스닝 방", tint: "#5b8def", x: 1760, y: 820 },
+    { id: "reels", label: "📱 릴스방", tint: "#3fa07a", x: 1985, y: 920 },
+    { id: "minigame", label: "🎮 미니게임 방", tint: "#8e5a9e", x: 1770, y: 1060 },
+    { id: "smoke", label: "🚬 흡연의 방", tint: "#7a8b99", x: 1990, y: 1160 },
+  ];
+  smalls.forEach((s) => list.push({ id: s.id, kind: "small", x: s.x, y: s.y, r: 55, label: s.label, tint: s.tint }));
+  // 수영장 / 헬스장 (주민센터 남쪽)
+  list.push({ id: "pool", kind: "facility", x: 1170, y: 1250, r: 78, label: "🏊 수영장", color: "#4bb4d8", colorDk: "#2e8fb3", icon: "🏊" });
+  list.push({ id: "gym", kind: "facility", x: 1440, y: 1260, r: 78, label: "💪 헬스장", color: "#c0563a", colorDk: "#96412c", icon: "🏋️" });
+  // NPC: 동상 & 봉준호
+  list.push({ id: "statue", kind: "npc", npc: "statue", x: 900, y: 900, r: 55, label: "🗿 황혼의 파수꾼",
+    lines: ["안녕 나는 황혼의 파수꾼이야", "디자인에 대해 배우고 싶다면 디자인스쿨을 찾아가봐"] });
+  list.push({ id: "bong", kind: "npc", npc: "bong", x: 1650, y: 1000, r: 55, label: "🎬 봉준호",
+    lines: ["안녕 나는 봉준호야", "영상에 대해 배우고 싶다면 영상스쿨을 찾아가봐"] });
+  // 치앙마이 표지판 + 렌트 하우스(강 건너)
+  list.push({ id: "sign", kind: "sign", x: 2300, y: 640, r: 0, label: "🌴 치앙마이" });
+  const rPos = [[2360, 800], [2510, 780], [2380, 1000], [2520, 1010]];
+  RENT_HOUSES.forEach((h, i) => list.push({ id: h.id, kind: "rent", x: rPos[i][0], y: rPos[i][1], r: 60, label: h.name, meta: h }));
+  return list;
+}
+const WORLD_OBJS = buildWorld();
+const WORLD = { w: 2620, h: 1520 };
+const RIVER_X = 2140, RIVER_W = 120;
+const BRIDGE_Y1 = 690, BRIDGE_Y2 = 800;   // 이 구간(다리)에서만 강을 건널 수 있음
 
-  function submit() {
-    if (!text.trim()) return;
-    const ok = onPay(cost);
-    if (!ok) { setMsg("젬이 부족해요 😢"); return; }
-    onAddNote(text.trim());
-    setText("");
-    setOpen(false);
-    setMsg("마음우체통에 익명으로 잘 전달됐어요.");
-    setTimeout(() => setMsg(null), 2000);
-  }
+function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble }) {
+  const [facing, setFacing] = useState(1);
+  const [moving, setMoving] = useState(false);
+  const [near, setNear] = useState(null);
+  const [dialog, setDialog] = useState(null);   // NPC 대화 {label,lines,shown}
+  const [hint, setHint] = useState(true);        // "클릭하면 이동" 안내
+  const [reqOpen, setReqOpen] = useState(false); // 신청곡 모달
+  const [reqText, setReqText] = useState("");
+  const vpRef = useRef(null);
+  const [vp, setVp] = useState({ w: 900, h: 480 });
+  const keys = useRef({});
+  const posRef = useRef(pos);
+  const nearRef = useRef(null);
+  const hintRef = useRef(true);
+  const dialogTimer = useRef(null);
+
+  const startDialog = (o) => {
+    clearTimeout(dialogTimer.current);
+    setDialog({ label: o.label, lines: o.lines, shown: 1 });
+    dialogTimer.current = setTimeout(() => setDialog((d) => (d ? { ...d, shown: Math.min(d.lines.length, 2) } : d)), 1000);
+  };
+  const handleObj = (o) => { if (!o) return; if (o.kind === "npc") startDialog(o); else onEnter(o); };
+  const handleRef = useRef(handleObj);
+  handleRef.current = handleObj;
+
+  const focusGame = () => { if (vpRef.current) vpRef.current.focus(); if (hintRef.current) { hintRef.current = false; setHint(false); } };
+
+  // 뷰포트 크기 측정 + 자동 포커스(방향키 즉시 반응)
+  useEffect(() => {
+    const measure = () => { if (vpRef.current) setVp({ w: vpRef.current.clientWidth, h: 480 }); };
+    measure();
+    if (vpRef.current) vpRef.current.focus();
+    window.addEventListener("resize", measure);
+    return () => { window.removeEventListener("resize", measure); clearTimeout(dialogTimer.current); };
+  }, []);
+
+  useEffect(() => {
+    const norm = (k) => (k.length === 1 ? k.toLowerCase() : k);
+    const down = (e) => {
+      const raw = e.key.toLowerCase();
+      if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d"].includes(raw)) e.preventDefault();
+      if (hintRef.current) { hintRef.current = false; setHint(false); }
+      const k = norm(e.key);
+      if (k === " ") {
+        const n = nearRef.current;
+        if (n) handleRef.current(n);
+        return;
+      }
+      keys.current[k] = true;
+    };
+    const up = (e) => { keys.current[norm(e.key)] = false; };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
+  }, []);
+
+  useEffect(() => {
+    let raf;
+    const SPEED = 4.2;
+    const loop = () => {
+      const k = keys.current;
+      let { x, y } = posRef.current;
+      let dx = 0, dy = 0;
+      if (k["ArrowLeft"] || k["a"]) dx -= 1;
+      if (k["ArrowRight"] || k["d"]) dx += 1;
+      if (k["ArrowUp"] || k["w"]) dy -= 1;
+      if (k["ArrowDown"] || k["s"]) dy += 1;
+      if (dx || dy) {
+        const px = posRef.current.x;
+        const len = Math.hypot(dx, dy) || 1;
+        x += (dx / len) * SPEED; y += (dy / len) * SPEED;
+        x = Math.max(30, Math.min(WORLD.w - 30, x));
+        y = Math.max(40, Math.min(WORLD.h - 30, y));
+        // 강: 다리(BRIDGE_Y1~Y2)에서만 건너갈 수 있음
+        if (!(y >= BRIDGE_Y1 && y <= BRIDGE_Y2)) {
+          const L = RIVER_X - 6, R = RIVER_X + RIVER_W + 6;
+          if (x > L && x < R) x = px <= L ? L : R;
+        }
+        posRef.current = { x, y }; setPos({ x, y });
+        if (dx < 0) setFacing(-1); else if (dx > 0) setFacing(1);
+      }
+      setMoving(Boolean(dx || dy));
+      let found = null, best = Infinity;
+      for (const o of WORLD_OBJS) {
+        if (!o.r) continue;
+        const d = Math.hypot(x - o.x, y - (o.y + 20));
+        if (d < o.r && d < best) { best = d; found = o; }
+      }
+      const key = found ? found.id : null;
+      const prev = nearRef.current ? nearRef.current.id : null;
+      if (key !== prev) { nearRef.current = found; setNear(found); }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [setPos]);
+
+  // 카메라 오프셋(플레이어 중심, 경계 클램프)
+  const camX = Math.max(0, Math.min(WORLD.w - vp.w, pos.x - vp.w / 2));
+  const camY = Math.max(0, Math.min(WORLD.h - vp.h, pos.y - vp.h / 2));
+
+  const spriteFor = (o) => {
+    switch (o.kind) {
+      case "center": return <Villa size={230} />;
+      case "bank": return <PixelBank size={150} />;
+      case "board": return <Board size={120} />;
+      case "big": return <BigBuilding color={o.meta.color} colorDk={o.meta.colorDk} size={150} />;
+      case "house": return <PixelHouse roof={o.meta.roof} roofDk={o.meta.roofDk} wall={o.meta.wall} size={110} />;
+      case "small": return <SmallHut tint={o.tint} size={100} />;
+      case "facility": return <Facility color={o.color} colorDk={o.colorDk} icon={o.icon} size={160} />;
+      case "sign": return <Signpost size={100} />;
+      case "npc": return o.npc === "statue" ? <Statue size={72} /> : <ManBong size={48} />;
+      case "rent": return <PixelHouse roof={o.meta.roof} roofDk={o.meta.roofDk} wall={o.meta.wall} size={104} />;
+      default: return null;
+    }
+  };
 
   return (
-    <div>
-      <ScreenHeader title="마음의 방" subtitle="퇴근길 마음속 이야기를 살짝 털어놓는 곳" icon="💌" onBack={onBack} />
-      <Panel style={{ padding: 16 }}>
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <button onClick={() => setOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", textAlign: "center" }}>
-            <div style={{ width: 100, height: 120, background: C.danger, border: `4px solid ${C.ink}`, borderRadius: "10px 10px 4px 4px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34, margin: "0 auto" }}>📮</div>
-            <div style={{ marginTop: 8, fontSize: 12 }}>마음우체통 (클릭)</div>
-          </button>
+    <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <div style={{ padding: "10px 14px", borderBottom: `3px solid ${C.parchEdge}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+        <b style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10 }}>ECHO TOWN</b>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", background: "#241a33", color: "#ffe680", border: `2px solid ${C.ink}`, padding: "4px 8px" }}>
+          <span className={bgm.playing ? "gem-spin" : ""} style={{ fontSize: 15 }}>♬</span>
+          <b style={{ fontSize: 12 }}>{bgm.title}</b>
+          <PxButton tone="gold" onClick={onToggleBgm} style={{ fontSize: 11, padding: "3px 8px" }}>{bgm.playing ? "⏸" : "▶"}</PxButton>
+          <PxButton tone="blue" onClick={() => setReqOpen(true)} style={{ fontSize: 11, padding: "3px 8px" }}>🎵 신청곡(5젬)</PxButton>
         </div>
-        {msg && <div style={{ marginTop: 12, textAlign: "center", fontSize: 13, color: C.good }}>{msg}</div>}
+      </div>
 
-        <div style={{ marginTop: 18, fontFamily: "'Press Start 2P', monospace", fontSize: 10, marginBottom: 8 }}>📬 최근 익명 사연</div>
-        <div style={{ display: "grid", gap: 8, maxHeight: 220, overflowY: "auto" }}>
-          {notes.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center" }}>아직 도착한 사연이 없어요.</div>}
-          {notes.map((n) => (
-            <div key={n.id} style={{ background: C.white, border: `2px solid ${C.ink}`, padding: "8px 10px", fontSize: 12 }}>
-              <div style={{ color: C.inkSoft, fontSize: 10 }}>익명 · {n.time}</div>
-              <div style={{ marginTop: 4 }}>{n.text}</div>
-            </div>
+      <div ref={vpRef} tabIndex={0} onMouseDown={focusGame} className="game-vp" style={{ position: "relative", height: 480, overflow: "hidden", outline: "none",
+        background: `repeating-linear-gradient(0deg, ${C.grass} 0 22px, ${C.grassDark} 22px 44px)` }}>
+        {/* 월드(카메라 이동) */}
+        <div style={{ position: "absolute", width: WORLD.w, height: WORLD.h, left: -camX, top: -camY }}>
+          {/* 흙길: 중앙 광장 십자 */}
+          <div style={{ position: "absolute", left: 1290, top: 0, width: 44, height: WORLD.h, background: `repeating-linear-gradient(0deg, ${C.path} 0 10px, ${C.pathDark} 10px 20px)` }} />
+          <div style={{ position: "absolute", top: 720, left: 0, width: WORLD.w, height: 44, background: `repeating-linear-gradient(90deg, ${C.path} 0 10px, ${C.pathDark} 10px 20px)` }} />
+
+          {/* 강 + 다리(다리에서만 건널 수 있음) */}
+          <div style={{ position: "absolute", left: RIVER_X, top: 0, width: RIVER_W, height: WORLD.h,
+            background: `repeating-linear-gradient(0deg, ${C.water} 0 14px, ${C.waterDk} 14px 28px)`, borderLeft: `4px solid ${C.waterDk}`, borderRight: `4px solid ${C.waterDk}` }} />
+          <div style={{ position: "absolute", left: RIVER_X - 10, top: BRIDGE_Y1, width: RIVER_W + 20, height: BRIDGE_Y2 - BRIDGE_Y1,
+            background: `repeating-linear-gradient(90deg, ${C.wood} 0 12px, ${C.woodDark} 12px 24px)`, border: `3px solid ${C.woodDark}`, boxShadow: "inset 0 0 0 3px rgba(0,0,0,0.15)" }} />
+          <div style={{ position: "absolute", left: RIVER_X - 4, top: BRIDGE_Y1 - 16, fontSize: 11, color: C.white, background: C.woodDark, border: `2px solid ${C.ink}`, padding: "1px 5px" }}>🌉 다리</div>
+          <div style={{ position: "absolute", left: RIVER_X + RIVER_W + 20, top: 560, fontSize: 12, color: C.white, background: C.villaDk, border: `2px solid ${C.ink}`, padding: "3px 8px" }}>🌴 CHIANG MAI</div>
+
+          {/* 주민센터 기준 방향 표지판 (방향어 없이 목적지만) */}
+          <div style={{ position: "absolute", left: 1300, top: 636, transform: "translate(-50%,-100%)", pointerEvents: "none" }}><DirSign text="업무(대형건물)" color={C.bankRoof} /></div>
+          <div style={{ position: "absolute", left: 1300, top: 892, transform: "translate(-50%,0)", pointerEvents: "none" }}><DirSign text="수영장/헬스장" color={C.danger} /></div>
+          <div style={{ position: "absolute", left: 1118, top: 772, transform: "translate(-50%,-50%)", pointerEvents: "none" }}><DirSign text="은행/개인집" color={C.wood} /></div>
+          <div style={{ position: "absolute", left: 1492, top: 772, transform: "translate(-50%,-50%)", pointerEvents: "none" }}><DirSign text="사이드/치앙마이" color={C.good} /></div>
+
+          {/* 장식 나무 */}
+          {[[300, 400], [340, 1250], [1150, 1300], [1700, 400], [2050, 1250], [880, 200]].map(([tx, ty], i) => (
+            <div key={i} style={{ position: "absolute", left: tx, top: ty }}><Tree /></div>
           ))}
-        </div>
-      </Panel>
 
-      {open && (
-        <Modal onClose={() => setOpen(false)} maxWidth={420}>
-          <Panel style={{ padding: 16 }}>
-            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 10 }}>📮 익명 사연 남기기 (보유 {gems}⭐)</div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-              {[0.5, 1].map((c) => (
-                <PxButton key={c} tone={cost === c ? "gold" : "wood"} onClick={() => setCost(c)} style={{ padding: "8px 14px", fontSize: 12 }}>{c}⭐</PxButton>
-              ))}
-            </div>
-            <textarea rows={5} value={text} onChange={(e) => setText(e.target.value)} placeholder="퇴근길 마음속 이야기를 적어보세요 (완전 익명입니다)"
-              style={{ width: "100%", boxSizing: "border-box", padding: 8, fontFamily: "'DotGothic16', monospace", border: `2px solid ${C.ink}` }} />
-            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              <PxButton tone="ink" onClick={() => setOpen(false)} style={{ flex: 1, padding: 10, fontSize: 12 }}>취소</PxButton>
-              <PxButton tone="good" onClick={submit} style={{ flex: 1, padding: 10, fontSize: 12 }}>우체통에 넣기 ({cost}⭐)</PxButton>
-            </div>
-          </Panel>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-/* ============================== 몰입의 방 ================================== */
-function FocusRoomView({ quests, chat, setChat, onGoBuilding, onBack }) {
-  const today = todayStr();
-  const active = [];
-  LARGE_BUILDINGS.forEach((b) => {
-    b.quests.forEach((q) => {
-      const st = quests[b.id][q.id];
-      const doneToday = q.repeat && st.completedDate === today;
-      const doneForever = !q.repeat && st.doneForever;
-      if (!doneToday && !doneForever) active.push({ b, q, st });
-    });
-  });
-
-  return (
-    <div>
-      <ScreenHeader title="몰입의 방" subtitle="각자 퀘스트하며 자유롭게 허들링하는 곳" icon="🎯" onBack={onBack} />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Panel style={{ padding: 16 }}>
-          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, marginBottom: 10 }}>📋 오늘의 진행 가능한 퀘스트</div>
-          <div style={{ display: "grid", gap: 8, maxHeight: 320, overflowY: "auto" }}>
-            {active.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft }}>오늘 남은 퀘스트가 없어요. 대단해요!</div>}
-            {active.map(({ b, q, st }) => (
-              <div key={q.id} style={{ background: C.white, border: `2px solid ${C.ink}`, padding: "8px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
-                <span>{b.icon} <b>{b.name}</b> · {q.title} {st.running && "(진행 중)"}</span>
-                <PxButton tone="wood" onClick={() => onGoBuilding(b.id)} style={{ padding: "6px 10px", fontSize: 11 }}>이동</PxButton>
+          {/* 건물들 */}
+          {WORLD_OBJS.map((o) => (
+            <button key={o.id} className={o.r ? "map-obj" : ""} disabled={!o.r}
+              onClick={() => o.r && handleObj(o)}
+              style={{ position: "absolute", left: o.x, top: o.y, transform: "translate(-50%,-50%)", background: "none", border: "none", cursor: o.r ? "pointer" : "default", textAlign: "center", padding: 0 }}>
+              {spriteFor(o)}
+              <div style={{ marginTop: -6 }}>
+                <span style={{ display: "inline-block", background: o.kind === "center" ? C.ink : C.parch, color: o.kind === "center" ? C.gem : C.ink, fontSize: 11, padding: "3px 7px", border: `2px solid ${C.ink}`, whiteSpace: "nowrap" }}>
+                  {o.label}{o.kind === "rent" && rentedHouses[o.id] ? " ✅" : ""}
+                </span>
               </div>
-            ))}
+            </button>
+          ))}
+
+          {/* 플레이어 */}
+          <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-70%)", zIndex: 20, pointerEvents: "none" }}>
+            {bubble && (
+              <div className="chat-bubble" style={{ position: "absolute", bottom: "112%", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", maxWidth: 220, background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>
+                {bubble}
+              </div>
+            )}
+            {near && !bubble && (
+              <div className="enter-prompt" style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 4, whiteSpace: "nowrap", background: C.ink, color: C.gem, border: `2px solid ${C.gem}`, fontSize: 11, padding: "3px 7px" }}>
+                {near.kind === "npc" ? "💬 Space" : "🚪 Space"} · {near.label}
+              </div>
+            )}
+            <Hero facing={facing} moving={moving} size={36} />
           </div>
-        </Panel>
-        <Panel style={{ padding: 16 }}>
-          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, marginBottom: 10 }}>💬 허들 채팅</div>
-          <MiniChat messages={chat} setMessages={setChat} />
-        </Panel>
-      </div>
-    </div>
-  );
-}
-
-function MiniChat({ messages, setMessages }) {
-  const [text, setText] = useState("");
-  function send() {
-    const t = text.trim();
-    if (!t) return;
-    setMessages((p) => [...p, { id: uid(), who: "나", text: t }]);
-    setText("");
-  }
-  return (
-    <div>
-      <div style={{ height: 200, overflowY: "auto", background: C.white, border: `2px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 6, fontSize: 12 }}>
-        {messages.length === 0 && <div style={{ color: C.inkSoft, textAlign: "center", marginTop: 20 }}>편하게 이야기 나눠보세요.</div>}
-        {messages.map((m) => (
-          <div key={m.id}><b style={{ color: C.good }}>{m.who}</b> · {m.text}</div>
-        ))}
-      </div>
-      <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-        <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} style={{ flex: 1, padding: 8, fontFamily: "'DotGothic16', monospace", border: `2px solid ${C.ink}` }} />
-        <PxButton tone="good" onClick={send} style={{ padding: "8px 12px", fontSize: 12 }}>전송</PxButton>
-      </div>
-    </div>
-  );
-}
-
-/* ============================== 수면의 방 / 흡연의 방 ======================= */
-function SleepRoomView({ onBack }) {
-  return (
-    <div>
-      <ScreenHeader title="수면의 방" subtitle="휴식 중이거나 집중 중입니다" icon="😴" onBack={onBack} />
-      <Panel style={{ padding: 30, textAlign: "center" }}>
-        <div style={{ fontSize: 44 }}>😴💤</div>
-        <div style={{ marginTop: 10, fontSize: 14, color: C.inkSoft }}>이 방은 휴식·집중 용도예요. 조용히 지나가 주세요.</div>
-      </Panel>
-    </div>
-  );
-}
-
-function SmokingRoomView({ status, setStatus, onBack }) {
-  return (
-    <div>
-      <ScreenHeader title="흡연의 방" subtitle="잠깐 바람 쐬러 나가는 곳" icon="🚬" onBack={onBack} />
-      <Panel style={{ padding: 24, textAlign: "center" }}>
-        <div style={{ fontSize: 44 }}>🚬</div>
-        <div style={{ marginTop: 10, fontSize: 14 }}>현재 상태: <b>{status.smoking ? "흡연 중" : "쉬는 중 아님"}</b></div>
-        <PxButton tone={status.smoking ? "danger" : "wood"} onClick={() => setStatus((s) => ({ ...s, smoking: !s.smoking }))} style={{ marginTop: 14, padding: "10px 18px", fontSize: 13 }}>
-          {status.smoking ? "흡연 종료" : "흡연 시작"}
-        </PxButton>
-      </Panel>
-    </div>
-  );
-}
-
-/* ============================== 게시판(캘린더/공지) ========================= */
-function BulletinBoardModal({ onClose }) {
-  const [tab, setTab] = useState("calendar");
-  const [selDay, setSelDay] = useState(31);
-  const [noticeOpen, setNoticeOpen] = useState(null);
-
-  const year = 2026, month = 7; // 2026년 7월
-  const firstDow = new Date(year, month - 1, 1).getDay();
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const cells = [];
-  for (let i = 0; i < firstDow; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  const dateKey = (d) => `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-
-  return (
-    <Modal onClose={onClose} maxWidth={560}>
-      <Panel style={{ padding: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11 }}>📌 게시판</div>
-          <PxButton tone="ink" onClick={onClose} style={{ padding: "6px 12px", fontSize: 11 }}>닫기</PxButton>
         </div>
 
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <PxButton tone={tab === "calendar" ? "gold" : "wood"} onClick={() => setTab("calendar")} style={{ padding: "8px 14px", fontSize: 12 }}>📅 캘린더</PxButton>
-          <PxButton tone={tab === "notice" ? "gold" : "wood"} onClick={() => setTab("notice")} style={{ padding: "8px 14px", fontSize: 12 }}>📢 공지사항</PxButton>
-        </div>
-
-        {tab === "calendar" && (
-          <div>
-            <div style={{ textAlign: "center", fontFamily: "'Press Start 2P', monospace", fontSize: 12, marginBottom: 10 }}>2026년 7월</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, fontSize: 11, textAlign: "center", marginBottom: 4, color: C.inkSoft }}>
-              {["일", "월", "화", "수", "목", "금", "토"].map((d) => <div key={d}>{d}</div>)}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4 }}>
-              {cells.map((d, i) => {
-                if (d === null) return <div key={i} />;
-                const key = dateKey(d);
-                const hasEvent = !!MOCK_EVENTS[key];
-                const isMarked = d === 31; // 7월 31일 빨간 동그라미
-                const selected = selDay === d;
-                return (
-                  <button key={i} onClick={() => setSelDay(d)}
-                    style={{
-                      position: "relative", padding: "8px 0", background: selected ? C.gemGlow : C.white,
-                      border: `2px solid ${C.ink}`, cursor: "pointer", fontSize: 12, fontFamily: "'DotGothic16', monospace",
-                    }}>
-                    {d}
-                    {hasEvent && <div style={{ position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)", width: 4, height: 4, borderRadius: "50%", background: C.bankRoof }} />}
-                    {isMarked && (
-                      <div style={{ position: "absolute", inset: -2, border: `3px solid ${C.danger}`, borderRadius: "50%", pointerEvents: "none" }} />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            <div style={{ marginTop: 12, background: C.white, border: `2px solid ${C.ink}`, padding: 10, minHeight: 60, fontSize: 12 }}>
-              <b>{month}월 {selDay}일 일정</b>
-              <div style={{ marginTop: 6, color: C.inkSoft }}>
-                {(MOCK_EVENTS[dateKey(selDay)] || ["등록된 일정이 없습니다."]).map((e, idx) => <div key={idx}>• {e}</div>)}
-              </div>
-            </div>
+        {/* 처음 이동 안내 */}
+        {hint && (
+          <div style={{ position: "absolute", left: 10, bottom: 10, background: C.ink, color: C.gem, border: `2px solid ${C.gem}`, fontSize: 11, padding: "5px 9px", zIndex: 15 }}>
+            👆 화면을 한 번 클릭하면 방향키로 바로 움직여요
           </div>
         )}
 
-        {tab === "notice" && !noticeOpen && (
-          <div style={{ display: "grid", gap: 8, maxHeight: 320, overflowY: "auto" }}>
-            {NOTICES.map((n) => (
-              <button key={n.id} onClick={() => setNoticeOpen(n)} style={{ textAlign: "left", background: C.white, border: `2px solid ${C.ink}`, padding: "10px 12px", cursor: "pointer", fontFamily: "'DotGothic16', monospace" }}>
-                <div style={{ fontSize: 11, color: C.inkSoft }}>{n.date}</div>
-                <div style={{ fontSize: 13, marginTop: 2 }}>{n.title}</div>
+        {/* HUD 오버레이: 날짜 */}
+        <div style={{ position: "absolute", right: 10, top: 10, display: "flex", gap: 8, alignItems: "center" }}>
+          <span style={{ background: C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}` }}>📅 DAY {day}</span>
+          <PxButton tone="blue" onClick={onNextDay} style={{ fontSize: 11, padding: "6px 9px" }}>🌙 다음 날</PxButton>
+        </div>
+
+        {/* NPC 대화창 */}
+        {dialog && (
+          <div style={{ position: "absolute", left: "50%", bottom: 14, transform: "translateX(-50%)", width: "min(92%, 460px)", zIndex: 25 }}>
+            <Panel style={{ padding: 12 }}>
+              <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, marginBottom: 6 }}>{dialog.label}</div>
+              {dialog.lines.slice(0, dialog.shown).map((ln, i) => (
+                <div key={i} style={{ fontSize: 14, lineHeight: 1.6 }}>💬 {ln}</div>
+              ))}
+              <PxButton tone="ink" onClick={() => { clearTimeout(dialogTimer.current); setDialog(null); }} style={{ marginTop: 8, fontSize: 12, padding: "6px 12px" }}>닫기</PxButton>
+            </Panel>
+          </div>
+        )}
+
+        {/* 신청곡 모달 */}
+        {reqOpen && (
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, padding: 14 }} onClick={() => setReqOpen(false)}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 360 }}>
+              <Panel style={{ padding: 14 }}>
+                <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 10 }}>🎵 신청곡</div>
+                <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>5젬을 사용해 마을 배경음악을 바꿔요. (보유 {fmt(gems)}⭐)</div>
+                <input value={reqText} onChange={(e) => setReqText(e.target.value)} placeholder="예: NewJeans - Ditto" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: C.white }} />
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <PxButton tone="ink" onClick={() => setReqOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>
+                  <PxButton tone="gold" disabled={!reqText.trim() || gems < 5} onClick={() => { onRequestSong(reqText.trim()); setReqText(""); setReqOpen(false); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>
+                    {gems < 5 ? "젬 부족" : "5젬 신청"}
+                  </PxButton>
+                </div>
+              </Panel>
+            </div>
+          </div>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+/* ======================= 대형건물(퀘스트) ======================= */
+function BigBuildingView({ b, qs, day, onRun, onBack }) {
+  return (
+    <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <TitleBar icon={b.icon} title={b.name} sub="업무(반복) 퀘스트는 하루 1회 · 다음 날 초기화" onBack={onBack} bg={b.color} fg={C.white} />
+      <div style={{ padding: 16, background: `repeating-linear-gradient(0deg, ${C.parch} 0 40px, ${C.parchLine} 40px 80px)`, display: "grid", gap: 12 }}>
+        {b.quests.map((q) => {
+          const st = qs[q.id] || {};
+          const doneToday = q.repeat ? st.doneDay === day : st.doneOnce;
+          let label = q.repeat ? "업무 시작 ▶" : "수행 ▶";
+          if (st.running) label = "작업 중…";
+          else if (doneToday) label = q.repeat ? "오늘 완료 ✓" : "완료됨 ✓";
+          return (
+            <div key={q.id} style={{ background: C.white, border: `3px solid ${C.ink}`, boxShadow: `inset 0 0 0 2px ${C.parchEdge}`, padding: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <b style={{ fontSize: 15 }}>{q.title}</b>
+                    <span style={{ fontSize: 10, background: q.repeat ? C.good : C.danger, color: C.white, padding: "2px 6px", border: `2px solid ${C.ink}` }}>{q.repeat ? "일일 반복" : "1회 한정"}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 4 }}>{q.desc}</div>
+                  <div style={{ marginTop: 6 }}><GemBadge amount={q.reward} /></div>
+                </div>
+                <PxButton tone={doneToday ? "ink" : q.repeat ? "good" : "gold"} disabled={st.running || doneToday} onClick={() => onRun(q)} style={{ padding: "10px 14px", fontSize: 13, minWidth: 112 }}>{label}</PxButton>
+              </div>
+              <div style={{ marginTop: 10, height: 16, background: "#e2d3ab", border: `3px solid ${C.ink}`, position: "relative", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${st.running ? st.progress : doneToday ? 100 : 0}%`, background: doneToday ? C.good : `repeating-linear-gradient(45deg, ${C.gem} 0 8px, ${C.gemGlow} 8px 16px)`, transition: "width 60ms linear" }} />
+                {st.running && <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>{Math.floor(st.progress)}%</span>}
+              </div>
+            </div>
+          );
+        })}
+        <div style={{ background: "rgba(255,247,230,0.85)", border: `3px dashed ${C.ink}`, padding: 10, fontSize: 12, color: C.inkSoft }}>
+          💡 획득한 ⭐는 <b>중앙은행</b>에 자동 집계됩니다. 일일 업무는 <b>🌙 다음 날</b>을 누르면 초기화돼요.
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+/* ======================= 주민센터(내부 이동) ======================= */
+function DrinkStation({ name, color, onClose }) {
+  const [fill, setFill] = useState(0);
+  const [hp, setHp] = useState(0);
+  const [mp, setMp] = useState(0);
+  const [phase, setPhase] = useState("filling"); // filling | full | drinking | done
+  const timer = useRef(null);
+
+  useEffect(() => {
+    const start = Date.now();
+    timer.current = setInterval(() => {
+      const p = Math.min(100, ((Date.now() - start) / 5000) * 100);
+      setFill(p);
+      if (p >= 100) { clearInterval(timer.current); setPhase("full"); }
+    }, 40);
+    return () => clearInterval(timer.current);
+  }, []);
+
+  const drink = () => {
+    if (phase !== "full") return;
+    setPhase("drinking");
+    const start = Date.now();
+    timer.current = setInterval(() => {
+      const t = Math.min(1, (Date.now() - start) / 2500);
+      setFill(100 * (1 - t)); setHp(100 * t); setMp(100 * t);
+      if (t >= 1) { clearInterval(timer.current); setPhase("done"); }
+    }, 40);
+  };
+
+  const Bar = ({ label, val, col }) => (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ fontSize: 11, marginBottom: 3 }}>{label} {Math.round(val)}%</div>
+      <div style={{ height: 16, background: "#e2d3ab", border: `3px solid ${C.ink}` }}>
+        <div style={{ height: "100%", width: `${val}%`, background: col, transition: "width 60ms linear" }} />
+      </div>
+    </div>
+  );
+
+  return (
+    <RoomModal title={name} onClose={onClose} maxW={340}>
+      <Bar label="❤️ HP" val={hp} col={C.danger} />
+      <Bar label="💧 MP" val={mp} col={C.bankRoof} />
+      <div style={{ display: "flex", justifyContent: "center", margin: "12px 0" }}>
+        <button onClick={drink} disabled={phase !== "full"} style={{ background: "none", border: "none", cursor: phase === "full" ? "pointer" : "default", padding: 0 }}>
+          <div style={{ position: "relative", width: 70, height: 92, border: `3px solid ${C.ink}`, borderTop: "none", borderRadius: "0 0 14px 14px", background: C.white, overflow: "hidden", boxShadow: phase === "full" ? `0 0 0 3px ${C.gem}` : "none" }}>
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: `${fill}%`, background: color, transition: "height 60ms linear" }} />
+          </div>
+        </button>
+      </div>
+      <div style={{ textAlign: "center", fontSize: 12, color: C.inkSoft }}>
+        {phase === "filling" && "컵을 채우는 중… (약 5초)"}
+        {phase === "full" && "가득 찼어요! 컵을 눌러 마시기 🥤"}
+        {phase === "drinking" && "꿀꺽꿀꺽… HP/MP 회복 중"}
+        {phase === "done" && "✨ HP·MP 풀 충전 완료!"}
+      </div>
+    </RoomModal>
+  );
+}
+
+function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble }) {
+  const [showChat, setShowChat] = useState(false);
+  const [station, setStation] = useState(null); // {name,color}
+  const [text, setText] = useState("");
+  const roomLabel = (id) => {
+    const m = meetingRooms[id];
+    return m.locked ? "🔒 잠김" : m.reserved ? "📌 예약됨" : "🟢 비어있음";
+  };
+  const furniture = [
+    { id: "table", x: 250, y: 150, w: 140, h: 90, color: "#caa06a", emoji: "🪑", label: "대형 테이블", onInteract: () => setShowChat(true) },
+    { id: "m1", x: 40, y: 40, w: 110, h: 70, color: "#b9d6c4", emoji: "🚪", label: `회의실 1 ${roomLabel("m1")}`, onInteract: () => onEnterMeeting("m1") },
+    { id: "m2", x: 265, y: 20, w: 110, h: 60, color: "#b9d6c4", emoji: "🚪", label: `회의실 2 ${roomLabel("m2")}`, onInteract: () => onEnterMeeting("m2") },
+    { id: "m3", x: 490, y: 40, w: 110, h: 70, color: "#b9d6c4", emoji: "🚪", label: `회의실 3 ${roomLabel("m3")}`, onInteract: () => onEnterMeeting("m3") },
+    { id: "coffee", x: 40, y: 300, w: 60, h: 66, color: "#8a5a3b", emoji: "☕", label: "커피포트", onInteract: () => setStation({ name: "☕ 커피포트", color: "#6b4423" }) },
+    { id: "vending", x: 300, y: 300, w: 66, h: 70, color: "#d76b96", emoji: "🥤", label: "자판기", onInteract: () => setStation({ name: "🥤 자판기", color: "#e8891f" }) },
+    { id: "water", x: 540, y: 300, w: 56, h: 66, color: "#6fc3e0", emoji: "🚰", label: "정수기", onInteract: () => setStation({ name: "🚰 정수기", color: "#3aa0e0" }) },
+  ];
+  return (
+    <RoomView title="주민센터" icon="🏛" sub="테이블에서 대화 · 회의실 3곳 · 커피/자판기/정수기로 HP·MP 충전" bg="#f0e4cf" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={showChat || !!station} headerBg={C.villa} bubble={bubble}>
+      {station && <DrinkStation name={station.name} color={station.color} onClose={() => setStation(null)} />}
+      {showChat && (
+        <RoomModal title="🪑 라운지 테이블 채팅" onClose={() => setShowChat(false)}>
+          <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>* 데모용 로컬 채팅입니다.</div>
+          <div style={{ height: 200, overflow: "auto", background: C.white, border: `3px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+            {chat.map((m, i) => (
+              <div key={i} style={{ fontSize: 13, alignSelf: m.me ? "flex-end" : "flex-start", background: m.me ? C.gem : "#eadfc6", border: `2px solid ${C.ink}`, padding: "4px 8px", maxWidth: "80%" }}>
+                <b style={{ fontSize: 10, color: C.inkSoft }}>{m.who}</b><br />{m.text}
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) { onSend(text.trim()); setText(""); } }}
+              placeholder="메시지 입력 후 Enter" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+            <PxButton tone="good" onClick={() => { if (text.trim()) { onSend(text.trim()); setText(""); } }} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
+          </div>
+        </RoomModal>
+      )}
+    </RoomView>
+  );
+}
+
+/* ======================= 회의실(별도 화면, 통화 목업) ======================= */
+function MeetingView({ roomId, room, onUpdate, onBack }) {
+  const [mic, setMic] = useState(true);
+  const [cam, setCam] = useState(true);
+  const [share, setShare] = useState(false);
+  const [resName, setResName] = useState("");
+  const [time, setTime] = useState("");
+  const num = roomId.replace("m", "");
+  const participants = [{ name: "나", me: true }, { name: "도희", me: false }, { name: "창민", me: false }];
+  return (
+    <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <TitleBar icon="🎥" title={`회의실 ${num}`} sub={room.locked ? "🔒 잠긴 회의실" : "화상 회의 (데모)"} onBack={onBack} bg={C.bankRoof} fg={C.white}
+        right={<span style={{ fontSize: 11, background: room.reserved ? C.gem : "rgba(255,255,255,0.25)", color: room.reserved ? C.ink : C.white, padding: "4px 8px", border: `2px solid ${C.ink}` }}>{room.reserved ? `📌 ${room.by} · ${room.time}` : "예약 없음"}</span>} />
+      <div style={{ padding: 16, background: "#20303a" }}>
+        {/* 화면 공유 영역 */}
+        {share && (
+          <div style={{ height: 120, background: "#0e171d", border: `3px solid ${C.gem}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gem, marginBottom: 12, fontSize: 13 }}>
+            🖥 화면 공유 중… (데모)
+          </div>
+        )}
+        {/* 참가자 타일 */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
+          {participants.map((p) => (
+            <div key={p.name} style={{ aspectRatio: "4/3", background: p.me && !cam ? "#111" : "#33505f", border: `3px solid ${p.me ? C.gem : "#54707f"}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: C.white }}>
+              <span style={{ fontSize: 30 }}>{p.me && !cam ? "🚫" : "🙂"}</span>
+              <span style={{ fontSize: 12, marginTop: 4 }}>{p.name}{p.me && !mic ? " 🔇" : ""}</span>
+            </div>
+          ))}
+        </div>
+        {/* 컨트롤 */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14, justifyContent: "center" }}>
+          <PxButton tone={mic ? "good" : "danger"} onClick={() => setMic((v) => !v)} style={{ fontSize: 12, padding: "10px 12px" }}>{mic ? "🎤 마이크 켜짐" : "🔇 음소거"}</PxButton>
+          <PxButton tone={cam ? "good" : "danger"} onClick={() => setCam((v) => !v)} style={{ fontSize: 12, padding: "10px 12px" }}>{cam ? "📷 카메라 켜짐" : "📷 카메라 끔"}</PxButton>
+          <PxButton tone={share ? "gold" : "blue"} onClick={() => setShare((v) => !v)} style={{ fontSize: 12, padding: "10px 12px" }}>{share ? "🖥 공유 중지" : "🖥 화면 공유"}</PxButton>
+          <PxButton tone={room.locked ? "gold" : "ink"} onClick={() => onUpdate(roomId, { locked: !room.locked })} style={{ fontSize: 12, padding: "10px 12px" }}>{room.locked ? "🔓 방 잠금 해제" : "🔒 방 잠그기"}</PxButton>
+        </div>
+        {/* 예약 */}
+        <div style={{ marginTop: 14, background: C.parch, border: `3px solid ${C.ink}`, padding: 12 }}>
+          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, marginBottom: 8, color: C.ink }}>RESERVATION</div>
+          {room.reserved ? (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, color: C.ink }}>
+              <span style={{ fontSize: 13 }}>📌 <b>{room.by}</b> 님이 <b>{room.time}</b> 예약함</span>
+              <PxButton tone="danger" onClick={() => onUpdate(roomId, { reserved: false, by: "", time: "" })} style={{ fontSize: 12, padding: "8px 10px" }}>예약 취소</PxButton>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", color: C.ink }}>
+              <input value={resName} onChange={(e) => setResName(e.target.value)} placeholder="예약자" style={{ padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, width: 110, background: C.white }} />
+              <input value={time} onChange={(e) => setTime(e.target.value)} placeholder="시간 (예: 14:00)" style={{ padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, width: 140, background: C.white }} />
+              <PxButton tone="good" disabled={!resName.trim() || !time.trim()} onClick={() => onUpdate(roomId, { reserved: true, by: resName.trim(), time: time.trim() })} style={{ fontSize: 12, padding: "8px 12px" }}>예약하기</PxButton>
+            </div>
+          )}
+        </div>
+        <div style={{ marginTop: 10, fontSize: 11, color: "rgba(255,255,255,0.7)", textAlign: "center" }}>* 화상/통화/공유는 데모 목업입니다.</div>
+      </div>
+    </Panel>
+  );
+}
+
+/* ======================= 집(가구 + 메모장) ======================= */
+function HomeView({ house, memo, onSaveMemo, onBack, bubble }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState(memo || "");
+  const furniture = [
+    { id: "bed", x: 40, y: 60, w: 150, h: 90, color: "#c98ba0", emoji: "🛏️", label: "침대", toast: "잠깐 누워 쉬었다 😌" },
+    { id: "sofa", x: 40, y: 260, w: 130, h: 70, color: "#8ea9c9", emoji: "🛋️", label: "쇼파", toast: "쇼파에 앉아 한숨 돌린다 🛋️" },
+    { id: "tv", x: 250, y: 280, w: 120, h: 56, color: "#3a3a3a", emoji: "📺", label: "티비", toast: "TV를 켰다 📺 예능이 나온다" },
+    { id: "desk", x: 430, y: 90, w: 150, h: 90, color: "#a9814a", emoji: "🖥️", label: "책상(메모)", onInteract: () => { setText(memo || ""); setOpen(true); } },
+  ];
+  return (
+    <RoomView title={house.name} icon="🏠" sub="침대·쇼파·티비·책상 · 책상에서 메모 작성" bg="#efe6d2" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={open} headerBg={house.wall} bubble={bubble}>
+      {open && (
+        <RoomModal title="📝 개인 메모장" onClose={() => setOpen(false)}>
+          <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>{house.name} 책상 · 나만 보는 메모</div>
+          <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="오늘 할 일, 아이디어, 메모를 적어보세요…"
+            style={{ width: "100%", boxSizing: "border-box", height: 180, padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: "#fffdf5", resize: "none" }} />
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <PxButton tone="ink" onClick={() => setOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>닫기</PxButton>
+            <PxButton tone="good" onClick={() => { onSaveMemo(text); setOpen(false); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>저장</PxButton>
+          </div>
+        </RoomModal>
+      )}
+    </RoomView>
+  );
+}
+
+/* ======================= 감사의 방(상점 + 감사 칠판) ======================= */
+function ThanksView({ gems, inventory, postits, onBuy, onPost, onBack, bubble }) {
+  const [shop, setShop] = useState(false);
+  const [board, setBoard] = useState(false);
+  const [to, setTo] = useState(""); const [from, setFrom] = useState(""); const [msg, setMsg] = useState("");
+  const furniture = [
+    { id: "shelf", x: 30, y: 60, w: 130, h: 150, color: "#b98a4e", emoji: "🧑‍🦳", label: "선반·상점 주인", onInteract: () => setShop(true) },
+    { id: "table", x: 180, y: 240, w: 110, h: 70, color: "#caa06a", emoji: "🧺", label: "포장 테이블", toast: "정성껏 포장했습니다 🎁" },
+    { id: "chalk", x: 440, y: 60, w: 170, h: 200, color: "#2f5d3f", emoji: "🖊️", label: "감사 칠판", onInteract: () => setBoard(true) },
+  ];
+  const paColors = ["#ffe680", "#ffd0e0", "#c9f0d0", "#cfe4ff", "#f0d9b8"];
+  return (
+    <RoomView title="감사의 방" icon="🙏" sub="좌측 선반에서 구매 · 우측 칠판에 감사 포스트잇" bg="#efe6d2" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={shop || board} headerBg="#e0a13d" bubble={bubble}>
+      {shop && (
+        <RoomModal title="🛒 감사 선반" onClose={() => setShop(false)}>
+          <div style={{ fontSize: 12, marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: C.inkSoft }}>노인 상점 주인이 미소짓는다.</span><GemBadge amount={gems} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8 }}>
+            {SHOP_ITEMS.map((it) => (
+              <div key={it.id} style={{ background: C.white, border: `3px solid ${C.ink}`, padding: 8, textAlign: "center" }}>
+                <div style={{ fontSize: 26 }}>{it.emoji}</div>
+                <div style={{ fontSize: 13, fontWeight: "bold" }}>{it.name}</div>
+                <div style={{ fontSize: 12, color: "#a86e13", margin: "2px 0 6px" }}>⭐ {it.price}</div>
+                <PxButton tone={gems >= it.price ? "gold" : "ink"} disabled={gems < it.price} onClick={() => onBuy(it)} style={{ fontSize: 11, padding: "6px 8px", width: "100%" }}>구매</PxButton>
+              </div>
+            ))}
+          </div>
+          {inventory.length > 0 && (
+            <div style={{ marginTop: 10, fontSize: 12, color: C.inkSoft }}>보유: {inventory.map((i) => i.emoji).join(" ")}</div>
+          )}
+        </RoomModal>
+      )}
+      {board && (
+        <RoomModal title="🖊️ 감사 칠판" onClose={() => setBoard(false)} maxW={560}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+            <input value={to} onChange={(e) => setTo(e.target.value)} placeholder="To. 받는 사람" style={{ padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, width: 120, background: C.white }} />
+            <input value={from} onChange={(e) => setFrom(e.target.value)} placeholder="From. 나" style={{ padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, width: 100, background: C.white }} />
+            <input value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="감사 메시지" style={{ flex: 1, minWidth: 140, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+            <PxButton tone="good" disabled={!to.trim() || !msg.trim()} onClick={() => { onPost({ to: to.trim(), from: from.trim() || "익명", msg: msg.trim(), color: paColors[Math.floor(Math.random() * paColors.length)] }); setTo(""); setFrom(""); setMsg(""); }} style={{ fontSize: 12, padding: "8px 12px" }}>붙이기</PxButton>
+          </div>
+          <div style={{ background: "#2f5d3f", border: `4px solid ${C.woodDark}`, padding: 10, minHeight: 140, display: "flex", flexWrap: "wrap", gap: 8, alignContent: "flex-start" }}>
+            {postits.length === 0 && <span style={{ color: "#cfe4d6", fontSize: 12 }}>아직 포스트잇이 없어요. 첫 감사를 남겨보세요!</span>}
+            {postits.map((p) => (
+              <div key={p.id} style={{ width: 110, background: p.color, border: `2px solid ${C.ink}`, padding: 6, fontSize: 11, transform: `rotate(${(p.id % 5) - 2}deg)`, boxShadow: "2px 2px 0 rgba(0,0,0,0.25)" }}>
+                <b>To. {p.to}</b><div style={{ margin: "3px 0" }}>{p.msg}</div><span style={{ color: C.inkSoft }}>- {p.from}</span>
+              </div>
+            ))}
+          </div>
+        </RoomModal>
+      )}
+    </RoomView>
+  );
+}
+
+/* ======================= 마음의 방(마음우체통) ======================= */
+function HeartView({ gems, worries, onPost, onBack, bubble }) {
+  const [open, setOpen] = useState(false);
+  const [cost, setCost] = useState(1);
+  const [text, setText] = useState("");
+  const furniture = [
+    { id: "mailbox", x: 260, y: 120, w: 110, h: 140, color: "#c0563a", emoji: "📮", label: "마음우체통", onInteract: () => setOpen(true) },
+    { id: "bench", x: 60, y: 300, w: 120, h: 56, color: "#a9814a", emoji: "🪑", label: "벤치", toast: "잠시 앉아 마음을 가라앉힌다" },
+  ];
+  return (
+    <RoomView title="마음의 방" icon="💌" sub="퇴근길코어 고민을 익명으로 털어놓는 곳" bg="#efe0e6" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={open} headerBg="#d76b96" bubble={bubble}>
+      {open && (
+        <RoomModal title="📮 마음우체통" onClose={() => setOpen(false)}>
+          <div style={{ fontSize: 12, marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: C.inkSoft }}>익명으로 남겨요. 아무도 누군지 몰라요.</span><GemBadge amount={gems} />
+          </div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            {[0.5, 1].map((v) => (
+              <PxButton key={v} tone={cost === v ? "gold" : "wood"} onClick={() => setCost(v)} style={{ fontSize: 12, padding: "6px 10px" }}>⭐ {v} 넣기</PxButton>
+            ))}
+          </div>
+          <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="오늘의 고민을 털어놓아 보세요…"
+            style={{ width: "100%", boxSizing: "border-box", height: 100, padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: "#fffdf5", resize: "none" }} />
+          <PxButton tone="good" disabled={!text.trim() || gems < cost} onClick={() => { onPost(text.trim(), cost); setText(""); setOpen(false); }} style={{ width: "100%", marginTop: 8, padding: 10, fontSize: 13 }}>
+            {gems < cost ? "젬이 부족해요" : `⭐ ${cost} 내고 익명으로 넣기`}
+          </PxButton>
+          {worries.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 6 }}>우체통에 쌓인 익명의 마음들</div>
+              <div style={{ maxHeight: 140, overflow: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+                {worries.map((w) => (
+                  <div key={w.id} style={{ background: "#fff", border: `2px solid ${C.ink}`, padding: 8, fontSize: 12 }}>🕊️ 익명 · {w.text}</div>
+                ))}
+              </div>
+            </div>
+          )}
+        </RoomModal>
+      )}
+    </RoomView>
+  );
+}
+
+/* ======================= 리스닝 방(디제이 + 관객석 + BGM) ======================= */
+function parseYouTubeId(url) {
+  const m = String(url).match(/(?:youtu\.be\/|[?&]v=|embed\/)([\w-]{11})/);
+  return m ? m[1] : null;
+}
+function ListeningView({ onBack, gems, onSpend, bubble }) {
+  const inp = { padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white };
+  const [songs, setSongs] = useState([
+    { id: 1, title: "Bazzi - Mine", desc: "요즘 제가 즐겨듣는 노래에요", videoId: null, q: "Bazzi Mine" },
+    { id: 2, title: "LANY - ILYSB", desc: "드라이브할 때 최고 🚗", videoId: null, q: "LANY ILYSB" },
+    { id: 3, title: "아이유 - 밤편지", desc: "자기 전에 듣기 좋아요 🌙", videoId: null, q: "아이유 밤편지" },
+  ]);
+  const [open, setOpen] = useState(false);
+  const [sel, setSel] = useState(null);
+  const [adding, setAdding] = useState(false);
+  const [nt, setNt] = useState(""); const [nu, setNu] = useState(""); const [nd, setNd] = useState("");
+  const [playing, setPlaying] = useState(true);
+  const [track, setTrack] = useState("Bazzi - Mine");
+  const [reqOpen, setReqOpen] = useState(false);
+  const [reqText, setReqText] = useState("");
+
+  const requestSong = () => {
+    const t = reqText.trim();
+    if (!t || gems < 5) return;
+    onSpend(5);
+    setSongs((v) => [...v, { id: Date.now(), title: t, desc: "신청곡 🎶", videoId: null, q: t }]);
+    setTrack(t); setPlaying(true); setReqText(""); setReqOpen(false);
+  };
+
+  const pickSong = (s) => { setSel(s); setTrack(s.title); setPlaying(true); };
+  const addSong = () => {
+    if (!nt.trim()) return;
+    setSongs((v) => [...v, { id: Date.now(), title: nt.trim(), desc: nd.trim() || "추가한 곡", videoId: parseYouTubeId(nu), q: nt.trim() }]);
+    setNt(""); setNu(""); setNd(""); setAdding(false);
+  };
+
+  const furniture = [
+    { id: "dj", x: 40, y: 80, w: 175, h: 160, color: "#3a2b52", emoji: "🎧", label: "디제이 부스", onInteract: () => setOpen(true) },
+    { id: "s1", x: 330, y: 110, w: 80, h: 60, color: "#caa06a", emoji: "🪑", label: "관객석", toast: "관객석에서 음악에 몸을 맡긴다 🎶" },
+    { id: "s2", x: 450, y: 110, w: 80, h: 60, color: "#caa06a", emoji: "🪑", label: "관객석", toast: "옆 사람과 리듬을 탄다 🕺" },
+    { id: "s3", x: 330, y: 220, w: 80, h: 60, color: "#caa06a", emoji: "🪑", label: "관객석", toast: "눈을 감고 감상 중… 🎵" },
+    { id: "s4", x: 450, y: 220, w: 80, h: 60, color: "#caa06a", emoji: "🪑", label: "관객석", toast: "앵콜! 👏" },
+  ];
+
+  const banner = (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#241a33", color: "#ffe680", borderBottom: `3px solid ${C.ink}`, flexWrap: "wrap" }}>
+      <span className={playing ? "gem-spin" : ""} style={{ fontSize: 16 }}>♬</span>
+      <b style={{ fontSize: 13 }}>{track}</b>
+      <PxButton tone="gold" onClick={() => setPlaying((p) => !p)} style={{ fontSize: 12, padding: "4px 10px", marginLeft: 6 }}>{playing ? "⏸ 일시정지" : "▶ 재생"}</PxButton>
+      <PxButton tone="blue" onClick={() => setReqOpen(true)} style={{ fontSize: 12, padding: "4px 10px" }}>🎵 신청곡(5젬)</PxButton>
+      <span style={{ fontSize: 10, color: "#b9a7d6", marginLeft: "auto" }}>보유 {fmt(gems)}⭐</span>
+    </div>
+  );
+
+  return (
+    <RoomView title="리스닝 방" icon="🎵" sub="디제이 부스에서 선곡 · 관객석에서 감상" bg="#2a2140" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={open || reqOpen} headerBg="#5b8def" banner={banner} bubble={bubble}>
+      {reqOpen && (
+        <RoomModal title="🎵 신청곡" onClose={() => setReqOpen(false)} maxW={360}>
+          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>5젬으로 신청하면 상단 배경음악 제목이 바뀌어요. (보유 {fmt(gems)}⭐)</div>
+          <input value={reqText} onChange={(e) => setReqText(e.target.value)} placeholder="예: NewJeans - Ditto" style={{ ...inp, width: "100%", boxSizing: "border-box", fontSize: 14 }} />
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <PxButton tone="ink" onClick={() => setReqOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>
+            <PxButton tone="gold" disabled={!reqText.trim() || gems < 5} onClick={requestSong} style={{ flex: 1, padding: 10, fontSize: 13 }}>{gems < 5 ? "젬 부족" : "5젬 신청"}</PxButton>
+          </div>
+        </RoomModal>
+      )}
+      {open && (
+        <RoomModal title="🎧 디제이 · 선곡 리스트" onClose={() => { setOpen(false); setSel(null); setAdding(false); }} maxW={520}>
+          {!sel && (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+                {songs.map((s) => (
+                  <button key={s.id} onClick={() => pickSong(s)} className="px-btn" style={{ textAlign: "left", background: C.white, border: `3px solid ${C.ink}`, padding: "8px 10px", cursor: "pointer", fontFamily: "'DotGothic16', monospace" }}>
+                    <b style={{ fontSize: 13 }}>🎵 {s.title}</b>
+                    <div style={{ fontSize: 11, color: C.inkSoft }}>{s.desc}</div>
+                  </button>
+                ))}
+              </div>
+              {adding ? (
+                <div style={{ background: C.parch, border: `3px solid ${C.ink}`, padding: 10, display: "grid", gap: 6 }}>
+                  <input value={nt} onChange={(e) => setNt(e.target.value)} placeholder="곡 제목" style={inp} />
+                  <input value={nu} onChange={(e) => setNu(e.target.value)} placeholder="유튜브 링크 (붙여넣으면 바로 재생돼요)" style={inp} />
+                  <input value={nd} onChange={(e) => setNd(e.target.value)} placeholder="한 줄 소개" style={inp} />
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <PxButton tone="ink" onClick={() => setAdding(false)} style={{ flex: 1, fontSize: 12, padding: 8 }}>취소</PxButton>
+                    <PxButton tone="good" disabled={!nt.trim()} onClick={addSong} style={{ flex: 1, fontSize: 12, padding: 8 }}>추가</PxButton>
+                  </div>
+                </div>
+              ) : (
+                <PxButton tone="gold" onClick={() => setAdding(true)} style={{ width: "100%", fontSize: 13, padding: 10 }}>＋ 노래 추가</PxButton>
+              )}
+            </>
+          )}
+          {sel && (
+            <div>
+              <PxButton tone="ink" onClick={() => setSel(null)} style={{ fontSize: 12, padding: "6px 10px", marginBottom: 10 }}>← 목록</PxButton>
+              <div style={{ background: "#000", border: `3px solid ${C.ink}`, aspectRatio: "16/9", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                {sel.videoId ? (
+                  <iframe title={sel.title} width="100%" height="100%" src={`https://www.youtube.com/embed/${sel.videoId}?autoplay=1`} allow="autoplay; encrypted-media" allowFullScreen style={{ border: 0 }} />
+                ) : (
+                  <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(sel.q)}`} target="_blank" rel="noreferrer" style={{ color: "#ffe680", textDecoration: "none", textAlign: "center", fontFamily: "'DotGothic16', monospace" }}>
+                    <div style={{ fontSize: 46 }}>▶</div>
+                    <div style={{ fontSize: 13 }}>유튜브에서 재생하기</div>
+                    <div style={{ fontSize: 10, color: "#b9a7d6", marginTop: 4 }}>('노래 추가'로 링크를 넣으면 여기서 바로 재생돼요)</div>
+                  </a>
+                )}
+              </div>
+              <div style={{ marginTop: 8, fontSize: 13 }}><b>{sel.title}</b></div>
+              <div style={{ fontSize: 12, color: C.inkSoft }}>💬 {sel.desc}</div>
+            </div>
+          )}
+        </RoomModal>
+      )}
+    </RoomView>
+  );
+}
+
+/* ======================= 릴스방(핸드폰 · 동물/쾌감/밈 + 카테고리 추가) ======================= */
+function ReelsView({ onBack, bubble }) {
+  const [open, setOpen] = useState(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addText, setAddText] = useState("");
+  const [reels, setReels] = useState({
+    animal: { label: "동물", bg: "#bfe3c8", title: "댕댕이·냥이 모음.zip 🐾",
+      content: <div style={{ fontSize: 40, lineHeight: 1.3, textAlign: "center" }}>🐶🐱<br />🐰🐼<br />🦊🐹</div> },
+    satisfy: { label: "쾌감", bg: "repeating-linear-gradient(45deg,#ff8fb1 0 16px,#ffd36b 16px 32px,#8fd0ff 32px 48px,#b6f0c0 48px 64px)", title: "끝없이 보게 되는 쾌감 영상 ✨",
+      content: <div style={{ fontSize: 44 }}>🌈✨🫧</div> },
+    meme: { label: "밈", bg: "#1c1c1c", title: "밈 甲.jpg 😂",
+      content: (
+        <div style={{ textAlign: "center", color: "#fff" }}>
+          <div style={{ fontSize: 13, fontWeight: "bold", textShadow: "1px 1px 0 #000" }}>월요일 아침의 나</div>
+          <div style={{ fontSize: 54 }}>😵‍💫</div>
+          <div style={{ fontSize: 13, fontWeight: "bold", textShadow: "1px 1px 0 #000" }}>"5분만 더…"</div>
+        </div>
+      ) },
+  });
+
+  const addCategory = () => {
+    const name = addText.trim();
+    if (!name) return;
+    const key = "c" + Date.now();
+    const palette = ["#bfe3c8", "#f6d8e5", "#cdeaf4", "#f1e2b0", "#e7cfe9", "#dfe3e6"];
+    setReels((r) => ({ ...r, [key]: { label: name, bg: palette[Object.keys(r).length % palette.length], title: `${name} 릴스 🎬`, content: <div style={{ fontSize: 46 }}>🎬✨</div> } }));
+    setAddText(""); setAddOpen(false);
+  };
+
+  const phoneColors = ["#3fa07a", "#5b8def", "#e0a13d", "#d76b96", "#8e5a9e", "#c0563a"];
+  const cats = Object.keys(reels);
+  const furniture = cats.map((key, i) => {
+    const col = i % 4, row = Math.floor(i / 4);
+    return { id: key, x: 40 + col * 150, y: 90 + row * 170, w: 90, h: 150, color: phoneColors[i % phoneColors.length], emoji: "📱", label: reels[key].label, onInteract: () => setOpen(key) };
+  });
+
+  const banner = (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#1b2530", color: C.white, borderBottom: `3px solid ${C.ink}`, flexWrap: "wrap" }}>
+      <span style={{ fontSize: 13 }}>📱 카테고리 {cats.length}개</span>
+      <PxButton tone="gold" onClick={() => setAddOpen(true)} style={{ fontSize: 12, padding: "4px 10px", marginLeft: "auto" }}>＋ 카테고리 추가</PxButton>
+    </div>
+  );
+
+  return (
+    <RoomView title="릴스방" icon="📱" sub="핸드폰을 눌러 릴스 감상 · 카테고리 추가 가능" bg="#141c26" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!open || addOpen} headerBg="#3fa07a" banner={banner} bubble={bubble}>
+      {addOpen && (
+        <RoomModal title="＋ 카테고리 추가" onClose={() => setAddOpen(false)} maxW={340}>
+          <input value={addText} onChange={(e) => setAddText(e.target.value)} placeholder="예: 요리, 여행, 운동…" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: C.white }} />
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <PxButton tone="ink" onClick={() => setAddOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>
+            <PxButton tone="good" disabled={!addText.trim()} onClick={addCategory} style={{ flex: 1, padding: 10, fontSize: 13 }}>추가</PxButton>
+          </div>
+        </RoomModal>
+      )}
+      {open && (
+        <RoomModal title={`📱 릴스 · ${reels[open].label}`} onClose={() => setOpen(null)} maxW={320}>
+          <div style={{ margin: "0 auto", width: 230, background: "#111", border: "6px solid #000", borderRadius: 24, padding: "12px 10px" }}>
+            <div style={{ width: 56, height: 6, background: "#333", borderRadius: 6, margin: "0 auto 8px" }} />
+            <div style={{ aspectRatio: "9/16", background: reels[open].bg, border: "2px solid #000", borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+              {reels[open].content}
+              <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, color: "#fff", fontSize: 12, textShadow: "1px 1px 0 #000" }}>{reels[open].title}</div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-around", marginTop: 8, fontSize: 18 }}><span>❤️</span><span>💬</span><span>🔁</span><span>🔖</span></div>
+          </div>
+          <div style={{ textAlign: "center", fontSize: 11, color: C.inkSoft, marginTop: 8 }}>예시 릴스 (데모 그래픽)</div>
+        </RoomModal>
+      )}
+    </RoomView>
+  );
+}
+
+/* ======================= 미니게임 방 ======================= */
+function MiniGameRoom({ onBack, onReward, bubble }) {
+  const [game, setGame] = useState(null); // 'reaction' | 'rps' | 'sequence'
+  const furniture = [
+    { id: "reaction", x: 60, y: 110, w: 130, h: 100, color: "#5b8def", emoji: "⚡", label: "반응속도", onInteract: () => setGame("reaction") },
+    { id: "rps", x: 260, y: 110, w: 130, h: 100, color: "#d76b96", emoji: "✊", label: "가위바위보", onInteract: () => setGame("rps") },
+    { id: "seq", x: 460, y: 110, w: 130, h: 100, color: "#e0a13d", emoji: "🔢", label: "숫자 순서", onInteract: () => setGame("sequence") },
+  ];
+  return (
+    <RoomView title="미니게임 방" icon="🎮" sub="게임 테이블에 다가가 Space · 마우스로 플레이" bg="#20182e" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!game} headerBg="#8e5a9e" bubble={bubble}>
+      {game === "reaction" && <ReactionGame onClose={() => setGame(null)} onReward={onReward} />}
+      {game === "rps" && <RpsGame onClose={() => setGame(null)} onReward={onReward} />}
+      {game === "sequence" && <SequenceGame onClose={() => setGame(null)} onReward={onReward} />}
+    </RoomView>
+  );
+}
+
+function ReactionGame({ onClose, onReward }) {
+  const [state, setState] = useState("idle"); // idle | wait | go | result | tooearly
+  const [ms, setMs] = useState(0);
+  const startRef = useRef(0);
+  const toRef = useRef(null);
+  const begin = () => {
+    setState("wait");
+    toRef.current = setTimeout(() => { startRef.current = Date.now(); setState("go"); }, 800 + Math.random() * 2000);
+  };
+  const click = () => {
+    if (state === "wait") { clearTimeout(toRef.current); setState("tooearly"); }
+    else if (state === "go") { const t = Date.now() - startRef.current; setMs(t); setState("result"); if (t < 350) onReward(3); }
+  };
+  useEffect(() => () => clearTimeout(toRef.current), []);
+  const bg = state === "go" ? C.good : state === "wait" ? C.danger : "#3a3550";
+  return (
+    <RoomModal title="⚡ 반응속도 테스트" onClose={onClose} maxW={360}>
+      <button onClick={state === "idle" || state === "result" || state === "tooearly" ? begin : click}
+        style={{ width: "100%", height: 150, background: bg, color: C.white, border: `3px solid ${C.ink}`, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 15 }}>
+        {state === "idle" && "클릭해서 시작"}
+        {state === "wait" && "초록색이 되면 클릭!"}
+        {state === "go" && "지금 클릭!!"}
+        {state === "tooearly" && "너무 빨라요! 다시 클릭"}
+        {state === "result" && `${ms}ms ${ms < 350 ? "⚡ +3⭐" : "😅 조금 느려요"} · 다시하기`}
+      </button>
+      <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 8, textAlign: "center" }}>350ms 이내면 3젬 획득</div>
+    </RoomModal>
+  );
+}
+
+function RpsGame({ onClose, onReward }) {
+  const [result, setResult] = useState(null);
+  const hands = [["rock", "✊"], ["scissors", "✌️"], ["paper", "✋"]];
+  const play = (me) => {
+    const cpu = hands[Math.floor(Math.random() * 3)][0];
+    let r = "무승부";
+    const win = { rock: "scissors", scissors: "paper", paper: "rock" };
+    if (me === cpu) r = "무승부";
+    else if (win[me] === cpu) { r = "승리! +2⭐"; onReward(2); }
+    else r = "패배";
+    const emoji = (k) => hands.find((h) => h[0] === k)[1];
+    setResult({ me: emoji(me), cpu: emoji(cpu), r });
+  };
+  return (
+    <RoomModal title="✊ 가위바위보" onClose={onClose} maxW={360}>
+      <div style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 12 }}>
+        {hands.map(([k, e]) => (
+          <PxButton key={k} tone="wood" onClick={() => play(k)} style={{ fontSize: 26, padding: "10px 14px" }}>{e}</PxButton>
+        ))}
+      </div>
+      {result && (
+        <div style={{ textAlign: "center", fontSize: 15 }}>
+          나 {result.me} vs {result.cpu} 컴퓨터<br />
+          <b style={{ color: result.r.includes("승리") ? C.good : result.r === "패배" ? C.danger : C.inkSoft }}>{result.r}</b>
+        </div>
+      )}
+      <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 8, textAlign: "center" }}>이기면 2젬 획득</div>
+    </RoomModal>
+  );
+}
+
+function SequenceGame({ onClose, onReward }) {
+  const [nums, setNums] = useState(() => shuffle());
+  const [next, setNext] = useState(1);
+  const [done, setDone] = useState(false);
+  function shuffle() { const a = [1, 2, 3, 4, 5, 6, 7, 8, 9]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; }
+  const tap = (n) => {
+    if (n !== next) return;
+    if (n === 9) { setDone(true); onReward(3); }
+    setNext((v) => v + 1);
+  };
+  const reset = () => { setNums(shuffle()); setNext(1); setDone(false); };
+  return (
+    <RoomModal title="🔢 숫자 순서 클릭" onClose={onClose} maxW={340}>
+      <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8, textAlign: "center" }}>1→9 순서대로 눌러요 (다음: {done ? "완료 🎉" : next})</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+        {nums.map((n) => (
+          <button key={n} onClick={() => tap(n)} disabled={n < next}
+            style={{ aspectRatio: "1/1", fontSize: 22, fontFamily: "'DotGothic16', monospace", background: n < next ? C.good : C.white, color: n < next ? C.white : C.ink, border: `3px solid ${C.ink}`, cursor: n < next ? "default" : "pointer" }}>{n}</button>
+        ))}
+      </div>
+      {done && <div style={{ textAlign: "center", marginTop: 10, color: C.good, fontWeight: "bold" }}>클리어! +3⭐</div>}
+      <PxButton tone="ink" onClick={reset} style={{ width: "100%", marginTop: 10, padding: 8, fontSize: 12 }}>다시 섞기</PxButton>
+    </RoomModal>
+  );
+}
+
+/* ======================= 수영장 / 헬스장 ======================= */
+function PoolView({ onBack, bubble }) {
+  const furniture = [
+    { id: "lane", x: 130, y: 150, w: 380, h: 120, color: "#3aa0c9", emoji: "🏊", label: "수영 레인", toast: "시원하게 한 바퀴! 🏊" },
+    { id: "dive", x: 50, y: 40, w: 90, h: 70, color: "#c0563a", emoji: "🤿", label: "다이빙대", toast: "첨벙! 다이빙 성공 🤿" },
+    { id: "sunbed", x: 500, y: 300, w: 110, h: 60, color: "#e0a13d", emoji: "⛱️", label: "선베드", toast: "선베드에서 일광욕 ☀️" },
+    { id: "tube", x: 270, y: 310, w: 80, h: 60, color: "#ffe680", emoji: "🛟", label: "튜브", toast: "둥둥~ 물 위에 떠 있다 🛟" },
+  ];
+  return <RoomView title="수영장" icon="🏊" sub="시원한 물놀이 · 레인/다이빙/선베드" bg="#bfe6f2" roomW={640} roomH={400} furniture={furniture} onBack={onBack} headerBg="#4bb4d8" bubble={bubble} />;
+}
+function GymView({ onBack, onWork, bubble }) {
+  const [stretch, setStretch] = useState(false);
+  const furniture = [
+    { id: "tread", x: 45, y: 80, w: 110, h: 90, color: "#5a6b78", emoji: "🏃", label: "러닝머신", toast: "유산소 완료! 심박수 상승 🏃" },
+    { id: "weight", x: 220, y: 110, w: 120, h: 100, color: "#c0563a", emoji: "🏋️", label: "웨이트 존(+4⭐)", onInteract: onWork, toast: "💪 운동하고 +4⭐ 획득!" },
+    { id: "bench", x: 400, y: 80, w: 120, h: 90, color: "#7a8b99", emoji: "🛋️", label: "벤치프레스", toast: "가슴 운동 3세트 완료 💪" },
+    { id: "stretch", x: 130, y: 290, w: 150, h: 70, color: "#7bbf8f", emoji: "🧘", label: "스트레칭 테이블", onInteract: () => setStretch(true) },
+  ];
+  const eye = [
+    { t: "1. 눈 상하 운동", e: "👁️⬆️⬇️", d: "위·아래를 천천히 5회 번갈아 봐요" },
+    { t: "2. 눈 좌우 운동", e: "👁️⬅️➡️", d: "좌·우를 천천히 5회 번갈아 봐요" },
+    { t: "3. 눈 굴리기", e: "👁️🔄", d: "시계방향·반시계방향 3바퀴씩" },
+    { t: "4. 먼 곳 보기", e: "👁️🏞️", d: "20초간 먼 곳을 바라보며 눈 휴식" },
+  ];
+  const shoulder = [
+    { t: "1. 어깨 으쓱", e: "🤷", d: "어깨를 귀까지 올렸다 툭 내리기 ×10" },
+    { t: "2. 어깨 돌리기", e: "🔄💪", d: "앞·뒤로 크게 원 그리며 5회씩" },
+    { t: "3. 목·어깨 늘리기", e: "🧎↔️", d: "고개를 좌우로 기울여 15초씩 유지" },
+    { t: "4. 날개뼈 모으기", e: "🫸🫷", d: "가슴 펴고 날개뼈 모으기 10초 ×3" },
+  ];
+  const Steps = ({ title, arr }) => (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontWeight: "bold", fontSize: 14, marginBottom: 6 }}>{title}</div>
+      <div style={{ display: "grid", gap: 6 }}>
+        {arr.map((s, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: C.white, border: `2px solid ${C.ink}`, padding: "6px 10px" }}>
+            <span style={{ fontSize: 24 }}>{s.e}</span>
+            <div><b style={{ fontSize: 13 }}>{s.t}</b><div style={{ fontSize: 12, color: C.inkSoft }}>{s.d}</div></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+  return (
+    <RoomView title="헬스장" icon="💪" sub="러닝머신·웨이트·스트레칭 · 웨이트 존에서 젬 획득" bg="#e6e2da" roomW={640} roomH={400} furniture={furniture} onBack={onBack} headerBg="#c0563a" paused={stretch} bubble={bubble}>
+      {stretch && (
+        <RoomModal title="🧘 스트레칭 가이드" onClose={() => setStretch(false)} maxW={460}>
+          <Steps title="👀 눈 스트레칭" arr={eye} />
+          <Steps title="💪 어깨 스트레칭" arr={shoulder} />
+        </RoomModal>
+      )}
+    </RoomView>
+  );
+}
+
+/* ======================= 흡연의 방(플레이버) ======================= */
+function SmokeView({ onBack, bubble }) {
+  const furniture = [
+    { id: "ashtray", x: 260, y: 180, w: 100, h: 70, color: "#7a8b99", emoji: "🚬", label: "재떨이", toast: "후… 잠깐의 여유 💨" },
+    { id: "window", x: 260, y: 40, w: 120, h: 60, color: "#6fc3e0", emoji: "🪟", label: "환기창", toast: "창문을 열어 환기했다 🌬️" },
+  ];
+  return <RoomView title="흡연의 방" icon="🚬" sub="흡연 중 💨 · 환기 필수" bg="#dfe3e6" roomW={640} roomH={400} furniture={furniture} onBack={onBack} headerBg="#7a8b99" bubble={bubble} />;
+}
+
+/* ======================= 게시판(캘린더 + 공지) ======================= */
+function BoardView({ onBack }) {
+  const [tab, setTab] = useState("notice");
+  const [openDoc, setOpenDoc] = useState(null);
+  const [day, setDay] = useState(null);
+  const first = new Date(2026, 6, 1);
+  const startDow = first.getDay();
+  const cells = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= 31; d++) cells.push(d);
+  const key = (d) => `2026-07-${String(d).padStart(2, "0")}`;
+  return (
+    <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <TitleBar icon="📋" title="게시판" sub="공지사항 · 2026년 7월 캘린더" onBack={onBack} bg={C.wood} fg={C.white} />
+      <div style={{ display: "flex", gap: 6, padding: 10, background: C.parchLine, borderBottom: `3px solid ${C.parchEdge}` }}>
+        <PxButton tone={tab === "notice" ? "gold" : "wood"} onClick={() => setTab("notice")} style={{ fontSize: 12, padding: "8px 12px" }}>📢 공지사항</PxButton>
+        <PxButton tone={tab === "cal" ? "gold" : "wood"} onClick={() => setTab("cal")} style={{ fontSize: 12, padding: "8px 12px" }}>📅 캘린더</PxButton>
+      </div>
+
+      <div style={{ padding: 16, background: `repeating-linear-gradient(0deg, ${C.parch} 0 40px, ${C.parchLine} 40px 80px)` }}>
+        {tab === "notice" && (
+          <div style={{ display: "grid", gap: 8 }}>
+            {ANNOUNCEMENTS.map((a) => (
+              <button key={a.id} onClick={() => setOpenDoc(a)} className="px-btn" style={{ textAlign: "left", background: C.white, border: `3px solid ${C.ink}`, padding: "10px 12px", cursor: "pointer", fontFamily: "'DotGothic16', monospace" }}>
+                <div style={{ fontSize: 14, fontWeight: "bold" }}>📄 {a.title}</div>
+                <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 2 }}>{a.date} · 눌러서 열기</div>
               </button>
             ))}
           </div>
         )}
 
-        {tab === "notice" && noticeOpen && (
+        {tab === "cal" && (
           <div>
-            <button onClick={() => setNoticeOpen(null)} style={{ background: "none", border: "none", color: C.inkSoft, cursor: "pointer", fontSize: 12, marginBottom: 8 }}>← 목록으로</button>
-            <div style={{ background: C.white, border: `2px solid ${C.ink}`, padding: 14 }}>
-              <div style={{ fontSize: 11, color: C.inkSoft }}>{noticeOpen.date}</div>
-              <div style={{ fontSize: 15, fontWeight: "bold", marginTop: 4 }}>{noticeOpen.title}</div>
-              <div style={{ fontSize: 13, marginTop: 10, lineHeight: 1.6 }}>{noticeOpen.body}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, background: C.white, border: `3px solid ${C.ink}`, padding: 8 }}>
+              {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
+                <div key={d} style={{ textAlign: "center", fontSize: 11, fontWeight: "bold", color: i === 0 ? C.danger : C.inkSoft }}>{d}</div>
+              ))}
+              {cells.map((d, i) => (
+                <button key={i} disabled={!d} onClick={() => d && setDay(d)} className={d ? "px-btn" : ""}
+                  style={{ aspectRatio: "1/1", background: !d ? "transparent" : day === d ? C.gem : "#fffdf5", border: d ? `2px solid ${C.ink}` : "none", cursor: d ? "pointer" : "default", position: "relative", fontFamily: "'DotGothic16', monospace", fontSize: 13, color: C.ink }}>
+                  {d === 31 ? <span style={{ display: "inline-block", border: `3px solid ${C.danger}`, borderRadius: "50%", width: 24, height: 24, lineHeight: "20px" }}>{d}</span> : d}
+                  {d && CAL_EVENTS[key(d)] && d !== 31 && <span style={{ position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)", width: 5, height: 5, background: C.bankRoof, borderRadius: "50%" }} />}
+                </button>
+              ))}
+            </div>
+            <div style={{ marginTop: 12, background: C.white, border: `3px solid ${C.ink}`, padding: 12, minHeight: 60 }}>
+              {day ? (
+                <>
+                  <div style={{ fontWeight: "bold", fontSize: 14, marginBottom: 6 }}>7월 {day}일 {day === 31 && "🔴"}</div>
+                  {(CAL_EVENTS[key(day)] || ["등록된 일정이 없습니다."]).map((e, i) => (
+                    <div key={i} style={{ fontSize: 13, color: C.inkSoft }}>• {e}</div>
+                  ))}
+                </>
+              ) : <span style={{ fontSize: 13, color: C.inkSoft }}>날짜를 누르면 일정을 확인할 수 있어요. (7월 31일 🔴 월말 결산)</span>}
             </div>
           </div>
         )}
-      </Panel>
-    </Modal>
+      </div>
+
+      {openDoc && (
+        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, padding: 14 }} onClick={() => setOpenDoc(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 480 }}>
+            <Panel style={{ padding: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: "bold" }}>{openDoc.title}</div>
+              <div style={{ fontSize: 11, color: C.inkSoft, margin: "4px 0 10px" }}>{openDoc.date}</div>
+              <div style={{ fontSize: 14, lineHeight: 1.7 }}>{openDoc.body}</div>
+              <PxButton tone="ink" onClick={() => setOpenDoc(null)} style={{ marginTop: 14, width: "100%", padding: 10, fontSize: 13 }}>닫기</PxButton>
+            </Panel>
+          </div>
+        </div>
+      )}
+    </Panel>
   );
 }
 
-/* ============================== 환전 창구(기존 은행 기능) =================== */
+/* ======================= 치앙마이 렌트 ======================= */
+function RentView({ house, gems, rented, onRent, onBack }) {
+  return (
+    <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <TitleBar icon="🌴" title={house.name} sub="치앙마이 · 한 달 살기 렌트" onBack={onBack} bg={C.villaDk} fg={C.white} right={<GemBadge amount={gems} />} />
+      <div style={{ padding: 20, textAlign: "center", background: `repeating-linear-gradient(0deg, ${C.parch} 0 40px, ${C.parchLine} 40px 80px)` }}>
+        <div style={{ display: "inline-block" }}><PixelHouse roof={house.roof} roofDk={house.roofDk} wall={house.wall} size={150} /></div>
+        <div style={{ fontSize: 15, marginTop: 8 }}>강 건너 치앙마이의 아늑한 숙소</div>
+        <div style={{ fontSize: 14, color: "#a86e13", margin: "8px 0 14px" }}>렌트비 <b>⭐ {house.rent}</b> ({fmt(house.rent * GEM_TO_WON)}원 상당)</div>
+        {rented ? (
+          <div>
+            <div style={{ background: C.good, color: C.white, border: `3px solid ${C.ink}`, padding: 12, fontSize: 14 }}>✅ 렌트 완료! 아래 주소로 입주하세요.</div>
+            <div style={{ marginTop: 10, background: C.white, border: `3px solid ${C.ink}`, padding: 12, fontSize: 13, lineHeight: 1.6 }}>
+              📍 123/45 Sukhumvit Road, Khwaeng Khlong Toei, Khet Khlong Toei, Bangkok 10110, Thailand
+            </div>
+            <PxButton tone="blue" onClick={() => alert("태국 Siri에게 연락합니다… (데모)")} style={{ marginTop: 10, padding: "10px 18px", fontSize: 14 }}>📞 태국 Siri 연락</PxButton>
+          </div>
+        ) : (
+          <PxButton tone={gems >= house.rent ? "danger" : "ink"} disabled={gems < house.rent} onClick={onRent} style={{ padding: "12px 22px", fontSize: 15 }}>
+            {gems >= house.rent ? "🔑 렌트 신청하기" : "젬이 부족해요"}
+          </PxButton>
+        )}
+        <div style={{ marginTop: 14, fontSize: 11, color: "rgba(42,30,20,0.6)" }}>* 렌트/결제는 시뮬레이션입니다.</div>
+      </div>
+    </Panel>
+  );
+}
+
+/* ======================= 중앙은행 ======================= */
 function BankView({ gems, lifetime, exchanged, history, onExchange, onBack }) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(0);
   const [flash, setFlash] = useState(null);
-  const canWithdraw = gems >= 1;
-  const validAmount = amount >= 1 && amount <= gems;
-
+  const canWithdraw = gems > 0;
+  const validAmount = amount >= 1 && amount <= gems && Number.isFinite(amount);
   function confirm() {
     if (!validAmount) return;
-    onExchange({ amount, type: "리워드 포인트 적립" });
-    setFlash({ amount, won: amount * GEM_TO_WON, type: "리워드 포인트 적립" });
+    onExchange(amount);
     setOpen(false);
+    setFlash({ amount, won: amount * GEM_TO_WON });
     setTimeout(() => setFlash(null), 2600);
   }
-
   return (
-    <div>
-      <ScreenHeader title="환전 창구" subtitle="주민센터 내 스타 젬 정산소" icon="🏦" onBack={onBack} />
-      <Panel style={{ padding: 16 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
-          <StatCard label="보유 스타 젬" value={gems} accent={C.gem} icon="⭐" />
+    <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <TitleBar icon="🏦" title="SYSTEM CORE BANK" sub="자산 결산 & 환전 게이트" onBack={onBack} bg={C.bankRoof} fg={C.white} />
+      <div style={{ padding: 16, background: `repeating-linear-gradient(0deg, ${C.parch} 0 40px, ${C.parchLine} 40px 80px)` }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px,1fr))", gap: 12 }}>
+          <StatCard label="현재 보유 젬" value={gems} accent={C.gem} icon="⭐" />
           <StatCard label="총 채굴량 (누적)" value={lifetime} accent={C.good} icon="⛏" />
           <StatCard label="총 환전 젬" value={exchanged} accent={C.bankRoof} icon="🏦" />
         </div>
-
         <div style={{ marginTop: 14, background: C.white, border: `4px solid ${C.ink}`, boxShadow: `inset 0 0 0 3px ${C.parchEdge}`, padding: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
             <div>
               <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, marginBottom: 8 }}>EXCHANGE GATE</div>
-              <div style={{ fontSize: 13 }}>환율 &nbsp;<b>1 ⭐ = {GEM_TO_WON.toLocaleString()}원</b></div>
-              <div style={{ fontSize: 13, marginTop: 4, color: C.inkSoft }}>현재 보유 젬은 최대 <b>{(gems * GEM_TO_WON).toLocaleString()}원</b> 상당</div>
+              <div style={{ fontSize: 13 }}>환율 <b>1 ⭐ = {GEM_TO_WON.toLocaleString()}원</b></div>
+              <div style={{ fontSize: 13, marginTop: 4, color: C.inkSoft }}>현재 보유 젬은 최대 <b>{fmt(gems * GEM_TO_WON)}원</b> 상당</div>
             </div>
-            <PxButton tone={canWithdraw ? "danger" : "ink"} disabled={!canWithdraw} onClick={() => { setAmount(gems); setOpen(true); }} style={{ padding: "12px 18px", fontSize: 14 }}>
+            <PxButton tone={canWithdraw ? "danger" : "ink"} disabled={!canWithdraw} onClick={() => { setAmount(Math.floor(gems)); setOpen(true); }} style={{ padding: "12px 18px", fontSize: 14 }}>
               {canWithdraw ? "💰 출금/환전 신청" : "환전할 젬이 없어요"}
             </PxButton>
           </div>
@@ -1727,110 +1590,454 @@ function BankView({ gems, lifetime, exchanged, history, onExchange, onBack }) {
             <div style={{ color: C.inkSoft, marginTop: 3 }}>자체 화폐 ⭐ → 실물 리워드 시스템으로 연동되는 정산 채널(시뮬레이션)</div>
           </div>
         </div>
-
         {flash && (
           <div className="gem-pop" style={{ marginTop: 12, background: C.good, color: C.white, border: `3px solid ${C.ink}`, padding: 12, fontSize: 13 }}>
-            ✅ 정산 완료(시뮬레이션): <b>{flash.amount.toLocaleString()} ⭐</b> → <b>{flash.won.toLocaleString()}원</b> · {flash.type}
+            ✅ 정산 완료(시뮬레이션): <b>{fmt(flash.amount)} ⭐</b> → <b>{fmt(flash.won)}원</b>
           </div>
         )}
-
         <div style={{ marginTop: 14 }}>
           <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, marginBottom: 8 }}>SETTLEMENT LOG</div>
           {history.length === 0 ? (
-            <div style={{ background: C.parch, border: `3px dashed ${C.ink}`, padding: 14, fontSize: 13, color: C.inkSoft, textAlign: "center" }}>
-              아직 환전 내역이 없습니다. 대형건물에서 퀘스트를 깨고 ⭐를 모아 첫 정산을 신청해 보세요.
-            </div>
+            <div style={{ background: C.parch, border: `3px dashed ${C.ink}`, padding: 14, fontSize: 13, color: C.inkSoft, textAlign: "center" }}>아직 환전 내역이 없습니다.</div>
           ) : (
             <div style={{ display: "grid", gap: 8 }}>
               {history.map((h) => (
-                <div key={h.id} style={{ background: C.parch, border: `2px solid ${C.ink}`, padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6, fontSize: 13 }}>
-                  <span>🧾 {h.time} · {h.type}</span>
-                  <span><b>{h.amount.toLocaleString()} ⭐</b> → <b style={{ color: C.good }}>{h.won.toLocaleString()}원</b> <span style={{ fontSize: 10, background: C.good, color: C.white, padding: "2px 6px", marginLeft: 6 }}>정산 완료</span></span>
+                <div key={h.id} style={{ background: C.parch, border: `2px solid ${C.ink}`, padding: "8px 12px", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, fontSize: 13 }}>
+                  <span>🧾 {h.time} · 리워드 포인트 적립</span>
+                  <span><b>{fmt(h.amount)} ⭐</b> → <b style={{ color: C.good }}>{fmt(h.won)}원</b> <span style={{ fontSize: 10, background: C.good, color: C.white, padding: "2px 6px", marginLeft: 6 }}>정산 완료</span></span>
                 </div>
               ))}
             </div>
           )}
         </div>
-
         <div style={{ marginTop: 14, background: "rgba(192,86,58,0.12)", border: `3px dashed ${C.danger}`, padding: 10, fontSize: 12, color: C.inkSoft }}>
-          ⚠️ 본 환전/정산 기능은 <b>프로토타입 시뮬레이션</b>입니다. 실제 금전 출금·현금화가 이루어지지 않으며, 실서비스 연동 시에는 관련 법규·본인인증·정산 정책이 별도로 필요합니다.
+          ⚠️ 환전/정산은 프로토타입 시뮬레이션입니다. 실제 현금 출금이 이루어지지 않습니다.
         </div>
-      </Panel>
+      </div>
 
       {open && (
-        <Modal onClose={() => setOpen(false)} maxWidth={420}>
-          <Panel style={{ padding: 16 }}>
-            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 12 }}>💰 환전 신청</div>
-            <label style={{ fontSize: 12, color: C.inkSoft }}>환전할 스타 젬 (보유 {gems.toLocaleString()})</label>
-            <input type="number" value={amount} min={1} max={gems} onChange={(e) => setAmount(Math.floor(Number(e.target.value) || 0))}
-              style={{ width: "100%", boxSizing: "border-box", marginTop: 6, padding: "10px", fontFamily: "'DotGothic16', monospace", fontSize: 16, border: `3px solid ${C.ink}`, background: C.white, color: C.ink }} />
-            <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-              {[10, 50, 100].map((v) => (
-                <PxButton key={v} tone="wood" disabled={v > gems} onClick={() => setAmount(v)} style={{ fontSize: 11, padding: "6px 10px" }}>{v}⭐</PxButton>
-              ))}
-              <PxButton tone="wood" disabled={gems < 1} onClick={() => setAmount(gems)} style={{ fontSize: 11, padding: "6px 10px" }}>전액</PxButton>
-            </div>
-            <div style={{ marginTop: 12, background: C.white, border: `3px solid ${C.ink}`, padding: 10, fontSize: 14, textAlign: "center" }}>
-              {amount.toLocaleString()} ⭐ &nbsp;→&nbsp; <b style={{ color: C.good }}>{(amount * GEM_TO_WON).toLocaleString()}원</b>
-            </div>
-            {!validAmount && <div style={{ marginTop: 8, fontSize: 12, color: C.danger }}>{amount < 1 ? "1 젬 이상 입력하세요." : "보유 젬을 초과했습니다."}</div>}
-            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-              <PxButton tone="ink" onClick={() => setOpen(false)} style={{ flex: 1, padding: "12px", fontSize: 13 }}>취소</PxButton>
-              <PxButton tone="danger" disabled={!validAmount} onClick={confirm} style={{ flex: 1, padding: "12px", fontSize: 13 }}>환전 확정</PxButton>
-            </div>
-            <div style={{ marginTop: 8, fontSize: 10, color: "rgba(42,30,20,0.6)", textAlign: "center" }}>시뮬레이션 · 실제 현금 출금이 아닙니다.</div>
-          </Panel>
-        </Modal>
+        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, padding: 16 }} onClick={() => setOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420 }}>
+            <Panel style={{ padding: 16 }}>
+              <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 12 }}>💰 환전 신청</div>
+              <label style={{ fontSize: 12, color: C.inkSoft }}>환전할 스타 젬 (보유 {fmt(gems)})</label>
+              <input type="number" value={amount} min={1} max={gems} onChange={(e) => setAmount(Math.floor(Number(e.target.value) || 0))}
+                style={{ width: "100%", boxSizing: "border-box", marginTop: 6, padding: 10, fontFamily: "'DotGothic16', monospace", fontSize: 16, border: `3px solid ${C.ink}`, background: C.white }} />
+              <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                {[10, 50, 100].map((v) => <PxButton key={v} tone="wood" disabled={v > gems} onClick={() => setAmount(v)} style={{ fontSize: 11, padding: "6px 10px" }}>{v}⭐</PxButton>)}
+                <PxButton tone="wood" disabled={gems < 1} onClick={() => setAmount(Math.floor(gems))} style={{ fontSize: 11, padding: "6px 10px" }}>전액</PxButton>
+              </div>
+              <div style={{ marginTop: 12, background: C.white, border: `3px solid ${C.ink}`, padding: 10, fontSize: 14, textAlign: "center" }}>
+                {fmt(amount)} ⭐ → <b style={{ color: C.good }}>{fmt(amount * GEM_TO_WON)}원</b>
+              </div>
+              {!validAmount && <div style={{ marginTop: 8, fontSize: 12, color: C.danger }}>{amount < 1 ? "1 젬 이상 입력하세요." : "보유 젬을 초과했습니다."}</div>}
+              <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                <PxButton tone="ink" onClick={() => setOpen(false)} style={{ flex: 1, padding: 12, fontSize: 13 }}>취소</PxButton>
+                <PxButton tone="danger" disabled={!validAmount} onClick={confirm} style={{ flex: 1, padding: 12, fontSize: 13 }}>환전 확정</PxButton>
+              </div>
+            </Panel>
+          </div>
+        </div>
       )}
-    </div>
+    </Panel>
   );
 }
-
 function StatCard({ label, value, accent, icon }) {
   return (
     <div style={{ background: C.white, border: `4px solid ${C.ink}`, boxShadow: `inset 0 0 0 3px ${C.parchEdge}`, padding: 12 }}>
       <div style={{ fontSize: 12, color: C.inkSoft }}>{icon} {label}</div>
       <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
-        <b style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 16, color: accent === C.gem ? "#a86e13" : accent }}>{value.toLocaleString()}</b>
+        <b style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 16, color: accent === C.gem ? "#a86e13" : accent }}>{fmt(value)}</b>
         <span style={{ fontSize: 12, color: C.inkSoft }}>⭐</span>
       </div>
     </div>
   );
 }
 
-/* ============================== 전역 CSS 주입 ============================= */
+/* ===================== 항상 떠있는 UI ===================== */
+function ChatDock({ messages, shout, onToggleShout, onSend }) {
+  const [text, setText] = useState("");
+  const send = () => { if (!text.trim()) return; onSend(text, shout); setText(""); };
+  return (
+    <div style={{ position: "fixed", left: 12, bottom: 12, width: 250, zIndex: 60, fontFamily: "'DotGothic16', monospace" }}>
+      {messages.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 6 }}>
+          {messages.map((m) => (
+            <div key={m.id} style={{ background: "rgba(43,31,20,0.86)", color: C.white, border: `2px solid ${C.ink}`, padding: "4px 8px", fontSize: 12, alignSelf: "flex-start", maxWidth: "100%" }}>
+              <span style={{ color: C.gem, fontSize: 10 }}>{m.nick}</span>{" "}
+              <span style={{ fontWeight: m.shout ? "bold" : "normal", fontSize: m.shout ? 13 : 12 }}>{m.shout ? "📢 " : ""}{m.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 4, background: C.parch, border: `3px solid ${C.ink}`, padding: 4 }}>
+        <button onClick={onToggleShout} title="확성기" style={{ background: shout ? C.gem : C.white, border: `2px solid ${C.ink}`, cursor: "pointer", fontSize: 15, width: 32, flexShrink: 0 }}>📢</button>
+        <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+          placeholder={shout ? "확성기 ON · 크게 외치기" : "채팅 입력 후 Enter"} style={{ flex: 1, minWidth: 0, border: `2px solid ${C.ink}`, padding: "4px 6px", fontSize: 12, background: C.white, fontFamily: "'DotGothic16', monospace" }} />
+        <button onClick={send} style={{ background: C.good, color: C.white, border: `2px solid ${C.ink}`, cursor: "pointer", fontSize: 12, padding: "0 8px", flexShrink: 0 }}>▶</button>
+      </div>
+    </div>
+  );
+}
+
+function MenuButton({ onClick }) {
+  return (
+    <button onClick={onClick} title="메뉴" style={{ position: "fixed", right: 14, bottom: 74, zIndex: 60, width: 46, height: 46, background: C.gem, border: `3px solid ${C.ink}`, boxShadow: `0 3px 0 ${C.ink}`, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
+      {[0, 1, 2].map((i) => <span key={i} style={{ width: 22, height: 3, background: C.ink, display: "block" }} />)}
+    </button>
+  );
+}
+
+function FeedbackButton() {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [sent, setSent] = useState(false);
+  const submit = () => { if (!text.trim()) return; setSent(true); setText(""); setTimeout(() => { setSent(false); setOpen(false); }, 1400); };
+  return (
+    <>
+      <button onClick={() => setOpen(true)} title="피드백" style={{ position: "fixed", right: 14, bottom: 16, zIndex: 60, width: 46, height: 46, background: C.wood, color: C.white, border: `3px solid ${C.ink}`, boxShadow: `0 3px 0 ${C.ink}`, cursor: "pointer", fontSize: 22 }}>⚙️</button>
+      {open && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 80, padding: 14 }} onClick={() => setOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
+            <Panel style={{ padding: 16 }}>
+              <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 10 }}>⚙️ 피드백 보내기</div>
+              {sent ? (
+                <div style={{ background: C.good, color: C.white, border: `3px solid ${C.ink}`, padding: 14, textAlign: "center", fontSize: 14 }}>소중한 의견 감사합니다! ✨</div>
+              ) : (
+                <>
+                  <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="개선 아이디어나 버그를 알려주세요!" rows={4}
+                    style={{ width: "100%", boxSizing: "border-box", border: `3px solid ${C.ink}`, padding: 9, fontSize: 13, background: C.white, fontFamily: "'DotGothic16', monospace", resize: "vertical" }} />
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                    <PxButton tone="ink" onClick={() => setOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>닫기</PxButton>
+                    <PxButton tone="good" disabled={!text.trim()} onClick={submit} style={{ flex: 1, padding: 10, fontSize: 13 }}>제출</PxButton>
+                  </div>
+                </>
+              )}
+            </Panel>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* 프로필 데이터 */
+const MY_PROFILE = {
+  avatar: "🧑‍💻", name: "나 (플레이어)", job: "주니어 개발자",
+  stats: { 체력: 78, 마나: 64, 집중: 82, 친화: 70 },
+  equipment: ["🎧 노이즈캔슬 헤드셋", "☕ 무한 리필 텀블러", "💻 듀얼 모니터", "⌨️ 기계식 키보드"],
+  achievements: ["🏅 첫 퀘스트 클리어", "🌴 치앙마이 렌트 성공", "💌 감사 포스트잇 10개", "🔥 7일 연속 출근"],
+  quests: ["어플 v2.0 출시 준비", "월말 결산 정산하기", "워크샵 발표 자료 만들기"],
+  affiliation: "ECHO TOWN · 개발팀",
+};
+const PROFILES = [
+  { avatar: "👩‍🎨", name: "도희", job: "프로덕트 디자이너", stats: { 체력: 70, 마나: 80, 집중: 88, 친화: 85 }, equipment: ["🖊️ 태블릿펜", "🎨 컬러칩", "📐 그리드 자"], achievements: ["🏆 리디자인 대상", "✨ 디자인 시스템 구축"], quests: ["릴스방 UI 개편"], affiliation: "ECHO TOWN · 디자인팀" },
+  { avatar: "🧑‍💼", name: "창민", job: "소싱 MD", stats: { 체력: 82, 마나: 60, 집중: 75, 친화: 90 }, equipment: ["📋 검수 클립보드", "🧦 샘플 양말", "📞 업체 다이얼"], achievements: ["🥇 항균양말 라인 런칭", "🤝 협력사 30곳"], quests: ["항균속옷 인증 미팅"], affiliation: "ECHO TOWN · 커머스팀" },
+  { avatar: "👧", name: "유리", job: "그로스 마케터", stats: { 체력: 68, 마나: 74, 집중: 80, 친화: 88 }, equipment: ["📈 대시보드", "📣 캠페인 메가폰"], achievements: ["🚀 CTR 2배 달성"], quests: ["여름 프로모션 기획"], affiliation: "ECHO TOWN · 마케팅팀" },
+  { avatar: "🧑‍🎬", name: "봉준호", job: "영상 감독", stats: { 체력: 72, 마나: 92, 집중: 95, 친화: 78 }, equipment: ["🎬 클래퍼보드", "🎥 시네마 카메라", "🕶️ 뿔테 안경"], achievements: ["🏆 마을 영상제 대상", "🎞️ 단편 12편"], quests: ["영상스쿨 특강 준비"], affiliation: "영상스쿨 · 마스터" },
+  { avatar: "🗿", name: "황혼의 파수꾼", job: "디자인 스승", stats: { 체력: 99, 마나: 99, 집중: 99, 친화: 60 }, equipment: ["🛡️ 황혼의 방패", "🖌️ 전설의 붓"], achievements: ["🌌 마을 수호 300일"], quests: ["디자인스쿨 신입 지도"], affiliation: "디자인스쿨 · 수호자" },
+];
+
+function ProfileDetail({ p, onBack }) {
+  const Row = ({ label, children }) => (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 4 }}>{label}</div>
+      {children}
+    </div>
+  );
+  return (
+    <div>
+      {onBack && <PxButton tone="ink" onClick={onBack} style={{ fontSize: 11, padding: "5px 9px", marginBottom: 10 }}>← 목록</PxButton>}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, background: C.white, border: `3px solid ${C.ink}`, padding: 12 }}>
+        <div style={{ fontSize: 44 }}>{p.avatar}</div>
+        <div>
+          <div style={{ fontSize: 17, fontWeight: "bold" }}>{p.name}</div>
+          <div style={{ fontSize: 12, color: C.inkSoft }}>💼 {p.job}</div>
+          <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 2 }}>🏷️ {p.affiliation}</div>
+        </div>
+      </div>
+      <Row label="📊 스탯">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+          {Object.entries(p.stats).map(([k, v]) => (
+            <div key={k} style={{ background: C.white, border: `2px solid ${C.ink}`, padding: "4px 8px" }}>
+              <div style={{ fontSize: 11, display: "flex", justifyContent: "space-between" }}><span>{k}</span><b>{v}</b></div>
+              <div style={{ height: 8, background: "#e2d3ab", border: `1px solid ${C.ink}`, marginTop: 3 }}><div style={{ height: "100%", width: `${v}%`, background: C.good }} /></div>
+            </div>
+          ))}
+        </div>
+      </Row>
+      <Row label="🎒 장비"><div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{p.equipment.map((e, i) => <span key={i} style={{ background: C.white, border: `2px solid ${C.ink}`, padding: "3px 7px", fontSize: 12 }}>{e}</span>)}</div></Row>
+      <Row label="🏅 업적"><div style={{ display: "flex", flexDirection: "column", gap: 4 }}>{p.achievements.map((a, i) => <div key={i} style={{ fontSize: 12 }}>{a}</div>)}</div></Row>
+      <Row label="📜 진행중인 퀘스트"><div style={{ display: "flex", flexDirection: "column", gap: 4 }}>{p.quests.map((q, i) => <div key={i} style={{ fontSize: 12, background: C.white, border: `2px solid ${C.ink}`, padding: "4px 8px" }}>▶ {q}</div>)}</div></Row>
+    </div>
+  );
+}
+
+function ProfileMenu({ onClose }) {
+  const [tab, setTab] = useState(null); // null | 'me' | 'villagers'
+  const [sel, setSel] = useState(null);
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 80, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "88%", overflow: "auto" }}>
+        <Panel style={{ padding: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11 }}>☰ 메뉴</div>
+            <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+          </div>
+
+          {!tab && (
+            <div style={{ display: "grid", gap: 10 }}>
+              <PxButton tone="blue" onClick={() => setTab("me")} style={{ padding: 16, fontSize: 15 }}>🧑‍💻 내 프로필</PxButton>
+              <PxButton tone="good" onClick={() => { setTab("villagers"); setSel(null); }} style={{ padding: 16, fontSize: 15 }}>🏘️ 마을주민들</PxButton>
+            </div>
+          )}
+
+          {tab === "me" && (
+            <div>
+              <PxButton tone="ink" onClick={() => setTab(null)} style={{ fontSize: 11, padding: "5px 9px", marginBottom: 10 }}>← 뒤로</PxButton>
+              <ProfileDetail p={MY_PROFILE} />
+            </div>
+          )}
+
+          {tab === "villagers" && !sel && (
+            <div>
+              <PxButton tone="ink" onClick={() => setTab(null)} style={{ fontSize: 11, padding: "5px 9px", marginBottom: 10 }}>← 뒤로</PxButton>
+              <div style={{ display: "grid", gap: 8 }}>
+                {PROFILES.map((p) => (
+                  <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 10, background: C.white, border: `3px solid ${C.ink}`, padding: 10 }}>
+                    <button onClick={() => setSel(p)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, flex: 1, textAlign: "left", padding: 0 }}>
+                      <span style={{ fontSize: 32 }}>{p.avatar}</span>
+                      <span><b style={{ fontSize: 14 }}>{p.name}</b><br /><span style={{ fontSize: 11, color: C.inkSoft }}>💼 {p.job}</span></span>
+                    </button>
+                    <PxButton tone="blue" onClick={() => alert(`${p.name}님에게 DM을 보냅니다… (데모)`)} style={{ fontSize: 11, padding: "6px 8px" }}>DM</PxButton>
+                    <PxButton tone="good" onClick={() => alert(`${p.name}님과 페이스톡 연결 중… (데모)`)} style={{ fontSize: 11, padding: "6px 8px" }}>📞 페이스톡</PxButton>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab === "villagers" && sel && <ProfileDetail p={sel} onBack={() => setSel(null)} />}
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+/* ============================== 앱 =================================== */
+export default function App() {
+  const [view, setView] = useState("world");
+  const [houseId, setHouseId] = useState(null);
+  const [bigId, setBigId] = useState(null);
+  const [meetingId, setMeetingId] = useState(null);
+  const [rentId, setRentId] = useState(null);
+
+  const [gems, setGems] = useState(0);
+  const [lifetime, setLifetime] = useState(0);
+  const [exchanged, setExchanged] = useState(0);
+  const [history, setHistory] = useState([]);
+  const [day, setDay] = useState(1);
+
+  const [worldPos, setWorldPos] = useState({ x: 1300, y: 950 });
+  const [qs, setQs] = useState(() => {
+    const o = {};
+    BIG_BUILDINGS.forEach((b) => b.quests.forEach((q) => (o[q.id] = { running: false, progress: 0, doneDay: 0, doneOnce: false })));
+    return o;
+  });
+
+  const [memos, setMemos] = useState({});
+  const [meetingRooms, setMeetingRooms] = useState({
+    m1: { reserved: false, by: "", time: "", locked: false },
+    m2: { reserved: true, by: "도희", time: "14:00", locked: false },
+    m3: { reserved: false, by: "", time: "", locked: true },
+  });
+  const [centerChat, setCenterChat] = useState([
+    { who: "도희", text: "다들 점심 뭐 먹었어요?", me: false },
+    { who: "창민", text: "저는 항균양말 라인 검수 끝!", me: false },
+  ]);
+  const [thanksInv, setThanksInv] = useState([]);
+  const [postits, setPostits] = useState([
+    { id: 1, to: "정인", from: "창민", msg: "저번에 도와줘서 고마워요!", color: "#ffe680" },
+  ]);
+  const [worries, setWorries] = useState([]);
+  const [rented, setRented] = useState({});
+
+  // 신규: 배경음악 / 채팅 / 말풍선 / 피드백 / 메뉴
+  const [worldBgm, setWorldBgm] = useState({ title: "Keshi - 2 Soon", playing: true });
+  const [chat, setChat] = useState([]);
+  const [shout, setShout] = useState(false);
+  const [bubble, setBubble] = useState(null);
+  const bubbleTimer = useRef(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const timers = useRef({});
+  useEffect(() => () => Object.values(timers.current).forEach(clearInterval), []);
+
+  // 폰트
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap";
+    document.head.appendChild(link);
+    return () => { document.head.removeChild(link); };
+  }, []);
+
+  const bigMeta = useMemo(() => BIG_BUILDINGS.find((b) => b.id === bigId) || null, [bigId]);
+  const houseMeta = useMemo(() => HOUSES.find((h) => h.id === houseId) || null, [houseId]);
+  const rentMeta = useMemo(() => RENT_HOUSES.find((h) => h.id === rentId) || null, [rentId]);
+
+  const award = useCallback((n) => { setGems((g) => g + n); setLifetime((l) => l + n); }, []);
+
+  const sayBubble = useCallback((text) => {
+    setBubble(text);
+    clearTimeout(bubbleTimer.current);
+    bubbleTimer.current = setTimeout(() => setBubble(null), 3000);
+  }, []);
+  useEffect(() => () => clearTimeout(bubbleTimer.current), []);
+  const postChat = useCallback((text, isShout) => {
+    const t = text.trim(); if (!t) return;
+    setChat((c) => [...c, { id: Date.now(), nick: "나", text: t, shout: isShout }].slice(-4));
+    sayBubble(t);
+  }, [sayBubble]);
+  const requestWorldSong = (title) => {
+    if (gems < 5) return;
+    setGems((g) => g - 5);
+    setWorldBgm((b) => ({ ...b, title, playing: true }));
+  };
+
+  const runQuest = useCallback((q) => {
+    setQs((prev) => {
+      const st = prev[q.id];
+      if (st.running) return prev;
+      if (q.repeat ? st.doneDay === day : st.doneOnce) return prev;
+      const step = 40, inc = 100 / (q.duration / step);
+      timers.current[q.id] = setInterval(() => {
+        setQs((p) => {
+          const cur = p[q.id];
+          const np = cur.progress + inc;
+          if (np >= 100) {
+            clearInterval(timers.current[q.id]); delete timers.current[q.id];
+            award(q.reward);
+            return { ...p, [q.id]: { ...cur, running: false, progress: 100, doneDay: q.repeat ? day : cur.doneDay, doneOnce: q.repeat ? cur.doneOnce : true } };
+          }
+          return { ...p, [q.id]: { ...cur, progress: np } };
+        });
+      }, step);
+      return { ...prev, [q.id]: { ...st, running: true, progress: 0 } };
+    });
+  }, [day, award]);
+
+  const nextDay = () => {
+    setDay((d) => d + 1);
+    setQs((p) => {
+      const o = { ...p };
+      Object.keys(o).forEach((k) => { o[k] = { ...o[k], progress: o[k].doneOnce ? 100 : 0 }; });
+      return o;
+    });
+  };
+
+  const handleEnter = (o) => {
+    switch (o.kind) {
+      case "center": setView("center"); break;
+      case "bank": setView("bank"); break;
+      case "board": setView("board"); break;
+      case "big": setBigId(o.id); setView("big"); break;
+      case "house": setHouseId(o.id); setView("house"); break;
+      case "small": setView(o.id); break; // thanks/heart/listening/reels/smoke
+      case "facility": setView(o.id); break; // pool/gym
+      case "rent": setRentId(o.id); setView("rent"); break;
+      default: break;
+    }
+  };
+
+  const doExchange = (amount) => {
+    setGems((g) => g - amount);
+    setExchanged((e) => e + amount);
+    setHistory((h) => [{ id: Date.now(), amount, won: amount * GEM_TO_WON, time: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }) }, ...h]);
+  };
+
+  const backToWorld = () => setView("world");
+
+  return (
+    <div style={{ fontFamily: "'DotGothic16', monospace", minHeight: "100vh", background: `repeating-linear-gradient(45deg, ${C.grass} 0 24px, ${C.grassDark} 24px 48px)`, color: C.ink, padding: 14, boxSizing: "border-box" }}>
+      <StyleBlock />
+      <div style={{ maxWidth: 960, margin: "0 auto 12px" }}>
+        <Panel style={{ padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 22 }}>🌱</span>
+            <div>
+              <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, color: C.inkSoft }}>ECHO TOWN</div>
+              <div style={{ fontSize: 13, color: C.inkSoft }}>오픈월드 워크 시뮬레이터</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <span style={{ fontSize: 12, color: C.inkSoft }}>📅 DAY {day}</span>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 11, color: C.inkSoft }}>보유 스타 젬</div>
+              <GemBadge amount={gems} big />
+            </div>
+          </div>
+        </Panel>
+      </div>
+
+      <div style={{ maxWidth: 960, margin: "0 auto" }}>
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} bubble={bubble} />}
+        {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} />}
+        {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
+        {view === "big" && bigMeta && <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />}
+        {view === "house" && houseMeta && <HomeView house={houseMeta} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
+        {view === "thanks" && <ThanksView gems={gems} inventory={thanksInv} postits={postits} onBuy={(it) => { setGems((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={(p) => setPostits((v) => [...v, { ...p, id: Date.now() }])} onBack={backToWorld} bubble={bubble} />}
+        {view === "heart" && <HeartView gems={gems} worries={worries} onPost={(text, cost) => { setGems((g) => g - cost); setWorries((w) => [{ id: Date.now(), text }, ...w]); }} onBack={backToWorld} bubble={bubble} />}
+        {view === "listening" && <ListeningView onBack={backToWorld} gems={gems} onSpend={(n) => setGems((g) => g - n)} bubble={bubble} />}
+        {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} />}
+        {view === "minigame" && <MiniGameRoom onBack={backToWorld} onReward={(n) => award(n)} bubble={bubble} />}
+        {view === "pool" && <PoolView onBack={backToWorld} bubble={bubble} />}
+        {view === "gym" && <GymView onBack={backToWorld} onWork={() => award(4)} bubble={bubble} />}
+        {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
+        {view === "board" && <BoardView onBack={backToWorld} />}
+        {view === "bank" && <BankView gems={gems} lifetime={lifetime} exchanged={exchanged} history={history} onExchange={doExchange} onBack={backToWorld} />}
+        {view === "rent" && rentMeta && <RentView house={rentMeta} gems={gems} rented={!!rented[rentId]} onRent={() => { setGems((g) => g - rentMeta.rent); setRented((r) => ({ ...r, [rentId]: true })); }} onBack={backToWorld} />}
+      </div>
+
+      <div style={{ maxWidth: 960, margin: "14px auto 0", textAlign: "center", fontSize: 11, color: "rgba(42,30,20,0.65)" }}>
+        프로토타입 데모 · 화폐/환전/렌트/통화·채팅은 모두 시뮬레이션(로컬)입니다. 새로고침 시 초기화됩니다.
+      </div>
+
+      {/* 항상 떠있는 UI: 채팅 / 메뉴 / 피드백 */}
+      <ChatDock messages={chat} shout={shout} onToggleShout={() => setShout((s) => !s)} onSend={postChat} />
+      <MenuButton onClick={() => setMenuOpen(true)} />
+      <FeedbackButton />
+      {menuOpen && <ProfileMenu onClose={() => setMenuOpen(false)} />}
+    </div>
+  );
+}
+
+/* ============================== 전역 CSS ============================= */
 function StyleBlock() {
   return (
     <style>{`
       * { -webkit-tap-highlight-color: transparent; }
       button { font-family: 'DotGothic16', monospace; }
+      input, textarea { color: ${C.ink}; }
       .px-btn { transition: transform .05s ease, box-shadow .05s ease; }
       .px-btn:not(:disabled):active { transform: translateY(3px); box-shadow: none !important; }
       .px-btn:focus-visible { outline: 3px solid ${C.bankRoof}; outline-offset: 2px; }
-
-      .map-obj { transition: transform .12s ease, filter .12s ease; }
-      .map-obj:hover { transform: translate(-50%, -34%) scale(1.06); filter: drop-shadow(0 6px 0 rgba(0,0,0,.25)); }
-      .house-obj:hover { transform: translate(-50%,-34%) scale(1.06); filter: drop-shadow(0 6px 0 rgba(0,0,0,.25)); }
-      .map-obj:focus-visible { outline: 3px solid ${C.gem}; outline-offset: 4px; }
-
-      @keyframes gemFloat {
-        0%   { transform: translateY(0);   opacity: 0; }
-        20%  { opacity: 1; }
-        100% { transform: translateY(-46px); opacity: 0; }
-      }
-      .gem-pop { animation: gemFloat 1.1s ease-out forwards; }
-
+      .map-obj { transition: transform .1s ease, filter .1s ease; }
+      .map-obj:hover { transform: translate(-50%,-50%) scale(1.05); filter: drop-shadow(0 5px 0 rgba(0,0,0,.25)); }
+      .map-obj:focus-visible { outline: 3px solid ${C.gem}; outline-offset: 3px; }
+      @keyframes gemFloat { 0%{ transform: translateY(0); opacity:0;} 20%{opacity:1;} 100%{ transform: translateY(-40px); opacity:0;} }
+      .gem-pop { animation: gemFloat 1.6s ease-out forwards; }
       @keyframes bob { 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-3px);} }
-      .hero-bob { animation: bob .35s steps(2) infinite; }
-
-      @keyframes spin { 0%{ transform: rotate(0);} 100%{ transform: rotate(360deg);} }
-      .gem-spin { display: inline-block; animation: spin 6s linear infinite; }
-
+      .hero-bob { animation: bob .45s steps(2) infinite; }
+      @keyframes spin { 0%{transform:rotate(0);} 100%{transform:rotate(360deg);} }
+      .gem-spin { display:inline-block; animation: spin 6s linear infinite; }
       @keyframes promptPulse { 0%,100%{ transform: translateX(-50%) translateY(0);} 50%{ transform: translateX(-50%) translateY(-3px);} }
       .enter-prompt { animation: promptPulse .8s ease-in-out infinite; }
-
+      @keyframes bubblePop { 0%{ transform: translateX(-50%) scale(.6); opacity:0;} 60%{ transform: translateX(-50%) scale(1.05);} 100%{ transform: translateX(-50%) scale(1); opacity:1;} }
+      .chat-bubble { animation: bubblePop .2s ease-out; }
+      .game-vp:focus, .game-vp:focus-visible { outline: none; }
       @media (prefers-reduced-motion: reduce) {
-        .gem-pop, .hero-bob, .gem-spin, .enter-prompt, .px-btn, .map-obj { animation: none !important; transition: none !important; }
+        .gem-pop,.hero-bob,.gem-spin,.enter-prompt,.chat-bubble,.px-btn,.map-obj { animation:none !important; transition:none !important; }
       }
     `}</style>
   );
