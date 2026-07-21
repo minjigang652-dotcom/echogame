@@ -580,7 +580,7 @@ export default function App() {
   const [gratitudeNotes, setGratitudeNotes] = useState(saved.current?.gratitudeNotes ?? []);
   const [heartNotes, setHeartNotes] = useState(saved.current?.heartNotes ?? []);
   const [inventory, setInventory] = useState(saved.current?.inventory ?? {});
-  const [rooms, setRooms] = useState(saved.current?.rooms ?? () => {
+  const [rooms, setRooms] = useState(() => { if (saved.current?.rooms) return saved.current.rooms;
     const o = {};
     MEETING_ROOMS.forEach((r) => { o[r.id] = { locked: false, reservations: [], screenShare: false, cam: false, call: false }; });
     return o;
