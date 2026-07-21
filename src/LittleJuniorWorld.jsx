@@ -33,21 +33,21 @@ const BIG_BUILDINGS = [
   { id: "alba", name: "알바", icon: "🛠", color: "#7a8b99", colorDk: "#5c6b78",
     categories: ["네이버", "영상", "기타"],
     quests: [
-      { id: "ab_n1", cat: "네이버", title: "블로그 포스팅", desc: "협찬 블로그 글 1건 작성", reward: 12, duration: 1600, repeat: true },
-      { id: "ab_n2", cat: "네이버", title: "스마트스토어 상품 등록", desc: "신규 상품 상세페이지 등록", reward: 14, duration: 1800, repeat: true },
-      { id: "ab_n3", cat: "네이버", title: "카페 이벤트 운영", desc: "네이버 카페 이벤트 글 관리 (1회)", reward: 40, duration: 2600, repeat: false },
-      { id: "ab_v1", cat: "영상", title: "유튜브 영상 편집", desc: "10분 분량 컷 편집", reward: 16, duration: 2000, repeat: true },
-      { id: "ab_v2", cat: "영상", title: "릴스 자막 달기", desc: "숏폼 3개에 자막 삽입", reward: 11, duration: 1500, repeat: true },
-      { id: "ab_v3", cat: "영상", title: "브랜드 홍보영상 납품", desc: "클라이언트 최종본 납품 (1회)", reward: 55, duration: 3000, repeat: false },
-      { id: "ab_e1", cat: "기타", title: "포장/발송 지원", desc: "주문 건 포장·송장 처리", reward: 12, duration: 1400, repeat: true },
-      { id: "ab_e2", cat: "기타", title: "매장 진열 정리", desc: "매대 리필 및 정리", reward: 17, duration: 2000, repeat: true },
-      { id: "ab_e3", cat: "기타", title: "월간 재고 실사", desc: "전체 재고 실사 (1회)", reward: 60, duration: 3000, repeat: false },
+      { id: "ab_n1", cat: "네이버", title: "최신글 작업", desc: "몰입의방 - 최신글 댓글 작업", reward: 12, duration: 1600, repeat: true },
+      { id: "ab_n2", cat: "네이버", title: "지식인 작업", desc: "몰입의방 - 지식인 답변 작업", reward: 14, duration: 1800, repeat: true },
+      { id: "ab_n3", cat: "네이버", title: "몰발 작업", desc: "네이버 카페 글&댓글 작업 10건", reward: 40, duration: 2600, repeat: false },
+      { id: "ab_v1", cat: "영상", title: "숏폼 제작", desc: "30초 분량 2개 제작", reward: 16, duration: 2000, repeat: true },
+      { id: "ab_v2", cat: "영상", title: "영상 소스 수집", desc: "20개 수집", reward: 11, duration: 1500, repeat: true },
+      { id: "ab_v3", cat: "영상", title: "영상 원고 작성", desc: "원고 10개 작성", reward: 55, duration: 3000, repeat: false },
+      { id: "ab_e1", cat: "기타", title: "공장 리스트업", desc: "양말 관련 공장 리스트업", reward: 12, duration: 1400, repeat: true },
+      { id: "ab_e2", cat: "기타", title: "인플루언서 리스트업", desc: "뷰티패션 인플루언서 리스트업", reward: 17, duration: 2000, repeat: true },
+      { id: "ab_e3", cat: "기타", title: "재롱", desc: "메롱", reward: 60, duration: 3000, repeat: false },
     ] },
   { id: "underwear", name: "항균속옷", icon: "🩲", color: "#d76b96", colorDk: "#b24d78",
     quests: [
       { id: "uw1", title: "원단 항균 테스트", desc: "샘플 원단 항균 수치 측정", reward: 16, duration: 1700, repeat: true },
-      { id: "uw2", title: "봉제 라인 점검", desc: "당일 생산 라인 품질 확인", reward: 22, duration: 2300, repeat: true },
-      { id: "uw3", title: "신제품 인증 획득", desc: "항균 인증 마크 취득 (1회)", reward: 75, duration: 3300, repeat: false },
+      { id: "uw2", title: "패키지 샘플 확인", desc: "일정 확인", reward: 22, duration: 2300, repeat: true },
+      { id: "uw3", title: "계약금 관련 소통", desc: "정보 취합 및 일정 확인", reward: 75, duration: 3300, repeat: false },
     ] },
   { id: "socks", name: "항균양말", icon: "🧦", color: "#e0a13d", colorDk: "#bd8226",
     quests: [
@@ -55,11 +55,11 @@ const BIG_BUILDINGS = [
       { id: "sk2", title: "사이즈별 검수", desc: "S~XL 규격 검수", reward: 21, duration: 2200, repeat: true },
       { id: "sk3", title: "시즌 컬렉션 런칭", desc: "가을 컬렉션 출시 (1회)", reward: 70, duration: 3200, repeat: false },
     ] },
-  { id: "alba", name: "알바", icon: "🛠", color: "#7a8b99", colorDk: "#5c6b78",
+  { id: "cs", name: "CS", icon: "🛠", color: "#7a8b99", colorDk: "#5c6b78",
     quests: [
-      { id: "ab1", title: "포장/발송 지원", desc: "주문 건 포장·송장 처리", reward: 12, duration: 1400, repeat: true },
-      { id: "ab2", title: "매장 진열 정리", desc: "매대 리필 및 정리", reward: 17, duration: 2000, repeat: true },
-      { id: "ab3", title: "월간 재고 실사", desc: "전체 재고 실사 (1회)", reward: 60, duration: 3000, repeat: false },
+      { id: "cs1", title: "채널톡 답변", desc: "답변답변", reward: 12, duration: 1400, repeat: true },
+      { id: "cs2", title: "카페24 게시판 답변", desc: "24~~", reward: 17, duration: 2000, repeat: true },
+      { id: "cs3", title: "취소접수건 취소처리", desc: "취소취소", reward: 60, duration: 3000, repeat: false },
     ] },
 ];
 
@@ -92,18 +92,17 @@ const RENT_HOUSES = [
 
 const ANNOUNCEMENTS = [
   { id: "a1", title: "7월 워크샵 안내", date: "2026-07-10", body: "31일 만나요~~" },
-  { id: "a2", title: "치앙마이 한 달 살기 신청", date: "2026-07-12", body: "강 건너 치앙마이 하우스 렌트 신청을 받습니다. 렌트비는 스타 젬으로 결제되며, 리버뷰 동은 조기 마감될 수 있습니다." },
-  { id: "a3", title: "감사의 방 리뉴얼", date: "2026-07-18", body: "감사의 방 선반에 신규 상품(향초, 꽃다발)이 입고되었습니다. 감사 칠판에 포스트잇도 자유롭게 붙여주세요." },
-  { id: "a4", title: "게임 개발중..", date: "2026-07-20", body: "좀만 기다려주세용" },
+  { id: "a2", title: "게임 개발중..", date: "2026-07-20", body: "좀만 기다려주세용" },
+  { id: "a3", title: "치앙마이 한 달 살기 신청", date: "2026-07-12", body: "강 건너 치앙마이 하우스 렌트 신청을 받습니다. 렌트비는 스타 젬으로 결제되며, 리버뷰 동은 조기 마감될 수 있습니다." },
+  { id: "a4", title: "감사의 방 리뉴얼", date: "2026-07-18", body: "감사의 방 선반에 신규 상품(향초, 꽃다발)이 입고되었습니다. 감사 칠판에 포스트잇도 자유롭게 붙여주세요." },
   { id: "a5", title: "월말 결산 & 정산 안내", date: "2026-07-28", body: "7월 31일 월말 결산이 있습니다. 중앙은행에서 보유 젬을 확인하고 정산(환전)을 진행해 주세요." },
 ];
 
 const CAL_EVENTS = {
-  "2026-07-10": ["10:00 전사 워크샵(대회의실)"],
-  "2026-07-15": ["14:00 어플 v2.0 스프린트 리뷰"],
-  "2026-07-22": ["11:00 항균속옷 인증 미팅", "16:00 몰입의 방 허들"],
-  "2026-07-28": ["월말 결산 시작"],
-  "2026-07-31": ["7시 롯데호텔 라센느"],
+  "2026-07-10": ["10:00 전체 회의"],
+  "2026-07-15": ["14:00 이날은뭐였지?"],
+  "2026-07-22": ["11:00 에코타운 구경해보세요"],
+  "2026-07-31": ["7시 롯데호텔 라세느"],
 };
 
 /* ======================= 스프라이트 ======================= */
