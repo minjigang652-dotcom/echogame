@@ -61,6 +61,12 @@ const BIG_BUILDINGS = [
       { id: "cs2", title: "카페24 게시판 답변", desc: "24~~", reward: 17, duration: 2000, repeat: true },
       { id: "cs3", title: "취소접수건 취소처리", desc: "취소취소", reward: 60, duration: 3000, repeat: false },
     ] },
+  { id: "app", name: "어플", icon: "🎧", color: "#3fa0a0", colorDk: "#2e7d7d",
+    quests: [
+      { id: "cs1", title: "중국어 컨텐츠 제작", desc: "니하오", reward: 12, duration: 1400, repeat: true },
+      { id: "cs2", title: "영어 컨텐츠 제작", desc: "하이", reward: 17, duration: 2000, repeat: true },
+      { id: "cs3", title: "1T 수집", desc: "20개 수집", reward: 60, duration: 3000, repeat: false },
+    ] },
 ];
 
 const HOUSES = [
@@ -507,7 +513,7 @@ function buildWorld() {
   list.push({ id: "bank", kind: "bank", x: 1000, y: 640, r: 65, label: "🏦 중앙은행" });
   list.push({ id: "board", kind: "board", x: 1585, y: 700, r: 60, label: "📋 게시판" });
   // 대형건물(상단)
-  const bigPos = { app: [960, 320], underwear: [1250, 270], socks: [1560, 300], cs: [1330, 500] };
+  const bigPos = { app: [960, 320], underwear: [1250, 300], socks: [1560, 320], alba: [1120, 520], cs: [1440, 520] };
   BIG_BUILDINGS.forEach((b) => { const p = bigPos[b.id] || [1300, 400]; list.push({ id: b.id, kind: "big", x: p[0], y: p[1], r: 75, label: `${b.icon} ${b.name}`, meta: b }); });
   // 집(좌측 클러스터)
   const hPos = [[470, 560], [730, 545], [455, 780], [720, 775], [470, 1000], [730, 1000], [470, 1210], [730, 1210]];
