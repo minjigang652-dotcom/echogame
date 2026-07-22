@@ -509,6 +509,7 @@ function buildWorld() {
   const list = [];
   // 중심 주민센터
   list.push({ id: "center", kind: "center", x: 1300, y: 760, r: 90, label: "🏛 주민센터", sub: "마을 중심 · 회의/모임" });
+  list.push({ id: "musinsa", kind: "small", x: 1520, y: 760, r: 55, label: "🛍️ 무신사", tint: "#2b2b2b" });
   // 은행 / 게시판
   list.push({ id: "bank", kind: "bank", x: 1000, y: 640, r: 65, label: "🏦 중앙은행" });
   list.push({ id: "board", kind: "board", x: 1585, y: 700, r: 60, label: "📋 게시판" });
@@ -1461,7 +1462,107 @@ function GymView({ onBack, onWork, bubble }) {
     </RoomView>
   );
 }
+/* ======================= 무신사(옷 가게) ======================= */
+const CLOTHES = {
+  top: [
+    { id: "t1", name: "화이트 맨투맨", color: "#eee", price: 7 },
+    { id: "t2", name: "그레이 후드", color: "#9aa0a6", price: 6 },
+    { id: "t3", name: "레드 스웨트", color: "#c0392b", price: 8 },
+    { id: "t4", name: "그린 카라티", color: "#2e7d5b", price: 7 },
+    { id: "t5", name: "네이비 니트", color: "#2c3e66", price: 9 },
+    { id: "t6", name: "블루 가디건", color: "#5b8def", price: 6 },
+  ],
+  bottom: [
+    { id: "b1", name: "블랙 슬랙스", color: "#2b2b2b", price: 6 },
+    { id: "b2", name: "데님 팬츠", color: "#3f6bc4", price: 7 },
+    { id: "b3", name: "베이지 치노", color: "#cbb58a", price: 6 },
+    { id: "b4", name: "그레이 조거", color: "#8a8f94", price: 5 },
+  ],
+  shoes: [
+    { id: "s1", name: "화이트 스니커즈", color: "#f5f5f5", price: 5 },
+    { id: "s2", name: "블랙 슈즈", color: "#222", price: 6 },
+    { id: "s3", name: "레드 런닝화", color: "#c0392b", price: 7 },
+  ],
+};
+const CAT_LABEL = { top: "상의", bottom: "하의", shoes: "신발" };
 
+function Mannequin({ outfit, size = 120 }) {
+  const top = outfit.top ? outfit.top.color : "#cfc6b4";
+  const bottom = outfit.bottom ? outfit.bottom.color : "#7c8794";
+  const shoes = outfit.shoes ? outfit.shoes.color : "#e8e8e8";
+  return (
+    <svg width={size} height={size * 1.6} viewBox="0 0 20 32" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <rect x="7" y="1" width="6" height="6" fill="#f4c9a0" stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="6" y="1" width="8" height="2" fill="#5a3b22" />
+      <rect x="8" y="4" width="1.2" height="1.2" fill="#2b1f14" /><rect x="10.8" y="4" width="1.2" height="1.2" fill="#2b1f14" />
+      <rect x="5" y="7" width="10" height="10" fill={top} stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="3.5" y="7.5" width="2" height="8" fill={top} stroke="#2b1f14" strokeWidth="0.3" />
+      <rect x="14.5" y="7.5" width="2" height="8" fill={top} stroke="#2b1f14" strokeWidth="0.3" />
+      <rect x="5.5" y="17" width="4" height="9" fill={bottom} stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="10.5" y="17" width="4" height="9" fill={bottom} stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="5" y="26" width="5" height="3" fill={shoes} stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="10" y="26" width="5" height="3" fill={shoes} stroke="#2b1f14" strokeWidth="0.4" />
+    </svg>
+  );
+}
+
+function MusinsaView({ gems, outfit, owned, onBuy, onBack, bubble }) {
+  const [cat, setCat] = useState(null);
+  const [buy, setBuy] = useState(null);
+  const furniture = [
+    { id: "staff1", x: 60, y: 70, w: 70, h: 110, color: "#5b8def", emoji: "🧑‍💼", label: "직원 민서", toast: "어서오세요! 편하게 구경하세요 👕" },
+    { id: "staff2", x: 510, y: 70, w: 70, h: 110, color: "#d76b96", emoji: "👩‍💼", label: "직원 지혜", toast: "오늘 신상 많이 들어왔어요 ✨" },
+    { id: "top", x: 120, y: 250, w: 110, h: 110, color: "#caa06a", emoji: "👕", label: "상의 옷장", onInteract: () => setCat("top") },
+    { id: "bottom", x: 270, y: 250, w: 110, h: 110, color: "#a9814a", emoji: "👖", label: "하의 옷장", onInteract: () => setCat("bottom") },
+    { id: "shoes", x: 420, y: 250, w: 110, h: 110, color: "#8a5a3b", emoji: "👟", label: "신발 옷장", onInteract: () => setCat("shoes") },
+  ];
+  const pickItem = (item) => {
+    if (owned[item.id]) onBuy(cat, item);
+    else setBuy(item);
+  };
+  return (
+    <RoomView title="무신사" icon="🛍️" sub="직원 2명 · 옷장(상의/하의/신발)에서 옷 구매·착용" bg="#e7e2da" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!cat} headerBg="#2b2b2b" bubble={bubble}>
+      {cat && (
+        <RoomModal title={`🛒 무신사 · ${CAT_LABEL[cat]}`} onClose={() => { setCat(null); setBuy(null); }} maxW={440}>
+          <div style={{ display: "flex", gap: 12 }}>
+            <div style={{ flexShrink: 0, textAlign: "center", background: "#dfe3e6", border: `3px solid ${C.ink}`, padding: 8 }}>
+              <Mannequin outfit={outfit} size={96} />
+              <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 2 }}>내 아바타</div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>
+                {Object.keys(CAT_LABEL).map((k) => (
+                  <PxButton key={k} tone={k === cat ? "good" : "wood"} onClick={() => setCat(k)} style={{ fontSize: 11, padding: "5px 9px" }}>{CAT_LABEL[k]}</PxButton>
+                ))}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, maxHeight: 210, overflow: "auto" }}>
+                {CLOTHES[cat].map((item) => {
+                  const has = owned[item.id]; const on = outfit[cat] && outfit[cat].id === item.id;
+                  return (
+                    <button key={item.id} onClick={() => pickItem(item)} style={{ cursor: "pointer", background: on ? C.gem : C.white, border: `3px solid ${on ? C.ink : C.parchEdge}`, padding: 6, textAlign: "center" }}>
+                      <div style={{ width: "100%", height: 44, background: item.color, border: `2px solid ${C.ink}` }} />
+                      <div style={{ fontSize: 10, marginTop: 3 }}>{item.name}</div>
+                      <div style={{ fontSize: 11, fontWeight: "bold", color: has ? C.good : "#a86e13" }}>{has ? (on ? "착용중" : "보유중") : `⭐ ${item.price}`}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          {buy && (
+            <div style={{ marginTop: 12, background: C.white, border: `3px solid ${C.ink}`, padding: 12 }}>
+              <div style={{ fontSize: 13, marginBottom: 8 }}>「{buy.name}」를 구매할까요? <b>⭐ {buy.price}</b> (보유 {fmt(gems)})</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <PxButton tone="ink" onClick={() => setBuy(null)} style={{ flex: 1, padding: 9, fontSize: 13 }}>취소</PxButton>
+                <PxButton tone="gold" disabled={gems < buy.price} onClick={() => { onBuy(cat, buy); setBuy(null); }} style={{ flex: 1, padding: 9, fontSize: 13 }}>{gems < buy.price ? "젬 부족" : "구매하기"}</PxButton>
+              </div>
+            </div>
+          )}
+        </RoomModal>
+      )}
+    </RoomView>
+  );
+}
 /* ======================= 흡연의 방(플레이버) ======================= */
 function SmokeView({ onBack, bubble }) {
   const furniture = [
@@ -1966,6 +2067,15 @@ export default function App() {
   ]);
   const [worries, setWorries] = useState([]);
   const [rented, setRented] = useState({});
+  const [outfit, setOutfit] = useState({ top: null, bottom: null, shoes: null });
+  const [owned, setOwned] = useState({});
+  const buyClothing = (catKey, item) => {
+    if (owned[item.id]) { setOutfit((o) => ({ ...o, [catKey]: item })); return; }
+    if (gems < item.price) return;
+    setGems((g) => g - item.price);
+    setOwned((v) => ({ ...v, [item.id]: true }));
+    setOutfit((o) => ({ ...o, [catKey]: item }));
+  };
 
   // 신규: 배경음악 / 채팅 / 말풍선 / 피드백 / 메뉴
   const [worldBgm, setWorldBgm] = useState({ title: "Keshi - 2 Soon", playing: true });
@@ -2105,6 +2215,7 @@ export default function App() {
         {view === "pool" && <PoolView onBack={backToWorld} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => award(4)} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
+        {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
         {view === "board" && <BoardView onBack={backToWorld} />}
         {view === "bank" && <BankView gems={gems} lifetime={lifetime} exchanged={exchanged} history={history} onExchange={doExchange} onBack={backToWorld} />}
         {view === "rent" && rentMeta && <RentView house={rentMeta} gems={gems} rented={!!rented[rentId]} onRent={() => { setGems((g) => g - rentMeta.rent); setRented((r) => ({ ...r, [rentId]: true })); }} onBack={backToWorld} />}
