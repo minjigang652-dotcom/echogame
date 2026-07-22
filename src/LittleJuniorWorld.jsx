@@ -450,9 +450,20 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
           {/* 가구 */}
           {furniture.map((f) => {
             const active = f.id === near;
+            if (f.npc) {
+              return (
+                <div key={f.id} style={{ position: "absolute", left: f.x, top: f.y, width: f.w, height: f.h, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
+                  <div style={{ filter: active ? `drop-shadow(0 0 4px ${C.gem})` : "none" }}>
+                    <Hero facing={f.facing || 1} moving={false} size={f.spriteSize || 40} />
+                  </div>
+                  <span style={{ fontSize: 10, color: C.ink, marginTop: 2, fontWeight: "bold", background: C.parch, border: `2px solid ${C.ink}`, padding: "0 5px", whiteSpace: "nowrap" }}>{f.label}</span>
+                </div>
+              );
+            }
             return (
               <div key={f.id} style={{ position: "absolute", left: f.x, top: f.y, width: f.w, height: f.h,
-                background: f.color || "#c9a15f", border: `3px solid ${C.ink}`,
+                background: f.color || "#c9a15f", border: `3px solid ${C.ink}`, borderRadius: f.round ? "50%" : 0,
+                boxShadow: active ? `0 0 0 3px ${C.gem}` : "inset 0 0 0 2px rgba(255,255,255,0.25)",
                 boxShadow: active ? `0 0 0 3px ${C.gem}` : "inset 0 0 0 2px rgba(255,255,255,0.25)",
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
                 <span style={{ fontSize: Math.min(f.w, f.h) > 46 ? 26 : 18, lineHeight: 1 }}>{f.emoji}</span>
@@ -509,6 +520,9 @@ function buildWorld() {
   const list = [];
   // 중심 주민센터
   list.push({ id: "center", kind: "center", x: 1300, y: 760, r: 90, label: "🏛 주민센터", sub: "마을 중심 · 회의/모임" });
+  list.push({ id: "sandbag", kind: "small", x: 800, y: 360, r: 55, label: "🥊 샌드백", tint: "#c0563a" });
+  list.push({ id: "musinsa", kind: "small", x: 1650, y: 1260, r: 55, label: "🛍️ 무신사", tint: "#2b2b2b" });
+list.push({ id: "jjeop", kind: "small", x: 1820, y: 1210, r: 55, label: "🍴 쩝쩝박사", tint: "#c0563a" });
   // 은행 / 게시판
   list.push({ id: "bank", kind: "bank", x: 1000, y: 640, r: 65, label: "🏦 중앙은행" });
   list.push({ id: "board", kind: "board", x: 1585, y: 700, r: 60, label: "📋 게시판" });
@@ -547,7 +561,7 @@ const WORLD = { w: 2620, h: 1520 };
 const RIVER_X = 2140, RIVER_W = 120;
 const BRIDGE_Y1 = 690, BRIDGE_Y2 = 800;   // 이 구간(다리)에서만 강을 건널 수 있음
 
-function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble }) {
+function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false }) {
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
@@ -649,6 +663,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
   const camY = Math.max(0, Math.min(WORLD.h - vp.h, pos.y - vp.h / 2));
 
   const spriteFor = (o) => {
+    if (o.id === "sandbag") return <Sandbag size={92} />;
     switch (o.kind) {
       case "center": return <Villa size={230} />;
       case "bank": return <PixelBank size={150} />;
@@ -716,6 +731,10 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
               </div>
             </button>
           ))}
+
+          {/* 비 효과 (마을 / 치앙마이 각각) */}
+          {townRain && <div className="rain-layer" style={{ position: "absolute", left: 0, top: 0, width: RIVER_X, height: WORLD.h, pointerEvents: "none", zIndex: 15 }} />}
+          {cmRain && <div className="rain-layer" style={{ position: "absolute", left: RIVER_X, top: 0, width: WORLD.w - RIVER_X, height: WORLD.h, pointerEvents: "none", zIndex: 15 }} />}
 
           {/* 플레이어 */}
           <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-70%)", zIndex: 20, pointerEvents: "none" }}>
@@ -1461,7 +1480,298 @@ function GymView({ onBack, onWork, bubble }) {
     </RoomView>
   );
 }
+/* ======================= 쩝쩝박사(음식점) ======================= */
+const JJEOP_MENU = [
+  { name: "마라탕", emoji: "🍲" }, { name: "치킨", emoji: "🍗" }, { name: "찜닭", emoji: "🍗" },
+  { name: "피자", emoji: "🍕" }, { name: "햄버거", emoji: "🍔" }, { name: "국밥", emoji: "🍚" },
+  { name: "서브웨이", emoji: "🥪" }, { name: "김치찜", emoji: "🥘" }, { name: "엽떡", emoji: "🌶️" },
+  { name: "회", emoji: "🍣" }, { name: "삼겹살", emoji: "🥓" }, { name: "콩국수", emoji: "🍜" },
+  { name: "냉면", emoji: "🥶" }, { name: "만두", emoji: "🥟" }, { name: "잔치국수", emoji: "🍜" },
+  { name: "칼국수", emoji: "🍜" }, { name: "족발", emoji: "🍖" }, { name: "보쌈", emoji: "🥬" },
+  { name: "마라샹궈", emoji: "🍲" }, { name: "돈까스", emoji: "🍱" }, { name: "쌀국수", emoji: "🍜" },
+  { name: "제육볶음", emoji: "🍳" },
+];
+const jjeopPick = () => JJEOP_MENU[Math.floor(Math.random() * JJEOP_MENU.length)];
 
+function JjeopView({ onBack, bubble }) {
+  const [modal, setModal] = useState(null);
+  const [today, setToday] = useState(null);
+  const [recList, setRecList] = useState([{ nick: "정인", text: "저 오늘 국밥 땡겨요...🍚" }, { nick: "도희", text: "마라탕 각인데?" }]);
+  const [recText, setRecText] = useState("");
+  const [recNick, setRecNick] = useState("");
+  const postRec = () => {
+    if (!recText.trim()) return;
+    setRecList((v) => [...v, { nick: recNick.trim() || "익명", text: recText.trim() }]);
+    setRecText("");
+  };
+  const [step, setStep] = useState(1);
+  const [fMenu, setFMenu] = useState(null);
+  const furniture = [
+    { id: "table", x: 250, y: 150, w: 140, h: 140, round: true, color: "#caa06a", emoji: "🍽️", label: "원형 테이블 (앉기)", onInteract: () => { setToday(jjeopPick()); setModal("table"); } },
+    { id: "rec", x: 40, y: 180, w: 100, h: 90, color: "#7bbf8f", emoji: "📋", label: "메뉴 추천 테이블", onInteract: () => setModal("rec") },
+    { id: "fortune", x: 500, y: 170, w: 100, h: 100, color: "#8e5a9e", emoji: "🔮", label: "점심술사", onInteract: () => { setStep(1); setFMenu(null); setModal("fortune"); } },
+  ];
+  const answer = (yes) => {
+    if (!yes) { setStep("bye"); return; }
+    if (step === 4) { setFMenu(jjeopPick()); setStep("result"); return; }
+    setStep((s) => s + 1);
+  };
+  const Q = { 1: "메뉴를 고르지 못하고 있나요?", 2: "제가 골라드릴까요?", 3: "골라준대로 꼭 드셔야됩니다. 꼭 드실건가요?", 4: "진짜로 꼭 드실거죠?" };
+  return (
+    <RoomView title="쩝쩝박사" icon="🍴" sub="가운데 테이블에서 오늘의 메뉴 · 메뉴 추천 · 점심술사" bg="#efe0cf" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!modal} headerBg="#c0563a" bubble={bubble}>
+      {modal === "table" && today && (
+        <RoomModal title="🪑 원형 테이블" onClose={() => setModal(null)} maxW={380}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 13, color: C.inkSoft }}>오늘의 메뉴는 이거~</div>
+            <div style={{ fontSize: 72, margin: "8px 0" }}>{today.emoji}</div>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 16 }}>{today.name}</div>
+            <div style={{ fontSize: 15, marginTop: 12, color: "#c0563a" }}>맛있게 드세요 ~ ♥</div>
+          </div>
+        </RoomModal>
+      )}
+      {modal === "rec" && (
+        <RoomModal title="📋 메뉴 추천 게시판" onClose={() => setModal(null)} maxW={380}>
+          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>먹고 싶은 메뉴를 멘트로 자유롭게 남겨요! (예: 저 마라탕 땡겨요....)</div>
+          <div style={{ height: 180, overflow: "auto", background: C.white, border: `3px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 5 }}>
+            {recList.map((r, i) => (
+              <div key={i} style={{ fontSize: 13, borderBottom: `1px dashed ${C.parchEdge}`, paddingBottom: 4 }}>
+                <b style={{ color: "#5b8def", fontSize: 11 }}>{r.nick}</b> <span>{r.text}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+            <input value={recNick} onChange={(e) => setRecNick(e.target.value)} placeholder="닉네임" style={{ width: 90, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+            <input value={recText} onChange={(e) => setRecText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") postRec(); }} placeholder="멘트 입력 후 Enter" style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+            <PxButton tone="good" onClick={postRec} style={{ fontSize: 12, padding: "8px 12px" }}>등록</PxButton>
+          </div>
+        </RoomModal>
+      )}
+      {modal === "fortune" && (
+        <RoomModal title="🔮 점심술사" onClose={() => setModal(null)} maxW={360}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 56 }}>🧙‍♀️</div>
+            <div className="chat-bubble" style={{ display: "inline-block", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "8px 12px", fontSize: 14, margin: "8px 0" }}>
+              {step === "bye" ? "가세요." : step === "result" ? `오늘은 「${fMenu.name}」 ${fMenu.emoji} 드세요!` : Q[step]}
+            </div>
+            {step !== "bye" && step !== "result" && (
+              <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 8 }}>
+                <PxButton tone="good" onClick={() => answer(true)} style={{ padding: "8px 20px", fontSize: 14 }}>네</PxButton>
+                <PxButton tone="danger" onClick={() => answer(false)} style={{ padding: "8px 20px", fontSize: 14 }}>아니요</PxButton>
+              </div>
+            )}
+            {(step === "bye" || step === "result") && (
+              <PxButton tone="ink" onClick={() => setModal(null)} style={{ marginTop: 6, padding: "8px 16px", fontSize: 13 }}>닫기</PxButton>
+            )}
+          </div>
+        </RoomModal>
+      )}
+    </RoomView>
+  );
+}
+
+/* ======================= 무신사(옷 가게) ======================= */
+const CLOTHES = {
+  top: [
+    { id: "t1", name: "화이트 맨투맨", color: "#eee", price: 7 },
+    { id: "t2", name: "그레이 후드", color: "#9aa0a6", price: 6 },
+    { id: "t3", name: "레드 스웨트", color: "#c0392b", price: 8 },
+    { id: "t4", name: "그린 카라티", color: "#2e7d5b", price: 7 },
+    { id: "t5", name: "네이비 니트", color: "#2c3e66", price: 9 },
+    { id: "t6", name: "블루 가디건", color: "#5b8def", price: 6 },
+  ],
+  bottom: [
+    { id: "b1", name: "블랙 슬랙스", color: "#2b2b2b", price: 6 },
+    { id: "b2", name: "데님 팬츠", color: "#3f6bc4", price: 7 },
+    { id: "b3", name: "베이지 치노", color: "#cbb58a", price: 6 },
+    { id: "b4", name: "그레이 조거", color: "#8a8f94", price: 5 },
+  ],
+  shoes: [
+    { id: "s1", name: "화이트 스니커즈", color: "#f5f5f5", price: 5 },
+    { id: "s2", name: "블랙 슈즈", color: "#222", price: 6 },
+    { id: "s3", name: "레드 런닝화", color: "#c0392b", price: 7 },
+  ],
+};
+const CAT_LABEL = { top: "상의", bottom: "하의", shoes: "신발" };
+
+function Mannequin({ outfit, size = 120 }) {
+  const top = outfit.top ? outfit.top.color : "#cfc6b4";
+  const bottom = outfit.bottom ? outfit.bottom.color : "#7c8794";
+  const shoes = outfit.shoes ? outfit.shoes.color : "#e8e8e8";
+  return (
+    <svg width={size} height={size * 1.6} viewBox="0 0 20 32" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <rect x="7" y="1" width="6" height="6" fill="#f4c9a0" stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="6" y="1" width="8" height="2" fill="#5a3b22" />
+      <rect x="8" y="4" width="1.2" height="1.2" fill="#2b1f14" /><rect x="10.8" y="4" width="1.2" height="1.2" fill="#2b1f14" />
+      <rect x="5" y="7" width="10" height="10" fill={top} stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="3.5" y="7.5" width="2" height="8" fill={top} stroke="#2b1f14" strokeWidth="0.3" />
+      <rect x="14.5" y="7.5" width="2" height="8" fill={top} stroke="#2b1f14" strokeWidth="0.3" />
+      <rect x="5.5" y="17" width="4" height="9" fill={bottom} stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="10.5" y="17" width="4" height="9" fill={bottom} stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="5" y="26" width="5" height="3" fill={shoes} stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="10" y="26" width="5" height="3" fill={shoes} stroke="#2b1f14" strokeWidth="0.4" />
+    </svg>
+  );
+}
+
+function MusinsaView({ gems, outfit, owned, onTryOn, onBuy, onBack, bubble }) {
+  const [cat, setCat] = useState(null);
+  const furniture = [
+    { id: "staff1", x: 90, y: 80, w: 50, h: 82, npc: true, facing: 1, label: "직원 민서", toast: "어서오세요! 편하게 입어보세요 👕" },
+    { id: "staff2", x: 500, y: 80, w: 50, h: 82, npc: true, facing: -1, label: "직원 지혜", toast: "맘에 드는 옷은 눌러서 입어보세요 ✨" },
+    { id: "top", x: 120, y: 250, w: 110, h: 110, color: "#caa06a", emoji: "👕", label: "상의 옷장", onInteract: () => setCat("top") },
+    { id: "bottom", x: 270, y: 250, w: 110, h: 110, color: "#a9814a", emoji: "👖", label: "하의 옷장", onInteract: () => setCat("bottom") },
+    { id: "shoes", x: 420, y: 250, w: 110, h: 110, color: "#8a5a3b", emoji: "👟", label: "신발 옷장", onInteract: () => setCat("shoes") },
+  ];
+  const worn = cat ? outfit[cat] : null;
+  return (
+    <RoomView title="무신사" icon="🛍️" sub="직원 2명 · 옷을 눌러 입어보고(무료), 맘에 들면 구매" bg="#e7e2da" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!cat} headerBg="#2b2b2b" bubble={bubble}>
+      {cat && (
+        <RoomModal title={`🛒 무신사 · ${CAT_LABEL[cat]}`} onClose={() => setCat(null)} maxW={440}>
+          <div style={{ display: "flex", gap: 12 }}>
+            <div style={{ flexShrink: 0, textAlign: "center", background: "#dfe3e6", border: `3px solid ${C.ink}`, padding: 8 }}>
+              <Mannequin outfit={outfit} size={96} />
+              <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 2 }}>내 아바타</div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>
+                {Object.keys(CAT_LABEL).map((k) => (
+                  <PxButton key={k} tone={k === cat ? "good" : "wood"} onClick={() => setCat(k)} style={{ fontSize: 11, padding: "5px 9px" }}>{CAT_LABEL[k]}</PxButton>
+                ))}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, maxHeight: 210, overflow: "auto" }}>
+                {CLOTHES[cat].map((item) => {
+                  const has = owned[item.id]; const on = outfit[cat] && outfit[cat].id === item.id;
+                  return (
+                    <button key={item.id} onClick={() => onTryOn(cat, item)} style={{ cursor: "pointer", background: on ? C.gem : C.white, border: `3px solid ${on ? C.ink : C.parchEdge}`, padding: 6, textAlign: "center" }}>
+                      <div style={{ width: "100%", height: 44, background: item.color, border: `2px solid ${C.ink}` }} />
+                      <div style={{ fontSize: 10, marginTop: 3 }}>{item.name}</div>
+                      <div style={{ fontSize: 11, fontWeight: "bold", color: has ? C.good : "#a86e13" }}>{has ? "보유중" : `⭐ ${item.price}`}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          {worn && (
+            <div style={{ marginTop: 12, background: C.white, border: `3px solid ${C.ink}`, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ flex: 1, fontSize: 13 }}>
+                착용중: <b>{worn.name}</b>{owned[worn.id] ? <span style={{ color: C.good }}> · 보유중 ✓</span> : <span style={{ color: "#a86e13" }}> · ⭐{worn.price} (보유 {fmt(gems)})</span>}
+              </div>
+              {!owned[worn.id] && (
+                <PxButton tone="gold" disabled={gems < worn.price} onClick={() => onBuy(cat, worn)} style={{ padding: "8px 14px", fontSize: 13 }}>{gems < worn.price ? "젬 부족" : "구매하기"}</PxButton>
+              )}
+            </div>
+          )}
+        </RoomModal>
+      )}
+    </RoomView>
+  );
+}
+/* ======================= 샌드백 치기 ======================= */
+function Sandbag({ size = 90 }) {
+  return (
+    <svg width={size} height={size * 1.4} viewBox="0 0 20 28" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <rect x="9" y="0" width="2" height="4" fill="#7a6a55" />
+      <rect x="6" y="4" width="8" height="2" fill="#3a3a3a" />
+      <rect x="6" y="6" width="8" height="18" fill="#b23b2e" stroke="#2b1f14" strokeWidth="0.5" />
+      <rect x="6" y="10" width="8" height="1.5" fill="#8a2a20" />
+      <rect x="6" y="16" width="8" height="1.5" fill="#8a2a20" />
+      <rect x="6" y="6" width="3" height="18" fill="rgba(255,255,255,0.14)" />
+      <rect x="7" y="24" width="6" height="2" fill="#2b1f14" />
+    </svg>
+  );
+}
+
+const GLOVE_CURSOR = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cellipse cx='20' cy='18' rx='13' ry='12' fill='%23c0392b' stroke='%237a1f14' stroke-width='2'/%3E%3Crect x='9' y='26' width='22' height='8' rx='2' fill='%23f0f0f0' stroke='%237a1f14' stroke-width='2'/%3E%3Cellipse cx='9' cy='20' rx='5' ry='6' fill='%23c0392b' stroke='%237a1f14' stroke-width='2'/%3E%3C/svg%3E\") 20 20, pointer";
+
+function playPunch() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    const ctx = playPunch._c || (playPunch._c = new AC());
+    if (ctx.state === "suspended") ctx.resume();
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(170, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.13);
+    g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+    o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + 0.17);
+    const len = Math.floor(ctx.sampleRate * 0.06), b = ctx.createBuffer(1, len, ctx.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
+    const n = ctx.createBufferSource(), ng = ctx.createGain(); ng.gain.value = 0.35;
+    n.buffer = b; n.connect(ng).connect(ctx.destination); n.start(t);
+  } catch (e) {}
+}
+
+function SandbagView({ onBack, scores, onEnd }) {
+  const [count, setCount] = useState(0);
+  const [mode, setMode] = useState("mouse");
+  const [fx, setFx] = useState(0);
+  const [ending, setEnding] = useState(false);
+  const [nick, setNick] = useState("");
+  const hit = () => { setCount((c) => c + 1); setFx(Date.now()); playPunch(); };
+  const finish = () => { if (count <= 0) { onBack(); return; } setEnding(true); };
+  const submit = () => { onEnd(nick.trim() || "익명", count); setCount(0); setNick(""); setEnding(false); };
+  useEffect(() => {
+    if (mode !== "keyboard") return;
+    const onKey = (e) => { if ((e.code === "Space" || e.key === " ") && !ending) { e.preventDefault(); hit(); } };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mode, ending]);
+  const ranked = [...scores].sort((a, b) => b.count - a.count).slice(0, 8);
+  return (
+    <Panel style={{ padding: 0, overflow: "hidden", position: "relative" }}>
+      <TitleBar icon="🥊" title="샌드백 치기" sub="샌드백을 마구 클릭! · 끝을 누르면 랭킹 집계" onBack={onBack} bg="#c0563a" fg={C.white} />
+      <div style={{ display: "flex", flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 320px", position: "relative", height: 420, background: "#2a2233", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: mode === "mouse" ? GLOVE_CURSOR : "default" }} onClick={mode === "mouse" ? hit : undefined}>
+          <div style={{ position: "absolute", top: 12, right: 14, textAlign: "center" }}>
+            <div style={{ fontSize: 11, color: "#ffe680" }}>클릭</div>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 26, color: C.gem }}>{count}</div>
+            <PxButton tone="danger" onClick={(e) => { e.stopPropagation(); finish(); }} style={{ marginTop: 6, fontSize: 12, padding: "6px 14px" }}>끝</PxButton>
+          </div>
+          <div key={fx} className={fx ? "bag-hit" : ""} style={{ pointerEvents: "none" }}>
+            <Sandbag size={160} />
+          </div>
+          <div style={{ position: "absolute", bottom: 12, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, pointerEvents: "none" }}>
+            <div style={{ color: "#b9a7d6", fontSize: 12 }}>{mode === "mouse" ? "👊 샌드백을 클릭!" : "⌨️ 스페이스바 연타!"}</div>
+            <div style={{ display: "flex", gap: 6, pointerEvents: "auto" }}>
+              <PxButton tone={mode === "mouse" ? "good" : "wood"} onClick={(e) => { e.stopPropagation(); setMode("mouse"); e.currentTarget.blur(); }} style={{ fontSize: 11, padding: "5px 10px" }}>🖱️ 마우스</PxButton>
+              <PxButton tone={mode === "keyboard" ? "good" : "wood"} onClick={(e) => { e.stopPropagation(); setMode("keyboard"); e.currentTarget.blur(); }} style={{ fontSize: 11, padding: "5px 10px" }}>⌨️ 키보드</PxButton>
+            </div>
+          </div>
+        </div>
+        <div style={{ flex: "1 1 220px", padding: 14, background: C.parch, borderLeft: `3px solid ${C.ink}` }}>
+          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 10 }}>🏆 랭킹</div>
+          {ranked.length === 0 ? (
+            <div style={{ fontSize: 12, color: C.inkSoft }}>아직 기록이 없어요. 쳐보세요!</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              {ranked.map((s, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `2px solid ${C.ink}`, padding: "5px 8px", fontSize: 13 }}>
+                  <span style={{ width: 20, fontWeight: "bold", color: i === 0 ? "#a86e13" : C.inkSoft }}>{i + 1}</span>
+                  <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.nick}</span>
+                  <b>{s.count}</b>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      {ending && (
+        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, padding: 14 }} onClick={() => setEnding(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 320 }}>
+            <Panel style={{ padding: 16 }}>
+              <div style={{ textAlign: "center", marginBottom: 10 }}>총 <b style={{ fontSize: 20, color: C.danger }}>{count}</b>번 쳤어요! 💥</div>
+              <input value={nick} onChange={(e) => setNick(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} maxLength={10} placeholder="닉네임 (랭킹 등록)" autoFocus style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: C.white }} />
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <PxButton tone="ink" onClick={() => setEnding(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>더 치기</PxButton>
+                <PxButton tone="gold" onClick={submit} style={{ flex: 1, padding: 10, fontSize: 13 }}>랭킹 등록</PxButton>
+              </div>
+            </Panel>
+          </div>
+        </div>
+      )}
+    </Panel>
+  );
+}
 /* ======================= 흡연의 방(플레이버) ======================= */
 function SmokeView({ onBack, bubble }) {
   const furniture = [
@@ -1795,10 +2105,76 @@ function ProfileDetail({ p, onBack }) {
     </div>
   );
 }
+function DMChatModal({ person, onClose }) {
+  const [msgs, setMsgs] = useState([{ me: false, text: `안녕하세요! ${person.name}이에요 👋 무슨 일이에요?` }]);
+  const [text, setText] = useState("");
+  const replies = ["오 좋아요!", "ㅋㅋㅋ 그러게요", "저도 그렇게 생각해요 👍", "언제 커피 한잔 해요 ☕", "지금 좀 바빠서요, 이따 봬요!", "헐 대박", "알겠어요, 확인해볼게요 📝"];
+  const endRef = useRef(null);
+  const send = () => {
+    const t = text.trim(); if (!t) return;
+    setMsgs((m) => [...m, { me: true, text: t }]); setText("");
+    setTimeout(() => setMsgs((m) => [...m, { me: false, text: replies[Math.floor(Math.random() * replies.length)] }]), 700 + Math.random() * 600);
+  };
+  useEffect(() => { if (endRef.current) endRef.current.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
+        <Panel style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "#5b8def", color: C.white, borderBottom: `3px solid ${C.ink}` }}>
+            <span style={{ fontSize: 22 }}>{person.avatar}</span>
+            <b style={{ flex: 1 }}>{person.name}</b>
+            <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+          </div>
+          <div style={{ height: 260, overflow: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 6, background: "#efe6d2" }}>
+            {msgs.map((m, i) => (
+              <div key={i} style={{ alignSelf: m.me ? "flex-end" : "flex-start", background: m.me ? C.gem : C.white, border: `2px solid ${C.ink}`, padding: "5px 9px", fontSize: 13, maxWidth: "78%" }}>{m.text}</div>
+            ))}
+            <div ref={endRef} />
+          </div>
+          <div style={{ display: "flex", gap: 6, padding: 8, borderTop: `3px solid ${C.ink}` }}>
+            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지 입력 후 Enter" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+            <PxButton tone="good" onClick={send} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
 
+function FaceTalkModal({ person, onClose }) {
+  const [sec, setSec] = useState(0);
+  const [mic, setMic] = useState(true);
+  const [cam, setCam] = useState(true);
+  useEffect(() => { const iv = setInterval(() => setSec((s) => s + 1), 1000); return () => clearInterval(iv); }, []);
+  const mm = String(Math.floor(sec / 60)).padStart(2, "0"), ss = String(sec % 60).padStart(2, "0");
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420 }}>
+        <Panel style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ padding: "8px 12px", background: C.ink, color: C.white, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <b style={{ fontSize: 13 }}>📞 페이스톡 · {person.name}</b>
+            <span style={{ fontSize: 12, color: C.good }}>● 연결됨 {mm}:{ss}</span>
+          </div>
+          <div style={{ position: "relative", height: 240, background: "#2a3550", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ fontSize: 96 }}>{cam ? person.avatar : "📷"}</div>
+            <div style={{ position: "absolute", bottom: 8, left: 8, background: "rgba(0,0,0,0.5)", color: C.white, fontSize: 11, padding: "2px 8px" }}>{person.name} {mic ? "" : "🔇"}</div>
+            <div style={{ position: "absolute", bottom: 8, right: 8, width: 70, height: 90, background: "#3a3550", border: `2px solid ${C.white}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34 }}>{cam ? "🧑" : "📷"}</div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "center", gap: 10, padding: 12, background: C.parch }}>
+            <PxButton tone={mic ? "wood" : "danger"} onClick={() => setMic((v) => !v)} style={{ fontSize: 18, padding: "10px 14px" }}>{mic ? "🎙️" : "🔇"}</PxButton>
+            <PxButton tone={cam ? "wood" : "danger"} onClick={() => setCam((v) => !v)} style={{ fontSize: 18, padding: "10px 14px" }}>{cam ? "📷" : "🚫"}</PxButton>
+            <PxButton tone="danger" onClick={onClose} style={{ fontSize: 14, padding: "10px 18px" }}>📵 종료</PxButton>
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
 function ProfileMenu({ onClose }) {
   const [tab, setTab] = useState(null); // null | 'me' | 'villagers'
   const [sel, setSel] = useState(null);
+  const [dm, setDm] = useState(null);
+  const [call, setCall] = useState(null);
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 80, padding: 14 }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "88%", overflow: "auto" }}>
@@ -1832,8 +2208,8 @@ function ProfileMenu({ onClose }) {
                       <span style={{ fontSize: 32 }}>{p.avatar}</span>
                       <span><b style={{ fontSize: 14 }}>{p.name}</b><br /><span style={{ fontSize: 11, color: C.inkSoft }}>💼 {p.job}</span></span>
                     </button>
-                    <PxButton tone="blue" onClick={() => alert(`${p.name}님에게 DM을 보냅니다… (데모)`)} style={{ fontSize: 11, padding: "6px 8px" }}>DM</PxButton>
-                    <PxButton tone="good" onClick={() => alert(`${p.name}님과 페이스톡 연결 중… (데모)`)} style={{ fontSize: 11, padding: "6px 8px" }}>📞 페이스톡</PxButton>
+                    <PxButton tone="blue" onClick={() => setDm(p)} style={{ fontSize: 11, padding: "6px 8px" }}>DM</PxButton>
+                    <PxButton tone="good" onClick={() => setCall(p)} style={{ fontSize: 11, padding: "6px 8px" }}>📞 페이스톡</PxButton>
                   </div>
                 ))}
               </div>
@@ -1841,6 +2217,9 @@ function ProfileMenu({ onClose }) {
           )}
 
           {tab === "villagers" && sel && <ProfileDetail p={sel} onBack={() => setSel(null)} />}
+
+          {dm && <DMChatModal person={dm} onClose={() => setDm(null)} />}
+          {call && <FaceTalkModal person={call} onClose={() => setCall(null)} />}
         </Panel>
       </div>
     </div>
@@ -1859,6 +2238,48 @@ function VitalBar({ label, val, color }) {
   );
 }
 /* ============================== 앱 =================================== */
+function wxIcon(code) {
+  if (code == null) return "⏳";
+  if (code === 0) return "☀️";
+  if (code <= 2) return "🌤️";
+  if (code === 3) return "☁️";
+  if (code <= 48) return "🌫️";
+  if (code <= 67) return "🌧️";
+  if (code <= 77) return "🌨️";
+  if (code <= 82) return "🌦️";
+  if (code <= 86) return "🌨️";
+  if (code >= 95) return "⛈️";
+  return "🌡️";
+}
+const REGIONS = {
+  "서울": { lat: 37.5665, lon: 126.978 },
+  "영등포구": { lat: 37.5264, lon: 126.8962 },
+  "강동구": { lat: 37.5301, lon: 127.1238 },
+  "마포구": { lat: 37.5637, lon: 126.9084 },
+  "인천": { lat: 37.4563, lon: 126.7052 },
+  "용인": { lat: 37.2411, lon: 127.1776 },
+  "부산": { lat: 35.1796, lon: 129.0756 },
+  "대구": { lat: 35.8714, lon: 128.6014 },
+  "대전": { lat: 36.3504, lon: 127.3845 },
+  "제주": { lat: 33.4996, lon: 126.5312 },
+};
+function isRain(code) { return code != null && ((code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95); }
+function useWeather(points) {
+  const [wx, setWx] = useState({});
+  const keyStr = JSON.stringify(points);
+  useEffect(() => {
+    let alive = true;
+    Object.entries(points).forEach(([key, p]) => {
+      if (!p) return;
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&current=temperature_2m,weather_code`)
+        .then((r) => r.json())
+        .then((d) => { if (alive && d && d.current) setWx((w) => ({ ...w, [key]: { temp: Math.round(d.current.temperature_2m), code: d.current.weather_code } })); })
+        .catch(() => {});
+    });
+    return () => { alive = false; };
+  }, [keyStr]);
+  return wx;
+}
 export default function App() {
   const [view, setView] = useState("world");
   const [houseId, setHouseId] = useState(null);
@@ -1897,9 +2318,34 @@ export default function App() {
   ]);
   const [worries, setWorries] = useState([]);
   const [rented, setRented] = useState({});
+  const [boxScores, setBoxScores] = useState([{ nick: "창민", count: 18294719 }, { nick: "정인", count: 129572 }]);
+  const [townRegion, setTownRegion] = useState("서울");
+  const [regionOpen, setRegionOpen] = useState(false);
+  const wxPoints = useMemo(() => ({ town: REGIONS[townRegion], chiangmai: { lat: 18.7883, lon: 98.9853 } }), [townRegion]);
+  const weather = useWeather(wxPoints);
+  const wxZone = worldPos.x >= RIVER_X ? "chiangmai" : "town";
+  const wxName = wxZone === "chiangmai" ? "치앙마이" : townRegion;
+  const curWx = weather[wxZone];
+  const townRain = isRain(weather.town && weather.town.code);
+  const cmRain = isRain(weather.chiangmai && weather.chiangmai.code);
+  const [outfit, setOutfit] = useState({ top: null, bottom: null, shoes: null });
+  const [owned, setOwned] = useState({});
+  const tryOnClothing = (catKey, item) => setOutfit((o) => ({ ...o, [catKey]: item }));
+  const buyClothing = (catKey, item) => {
+    if (owned[item.id]) { setOutfit((o) => ({ ...o, [catKey]: item })); return; }
+    if (gems < item.price) return;
+    setGems((g) => g - item.price);
+    setOwned((v) => ({ ...v, [item.id]: true }));
+    setOutfit((o) => ({ ...o, [catKey]: item }));
+  };
 
   // 신규: 배경음악 / 채팅 / 말풍선 / 피드백 / 메뉴
-  const [worldBgm, setWorldBgm] = useState({ title: "Keshi - 2 Soon", playing: true });
+  const [worldBgm, setWorldBgm] = useState({ title: "3호선 매봉역", playing: false });
+  const audioRef = useRef(null);
+  useEffect(() => {
+    const a = audioRef.current; if (!a) return;
+    if (worldBgm.playing) a.play().catch(() => {}); else a.pause();
+  }, [worldBgm.playing]);
   const [chat, setChat] = useState([]);
   const [shout, setShout] = useState(false);
   const [bubble, setBubble] = useState(null);
@@ -2000,6 +2446,7 @@ export default function App() {
   return (
     <div style={{ fontFamily: "'DotGothic16', monospace", minHeight: "100vh", background: `repeating-linear-gradient(45deg, ${C.grass} 0 24px, ${C.grassDark} 24px 48px)`, color: C.ink, padding: 14, boxSizing: "border-box" }}>
       <StyleBlock />
+      <audio ref={audioRef} src={import.meta.env.BASE_URL + "bgm.mp3"} loop preload="auto" />
       <div style={{ maxWidth: 960, margin: "0 auto 12px" }}>
         <Panel style={{ padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -2014,7 +2461,29 @@ export default function App() {
               <VitalBar label="HP" val={hp} color={C.danger} />
               <VitalBar label="MP" val={mp} color="#3a7bd5" />
             </div>
-            <div style={{ textAlign: "right" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.parch, border: `2px solid ${C.ink}`, padding: "4px 8px" }}>
+              <span style={{ fontSize: 16 }}>{curWx ? wxIcon(curWx.code) : "⏳"}</span>
+              <div style={{ lineHeight: 1.1 }}>
+                <div style={{ fontSize: 13, fontWeight: "bold" }}>{curWx ? `${curWx.temp}°` : "--"}</div>
+                <div style={{ fontSize: 9, color: C.inkSoft }}>{wxName}</div>
+              </div>
+            </div>
+            <PxButton tone="wood" onClick={() => setRegionOpen(true)} style={{ fontSize: 10, padding: "5px 7px" }}>＋지역</PxButton>
+            {regionOpen && (
+              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={() => setRegionOpen(false)}>
+                <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340 }}>
+                  <Panel style={{ padding: 14 }}>
+                    <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 10 }}>📍 마을 지역 선택</div>
+                    <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>고르면 상단 날씨가 그 지역으로 바로 바뀌어요.</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                      {Object.keys(REGIONS).map((r) => (
+                        <PxButton key={r} tone={r === townRegion ? "good" : "wood"} onClick={() => { setTownRegion(r); setRegionOpen(false); }} style={{ padding: 10, fontSize: 13 }}>{r}</PxButton>
+                      ))}
+                    </div>
+                  </Panel>
+                </div>
+              </div>
+            )}
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 11, color: C.inkSoft }}>보유 스타 젬</div>
               <GemBadge amount={gems} big />
@@ -2024,7 +2493,7 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} bubble={bubble} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} bubble={bubble} townRain={townRain} cmRain={cmRain} />}
         {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />}
@@ -2037,6 +2506,9 @@ export default function App() {
         {view === "pool" && <PoolView onBack={backToWorld} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => award(4)} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
+        {view === "sandbag" && <SandbagView onBack={backToWorld} scores={boxScores} onEnd={(nick, count) => setBoxScores((s) => [...s, { nick, count }])} />}
+        {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
+        {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} />}
         {view === "board" && <BoardView onBack={backToWorld} />}
         {view === "bank" && <BankView gems={gems} lifetime={lifetime} exchanged={exchanged} history={history} onExchange={doExchange} onBack={backToWorld} />}
         {view === "rent" && rentMeta && <RentView house={rentMeta} gems={gems} rented={!!rented[rentId]} onRent={() => { setGems((g) => g - rentMeta.rent); setRented((r) => ({ ...r, [rentId]: true })); }} onBack={backToWorld} />}
@@ -2076,6 +2548,10 @@ function StyleBlock() {
       .gem-spin { display:inline-block; animation: spin 6s linear infinite; }
       @keyframes promptPulse { 0%,100%{ transform: translateX(-50%) translateY(0);} 50%{ transform: translateX(-50%) translateY(-3px);} }
       .enter-prompt { animation: promptPulse .8s ease-in-out infinite; }
+      @keyframes bagHit { 0%{transform:translateX(0) rotate(0);} 25%{transform:translateX(7px) rotate(5deg);} 55%{transform:translateX(-6px) rotate(-4deg);} 100%{transform:translateX(0) rotate(0);} }
+      .bag-hit { animation: bagHit .18s ease-out; }
+      @keyframes rainFall { from { background-position: 0 0; } to { background-position: -60px 240px; } }
+      .rain-layer { background-color: rgba(40,50,70,0.16); background-image: repeating-linear-gradient(105deg, transparent 0 9px, rgba(200,215,235,0.5) 9px 10px); animation: rainFall .45s linear infinite; }
       @keyframes bubblePop { 0%{ transform: translateX(-50%) scale(.6); opacity:0;} 60%{ transform: translateX(-50%) scale(1.05);} 100%{ transform: translateX(-50%) scale(1); opacity:1;} }
       .chat-bubble { animation: bubblePop .2s ease-out; }
       .game-vp:focus, .game-vp:focus-visible { outline: none; }
