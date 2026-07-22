@@ -598,13 +598,13 @@ function BigMap({ pos, onClose }) {
               <div style={{ position: "absolute", left: pct(RIVER_X, WORLD.w), top: 0, width: pct(RIVER_W, WORLD.w), height: "100%", background: "#3a6ea5" }} />
               {MAP_ZONES.map((z) => (
                 <div key={z.label} style={{ position: "absolute", left: pct(z.x1, WORLD.w), top: pct(z.y1, WORLD.h), width: pct(z.x2 - z.x1, WORLD.w), height: pct(z.y2 - z.y1, WORLD.h), background: z.color + "44", border: `1px dashed ${z.color}`, display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
-                  <span style={{ fontSize: 11, color: "#2b1f14", fontWeight: "bold", background: "rgba(255,255,255,0.65)", padding: "0 4px", marginTop: 2 }}>{z.label}</span>
+                  <span style={{ fontSize: 15, color: "#2b1f14", fontWeight: "bold", background: "rgba(255,255,255,0.75)", padding: "1px 6px", marginTop: 3 }}>{z.label}</span>
                 </div>
               ))}
               {WORLD_OBJS.filter((o) => o.r).map((o) => (
                 <div key={o.id} style={{ position: "absolute", left: pct(o.x, WORLD.w), top: pct(o.y, WORLD.h), transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", zIndex: 2 }}>
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.ink, border: "1px solid #fff" }} />
-                  <span style={{ fontSize: 9, whiteSpace: "nowrap", background: "rgba(255,255,255,0.88)", border: `1px solid ${C.ink}`, padding: "0 3px", marginTop: 1 }}>{o.label}</span>
+                  <span style={{ fontSize: 12, whiteSpace: "nowrap", background: "rgba(255,255,255,0.92)", border: `1px solid ${C.ink}`, padding: "1px 5px", marginTop: 2, fontWeight: "bold" }}>{o.label}</span>
                 </div>
               ))}
               <div style={{ position: "absolute", left: pct(pos.x, WORLD.w), top: pct(pos.y, WORLD.h), transform: "translate(-50%,-50%)", width: 12, height: 12, borderRadius: "50%", background: "#fff", border: `3px solid ${C.danger}`, boxShadow: "0 0 6px #fff", zIndex: 5 }} />
@@ -676,7 +676,15 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
   const [guardOpen, setGuardOpen] = useState(false);
   const passRef = useRef(false);  // NPC 대화 {label,lines,shown}
   const [hint, setHint] = useState(true);        // "클릭하면 이동" 안내
-  const [dancing, setDancing] = useState(false);        // "클릭하면 이동" 안내
+  const [danceMove, setDanceMove] = useState(null);
+  const [danceMenu, setDanceMenu] = useState(false);
+  const DANCE_MOVES = [
+    { key: "sway", label: "🕺 좌우 흔들기" },
+    { key: "twerk", label: "🍑 엉덩이 흔들기" },
+    { key: "jump", label: "⬆️ 폴짝폴짝" },
+    { key: "spin", label: "🌀 빙글 회전" },
+    { key: "shake", label: "💥 파르르" },
+  ];        // "클릭하면 이동" 안내
   const [reqOpen, setReqOpen] = useState(false); // 신청곡 모달
   const [reqText, setReqText] = useState("");
   const vpRef = useRef(null);
@@ -870,7 +878,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
                 {near.kind === "npc" ? "💬 Space" : "🚪 Space"} · {near.label}
               </div>
             )}
-            <div className={dancing ? "dancing" : ""} style={{ transformOrigin: "bottom center" }}>
+            <div className={danceMove ? "dance-" + danceMove : ""} style={{ transformOrigin: "bottom center" }}>
               <Hero facing={facing} moving={moving} size={36} />
             </div>
           </div>
@@ -887,7 +895,17 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
         <div style={{ position: "absolute", right: 10, top: 10, display: "flex", gap: 8, alignItems: "center" }}>
           <span style={{ background: C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}` }}>📅 DAY {day}</span>
           <PxButton tone="blue" onClick={onNextDay} style={{ fontSize: 11, padding: "6px 9px" }}>🌙 다음 날</PxButton>
-          <PxButton tone={dancing ? "good" : "gold"} onClick={() => setDancing((d) => !d)} style={{ fontSize: 14, padding: "5px 9px" }}>💃</PxButton>
+          <div style={{ position: "relative" }}>
+            <PxButton tone={danceMove ? "good" : "gold"} onClick={() => setDanceMenu((v) => !v)} style={{ fontSize: 14, padding: "5px 9px" }}>💃</PxButton>
+            {danceMenu && (
+              <div style={{ position: "absolute", top: "115%", right: 0, background: C.parch, border: `2px solid ${C.ink}`, zIndex: 30, minWidth: 130, boxShadow: `0 3px 0 ${C.parchEdge}` }}>
+                {DANCE_MOVES.map((m) => (
+                  <button key={m.key} onClick={() => { setDanceMove(m.key); setDanceMenu(false); }} style={{ display: "block", width: "100%", textAlign: "left", background: danceMove === m.key ? C.gem : "transparent", border: "none", borderBottom: `1px solid ${C.parchEdge}`, color: C.ink, fontSize: 12, padding: "7px 10px", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>{m.label}</button>
+                ))}
+                <button onClick={() => { setDanceMove(null); setDanceMenu(false); }} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", color: C.danger, fontSize: 12, padding: "7px 10px", cursor: "pointer", fontFamily: "inherit" }}>⏹ 멈춤</button>
+              </div>
+            )}
+          </div>
         </div>
 
         <MiniMap pos={pos} />
@@ -3120,6 +3138,15 @@ function StyleBlock() {
       .enter-prompt { animation: promptPulse .8s ease-in-out infinite; }
       @keyframes danceSway { 0%, 100% { transform: rotate(-13deg) translateX(-2px); } 50% { transform: rotate(13deg) translateX(2px); } }
       .dancing { animation: danceSway .5s ease-in-out infinite; }
+      @keyframes danceTwerk { 0%,100% { transform: translateX(-3px) scaleY(0.94); } 25% { transform: translateX(3px) scaleY(1); } 50% { transform: translateX(-3px) scaleY(0.94); } 75% { transform: translateX(3px) scaleY(1); } }
+      @keyframes danceJump { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+      @keyframes danceSpin { from { transform: rotateY(0); } to { transform: rotateY(360deg); } }
+      @keyframes danceShake2 { 0%,100% { transform: translateX(-2px) rotate(-3deg); } 50% { transform: translateX(2px) rotate(3deg); } }
+      .dance-sway { animation: danceSway .5s ease-in-out infinite; }
+      .dance-twerk { animation: danceTwerk .28s linear infinite; }
+      .dance-jump { animation: danceJump .5s ease-in-out infinite; }
+      .dance-spin { animation: danceSpin .7s linear infinite; }
+      .dance-shake { animation: danceShake2 .12s linear infinite; }
       @keyframes smokeRise { 0% { transform: translateY(0) scale(0.6); opacity: 0.9; } 100% { transform: translateY(-120px) scale(1.9); opacity: 0; } }
       .smoke-puff { animation: smokeRise 1.8s ease-out forwards; }
       @keyframes bagHit { 0%{transform:translateX(0) rotate(0);} 25%{transform:translateX(7px) rotate(5deg);} 55%{transform:translateX(-6px) rotate(-4deg);} 100%{transform:translateX(0) rotate(0);} }
