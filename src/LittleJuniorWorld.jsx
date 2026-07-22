@@ -556,6 +556,7 @@ list.push({ id: "jjeop", kind: "small", x: 1820, y: 1210, r: 55, label: "🍴 �
     lines: ["안녕 나는 봉준호야", "영상에 대해 배우고 싶다면 영상스쿨을 찾아가봐"] });
   // 치앙마이 표지판 + 렌트 하우스(강 건너)
   list.push({ id: "sign", kind: "sign", x: 2300, y: 640, r: 0, label: "🌴 치앙마이" });
+  list.push({ id: "guard", kind: "npc", npc: "guard", x: 2075, y: 745, r: 55, label: "🛂 검문소" });
   const rPos = [[2360, 800], [2510, 780], [2380, 1000], [2520, 1010]];
   RENT_HOUSES.forEach((h, i) => list.push({ id: h.id, kind: "rent", x: rPos[i][0], y: rPos[i][1], r: 60, label: h.name, meta: h }));
   return list;
@@ -597,13 +598,47 @@ function MiniMap({ pos }) {
     </div>
   );
 }
+function GuardGate({ onPass, onClose }) {
+  const [code, setCode] = useState("");
+  const [err, setErr] = useState(false);
+  const [ok, setOk] = useState(false);
+  const submit = () => {
+    if (code.trim().toLowerCase() === "chiang") { setOk(true); onPass(); setTimeout(onClose, 1000); }
+    else { setErr(true); setCode(""); }
+  };
+  return (
+    <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 40, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 320 }}>
+        <Panel style={{ padding: 16 }}>
+          <div style={{ fontSize: 40, textAlign: "center" }}>🛂</div>
+          {ok ? (
+            <div style={{ textAlign: "center", fontSize: 15, margin: "10px 0", color: C.good, fontWeight: "bold" }}>✅ 통과! 다리를 건너세요 🌉</div>
+          ) : (
+            <>
+              <div style={{ fontSize: 14, textAlign: "center", margin: "8px 0" }}>치앙마이 통행코드를 입력하세요</div>
+              <input value={code} onChange={(e) => { setCode(e.target.value); setErr(false); }} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} autoFocus placeholder="통행코드" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${err ? C.danger : C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: C.white }} />
+              {err && <div style={{ color: C.danger, fontSize: 12, marginTop: 6, textAlign: "center" }}>❌ 코드가 틀렸어요. 통과할 수 없습니다.</div>}
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <PxButton tone="ink" onClick={onClose} style={{ flex: 1, padding: 9, fontSize: 13 }}>돌아가기</PxButton>
+                <PxButton tone="good" onClick={submit} style={{ flex: 1, padding: 9, fontSize: 13 }}>확인</PxButton>
+              </div>
+            </>
+          )}
+        </Panel>
+      </div>
+    </div>
+  );
+}
 function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack }) {
   const [songOpen, setSongOpen] = useState(false);
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
   const [dialog, setDialog] = useState(null);   // NPC 대화 {label,lines,shown}
+  const [guardOpen, setGuardOpen] = useState(false);
+  const passRef = useRef(false);  // NPC 대화 {label,lines,shown}
   const [hint, setHint] = useState(true);        // "클릭하면 이동" 안내
+  const [dancing, setDancing] = useState(false);        // "클릭하면 이동" 안내
   const [reqOpen, setReqOpen] = useState(false); // 신청곡 모달
   const [reqText, setReqText] = useState("");
   const vpRef = useRef(null);
@@ -619,7 +654,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
     setDialog({ label: o.label, lines: o.lines, shown: 1 });
     dialogTimer.current = setTimeout(() => setDialog((d) => (d ? { ...d, shown: Math.min(d.lines.length, 2) } : d)), 1000);
   };
-  const handleObj = (o) => { if (!o) return; if (o.kind === "npc") startDialog(o); else onEnter(o); };
+  const handleObj = (o) => { if (!o) return; if (o.kind === "npc") { if (o.npc === "guard") setGuardOpen(true); else startDialog(o); } else onEnter(o); };
   const handleRef = useRef(handleObj);
   handleRef.current = handleObj;
 
@@ -671,8 +706,9 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
         x += (dx / len) * SPEED; y += (dy / len) * SPEED;
         x = Math.max(30, Math.min(WORLD.w - 30, x));
         y = Math.max(40, Math.min(WORLD.h - 30, y));
-        // 강: 다리(BRIDGE_Y1~Y2)에서만 건너갈 수 있음
-        if (!(y >= BRIDGE_Y1 && y <= BRIDGE_Y2)) {
+        // 강: 다리(BRIDGE_Y1~Y2)에서 + 통행코드 통과 시에만 건널 수 있음
+        const canCross = (y >= BRIDGE_Y1 && y <= BRIDGE_Y2) && passRef.current;
+        if (!canCross) {
           const L = RIVER_X - 6, R = RIVER_X + RIVER_W + 6;
           if (x > L && x < R) x = px <= L ? L : R;
         }
@@ -796,7 +832,9 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
                 {near.kind === "npc" ? "💬 Space" : "🚪 Space"} · {near.label}
               </div>
             )}
-            <Hero facing={facing} moving={moving} size={36} />
+            <div className={dancing ? "dancing" : ""} style={{ transformOrigin: "bottom center" }}>
+              <Hero facing={facing} moving={moving} size={36} />
+            </div>
           </div>
         </div>
 
@@ -811,9 +849,12 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
         <div style={{ position: "absolute", right: 10, top: 10, display: "flex", gap: 8, alignItems: "center" }}>
           <span style={{ background: C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}` }}>📅 DAY {day}</span>
           <PxButton tone="blue" onClick={onNextDay} style={{ fontSize: 11, padding: "6px 9px" }}>🌙 다음 날</PxButton>
+          <PxButton tone={dancing ? "good" : "gold"} onClick={() => setDancing((d) => !d)} style={{ fontSize: 14, padding: "5px 9px" }}>💃</PxButton>
         </div>
 
         <MiniMap pos={pos} />
+
+        {guardOpen && <GuardGate onPass={() => { passRef.current = true; }} onClose={() => setGuardOpen(false)} />}
 
         {/* NPC 대화창 */}
         {dialog && (
@@ -3039,6 +3080,8 @@ function StyleBlock() {
       .gem-spin { display:inline-block; animation: spin 6s linear infinite; }
       @keyframes promptPulse { 0%,100%{ transform: translateX(-50%) translateY(0);} 50%{ transform: translateX(-50%) translateY(-3px);} }
       .enter-prompt { animation: promptPulse .8s ease-in-out infinite; }
+      @keyframes danceSway { 0%, 100% { transform: rotate(-13deg) translateX(-2px); } 50% { transform: rotate(13deg) translateX(2px); } }
+      .dancing { animation: danceSway .5s ease-in-out infinite; }
       @keyframes smokeRise { 0% { transform: translateY(0) scale(0.6); opacity: 0.9; } 100% { transform: translateY(-120px) scale(1.9); opacity: 0; } }
       .smoke-puff { animation: smokeRise 1.8s ease-out forwards; }
       @keyframes bagHit { 0%{transform:translateX(0) rotate(0);} 25%{transform:translateX(7px) rotate(5deg);} 55%{transform:translateX(-6px) rotate(-4deg);} 100%{transform:translateX(0) rotate(0);} }
