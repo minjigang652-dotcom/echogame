@@ -1490,8 +1490,14 @@ const jjeopPick = () => JJEOP_MENU[Math.floor(Math.random() * JJEOP_MENU.length)
 function JjeopView({ onBack, bubble }) {
   const [modal, setModal] = useState(null);
   const [today, setToday] = useState(null);
-  const [recList, setRecList] = useState(["마라탕", "돈까스"]);
+  const [recList, setRecList] = useState([{ nick: "정인", text: "저 오늘 국밥 땡겨요...🍚" }, { nick: "도희", text: "마라탕 각인데?" }]);
   const [recText, setRecText] = useState("");
+  const [recNick, setRecNick] = useState("");
+  const postRec = () => {
+    if (!recText.trim()) return;
+    setRecList((v) => [...v, { nick: recNick.trim() || "익명", text: recText.trim() }]);
+    setRecText("");
+  };
   const [step, setStep] = useState(1);
   const [fMenu, setFMenu] = useState(null);
   const furniture = [
@@ -1523,20 +1529,24 @@ function JjeopView({ onBack, bubble }) {
               <div style={{ fontSize: 13, color: C.inkSoft }}>오늘의 메뉴</div>
               <div style={{ fontSize: 72, margin: "8px 0" }}>{today.emoji}</div>
               <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 16 }}>{today.name}</div>
-              <PxButton tone="gold" onClick={() => setToday(jjeopPick())} style={{ marginTop: 12, padding: "8px 16px", fontSize: 13 }}>🎲 다시 뽑기</PxButton>
             </div>
           )}
         </RoomModal>
       )}
       {modal === "rec" && (
-        <RoomModal title="📋 메뉴 추천 등록" onClose={() => setModal(null)} maxW={360}>
-          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>먹고 싶은 메뉴를 자유롭게 등록하세요!</div>
-          <div style={{ display: "flex", gap: 6 }}>
-            <input value={recText} onChange={(e) => setRecText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && recText.trim()) { setRecList((v) => [...v, recText.trim()]); setRecText(""); } }} placeholder="예: 마라샹궈" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
-            <PxButton tone="good" onClick={() => { if (recText.trim()) { setRecList((v) => [...v, recText.trim()]); setRecText(""); } }} style={{ fontSize: 12, padding: "8px 12px" }}>등록</PxButton>
+        <RoomModal title="📋 메뉴 추천 게시판" onClose={() => setModal(null)} maxW={380}>
+          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>먹고 싶은 메뉴를 멘트로 자유롭게 남겨요! (예: 저 마라탕 땡겨요....)</div>
+          <div style={{ height: 180, overflow: "auto", background: C.white, border: `3px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 5 }}>
+            {recList.map((r, i) => (
+              <div key={i} style={{ fontSize: 13, borderBottom: `1px dashed ${C.parchEdge}`, paddingBottom: 4 }}>
+                <b style={{ color: "#5b8def", fontSize: 11 }}>{r.nick}</b> <span>{r.text}</span>
+              </div>
+            ))}
           </div>
-          <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {recList.map((r, i) => (<span key={i} style={{ background: C.white, border: `2px solid ${C.ink}`, padding: "3px 8px", fontSize: 12 }}>🍽️ {r}</span>))}
+          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+            <input value={recNick} onChange={(e) => setRecNick(e.target.value)} placeholder="닉네임" style={{ width: 90, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+            <input value={recText} onChange={(e) => setRecText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") postRec(); }} placeholder="멘트 입력 후 Enter" style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+            <PxButton tone="good" onClick={postRec} style={{ fontSize: 12, padding: "8px 12px" }}>등록</PxButton>
           </div>
         </RoomModal>
       )}
