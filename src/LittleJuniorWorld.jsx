@@ -583,19 +583,57 @@ const MAP_ZONES = [
   { label: "운동", color: "#4bb4d8", x1: 1080, y1: 1170, x2: 1560, y2: 1340 },
   { label: "치앙마이", color: "#8e6bb0", x1: 2260, y1: 560, x2: 2600, y2: 1120 },
 ];
+function BigMap({ pos, onClose }) {
+  const pct = (v, t) => `${(v / t) * 100}%`;
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 700 }}>
+        <Panel style={{ padding: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11 }}>🗺 에코타운 전체 지도</div>
+            <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+          </div>
+          <div style={{ position: "relative", width: "100%", paddingBottom: `${(WORLD.h / WORLD.w) * 100}%`, background: "#cfe3c0", border: `3px solid ${C.ink}`, overflow: "hidden" }}>
+            <div style={{ position: "absolute", inset: 0 }}>
+              <div style={{ position: "absolute", left: pct(RIVER_X, WORLD.w), top: 0, width: pct(RIVER_W, WORLD.w), height: "100%", background: "#3a6ea5" }} />
+              {MAP_ZONES.map((z) => (
+                <div key={z.label} style={{ position: "absolute", left: pct(z.x1, WORLD.w), top: pct(z.y1, WORLD.h), width: pct(z.x2 - z.x1, WORLD.w), height: pct(z.y2 - z.y1, WORLD.h), background: z.color + "44", border: `1px dashed ${z.color}`, display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
+                  <span style={{ fontSize: 11, color: "#2b1f14", fontWeight: "bold", background: "rgba(255,255,255,0.65)", padding: "0 4px", marginTop: 2 }}>{z.label}</span>
+                </div>
+              ))}
+              {WORLD_OBJS.filter((o) => o.r).map((o) => (
+                <div key={o.id} style={{ position: "absolute", left: pct(o.x, WORLD.w), top: pct(o.y, WORLD.h), transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", zIndex: 2 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.ink, border: "1px solid #fff" }} />
+                  <span style={{ fontSize: 9, whiteSpace: "nowrap", background: "rgba(255,255,255,0.88)", border: `1px solid ${C.ink}`, padding: "0 3px", marginTop: 1 }}>{o.label}</span>
+                </div>
+              ))}
+              <div style={{ position: "absolute", left: pct(pos.x, WORLD.w), top: pct(pos.y, WORLD.h), transform: "translate(-50%,-50%)", width: 12, height: 12, borderRadius: "50%", background: "#fff", border: `3px solid ${C.danger}`, boxShadow: "0 0 6px #fff", zIndex: 5 }} />
+            </div>
+          </div>
+          <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center" }}>흰 점 = 내 위치 · 점선 = 구역</div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
 function MiniMap({ pos }) {
+  const [open, setOpen] = useState(false);
   const W = 168, H = Math.round((W * WORLD.h) / WORLD.w);
   const sx = W / WORLD.w, sy = H / WORLD.h;
   return (
-    <div style={{ position: "absolute", right: 10, bottom: 10, width: W, height: H, background: "rgba(20,28,18,0.85)", border: `2px solid ${C.ink}`, zIndex: 16, overflow: "hidden" }}>
-      <div style={{ position: "absolute", left: RIVER_X * sx, top: 0, width: Math.max(2, RIVER_W * sx), height: "100%", background: "#3a6ea5" }} />
-      {MAP_ZONES.map((z) => (
-        <div key={z.label} style={{ position: "absolute", left: z.x1 * sx, top: z.y1 * sy, width: (z.x2 - z.x1) * sx, height: (z.y2 - z.y1) * sy, background: z.color + "cc", border: "1px solid rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ fontSize: 8, color: "#fff", fontWeight: "bold", textShadow: "0 1px 1px rgba(0,0,0,0.6)", whiteSpace: "nowrap" }}>{z.label}</span>
-        </div>
-      ))}
-      <div style={{ position: "absolute", left: pos.x * sx - 3, top: pos.y * sy - 3, width: 6, height: 6, borderRadius: "50%", background: "#fff", border: `2px solid ${C.danger}`, boxShadow: "0 0 4px #fff", zIndex: 2 }} />
-    </div>
+    <>
+      <div onClick={() => setOpen(true)} title="클릭하면 전체 지도" style={{ position: "absolute", right: 10, bottom: 10, width: W, height: H, background: "rgba(20,28,18,0.85)", border: `2px solid ${C.ink}`, zIndex: 16, overflow: "hidden", cursor: "pointer" }}>
+        <div style={{ position: "absolute", left: RIVER_X * sx, top: 0, width: Math.max(2, RIVER_W * sx), height: "100%", background: "#3a6ea5" }} />
+        {MAP_ZONES.map((z) => (
+          <div key={z.label} style={{ position: "absolute", left: z.x1 * sx, top: z.y1 * sy, width: (z.x2 - z.x1) * sx, height: (z.y2 - z.y1) * sy, background: z.color + "cc", border: "1px solid rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontSize: 8, color: "#fff", fontWeight: "bold", textShadow: "0 1px 1px rgba(0,0,0,0.6)", whiteSpace: "nowrap" }}>{z.label}</span>
+          </div>
+        ))}
+        <div style={{ position: "absolute", left: pos.x * sx - 3, top: pos.y * sy - 3, width: 6, height: 6, borderRadius: "50%", background: "#fff", border: `2px solid ${C.danger}`, boxShadow: "0 0 4px #fff", zIndex: 2 }} />
+        <div style={{ position: "absolute", right: 2, top: 1, fontSize: 9, color: "#fff", background: "rgba(0,0,0,0.4)", padding: "0 3px" }}>🔍</div>
+      </div>
+      {open && <BigMap pos={pos} onClose={() => setOpen(false)} />}
+    </>
   );
 }
 function GuardGate({ onPass, onClose }) {
