@@ -2015,7 +2015,6 @@ export default function App() {
               <VitalBar label="MP" val={mp} color="#3a7bd5" />
             </div>
             <div style={{ textAlign: "right" }}>
-            <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 11, color: C.inkSoft }}>보유 스타 젬</div>
               <GemBadge amount={gems} big />
             </div>
