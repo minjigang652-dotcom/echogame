@@ -560,7 +560,7 @@ const WORLD = { w: 2620, h: 1520 };
 const RIVER_X = 2140, RIVER_W = 120;
 const BRIDGE_Y1 = 690, BRIDGE_Y2 = 800;   // 이 구간(다리)에서만 강을 건널 수 있음
 
-function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble }) {
+function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false }) {
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
@@ -729,6 +729,10 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
               </div>
             </button>
           ))}
+
+          {/* 비 효과 (마을 / 치앙마이 각각) */}
+          {townRain && <div className="rain-layer" style={{ position: "absolute", left: 0, top: 0, width: RIVER_X, height: WORLD.h, pointerEvents: "none", zIndex: 15 }} />}
+          {cmRain && <div className="rain-layer" style={{ position: "absolute", left: RIVER_X, top: 0, width: WORLD.w - RIVER_X, height: WORLD.h, pointerEvents: "none", zIndex: 15 }} />}
 
           {/* 플레이어 */}
           <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-70%)", zIndex: 20, pointerEvents: "none" }}>
@@ -2140,7 +2144,19 @@ function wxIcon(code) {
   if (code >= 95) return "⛈️";
   return "🌡️";
 }
-const WX_POINTS = { seoul: { lat: 37.5665, lon: 126.978 }, chiangmai: { lat: 18.7883, lon: 98.9853 } };
+const REGIONS = {
+  "서울": { lat: 37.5665, lon: 126.978 },
+  "영등포구": { lat: 37.5264, lon: 126.8962 },
+  "강동구": { lat: 37.5301, lon: 127.1238 },
+  "마포구": { lat: 37.5637, lon: 126.9084 },
+  "인천": { lat: 37.4563, lon: 126.7052 },
+  "용인": { lat: 37.2411, lon: 127.1776 },
+  "부산": { lat: 35.1796, lon: 129.0756 },
+  "대구": { lat: 35.8714, lon: 128.6014 },
+  "대전": { lat: 36.3504, lon: 127.3845 },
+  "제주": { lat: 33.4996, lon: 126.5312 },
+};
+function isRain(code) { return code != null && ((code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95); }
 function useWeather(points) {
   const [wx, setWx] = useState({});
   const keyStr = JSON.stringify(points);
@@ -2195,10 +2211,15 @@ export default function App() {
   ]);
   const [worries, setWorries] = useState([]);
   const [rented, setRented] = useState({});
-  const weather = useWeather(WX_POINTS);
-  const wxZone = worldPos.x >= RIVER_X ? "chiangmai" : "seoul";
-  const wxName = wxZone === "chiangmai" ? "치앙마이" : "서울";
+  const [townRegion, setTownRegion] = useState("서울");
+  const [regionOpen, setRegionOpen] = useState(false);
+  const wxPoints = useMemo(() => ({ town: REGIONS[townRegion], chiangmai: { lat: 18.7883, lon: 98.9853 } }), [townRegion]);
+  const weather = useWeather(wxPoints);
+  const wxZone = worldPos.x >= RIVER_X ? "chiangmai" : "town";
+  const wxName = wxZone === "chiangmai" ? "치앙마이" : townRegion;
   const curWx = weather[wxZone];
+  const townRain = isRain(weather.town && weather.town.code);
+  const cmRain = isRain(weather.chiangmai && weather.chiangmai.code);
   const [outfit, setOutfit] = useState({ top: null, bottom: null, shoes: null });
   const [owned, setOwned] = useState({});
   const tryOnClothing = (catKey, item) => setOutfit((o) => ({ ...o, [catKey]: item }));
@@ -2333,6 +2354,22 @@ export default function App() {
                 <div style={{ fontSize: 9, color: C.inkSoft }}>{wxName}</div>
               </div>
             </div>
+            <PxButton tone="wood" onClick={() => setRegionOpen(true)} style={{ fontSize: 10, padding: "5px 7px" }}>＋지역</PxButton>
+            {regionOpen && (
+              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={() => setRegionOpen(false)}>
+                <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340 }}>
+                  <Panel style={{ padding: 14 }}>
+                    <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 10 }}>📍 마을 지역 선택</div>
+                    <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>고르면 상단 날씨가 그 지역으로 바로 바뀌어요.</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                      {Object.keys(REGIONS).map((r) => (
+                        <PxButton key={r} tone={r === townRegion ? "good" : "wood"} onClick={() => { setTownRegion(r); setRegionOpen(false); }} style={{ padding: 10, fontSize: 13 }}>{r}</PxButton>
+                      ))}
+                    </div>
+                  </Panel>
+                </div>
+              </div>
+            )}
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 11, color: C.inkSoft }}>보유 스타 젬</div>
               <GemBadge amount={gems} big />
@@ -2342,7 +2379,7 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} bubble={bubble} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} bubble={bubble} townRain={townRain} cmRain={cmRain} />}
         {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />}
@@ -2396,6 +2433,8 @@ function StyleBlock() {
       .gem-spin { display:inline-block; animation: spin 6s linear infinite; }
       @keyframes promptPulse { 0%,100%{ transform: translateX(-50%) translateY(0);} 50%{ transform: translateX(-50%) translateY(-3px);} }
       .enter-prompt { animation: promptPulse .8s ease-in-out infinite; }
+      @keyframes rainFall { from { background-position: 0 0; } to { background-position: -60px 240px; } }
+      .rain-layer { background-color: rgba(40,50,70,0.16); background-image: repeating-linear-gradient(105deg, transparent 0 9px, rgba(200,215,235,0.5) 9px 10px); animation: rainFall .45s linear infinite; }
       @keyframes bubblePop { 0%{ transform: translateX(-50%) scale(.6); opacity:0;} 60%{ transform: translateX(-50%) scale(1.05);} 100%{ transform: translateX(-50%) scale(1); opacity:1;} }
       .chat-bubble { animation: bubblePop .2s ease-out; }
       .game-vp:focus, .game-vp:focus-visible { outline: none; }
