@@ -2146,12 +2146,107 @@ function SchoolView({ school, onBack }) {
   );
 }
 /* ======================= 흡연의 방(플레이버) ======================= */
+const SMOKE_PEOPLE = ["정인", "호중", "희정", "유리", "의준"];
+const SMOKE_LINES = ["오늘 왜이렇게 춥냐 ㅋㅋ", "커피 한잔 하실분~", "아 마감 언제끝나ㅠ", "날씨 좋다 그치", "점심 뭐먹지", "주말에 뭐함?", "일 너무 많아 진짜", "ㅋㅋㅋㅋㅋㅋ", "맞아맞아", "와 대박", "나 이제 끊을거야 (3일째)", "치앙마이 가고싶다", "한 대 피우고 가자", "오늘도 화이팅~"];
+
+function SmokeChat({ onClose }) {
+  const [msgs, setMsgs] = useState([{ who: "정인", text: "왔어? 여기 앉아 ㅋㅋ" }]);
+  const [text, setText] = useState("");
+  const endRef = useRef(null);
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setMsgs((m) => [...m.slice(-30), { who: SMOKE_PEOPLE[Math.floor(Math.random() * SMOKE_PEOPLE.length)], text: SMOKE_LINES[Math.floor(Math.random() * SMOKE_LINES.length)] }]);
+    }, 2500);
+    return () => clearInterval(iv);
+  }, []);
+  useEffect(() => { if (endRef.current) endRef.current.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+  const send = () => { const t = text.trim(); if (!t) return; setMsgs((m) => [...m, { who: "나", text: t, me: true }]); setText(""); };
+  return (
+    <RoomModal title="💬 재떨이 수다방" onClose={onClose} maxW={400}>
+      <div style={{ height: 280, overflow: "auto", background: "#efe6d2", border: `3px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 5 }}>
+        {msgs.map((m, i) => (
+          <div key={i} style={{ alignSelf: m.me ? "flex-end" : "flex-start", maxWidth: "80%" }}>
+            {!m.me && <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 1 }}>{m.who}</div>}
+            <div style={{ background: m.me ? C.gem : C.white, border: `2px solid ${C.ink}`, padding: "5px 9px", fontSize: 13 }}>{m.text}</div>
+          </div>
+        ))}
+        <div ref={endRef} />
+      </div>
+      <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+        <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지 입력 후 Enter" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+        <PxButton tone="good" onClick={send} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
+      </div>
+    </RoomModal>
+  );
+}
+
+function CigaretteModal({ onClose }) {
+  const [len, setLen] = useState(100);
+  const iv = useRef(null);
+  const start = () => { if (iv.current) return; iv.current = setInterval(() => setLen((l) => { const n = l - 2; if (n <= 0) { clearInterval(iv.current); iv.current = null; return 0; } return n; }), 90); };
+  const stop = () => { if (iv.current) { clearInterval(iv.current); iv.current = null; } };
+  useEffect(() => () => stop(), []);
+  return (
+    <RoomModal title="🚬 담배 (연초)" onClose={onClose} maxW={340}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 14 }}>버튼을 <b>꾹 누르면</b> 담배가 타들어가요</div>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 40, marginBottom: 16 }}>
+          {len > 0 && <div style={{ width: `${len * 1.7}px`, height: 16, background: "#f2ede4", border: `2px solid ${C.ink}`, borderRight: "none", transition: "width .09s linear" }} />}
+          {len > 0 && <div style={{ width: 10, height: 16, background: "#ff6a2b", boxShadow: "0 0 8px #ff8c42", border: `2px solid ${C.ink}` }} />}
+          <div style={{ width: 26, height: 16, background: "#d9a441", border: `2px solid ${C.ink}` }} />
+        </div>
+        {len <= 0 ? (
+          <div>
+            <div style={{ fontSize: 14, marginBottom: 10 }}>다 폈다… 꽁초만 남음 💨</div>
+            <PxButton tone="good" onClick={() => setLen(100)} style={{ padding: "8px 16px", fontSize: 13 }}>새 담배</PxButton>
+          </div>
+        ) : (
+          <button onMouseDown={start} onMouseUp={stop} onMouseLeave={stop} onTouchStart={start} onTouchEnd={stop} className="px-btn" style={{ padding: "12px 24px", fontSize: 15, background: C.wood, color: C.white, border: `3px solid ${C.ink}`, cursor: "pointer", fontFamily: "'DotGothic16', monospace" }}>🤏 꾹 눌러서 피우기</button>
+        )}
+      </div>
+    </RoomModal>
+  );
+}
+
+function VapeModal({ onClose }) {
+  const [puffs, setPuffs] = useState([]);
+  const iv = useRef(null);
+  const idRef = useRef(0);
+  const start = () => { if (iv.current) return; iv.current = setInterval(() => { idRef.current += 1; const id = idRef.current; setPuffs((p) => [...p, { id, x: 38 + Math.random() * 24 }]); setTimeout(() => setPuffs((p) => p.filter((q) => q.id !== id)), 1800); }, 220); };
+  const stop = () => { if (iv.current) { clearInterval(iv.current); iv.current = null; } };
+  useEffect(() => () => stop(), []);
+  return (
+    <RoomModal title="💨 전자담배" onClose={onClose} maxW={340}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10 }}>버튼을 <b>꾹 누르면</b> 연기가 뭉게뭉게 🌫️</div>
+        <div style={{ position: "relative", height: 160, marginBottom: 14, overflow: "hidden" }}>
+          {puffs.map((p) => (
+            <div key={p.id} className="smoke-puff" style={{ position: "absolute", bottom: 34, left: `${p.x}%`, fontSize: 30 }}>💨</div>
+          ))}
+          <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: 22, height: 62, background: "#333", border: `2px solid ${C.ink}`, borderRadius: 4 }} />
+        </div>
+        <button onMouseDown={start} onMouseUp={stop} onMouseLeave={stop} onTouchStart={start} onTouchEnd={stop} className="px-btn" style={{ padding: "12px 24px", fontSize: 15, background: C.wood, color: C.white, border: `3px solid ${C.ink}`, cursor: "pointer", fontFamily: "'DotGothic16', monospace" }}>🤏 꾹 눌러서 흡입</button>
+      </div>
+    </RoomModal>
+  );
+}
+
 function SmokeView({ onBack, bubble }) {
+  const [modal, setModal] = useState(null);
+  const [winOpen, setWinOpen] = useState(false);
   const furniture = [
-    { id: "ashtray", x: 260, y: 180, w: 100, h: 70, color: "#7a8b99", emoji: "🚬", label: "재떨이", toast: "후… 잠깐의 여유 💨" },
-    { id: "window", x: 260, y: 40, w: 120, h: 60, color: "#6fc3e0", emoji: "🪟", label: "환기창", toast: "창문을 열어 환기했다 🌬️" },
+    { id: "ashtray", x: 270, y: 180, w: 100, h: 80, color: "#7a8b99", emoji: "🚬", label: "재떨이 (수다방)", onInteract: () => setModal("chat") },
+    { id: "cig", x: 90, y: 210, w: 80, h: 70, color: "#d9a441", emoji: "🚬", label: "담배(연초)", onInteract: () => setModal("cig") },
+    { id: "vape", x: 470, y: 210, w: 80, h: 70, color: "#333", emoji: "💨", label: "전자담배", onInteract: () => setModal("vape") },
+    { id: "window", x: 260, y: 40, w: 120, h: 60, color: winOpen ? "#bfe6f2" : "#6fc3e0", emoji: "🪟", label: winOpen ? "창문 (열림)" : "창문 (닫힘)", onInteract: () => setWinOpen((v) => !v) },
   ];
-  return <RoomView title="흡연의 방" icon="🚬" sub="흡연 중 💨 · 환기 필수" bg="#dfe3e6" roomW={640} roomH={400} furniture={furniture} onBack={onBack} headerBg="#7a8b99" bubble={bubble} />;
+  return (
+    <RoomView title="흡연의 방" icon="🚬" sub="재떨이 수다방 · 담배/전자담배 · 창문 환기" bg={winOpen ? "#eef6f8" : "#dfe3e6"} roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!modal} headerBg="#7a8b99" bubble={bubble}>
+      {modal === "chat" && <SmokeChat onClose={() => setModal(null)} />}
+      {modal === "cig" && <CigaretteModal onClose={() => setModal(null)} />}
+      {modal === "vape" && <VapeModal onClose={() => setModal(null)} />}
+    </RoomView>
+  );
 }
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
@@ -2944,6 +3039,8 @@ function StyleBlock() {
       .gem-spin { display:inline-block; animation: spin 6s linear infinite; }
       @keyframes promptPulse { 0%,100%{ transform: translateX(-50%) translateY(0);} 50%{ transform: translateX(-50%) translateY(-3px);} }
       .enter-prompt { animation: promptPulse .8s ease-in-out infinite; }
+      @keyframes smokeRise { 0% { transform: translateY(0) scale(0.6); opacity: 0.9; } 100% { transform: translateY(-120px) scale(1.9); opacity: 0; } }
+      .smoke-puff { animation: smokeRise 1.8s ease-out forwards; }
       @keyframes bagHit { 0%{transform:translateX(0) rotate(0);} 25%{transform:translateX(7px) rotate(5deg);} 55%{transform:translateX(-6px) rotate(-4deg);} 100%{transform:translateX(0) rotate(0);} }
       .bag-hit { animation: bagHit .18s ease-out; }
       @keyframes rainFall { from { background-position: 0 0; } to { background-position: -60px 240px; } }
