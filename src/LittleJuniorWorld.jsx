@@ -597,7 +597,8 @@ function MiniMap({ pos }) {
     </div>
   );
 }
-function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false }) {
+function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack }) {
+  const [songOpen, setSongOpen] = useState(false);
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
@@ -723,7 +724,16 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
         <b style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10 }}>ECHO TOWN</b>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", background: "#241a33", color: "#ffe680", border: `2px solid ${C.ink}`, padding: "4px 8px" }}>
           <span className={bgm.playing ? "gem-spin" : ""} style={{ fontSize: 15 }}>♬</span>
-          <b style={{ fontSize: 12 }}>{bgm.title}</b>
+          <div style={{ position: "relative" }}>
+            <button onClick={() => setSongOpen((v) => !v)} style={{ background: "none", border: "none", color: "#ffe680", fontSize: 12, fontWeight: "bold", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>{bgm.title} ▾</button>
+            {songOpen && (
+              <div style={{ position: "absolute", top: "120%", left: 0, background: C.parch, border: `2px solid ${C.ink}`, zIndex: 30, minWidth: 160, maxHeight: 220, overflowY: "auto", boxShadow: `0 3px 0 ${C.parchEdge}` }}>
+                {tracks.map((t) => (
+                  <button key={t.file} onClick={() => { onSelectTrack && onSelectTrack(t); setSongOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", background: t.title === bgm.title ? C.gem : "transparent", border: "none", borderBottom: `1px solid ${C.parchEdge}`, color: C.ink, fontSize: 12, padding: "7px 10px", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>{t.title}</button>
+                ))}
+              </div>
+            )}
+          </div>
           <PxButton tone="gold" onClick={onToggleBgm} style={{ fontSize: 11, padding: "3px 8px" }}>{bgm.playing ? "⏸" : "▶"}</PxButton>
           <PxButton tone="blue" onClick={() => setReqOpen(true)} style={{ fontSize: 11, padding: "3px 8px" }}>🎵 신청곡(5젬)</PxButton>
         </div>
@@ -2508,6 +2518,24 @@ function useWeather(points) {
   }, [keyStr]);
   return wx;
 }
+const WORLD_TRACKS = [
+  { title: "BIRDS OF A FEATHER", file: "song (1).mp3" },
+  { title: "짱구는 못말려 오프닝 오리지널", file: "song (2).mp3" },
+  { title: "퇴근시간", file: "song (3).mp3" },
+  { title: "Cafe", file: "song (4).mp3" },
+  { title: "Be There", file: "song (5).mp3" },
+  { title: "Chosen", file: "song (6).mp3" },
+  { title: "파도", file: "song (7).mp3" },
+  { title: "차우차우", file: "song (8).mp3" },
+  { title: "Champagne Supernova (Remastered)", file: "song (9).mp3" },
+  { title: "Born Hater ft. Beenzino, Verbal Jint, B.I", file: "song (10).mp3" },
+  { title: "Bus 안에서", file: "song (11).mp3" },
+  { title: "초록비 (Green Rain)", file: "song (12).mp3" },
+  { title: "Bonnie & Clyde", file: "song (13).mp3" },
+  { title: "Aqua Man", file: "song (14).mp3" },
+  { title: "Automatic", file: "song (15).mp3" },
+  { title: "Another One Bites the Dust", file: "song (16).mp3" },
+];
 export default function App() {
   const [view, setView] = useState("world");
   const [houseId, setHouseId] = useState(null);
@@ -2568,12 +2596,13 @@ export default function App() {
   };
 
   // 신규: 배경음악 / 채팅 / 말풍선 / 피드백 / 메뉴
-  const [worldBgm, setWorldBgm] = useState({ title: "3호선 매봉역", playing: false });
+  const [worldBgm, setWorldBgm] = useState({ title: WORLD_TRACKS[0].title, file: WORLD_TRACKS[0].file, playing: false });
+  const selectTrack = (t) => setWorldBgm((b) => ({ ...b, title: t.title, file: t.file, playing: true }));
   const audioRef = useRef(null);
   useEffect(() => {
     const a = audioRef.current; if (!a) return;
     if (worldBgm.playing) a.play().catch(() => {}); else a.pause();
-  }, [worldBgm.playing]);
+  }, [worldBgm.playing, worldBgm.file]);
   const [chat, setChat] = useState([]);
   const [shout, setShout] = useState(false);
   const [bubble, setBubble] = useState(null);
@@ -2674,7 +2703,7 @@ export default function App() {
   return (
     <div style={{ fontFamily: "'DotGothic16', monospace", minHeight: "100vh", background: `repeating-linear-gradient(45deg, ${C.grass} 0 24px, ${C.grassDark} 24px 48px)`, color: C.ink, padding: 14, boxSizing: "border-box" }}>
       <StyleBlock />
-      <audio ref={audioRef} src={import.meta.env.BASE_URL + "bgm.mp3"} loop preload="auto" />
+      <audio ref={audioRef} src={import.meta.env.BASE_URL + encodeURIComponent(worldBgm.file)} loop preload="auto" />
       <div style={{ maxWidth: 960, margin: "0 auto 12px" }}>
         <Panel style={{ padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -2721,7 +2750,7 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} bubble={bubble} townRain={townRain} cmRain={cmRain} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} bubble={bubble} townRain={townRain} cmRain={cmRain} />}
         {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && <HomeView house={houseMeta} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
