@@ -464,7 +464,6 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
               <div key={f.id} style={{ position: "absolute", left: f.x, top: f.y, width: f.w, height: f.h,
                 background: f.color || "#c9a15f", border: `3px solid ${C.ink}`, borderRadius: f.round ? "50%" : 0,
                 boxShadow: active ? `0 0 0 3px ${C.gem}` : "inset 0 0 0 2px rgba(255,255,255,0.25)",
-                boxShadow: active ? `0 0 0 3px ${C.gem}` : "inset 0 0 0 2px rgba(255,255,255,0.25)",
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
                 <span style={{ fontSize: Math.min(f.w, f.h) > 46 ? 26 : 18, lineHeight: 1 }}>{f.emoji}</span>
                 <span style={{ fontSize: 10, color: C.ink, marginTop: 2, fontWeight: "bold" }}>{f.label}</span>
@@ -2244,7 +2243,7 @@ function SchoolView({ school, onBack }) {
     </Panel>
   );
 }
-/* ======================= 프로젝트 상황 게시판 ======================= */
+/* ======================= 보스맵 사냥 ======================= */
 const PROJECTS = [
   { name: "에코타운 오픈 준비", owner: "창민", progress: 82 },
   { name: "치앙마이 렌트 시스템", owner: "정인", progress: 65 },
@@ -2257,7 +2256,7 @@ const PROJECTS = [
 function ProjectView({ onBack }) {
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="📊" title="프로젝트 상황 게시판" sub="진행 중인 프로젝트 현황" onBack={onBack} bg="#4b7bd8" fg={C.white} />
+      <TitleBar icon="📊" title="보스맵 사냥" sub="목표물 보스맵" onBack={onBack} bg="#4b7bd8" fg={C.white} />
       <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
         {PROJECTS.map((p, i) => {
           const color = p.progress >= 100 ? "#3fa07a" : p.progress >= 80 ? "#3fa07a" : p.progress >= 50 ? "#d9a441" : "#c0563a";
