@@ -520,8 +520,6 @@ function buildWorld() {
   const list = [];
   // 중심 주민센터
   list.push({ id: "center", kind: "center", x: 1300, y: 760, r: 90, label: "🏛 주민센터", sub: "마을 중심 · 회의/모임" });
-  list.push({ id: "naverschool", kind: "small", x: 1800, y: 300, r: 70, label: "📗 네이버스쿨" });
-  list.push({ id: "videoschool", kind: "small", x: 2030, y: 300, r: 70, label: "🎬 영상스쿨" });
   list.push({ id: "sandbag", kind: "small", x: 800, y: 360, r: 55, label: "🥊 샌드백", tint: "#c0563a" });
   list.push({ id: "musinsa", kind: "small", x: 1650, y: 1260, r: 55, label: "🛍️ 무신사", tint: "#2b2b2b" });
 list.push({ id: "jjeop", kind: "small", x: 1820, y: 1210, r: 55, label: "🍴 쩝쩝박사", tint: "#c0563a" });
@@ -546,6 +544,8 @@ list.push({ id: "jjeop", kind: "small", x: 1820, y: 1210, r: 55, label: "🍴 �
   smalls.forEach((s) => list.push({ id: s.id, kind: "small", x: s.x, y: s.y, r: 55, label: s.label, tint: s.tint }));
   // 수영장 / 헬스장 (주민센터 남쪽)
   list.push({ id: "pool", kind: "facility", x: 1170, y: 1250, r: 78, label: "🏊 수영장", color: "#4bb4d8", colorDk: "#2e8fb3", icon: "🏊" });
+  list.push({ id: "never", kind: "npc", npc: "never", x: 950, y: 1230, r: 55, label: "🟢 네버",
+    lines: ["안녕하세요 네버입니다", "네이버를 알고싶으시면 네이버스쿨로 가주세요"] });
   list.push({ id: "gym", kind: "facility", x: 1440, y: 1260, r: 78, label: "💪 헬스장", color: "#c0563a", colorDk: "#96412c", icon: "🏋️" });
   // NPC: 동상 & 봉준호
   list.push({ id: "statue", kind: "npc", npc: "statue", x: 900, y: 900, r: 55, label: "🗿 황혼의 파수꾼",
@@ -562,37 +562,15 @@ const WORLD_OBJS = buildWorld();
 const WORLD = { w: 2620, h: 1520 };
 const RIVER_X = 2140, RIVER_W = 120;
 const BRIDGE_Y1 = 690, BRIDGE_Y2 = 800;   // 이 구간(다리)에서만 강을 건널 수 있음
-const MAP_ZONES = [
-  { label: "업무", color: "#5b8def", x1: 820, y1: 210, x2: 1680, y2: 560 },
-  { label: "주민센터", color: "#d9a441", x1: 1150, y1: 610, x2: 1470, y2: 910 },
-  { label: "집", color: "#c98ba0", x1: 380, y1: 490, x2: 830, y2: 1300 },
-  { label: "놀이", color: "#3fa07a", x1: 1680, y1: 500, x2: 2090, y2: 1260 },
-  { label: "운동", color: "#4bb4d8", x1: 1080, y1: 1170, x2: 1560, y2: 1340 },
-  { label: "치앙마이", color: "#8e6bb0", x1: 2260, y1: 560, x2: 2600, y2: 1120 },
-];
-function MiniMap({ pos }) {
-  const W = 168, H = Math.round((W * WORLD.h) / WORLD.w);
-  const sx = W / WORLD.w, sy = H / WORLD.h;
+function LetterN({ size = 80 }) {
   return (
-    <div style={{ position: "absolute", right: 10, bottom: 10, width: W, height: H, background: "rgba(20,28,18,0.85)", border: `2px solid ${C.ink}`, zIndex: 16, overflow: "hidden" }}>
-      <div style={{ position: "absolute", left: RIVER_X * sx, top: 0, width: Math.max(2, RIVER_W * sx), height: "100%", background: "#3a6ea5" }} />
-      {MAP_ZONES.map((z) => (
-        <div key={z.label} style={{ position: "absolute", left: z.x1 * sx, top: z.y1 * sy, width: (z.x2 - z.x1) * sx, height: (z.y2 - z.y1) * sy, background: z.color + "cc", border: "1px solid rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ fontSize: 8, color: "#fff", fontWeight: "bold", textShadow: "0 1px 1px rgba(0,0,0,0.6)", whiteSpace: "nowrap" }}>{z.label}</span>
-        </div>
-      ))}
-      <div style={{ position: "absolute", left: pos.x * sx - 3, top: pos.y * sy - 3, width: 6, height: 6, borderRadius: "50%", background: "#fff", border: `2px solid ${C.danger}`, boxShadow: "0 0 4px #fff", zIndex: 2 }} />
-    </div>
+    <svg width={size} height={size * 1.2} viewBox="0 0 20 24" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <rect x="3" y="21" width="14" height="3" fill="#2b1f14" />
+      <rect x="3" y="2" width="4" height="19" fill="#2db400" stroke="#1a7000" strokeWidth="0.5" />
+      <rect x="13" y="2" width="4" height="19" fill="#2db400" stroke="#1a7000" strokeWidth="0.5" />
+      <polygon points="6,2 9,2 16,21 13,21" fill="#2db400" stroke="#1a7000" strokeWidth="0.5" />
+    </svg>
   );
-}
-function skyOverlay(h) {
-  if (h < 5) return { bg: "linear-gradient(180deg, rgba(10,14,40,0.62), rgba(20,24,55,0.5))", label: "🌙 밤" };
-  if (h < 7) return { bg: "linear-gradient(180deg, rgba(60,40,90,0.45), rgba(240,150,120,0.28))", label: "🌅 새벽" };
-  if (h < 10) return { bg: "linear-gradient(180deg, rgba(255,220,150,0.18), rgba(255,240,200,0.05))", label: "🌤 아침" };
-  if (h < 17) return { bg: "transparent", label: "☀️ 낮" };
-  if (h < 19) return { bg: "linear-gradient(180deg, rgba(255,110,40,0.34), rgba(255,90,120,0.3))", label: "🌇 노을" };
-  if (h < 21) return { bg: "linear-gradient(180deg, rgba(70,50,110,0.46), rgba(120,70,110,0.4))", label: "🌆 저녁" };
-  return { bg: "linear-gradient(180deg, rgba(10,14,40,0.6), rgba(20,24,55,0.48))", label: "🌙 밤" };
 }
 function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false }) {
   const [facing, setFacing] = useState(1);
@@ -620,10 +598,6 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
   handleRef.current = handleObj;
 
   const focusGame = () => { if (vpRef.current) vpRef.current.focus(); if (hintRef.current) { hintRef.current = false; setHint(false); } };
-
-  const [hour, setHour] = useState(() => new Date().getHours());
-  useEffect(() => { const iv = setInterval(() => setHour(new Date().getHours()), 60000); return () => clearInterval(iv); }, []);
-  const sky = skyOverlay(hour);
 
   // 뷰포트 크기 측정 + 자동 포커스(방향키 즉시 반응)
   useEffect(() => {
@@ -701,10 +675,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 
   const spriteFor = (o) => {
     if (o.id === "sandbag") return <Sandbag size={92} />;
-      if (o.id === "naverschool") return <School wall="#bfe3c8" roof="#2db400" size={140} />;
-      if (o.id === "videoschool") return <School wall="#e7cfe9" roof="#8e5a9e" size={140} />;
-      switch (o.kind) {
-        case "center": return <Villa size={230} />;
+    switch (o.kind) {
       case "center": return <Villa size={230} />;
       case "bank": return <PixelBank size={150} />;
       case "board": return <Board size={120} />;
@@ -713,7 +684,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
       case "small": return <SmallHut tint={o.tint} size={100} />;
       case "facility": return <Facility color={o.color} colorDk={o.colorDk} icon={o.icon} size={160} />;
       case "sign": return <Signpost size={100} />;
-      case "npc": return o.npc === "statue" ? <Statue size={72} /> : <ManBong size={48} />;
+      case "npc": return o.npc === "statue" ? <Statue size={72} /> : o.npc === "never" ? <LetterN size={82} /> : <ManBong size={48} />;
       case "rent": return <PixelHouse roof={o.meta.roof} roofDk={o.meta.roofDk} wall={o.meta.wall} size={104} />;
       default: return null;
     }
@@ -792,8 +763,6 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
           </div>
         </div>
 
-        {sky.bg !== "transparent" && <div style={{ position: "absolute", inset: 0, background: sky.bg, pointerEvents: "none", zIndex: 14, transition: "background 2s linear" }} />}
-
         {/* 처음 이동 안내 */}
         {hint && (
           <div style={{ position: "absolute", left: 10, bottom: 10, background: C.ink, color: C.gem, border: `2px solid ${C.gem}`, fontSize: 11, padding: "5px 9px", zIndex: 15 }}>
@@ -803,12 +772,9 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 
         {/* HUD 오버레이: 날짜 */}
         <div style={{ position: "absolute", right: 10, top: 10, display: "flex", gap: 8, alignItems: "center" }}>
-          <span style={{ background: C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}` }}>{sky.label}</span>
           <span style={{ background: C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}` }}>📅 DAY {day}</span>
           <PxButton tone="blue" onClick={onNextDay} style={{ fontSize: 11, padding: "6px 9px" }}>🌙 다음 날</PxButton>
         </div>
-
-        <MiniMap pos={pos} />
 
         {/* NPC 대화창 */}
         {dialog && (
@@ -1817,57 +1783,6 @@ function SandbagView({ onBack, scores, onEnd }) {
     </Panel>
   );
 }
-/* ======================= 스쿨(네이버/영상) ======================= */
-function School({ wall = "#8fd0d6", roof = "#c95d7b", size = 140 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
-      <rect x="10" y="1" width="4" height="4" fill={roof} stroke="#2b1f14" strokeWidth="0.4" />
-      <rect x="11" y="2" width="2" height="2" fill="#ffe680" />
-      <polygon points="12,0 15,2 9,2" fill={roof} stroke="#2b1f14" strokeWidth="0.4" />
-      <polygon points="3,9 12,4 21,9" fill={roof} stroke="#2b1f14" strokeWidth="0.5" />
-      <rect x="4" y="9" width="16" height="13" fill={wall} stroke="#2b1f14" strokeWidth="0.5" />
-      <rect x="10" y="15" width="4" height="7" fill="#8a5a3b" stroke="#2b1f14" strokeWidth="0.4" />
-      <rect x="5.5" y="11" width="3" height="3" fill="#fff" stroke="#2b1f14" strokeWidth="0.4" />
-      <rect x="15.5" y="11" width="3" height="3" fill="#fff" stroke="#2b1f14" strokeWidth="0.4" />
-      <rect x="9" y="22" width="6" height="1.5" fill="#cbb58a" />
-    </svg>
-  );
-}
-
-const SCHOOLS = {
-  naverschool: { title: "네이버스쿨", icon: "📗", color: "#2db400", steps: [
-    { t: "개념 정리", d: "네이버 생태계(블로그·카페·지식인)의 기본 개념과 구조를 이해해요." },
-    { t: "블로그", d: "주제 선정 → 글쓰기 → 최적화까지 블로그 운영의 기본을 배워요." },
-    { t: "카페", d: "카페 개설·운영, 멤버 관리와 커뮤니티 활성화 방법을 익혀요." },
-    { t: "지식인", d: "질문·답변으로 전문성을 쌓고 신뢰도를 올리는 전략을 배워요." },
-  ] },
-  videoschool: { title: "영상스쿨", icon: "🎬", color: "#8e5a9e", steps: [
-    { t: "코어 개념", d: "영상의 기본 원리(구도·컷·리듬)와 핵심 개념을 잡아요." },
-    { t: "레퍼런스", d: "좋은 영상을 찾고 분석해 나만의 레퍼런스를 모아요." },
-    { t: "원고작성 & 소재수집", d: "기획·대본을 쓰고 촬영할 소재를 수집해요." },
-    { t: "영상제작", d: "촬영 → 편집 → 마무리까지 실제 영상을 완성해요." },
-  ] },
-};
-
-function SchoolView({ school, onBack }) {
-  const s = SCHOOLS[school];
-  return (
-    <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon={s.icon} title={s.title} sub="1 → 4번 순서대로 따라가는 가이드" onBack={onBack} bg={s.color} fg={C.white} />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 3, background: C.ink, padding: 3 }}>
-        {s.steps.map((st, i) => (
-          <div key={i} style={{ background: C.parch, padding: 16, minHeight: 150, display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <span style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 18, color: s.color }}>{i + 1}</span>
-              <b style={{ fontSize: 15 }}>{st.t}</b>
-            </div>
-            <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.6 }}>{st.d}</div>
-          </div>
-        ))}
-      </div>
-    </Panel>
-  );
-}
 /* ======================= 흡연의 방(플레이버) ======================= */
 function SmokeView({ onBack, bubble }) {
   const furniture = [
@@ -2602,7 +2517,6 @@ export default function App() {
         {view === "pool" && <PoolView onBack={backToWorld} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => award(4)} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
-        {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
         {view === "sandbag" && <SandbagView onBack={backToWorld} scores={boxScores} onEnd={(nick, count) => setBoxScores((s) => [...s, { nick, count }])} />}
         {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
         {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} />}
