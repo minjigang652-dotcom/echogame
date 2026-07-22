@@ -834,7 +834,7 @@ function BigBuildingView({ b, qs, day, onRun, onBack }) {
 }
 
 /* ======================= 주민센터(내부 이동) ======================= */
-function DrinkStation({ name, color, onClose }) {
+function DrinkStation({ name, color, onClose, onDrink }) {
   const [fill, setFill] = useState(0);
   const [hp, setHp] = useState(0);
   const [mp, setMp] = useState(0);
@@ -858,7 +858,7 @@ function DrinkStation({ name, color, onClose }) {
     timer.current = setInterval(() => {
       const t = Math.min(1, (Date.now() - start) / 2500);
       setFill(100 * (1 - t)); setHp(100 * t); setMp(100 * t);
-      if (t >= 1) { clearInterval(timer.current); setPhase("done"); }
+      if (t >= 1) { clearInterval(timer.current); setPhase("done"); onDrink && onDrink(); }
     }, 40);
   };
 
@@ -892,7 +892,7 @@ function DrinkStation({ name, color, onClose }) {
   );
 }
 
-function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble }) {
+function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble, onDrink }) {
   const [showChat, setShowChat] = useState(false);
   const [station, setStation] = useState(null); // {name,color}
   const [text, setText] = useState("");
@@ -911,7 +911,7 @@ function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble
   ];
   return (
     <RoomView title="주민센터" icon="🏛" sub="테이블에서 대화 · 회의실 3곳 · 커피/자판기/정수기로 HP·MP 충전" bg="#f0e4cf" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={showChat || !!station} headerBg={C.villa} bubble={bubble}>
-      {station && <DrinkStation name={station.name} color={station.color} onClose={() => setStation(null)} />}
+      {station && <DrinkStation name={station.name} color={station.color} onClose={() => setStation(null)} onDrink={onDrink} />}
       {showChat && (
         <RoomModal title="🪑 라운지 테이블 채팅" onClose={() => setShowChat(false)}>
           <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>* 데모용 로컬 채팅입니다.</div>
@@ -1846,7 +1846,18 @@ function ProfileMenu({ onClose }) {
     </div>
   );
 }
-
+function VitalBar({ label, val, color }) {
+  const v = Math.max(0, Math.min(100, val));
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <span style={{ fontSize: 10, width: 20, color: C.inkSoft }}>{label}</span>
+      <div style={{ flex: 1, height: 12, minWidth: 84, background: "#e2d3ab", border: `2px solid ${C.ink}` }}>
+        <div style={{ height: "100%", width: `${v}%`, background: color, transition: "width .3s" }} />
+      </div>
+      <span style={{ fontSize: 10, width: 24, textAlign: "right" }}>{Math.round(v)}</span>
+    </div>
+  );
+}
 /* ============================== 앱 =================================== */
 export default function App() {
   const [view, setView] = useState("world");
@@ -1857,6 +1868,8 @@ export default function App() {
 
   const [gems, setGems] = useState(0);
   const [lifetime, setLifetime] = useState(0);
+  const [hp, setHp] = useState(100);
+  const [mp, setMp] = useState(100);
   const [exchanged, setExchanged] = useState(0);
   const [history, setHistory] = useState([]);
   const [day, setDay] = useState(1);
@@ -1876,7 +1889,7 @@ export default function App() {
   });
   const [centerChat, setCenterChat] = useState([
     { who: "도희", text: "다들 점심 뭐 먹었어요?", me: false },
-    { who: "창민", text: "저는 항균양말 라인 검수 끝!", me: false },
+    { who: "창민", text: "뭐야!", me: false },
   ]);
   const [thanksInv, setThanksInv] = useState([]);
   const [postits, setPostits] = useState([
@@ -1941,7 +1954,9 @@ export default function App() {
           if (np >= 100) {
             clearInterval(timers.current[q.id]); delete timers.current[q.id];
             award(q.reward);
-            return { ...p, [q.id]: { ...cur, running: false, progress: 100, doneDay: q.repeat ? day : cur.doneDay, doneOnce: q.repeat ? cur.doneOnce : true } };
+            setHp((h) => Math.max(0, h - 8));
+            setMp((m) => Math.max(0, m - 6));
+            return { ...p, [q.id]:{ ...cur, running: false, progress: 100, doneDay: q.repeat ? day : cur.doneDay, doneOnce: q.repeat ? cur.doneOnce : true } };
           }
           return { ...p, [q.id]: { ...cur, progress: np } };
         });
@@ -1952,6 +1967,7 @@ export default function App() {
 
   const nextDay = () => {
     setDay((d) => d + 1);
+    setHp(100); setMp(100);
     setQs((p) => {
       const o = { ...p };
       Object.keys(o).forEach((k) => { o[k] = { ...o[k], progress: o[k].doneOnce ? 100 : 0 }; });
@@ -1994,7 +2010,11 @@ export default function App() {
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <span style={{ fontSize: 12, color: C.inkSoft }}>📅 DAY {day}</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 150 }}>
+              <VitalBar label="HP" val={hp} color={C.danger} />
+              <VitalBar label="MP" val={mp} color="#3a7bd5" />
+            </div>
+            <div style={{ textAlign: "right" }}>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 11, color: C.inkSoft }}>보유 스타 젬</div>
               <GemBadge amount={gems} big />
@@ -2005,7 +2025,7 @@ export default function App() {
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
         {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} bubble={bubble} />}
-        {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} />}
+        {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />}
         {view === "house" && houseMeta && <HomeView house={houseMeta} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
