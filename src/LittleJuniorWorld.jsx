@@ -520,6 +520,7 @@ function buildWorld() {
   const list = [];
   // 중심 주민센터
   list.push({ id: "center", kind: "center", x: 1300, y: 760, r: 90, label: "🏛 주민센터", sub: "마을 중심 · 회의/모임" });
+  list.push({ id: "sandbag", kind: "small", x: 800, y: 360, r: 55, label: "🥊 샌드백", tint: "#c0563a" });
   list.push({ id: "musinsa", kind: "small", x: 1650, y: 1260, r: 55, label: "🛍️ 무신사", tint: "#2b2b2b" });
 list.push({ id: "jjeop", kind: "small", x: 1820, y: 1210, r: 55, label: "🍴 쩝쩝박사", tint: "#c0563a" });
   // 은행 / 게시판
@@ -662,6 +663,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
   const camY = Math.max(0, Math.min(WORLD.h - vp.h, pos.y - vp.h / 2));
 
   const spriteFor = (o) => {
+    if (o.id === "sandbag") return <Sandbag size={92} />;
     switch (o.kind) {
       case "center": return <Villa size={230} />;
       case "bank": return <PixelBank size={150} />;
@@ -1665,6 +1667,98 @@ function MusinsaView({ gems, outfit, owned, onTryOn, onBuy, onBack, bubble }) {
     </RoomView>
   );
 }
+/* ======================= 샌드백 치기 ======================= */
+function Sandbag({ size = 90 }) {
+  return (
+    <svg width={size} height={size * 1.4} viewBox="0 0 20 28" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <rect x="9" y="0" width="2" height="4" fill="#7a6a55" />
+      <rect x="6" y="4" width="8" height="2" fill="#3a3a3a" />
+      <rect x="6" y="6" width="8" height="18" fill="#b23b2e" stroke="#2b1f14" strokeWidth="0.5" />
+      <rect x="6" y="10" width="8" height="1.5" fill="#8a2a20" />
+      <rect x="6" y="16" width="8" height="1.5" fill="#8a2a20" />
+      <rect x="6" y="6" width="3" height="18" fill="rgba(255,255,255,0.14)" />
+      <rect x="7" y="24" width="6" height="2" fill="#2b1f14" />
+    </svg>
+  );
+}
+
+const GLOVE_CURSOR = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cellipse cx='20' cy='18' rx='13' ry='12' fill='%23c0392b' stroke='%237a1f14' stroke-width='2'/%3E%3Crect x='9' y='26' width='22' height='8' rx='2' fill='%23f0f0f0' stroke='%237a1f14' stroke-width='2'/%3E%3Cellipse cx='9' cy='20' rx='5' ry='6' fill='%23c0392b' stroke='%237a1f14' stroke-width='2'/%3E%3C/svg%3E\") 20 20, pointer";
+
+function playPunch() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    const ctx = playPunch._c || (playPunch._c = new AC());
+    if (ctx.state === "suspended") ctx.resume();
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(170, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.13);
+    g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+    o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + 0.17);
+    const len = Math.floor(ctx.sampleRate * 0.06), b = ctx.createBuffer(1, len, ctx.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
+    const n = ctx.createBufferSource(), ng = ctx.createGain(); ng.gain.value = 0.35;
+    n.buffer = b; n.connect(ng).connect(ctx.destination); n.start(t);
+  } catch (e) {}
+}
+
+function SandbagView({ onBack, scores, onEnd }) {
+  const [count, setCount] = useState(0);
+  const [fx, setFx] = useState(0);
+  const [ending, setEnding] = useState(false);
+  const [nick, setNick] = useState("");
+  const hit = () => { setCount((c) => c + 1); setFx(Date.now()); playPunch(); };
+  const finish = () => { if (count <= 0) { onBack(); return; } setEnding(true); };
+  const submit = () => { onEnd(nick.trim() || "익명", count); setCount(0); setNick(""); setEnding(false); };
+  const ranked = [...scores].sort((a, b) => b.count - a.count).slice(0, 8);
+  return (
+    <Panel style={{ padding: 0, overflow: "hidden", position: "relative" }}>
+      <TitleBar icon="🥊" title="샌드백 치기" sub="샌드백을 마구 클릭! · 끝을 누르면 랭킹 집계" onBack={onBack} bg="#c0563a" fg={C.white} />
+      <div style={{ display: "flex", flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 320px", position: "relative", height: 420, background: "#2a2233", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: GLOVE_CURSOR }} onClick={hit}>
+          <div style={{ position: "absolute", top: 12, right: 14, textAlign: "center" }}>
+            <div style={{ fontSize: 11, color: "#ffe680" }}>클릭</div>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 26, color: C.gem }}>{count}</div>
+            <PxButton tone="danger" onClick={(e) => { e.stopPropagation(); finish(); }} style={{ marginTop: 6, fontSize: 12, padding: "6px 14px" }}>끝</PxButton>
+          </div>
+          <div key={fx} className={fx ? "bag-hit" : ""} style={{ pointerEvents: "none" }}>
+            <Sandbag size={160} />
+          </div>
+          <div style={{ position: "absolute", bottom: 14, color: "#b9a7d6", fontSize: 12, pointerEvents: "none" }}>👊 샌드백을 클릭하세요!</div>
+        </div>
+        <div style={{ flex: "1 1 220px", padding: 14, background: C.parch, borderLeft: `3px solid ${C.ink}` }}>
+          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 10 }}>🏆 랭킹</div>
+          {ranked.length === 0 ? (
+            <div style={{ fontSize: 12, color: C.inkSoft }}>아직 기록이 없어요. 쳐보세요!</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              {ranked.map((s, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `2px solid ${C.ink}`, padding: "5px 8px", fontSize: 13 }}>
+                  <span style={{ width: 20, fontWeight: "bold", color: i === 0 ? "#a86e13" : C.inkSoft }}>{i + 1}</span>
+                  <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.nick}</span>
+                  <b>{s.count}</b>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      {ending && (
+        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, padding: 14 }} onClick={() => setEnding(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 320 }}>
+            <Panel style={{ padding: 16 }}>
+              <div style={{ textAlign: "center", marginBottom: 10 }}>총 <b style={{ fontSize: 20, color: C.danger }}>{count}</b>번 쳤어요! 💥</div>
+              <input value={nick} onChange={(e) => setNick(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} maxLength={10} placeholder="닉네임 (랭킹 등록)" autoFocus style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: C.white }} />
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <PxButton tone="ink" onClick={() => setEnding(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>더 치기</PxButton>
+                <PxButton tone="gold" onClick={submit} style={{ flex: 1, padding: 10, fontSize: 13 }}>랭킹 등록</PxButton>
+              </div>
+            </Panel>
+          </div>
+        </div>
+      )}
+    </Panel>
+  );
+}
 /* ======================= 흡연의 방(플레이버) ======================= */
 function SmokeView({ onBack, bubble }) {
   const furniture = [
@@ -2211,6 +2305,7 @@ export default function App() {
   ]);
   const [worries, setWorries] = useState([]);
   const [rented, setRented] = useState({});
+  const [boxScores, setBoxScores] = useState([]);
   const [townRegion, setTownRegion] = useState("서울");
   const [regionOpen, setRegionOpen] = useState(false);
   const wxPoints = useMemo(() => ({ town: REGIONS[townRegion], chiangmai: { lat: 18.7883, lon: 98.9853 } }), [townRegion]);
@@ -2392,6 +2487,7 @@ export default function App() {
         {view === "pool" && <PoolView onBack={backToWorld} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => award(4)} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
+        {view === "sandbag" && <SandbagView onBack={backToWorld} scores={boxScores} onEnd={(nick, count) => setBoxScores((s) => [...s, { nick, count }])} />}
         {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
         {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} />}
         {view === "board" && <BoardView onBack={backToWorld} />}
@@ -2433,6 +2529,8 @@ function StyleBlock() {
       .gem-spin { display:inline-block; animation: spin 6s linear infinite; }
       @keyframes promptPulse { 0%,100%{ transform: translateX(-50%) translateY(0);} 50%{ transform: translateX(-50%) translateY(-3px);} }
       .enter-prompt { animation: promptPulse .8s ease-in-out infinite; }
+      @keyframes bagHit { 0%{transform:translateX(0) rotate(0);} 25%{transform:translateX(7px) rotate(5deg);} 55%{transform:translateX(-6px) rotate(-4deg);} 100%{transform:translateX(0) rotate(0);} }
+      .bag-hit { animation: bagHit .18s ease-out; }
       @keyframes rainFall { from { background-position: 0 0; } to { background-position: -60px 240px; } }
       .rain-layer { background-color: rgba(40,50,70,0.16); background-image: repeating-linear-gradient(105deg, transparent 0 9px, rgba(200,215,235,0.5) 9px 10px); animation: rainFall .45s linear infinite; }
       @keyframes bubblePop { 0%{ transform: translateX(-50%) scale(.6); opacity:0;} 60%{ transform: translateX(-50%) scale(1.05);} 100%{ transform: translateX(-50%) scale(1); opacity:1;} }
