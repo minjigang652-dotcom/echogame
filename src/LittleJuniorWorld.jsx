@@ -1795,10 +1795,76 @@ function ProfileDetail({ p, onBack }) {
     </div>
   );
 }
+function DMChatModal({ person, onClose }) {
+  const [msgs, setMsgs] = useState([{ me: false, text: `안녕하세요! ${person.name}이에요 👋 무슨 일이에요?` }]);
+  const [text, setText] = useState("");
+  const replies = ["오 좋아요!", "ㅋㅋㅋ 그러게요", "저도 그렇게 생각해요 👍", "언제 커피 한잔 해요 ☕", "지금 좀 바빠서요, 이따 봬요!", "헐 대박", "알겠어요, 확인해볼게요 📝"];
+  const endRef = useRef(null);
+  const send = () => {
+    const t = text.trim(); if (!t) return;
+    setMsgs((m) => [...m, { me: true, text: t }]); setText("");
+    setTimeout(() => setMsgs((m) => [...m, { me: false, text: replies[Math.floor(Math.random() * replies.length)] }]), 700 + Math.random() * 600);
+  };
+  useEffect(() => { if (endRef.current) endRef.current.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
+        <Panel style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "#5b8def", color: C.white, borderBottom: `3px solid ${C.ink}` }}>
+            <span style={{ fontSize: 22 }}>{person.avatar}</span>
+            <b style={{ flex: 1 }}>{person.name}</b>
+            <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+          </div>
+          <div style={{ height: 260, overflow: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 6, background: "#efe6d2" }}>
+            {msgs.map((m, i) => (
+              <div key={i} style={{ alignSelf: m.me ? "flex-end" : "flex-start", background: m.me ? C.gem : C.white, border: `2px solid ${C.ink}`, padding: "5px 9px", fontSize: 13, maxWidth: "78%" }}>{m.text}</div>
+            ))}
+            <div ref={endRef} />
+          </div>
+          <div style={{ display: "flex", gap: 6, padding: 8, borderTop: `3px solid ${C.ink}` }}>
+            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지 입력 후 Enter" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+            <PxButton tone="good" onClick={send} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
 
+function FaceTalkModal({ person, onClose }) {
+  const [sec, setSec] = useState(0);
+  const [mic, setMic] = useState(true);
+  const [cam, setCam] = useState(true);
+  useEffect(() => { const iv = setInterval(() => setSec((s) => s + 1), 1000); return () => clearInterval(iv); }, []);
+  const mm = String(Math.floor(sec / 60)).padStart(2, "0"), ss = String(sec % 60).padStart(2, "0");
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420 }}>
+        <Panel style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ padding: "8px 12px", background: C.ink, color: C.white, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <b style={{ fontSize: 13 }}>📞 페이스톡 · {person.name}</b>
+            <span style={{ fontSize: 12, color: C.good }}>● 연결됨 {mm}:{ss}</span>
+          </div>
+          <div style={{ position: "relative", height: 240, background: "#2a3550", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ fontSize: 96 }}>{cam ? person.avatar : "📷"}</div>
+            <div style={{ position: "absolute", bottom: 8, left: 8, background: "rgba(0,0,0,0.5)", color: C.white, fontSize: 11, padding: "2px 8px" }}>{person.name} {mic ? "" : "🔇"}</div>
+            <div style={{ position: "absolute", bottom: 8, right: 8, width: 70, height: 90, background: "#3a3550", border: `2px solid ${C.white}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34 }}>{cam ? "🧑" : "📷"}</div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "center", gap: 10, padding: 12, background: C.parch }}>
+            <PxButton tone={mic ? "wood" : "danger"} onClick={() => setMic((v) => !v)} style={{ fontSize: 18, padding: "10px 14px" }}>{mic ? "🎙️" : "🔇"}</PxButton>
+            <PxButton tone={cam ? "wood" : "danger"} onClick={() => setCam((v) => !v)} style={{ fontSize: 18, padding: "10px 14px" }}>{cam ? "📷" : "🚫"}</PxButton>
+            <PxButton tone="danger" onClick={onClose} style={{ fontSize: 14, padding: "10px 18px" }}>📵 종료</PxButton>
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
 function ProfileMenu({ onClose }) {
   const [tab, setTab] = useState(null); // null | 'me' | 'villagers'
   const [sel, setSel] = useState(null);
+  const [dm, setDm] = useState(null);
+  const [call, setCall] = useState(null);
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 80, padding: 14 }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "88%", overflow: "auto" }}>
@@ -1832,8 +1898,8 @@ function ProfileMenu({ onClose }) {
                       <span style={{ fontSize: 32 }}>{p.avatar}</span>
                       <span><b style={{ fontSize: 14 }}>{p.name}</b><br /><span style={{ fontSize: 11, color: C.inkSoft }}>💼 {p.job}</span></span>
                     </button>
-                    <PxButton tone="blue" onClick={() => alert(`${p.name}님에게 DM을 보냅니다… (데모)`)} style={{ fontSize: 11, padding: "6px 8px" }}>DM</PxButton>
-                    <PxButton tone="good" onClick={() => alert(`${p.name}님과 페이스톡 연결 중… (데모)`)} style={{ fontSize: 11, padding: "6px 8px" }}>📞 페이스톡</PxButton>
+                    <PxButton tone="blue" onClick={() => setDm(p)} style={{ fontSize: 11, padding: "6px 8px" }}>DM</PxButton>
+                    <PxButton tone="good" onClick={() => setCall(p)} style={{ fontSize: 11, padding: "6px 8px" }}>📞 페이스톡</PxButton>
                   </div>
                 ))}
               </div>
@@ -1841,6 +1907,9 @@ function ProfileMenu({ onClose }) {
           )}
 
           {tab === "villagers" && sel && <ProfileDetail p={sel} onBack={() => setSel(null)} />}
+
+          {dm && <DMChatModal person={dm} onClose={() => setDm(null)} />}
+          {call && <FaceTalkModal person={call} onClose={() => setCall(null)} />}
         </Panel>
       </div>
     </div>
