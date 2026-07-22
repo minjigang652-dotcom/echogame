@@ -462,7 +462,8 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
             }
             return (
               <div key={f.id} style={{ position: "absolute", left: f.x, top: f.y, width: f.w, height: f.h,
-                background: f.color || "#c9a15f", border: `3px solid ${C.ink}`,
+                background: f.color || "#c9a15f", border: `3px solid ${C.ink}`, borderRadius: f.round ? "50%" : 0,
+                boxShadow: active ? `0 0 0 3px ${C.gem}` : "inset 0 0 0 2px rgba(255,255,255,0.25)",
                 boxShadow: active ? `0 0 0 3px ${C.gem}` : "inset 0 0 0 2px rgba(255,255,255,0.25)",
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
                 <span style={{ fontSize: Math.min(f.w, f.h) > 46 ? 26 : 18, lineHeight: 1 }}>{f.emoji}</span>
@@ -520,6 +521,7 @@ function buildWorld() {
   // 중심 주민센터
   list.push({ id: "center", kind: "center", x: 1300, y: 760, r: 90, label: "🏛 주민센터", sub: "마을 중심 · 회의/모임" });
   list.push({ id: "musinsa", kind: "small", x: 1650, y: 1260, r: 55, label: "🛍️ 무신사", tint: "#2b2b2b" });
+list.push({ id: "jjeop", kind: "small", x: 1820, y: 1210, r: 55, label: "🍴 쩝쩝박사", tint: "#c0563a" });
   // 은행 / 게시판
   list.push({ id: "bank", kind: "bank", x: 1000, y: 640, r: 65, label: "🏦 중앙은행" });
   list.push({ id: "board", kind: "board", x: 1585, y: 700, r: 60, label: "📋 게시판" });
@@ -1472,6 +1474,95 @@ function GymView({ onBack, onWork, bubble }) {
     </RoomView>
   );
 }
+/* ======================= 쩝쩝박사(음식점) ======================= */
+const JJEOP_MENU = [
+  { name: "마라탕", emoji: "🍲" }, { name: "치킨", emoji: "🍗" }, { name: "찜닭", emoji: "🍗" },
+  { name: "피자", emoji: "🍕" }, { name: "햄버거", emoji: "🍔" }, { name: "국밥", emoji: "🍚" },
+  { name: "서브웨이", emoji: "🥪" }, { name: "김치찜", emoji: "🥘" }, { name: "엽떡", emoji: "🌶️" },
+  { name: "회", emoji: "🍣" }, { name: "삼겹살", emoji: "🥓" }, { name: "콩국수", emoji: "🍜" },
+  { name: "냉면", emoji: "🥶" }, { name: "만두", emoji: "🥟" }, { name: "잔치국수", emoji: "🍜" },
+  { name: "칼국수", emoji: "🍜" }, { name: "족발", emoji: "🍖" }, { name: "보쌈", emoji: "🥬" },
+  { name: "마라샹궈", emoji: "🍲" }, { name: "돈까스", emoji: "🍱" }, { name: "쌀국수", emoji: "🍜" },
+  { name: "제육볶음", emoji: "🍳" },
+];
+const jjeopPick = () => JJEOP_MENU[Math.floor(Math.random() * JJEOP_MENU.length)];
+
+function JjeopView({ onBack, bubble }) {
+  const [modal, setModal] = useState(null);
+  const [today, setToday] = useState(null);
+  const [recList, setRecList] = useState(["마라탕", "돈까스"]);
+  const [recText, setRecText] = useState("");
+  const [step, setStep] = useState(1);
+  const [fMenu, setFMenu] = useState(null);
+  const furniture = [
+    { id: "table", x: 250, y: 150, w: 140, h: 140, round: true, color: "#caa06a", emoji: "🍽️", label: "원형 테이블 (앉기)", onInteract: () => { setToday(null); setModal("table"); } },
+    { id: "rec", x: 40, y: 180, w: 100, h: 90, color: "#7bbf8f", emoji: "📋", label: "메뉴 추천 테이블", onInteract: () => setModal("rec") },
+    { id: "fortune", x: 500, y: 170, w: 100, h: 100, color: "#8e5a9e", emoji: "🔮", label: "점심술사", onInteract: () => { setStep(1); setFMenu(null); setModal("fortune"); } },
+  ];
+  const answer = (yes) => {
+    if (!yes) { setStep("bye"); return; }
+    if (step === 4) { setFMenu(jjeopPick()); setStep("result"); return; }
+    setStep((s) => s + 1);
+  };
+  const Q = { 1: "메뉴를 고르지 못하고 있나요?", 2: "제가 골라드릴까요?", 3: "골라준대로 꼭 드셔야됩니다. 꼭 드실건가요?", 4: "진짜로 꼭 드실거죠?" };
+  return (
+    <RoomView title="쩝쩝박사" icon="🍴" sub="가운데 테이블에서 오늘의 메뉴 · 메뉴 추천 · 점심술사" bg="#efe0cf" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!modal} headerBg="#c0563a" bubble={bubble}>
+      {modal === "table" && (
+        <RoomModal title="🪑 원형 테이블" onClose={() => setModal(null)} maxW={380}>
+          {!today ? (
+            <div>
+              <div style={{ fontSize: 13, marginBottom: 10 }}>자리에 앉았어요! 테이블 위 음식을 눌러보세요 👇</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>
+                {JJEOP_MENU.slice(0, 8).map((m) => (
+                  <button key={m.name} onClick={() => setToday(jjeopPick())} style={{ cursor: "pointer", fontSize: 30, background: C.white, border: `3px solid ${C.ink}`, padding: 6 }}>{m.emoji}</button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 13, color: C.inkSoft }}>오늘의 메뉴</div>
+              <div style={{ fontSize: 72, margin: "8px 0" }}>{today.emoji}</div>
+              <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 16 }}>{today.name}</div>
+              <PxButton tone="gold" onClick={() => setToday(jjeopPick())} style={{ marginTop: 12, padding: "8px 16px", fontSize: 13 }}>🎲 다시 뽑기</PxButton>
+            </div>
+          )}
+        </RoomModal>
+      )}
+      {modal === "rec" && (
+        <RoomModal title="📋 메뉴 추천 등록" onClose={() => setModal(null)} maxW={360}>
+          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>먹고 싶은 메뉴를 자유롭게 등록하세요!</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input value={recText} onChange={(e) => setRecText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && recText.trim()) { setRecList((v) => [...v, recText.trim()]); setRecText(""); } }} placeholder="예: 마라샹궈" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+            <PxButton tone="good" onClick={() => { if (recText.trim()) { setRecList((v) => [...v, recText.trim()]); setRecText(""); } }} style={{ fontSize: 12, padding: "8px 12px" }}>등록</PxButton>
+          </div>
+          <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {recList.map((r, i) => (<span key={i} style={{ background: C.white, border: `2px solid ${C.ink}`, padding: "3px 8px", fontSize: 12 }}>🍽️ {r}</span>))}
+          </div>
+        </RoomModal>
+      )}
+      {modal === "fortune" && (
+        <RoomModal title="🔮 점심술사" onClose={() => setModal(null)} maxW={360}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 56 }}>🧙‍♀️</div>
+            <div className="chat-bubble" style={{ display: "inline-block", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "8px 12px", fontSize: 14, margin: "8px 0" }}>
+              {step === "bye" ? "가세요." : step === "result" ? `오늘은 「${fMenu.name}」 ${fMenu.emoji} 드세요!` : Q[step]}
+            </div>
+            {step !== "bye" && step !== "result" && (
+              <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 8 }}>
+                <PxButton tone="good" onClick={() => answer(true)} style={{ padding: "8px 20px", fontSize: 14 }}>네</PxButton>
+                <PxButton tone="danger" onClick={() => answer(false)} style={{ padding: "8px 20px", fontSize: 14 }}>아니요</PxButton>
+              </div>
+            )}
+            {(step === "bye" || step === "result") && (
+              <PxButton tone="ink" onClick={() => setModal(null)} style={{ marginTop: 6, padding: "8px 16px", fontSize: 13 }}>닫기</PxButton>
+            )}
+          </div>
+        </RoomModal>
+      )}
+    </RoomView>
+  );
+}
+
 /* ======================= 무신사(옷 가게) ======================= */
 const CLOTHES = {
   top: [
@@ -2224,6 +2315,7 @@ export default function App() {
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => award(4)} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
         {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
+        {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} />}
         {view === "board" && <BoardView onBack={backToWorld} />}
         {view === "bank" && <BankView gems={gems} lifetime={lifetime} exchanged={exchanged} history={history} onExchange={doExchange} onBack={backToWorld} />}
         {view === "rent" && rentMeta && <RentView house={rentMeta} gems={gems} rented={!!rented[rentId]} onRent={() => { setGems((g) => g - rentMeta.rent); setRented((r) => ({ ...r, [rentId]: true })); }} onBack={backToWorld} />}
