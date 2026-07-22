@@ -520,6 +520,8 @@ function buildWorld() {
   const list = [];
   // 중심 주민센터
   list.push({ id: "center", kind: "center", x: 1300, y: 760, r: 90, label: "🏛 주민센터", sub: "마을 중심 · 회의/모임" });
+  list.push({ id: "naverschool", kind: "small", x: 1800, y: 300, r: 70, label: "📗 네이버스쿨" });
+  list.push({ id: "videoschool", kind: "small", x: 2030, y: 300, r: 70, label: "🎬 영상스쿨" });
   list.push({ id: "sandbag", kind: "small", x: 800, y: 360, r: 55, label: "🥊 샌드백", tint: "#c0563a" });
   list.push({ id: "musinsa", kind: "small", x: 1650, y: 1260, r: 55, label: "🛍️ 무신사", tint: "#2b2b2b" });
 list.push({ id: "jjeop", kind: "small", x: 1820, y: 1210, r: 55, label: "🍴 쩝쩝박사", tint: "#c0563a" });
@@ -687,6 +689,8 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
   const spriteFor = (o) => {
     if (o.id === "sandbag") return <Sandbag size={92} />;
     switch (o.kind) {
+    if (o.id === "naverschool") return <School wall="#bfe3c8" roof="#2db400" size={140} />;
+    if (o.id === "videoschool") return <School wall="#e7cfe9" roof="#8e5a9e" size={140} />;
       case "center": return <Villa size={230} />;
       case "bank": return <PixelBank size={150} />;
       case "board": return <Board size={120} />;
@@ -1796,6 +1800,57 @@ function SandbagView({ onBack, scores, onEnd }) {
     </Panel>
   );
 }
+/* ======================= 스쿨(네이버/영상) ======================= */
+function School({ wall = "#8fd0d6", roof = "#c95d7b", size = 140 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <rect x="10" y="1" width="4" height="4" fill={roof} stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="11" y="2" width="2" height="2" fill="#ffe680" />
+      <polygon points="12,0 15,2 9,2" fill={roof} stroke="#2b1f14" strokeWidth="0.4" />
+      <polygon points="3,9 12,4 21,9" fill={roof} stroke="#2b1f14" strokeWidth="0.5" />
+      <rect x="4" y="9" width="16" height="13" fill={wall} stroke="#2b1f14" strokeWidth="0.5" />
+      <rect x="10" y="15" width="4" height="7" fill="#8a5a3b" stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="5.5" y="11" width="3" height="3" fill="#fff" stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="15.5" y="11" width="3" height="3" fill="#fff" stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="9" y="22" width="6" height="1.5" fill="#cbb58a" />
+    </svg>
+  );
+}
+
+const SCHOOLS = {
+  naverschool: { title: "네이버스쿨", icon: "📗", color: "#2db400", steps: [
+    { t: "개념 정리", d: "네이버 생태계(블로그·카페·지식인)의 기본 개념과 구조를 이해해요." },
+    { t: "블로그", d: "주제 선정 → 글쓰기 → 최적화까지 블로그 운영의 기본을 배워요." },
+    { t: "카페", d: "카페 개설·운영, 멤버 관리와 커뮤니티 활성화 방법을 익혀요." },
+    { t: "지식인", d: "질문·답변으로 전문성을 쌓고 신뢰도를 올리는 전략을 배워요." },
+  ] },
+  videoschool: { title: "영상스쿨", icon: "🎬", color: "#8e5a9e", steps: [
+    { t: "코어 개념", d: "영상의 기본 원리(구도·컷·리듬)와 핵심 개념을 잡아요." },
+    { t: "레퍼런스", d: "좋은 영상을 찾고 분석해 나만의 레퍼런스를 모아요." },
+    { t: "원고작성 & 소재수집", d: "기획·대본을 쓰고 촬영할 소재를 수집해요." },
+    { t: "영상제작", d: "촬영 → 편집 → 마무리까지 실제 영상을 완성해요." },
+  ] },
+};
+
+function SchoolView({ school, onBack }) {
+  const s = SCHOOLS[school];
+  return (
+    <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <TitleBar icon={s.icon} title={s.title} sub="1 → 4번 순서대로 따라가는 가이드" onBack={onBack} bg={s.color} fg={C.white} />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 3, background: C.ink, padding: 3 }}>
+        {s.steps.map((st, i) => (
+          <div key={i} style={{ background: C.parch, padding: 16, minHeight: 150, display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 18, color: s.color }}>{i + 1}</span>
+              <b style={{ fontSize: 15 }}>{st.t}</b>
+            </div>
+            <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.6 }}>{st.d}</div>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
 /* ======================= 흡연의 방(플레이버) ======================= */
 function SmokeView({ onBack, bubble }) {
   const furniture = [
@@ -2530,6 +2585,7 @@ export default function App() {
         {view === "pool" && <PoolView onBack={backToWorld} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => award(4)} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
+        {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
         {view === "sandbag" && <SandbagView onBack={backToWorld} scores={boxScores} onEnd={(nick, count) => setBoxScores((s) => [...s, { nick, count }])} />}
         {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
         {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} />}
