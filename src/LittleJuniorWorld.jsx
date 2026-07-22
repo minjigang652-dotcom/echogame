@@ -97,11 +97,11 @@ const RENT_HOUSES = [
 ];
 
 const ANNOUNCEMENTS = [
-  { id: "a1", title: "7월 워크샵 안내", date: "2026-07-10", body: "31일 만나요~~" },
-  { id: "a2", title: "게임 개발중..", date: "2026-07-20", body: "좀만 기다려주세용" },
-  { id: "a3", title: "치앙마이 한 달 살기 신청", date: "2026-07-12", body: "강 건너 치앙마이 하우스 렌트 신청을 받습니다. 렌트비는 스타 젬으로 결제되며, 리버뷰 동은 조기 마감될 수 있습니다." },
-  { id: "a4", title: "감사의 방 리뉴얼", date: "2026-07-18", body: "감사의 방 선반에 신규 상품(향초, 꽃다발)이 입고되었습니다. 감사 칠판에 포스트잇도 자유롭게 붙여주세요." },
-  { id: "a5", title: "월말 결산 & 정산 안내", date: "2026-07-28", body: "7월 31일 월말 결산이 있습니다. 중앙은행에서 보유 젬을 확인하고 정산(환전)을 진행해 주세요." },
+  { id: "a1", type: "이벤트", title: "에코타운 사전예약자 공지", date: "2026-07-10", body: "에코타운 사전예약에 참여해주신 모든 분들께 감사드립니다! 사전예약자에게는 오픈 첫날 스타 젬 100개와 한정 스킨이 지급됩니다. 입주 일정과 웰컴 혜택은 순차적으로 안내드릴 예정이니 조금만 기다려주세요 🌱" },
+  { id: "a2", type: "이벤트", title: "치앙마이 한 달 살기 신청", date: "2026-07-12", body: "강 건너 치앙마이 하우스 렌트 신청을 받습니다. 렌트비는 스타 젬으로 결제되며, 리버뷰 동은 조기 마감될 수 있습니다." },
+  { id: "a3", type: "공지", title: "감사의 방 리뉴얼", date: "2026-07-18", body: "감사의 방 선반에 신규 상품(향초, 꽃다발)이 입고되었습니다. 감사 칠판에 포스트잇도 자유롭게 붙여주세요." },
+  { id: "a4", type: "공지", title: "에코타운 입주준비중", date: "2026-07-20", body: "현재 에코타운은 막바지 입주 준비 중입니다. 마을 곳곳의 건물과 편의시설을 정비하고 있어요. 더 편안하고 즐거운 마을에서 만나뵐 수 있도록 열심히 꾸미는 중이니, 곧 활짝 열릴 에코타운을 기대해주세요! 🏡✨" },
+  { id: "a5", type: "공지", title: "월말 결산 & 정산 안내", date: "2026-07-28", body: "7월 31일 월말 결산이 있습니다. 중앙은행에서 보유 젬을 확인하고 정산(환전)을 진행해 주세요." },
 ];
 
 const CAL_EVENTS = {
@@ -1615,14 +1615,149 @@ function SequenceGame({ onClose, onReward }) {
 }
 
 /* ======================= 수영장 / 헬스장 ======================= */
-function PoolView({ onBack, bubble }) {
+function SwimRace({ onClose, onReward, scores, onRecord }) {
+  const LANES = ["나", "정인", "호중", "유리"];
+  const [prog, setProg] = useState([0, 0, 0, 0]);
+  const [phase, setPhase] = useState("ready");
+  const [count, setCount] = useState(3);
+  const [result, setResult] = useState(null);
+  const [nick, setNick] = useState("");
+  const [saved, setSaved] = useState(false);
+  const progRef = useRef([0, 0, 0, 0]);
+  const iv = useRef(null);
+  const startRef = useRef(0);
+
+  const finish = () => {
+    if (iv.current) { clearInterval(iv.current); iv.current = null; }
+    const p = progRef.current;
+    const order = [0, 1, 2, 3].slice().sort((a, b) => p[b] - p[a]);
+    const place = order.indexOf(0) + 1;
+    const time = +((Date.now() - startRef.current) / 1000).toFixed(2);
+    const win = place === 1;
+    setPhase("done"); setResult({ place, time, win });
+    if (win) onReward(10);
+  };
+  const tick = () => {
+    const p = progRef.current.slice();
+    for (let i = 1; i < 4; i++) p[i] = Math.min(100, p[i] + (0.8 + Math.random() * 1.7));
+    progRef.current = p; setProg(p);
+    if (Math.max(p[0], p[1], p[2], p[3]) >= 100) finish();
+  };
+  const startRace = () => {
+    setResult(null); setSaved(false);
+    progRef.current = [0, 0, 0, 0]; setProg([0, 0, 0, 0]);
+    setPhase("count"); setCount(3);
+    let c = 3;
+    const cd = setInterval(() => {
+      c -= 1;
+      if (c <= 0) { clearInterval(cd); setCount(0); setPhase("go"); startRef.current = Date.now(); iv.current = setInterval(tick, 100); }
+      else setCount(c);
+    }, 800);
+  };
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.code === "Space" || e.key === " ") {
+        e.preventDefault();
+        if (phase === "ready" || phase === "done") { startRace(); return; }
+        if (phase === "go" && !e.repeat) {
+          const p = progRef.current.slice(); p[0] = Math.min(100, p[0] + 3); progRef.current = p; setProg(p);
+          if (p[0] >= 100) finish();
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [phase]);
+  useEffect(() => () => { if (iv.current) clearInterval(iv.current); }, []);
+
+  const ranked = [...scores].sort((a, b) => a.time - b.time).slice(0, 6);
+  const saveRecord = () => { if (!result) return; onRecord(nick.trim() || "나", result.time); setSaved(true); };
+
+  return (
+    <RoomModal title="🏊 수영 대결" onClose={onClose} maxW={520}>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 300px" }}>
+          <div style={{ background: "#2f8fb8", border: `3px solid ${C.ink}`, padding: 8, position: "relative" }}>
+            {LANES.map((nm, i) => (
+              <div key={i} style={{ position: "relative", height: 34, background: i % 2 ? "#3aa0c9" : "#49abd0", borderBottom: "2px dashed rgba(255,255,255,0.5)", marginBottom: 2 }}>
+                <span style={{ position: "absolute", left: 4, top: 9, fontSize: 10, color: "#fff", fontWeight: "bold", zIndex: 2 }}>{nm}</span>
+                <div style={{ position: "absolute", left: `calc(${prog[i]}% - 14px)`, top: 4, transition: "left .1s linear", fontSize: 22 }}>🏊</div>
+                <span style={{ position: "absolute", right: 2, top: 0, bottom: 0, width: 3, background: "#e34b3a" }} />
+              </div>
+            ))}
+            {phase === "count" && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.35)", color: "#fff", fontFamily: "'Press Start 2P', monospace", fontSize: 36 }}>{count === 0 ? "GO!" : count}</div>}
+          </div>
+          <div style={{ textAlign: "center", marginTop: 10 }}>
+            {phase === "ready" && <PxButton tone="good" onClick={startRace} style={{ padding: "10px 20px", fontSize: 14 }}>▶ 시작 (Space)</PxButton>}
+            {phase === "go" && <div style={{ fontSize: 14, fontWeight: "bold", color: C.danger }}>⌨️ 스페이스바 연타!</div>}
+            {phase === "done" && result && (
+              <div>
+                <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 6 }}>{result.win ? "🥇 1등! +10⭐" : `${result.place}등 · 아쉽다!`} ({result.time}초)</div>
+                {result.win && !saved && (
+                  <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 6 }}>
+                    <input value={nick} onChange={(e) => setNick(e.target.value)} placeholder="닉네임" maxLength={8} style={{ width: 100, padding: 6, border: `2px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", background: C.white }} />
+                    <PxButton tone="gold" onClick={saveRecord} style={{ fontSize: 12, padding: "6px 10px" }}>랭킹 등록</PxButton>
+                  </div>
+                )}
+                {saved && <div style={{ fontSize: 12, color: C.good, marginBottom: 6 }}>랭킹에 등록됐어요! ✓</div>}
+                <PxButton tone="blue" onClick={startRace} style={{ padding: "8px 16px", fontSize: 13 }}>🔄 다시</PxButton>
+              </div>
+            )}
+          </div>
+        </div>
+        <div style={{ flex: "1 1 150px" }}>
+          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, marginBottom: 8 }}>🏆 기록 랭킹</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {ranked.map((s, i) => (
+              <div key={i} style={{ display: "flex", gap: 6, fontSize: 12, background: C.white, border: `2px solid ${C.ink}`, padding: "4px 7px" }}>
+                <span style={{ width: 16, fontWeight: "bold", color: i === 0 ? "#a86e13" : C.inkSoft }}>{i + 1}</span>
+                <span style={{ flex: 1 }}>{s.nick}</span>
+                <b>{s.time}s</b>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </RoomModal>
+  );
+}
+
+function SwimContest({ onClose }) {
+  const list = [
+    { date: "8/3 (일) 15:00", title: "자유형 50m 오픈전", note: "누구나 참가 가능 · 우승 50⭐" },
+    { date: "8/10 (일) 15:00", title: "에코타운 수영 챔피언십", note: "예선 통과자 본선 진출" },
+    { date: "8/17 (일) 15:00", title: "릴레이 단체전", note: "4인 1팀 · 팀 우승 100⭐" },
+  ];
+  return (
+    <RoomModal title="🏊 수영 대회 안내" onClose={onClose} maxW={400}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {list.map((c, i) => (
+          <div key={i} style={{ background: C.white, border: `3px solid ${C.ink}`, padding: 10 }}>
+            <span style={{ fontSize: 11, fontWeight: "bold", color: "#fff", background: "#4bb4d8", padding: "2px 7px" }}>📅 {c.date}</span>
+            <div style={{ fontSize: 14, fontWeight: "bold", marginTop: 6 }}>{c.title}</div>
+            <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 2 }}>{c.note}</div>
+          </div>
+        ))}
+      </div>
+    </RoomModal>
+  );
+}
+
+function PoolView({ onBack, onReward, scores, onRecord, bubble }) {
+  const [modal, setModal] = useState(null);
   const furniture = [
-    { id: "lane", x: 130, y: 150, w: 380, h: 120, color: "#3aa0c9", emoji: "🏊", label: "수영 레인", toast: "시원하게 한 바퀴! 🏊" },
+    { id: "lane", x: 130, y: 150, w: 380, h: 110, color: "#3aa0c9", emoji: "🏊", label: "수영 레인 (대결)", onInteract: () => setModal("race") },
     { id: "dive", x: 50, y: 40, w: 90, h: 70, color: "#c0563a", emoji: "🤿", label: "다이빙대", toast: "첨벙! 다이빙 성공 🤿" },
+    { id: "contest", x: 175, y: 40, w: 120, h: 70, color: "#4bb4d8", emoji: "📋", label: "대회 안내", onInteract: () => setModal("contest") },
     { id: "sunbed", x: 500, y: 300, w: 110, h: 60, color: "#e0a13d", emoji: "⛱️", label: "선베드", toast: "선베드에서 일광욕 ☀️" },
     { id: "tube", x: 270, y: 310, w: 80, h: 60, color: "#ffe680", emoji: "🛟", label: "튜브", toast: "둥둥~ 물 위에 떠 있다 🛟" },
   ];
-  return <RoomView title="수영장" icon="🏊" sub="시원한 물놀이 · 레인/다이빙/선베드" bg="#bfe6f2" roomW={640} roomH={400} furniture={furniture} onBack={onBack} headerBg="#4bb4d8" bubble={bubble} />;
+  return (
+    <RoomView title="수영장" icon="🏊" sub="수영 레인에서 대결! · 📋 대회 안내" bg="#bfe6f2" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!modal} headerBg="#4bb4d8" bubble={bubble}>
+      {modal === "race" && <SwimRace onClose={() => setModal(null)} onReward={onReward} scores={scores} onRecord={onRecord} />}
+      {modal === "contest" && <SwimContest onClose={() => setModal(null)} />}
+    </RoomView>
+  );
 }
 function GymView({ onBack, onWork, bubble }) {
   const [stretch, setStretch] = useState(false);
@@ -2043,7 +2178,10 @@ function BoardView({ onBack }) {
           <div style={{ display: "grid", gap: 8 }}>
             {ANNOUNCEMENTS.map((a) => (
               <button key={a.id} onClick={() => setOpenDoc(a)} className="px-btn" style={{ textAlign: "left", background: C.white, border: `3px solid ${C.ink}`, padding: "10px 12px", cursor: "pointer", fontFamily: "'DotGothic16', monospace" }}>
-                <div style={{ fontSize: 14, fontWeight: "bold" }}>📄 {a.title}</div>
+                <div style={{ fontSize: 14, fontWeight: "bold", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 10, color: "#fff", background: a.type === "이벤트" ? "#d76b96" : "#5b8def", padding: "2px 6px", whiteSpace: "nowrap" }}>{a.type || "공지"}</span>
+                  {a.title}
+                </div>
                 <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 2 }}>{a.date} · 눌러서 열기</div>
               </button>
             ))}
@@ -2574,6 +2712,7 @@ export default function App() {
   ]);
   const [worries, setWorries] = useState([]);
   const [rented, setRented] = useState({});
+  const [swimScores, setSwimScores] = useState([{ nick: "유리", time: 8.2 }, { nick: "정인", time: 9.1 }, { nick: "호중", time: 9.8 }, { nick: "의준", time: 10.4 }]);
   const [boxScores, setBoxScores] = useState([{ nick: "창민", count: 18294719 }, { nick: "정인", count: 129572 }]);
   const [townRegion, setTownRegion] = useState("서울");
   const [regionOpen, setRegionOpen] = useState(false);
@@ -2759,7 +2898,7 @@ export default function App() {
         {view === "listening" && <ListeningView onBack={backToWorld} gems={gems} onSpend={(n) => setGems((g) => g - n)} bubble={bubble} />}
         {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} />}
         {view === "minigame" && <MiniGameRoom onBack={backToWorld} onReward={(n) => award(n)} bubble={bubble} />}
-        {view === "pool" && <PoolView onBack={backToWorld} bubble={bubble} />}
+        {view === "pool" && <PoolView onBack={backToWorld} onReward={(n) => award(n)} scores={swimScores} onRecord={(nick, time) => setSwimScores((s) => [...s, { nick, time }])} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => award(4)} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
         {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
