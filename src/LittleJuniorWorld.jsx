@@ -560,23 +560,24 @@ const WORLD_OBJS = buildWorld();
 const WORLD = { w: 2620, h: 1520 };
 const RIVER_X = 2140, RIVER_W = 120;
 const BRIDGE_Y1 = 690, BRIDGE_Y2 = 800;   // 이 구간(다리)에서만 강을 건널 수 있음
+const MAP_ZONES = [
+  { label: "업무", color: "#5b8def", x1: 820, y1: 210, x2: 1680, y2: 560 },
+  { label: "주민센터", color: "#d9a441", x1: 1150, y1: 610, x2: 1470, y2: 910 },
+  { label: "집", color: "#c98ba0", x1: 380, y1: 490, x2: 830, y2: 1300 },
+  { label: "놀이", color: "#3fa07a", x1: 1680, y1: 500, x2: 2090, y2: 1260 },
+  { label: "운동", color: "#4bb4d8", x1: 1080, y1: 1170, x2: 1560, y2: 1340 },
+  { label: "치앙마이", color: "#8e6bb0", x1: 2260, y1: 560, x2: 2600, y2: 1120 },
+];
 function MiniMap({ pos }) {
-  const W = 150, H = Math.round((W * WORLD.h) / WORLD.w);
+  const W = 168, H = Math.round((W * WORLD.h) / WORLD.w);
   const sx = W / WORLD.w, sy = H / WORLD.h;
-  const dotColor = (o) =>
-    o.kind === "center" ? C.gem :
-    o.kind === "big" ? "#5b8def" :
-    o.kind === "house" ? "#c98ba0" :
-    o.kind === "rent" ? "#e0a13d" :
-    o.kind === "facility" ? "#4bb4d8" :
-    o.kind === "bank" ? "#caa15f" :
-    o.kind === "npc" ? "#8e5a9e" : "#7bbf8f";
   return (
-    <div style={{ position: "absolute", right: 10, bottom: 10, width: W, height: H, background: "rgba(28,38,24,0.82)", border: `2px solid ${C.ink}`, zIndex: 16, overflow: "hidden" }}>
-      <div style={{ position: "absolute", left: 4, top: 3, fontSize: 8, color: "#cfe0c4", letterSpacing: 1 }}>MAP</div>
+    <div style={{ position: "absolute", right: 10, bottom: 10, width: W, height: H, background: "rgba(20,28,18,0.85)", border: `2px solid ${C.ink}`, zIndex: 16, overflow: "hidden" }}>
       <div style={{ position: "absolute", left: RIVER_X * sx, top: 0, width: Math.max(2, RIVER_W * sx), height: "100%", background: "#3a6ea5" }} />
-      {WORLD_OBJS.filter((o) => o.r).map((o) => (
-        <div key={o.id} title={o.label} style={{ position: "absolute", left: o.x * sx - 2, top: o.y * sy - 2, width: 4, height: 4, background: dotColor(o), border: "1px solid rgba(0,0,0,0.45)" }} />
+      {MAP_ZONES.map((z) => (
+        <div key={z.label} style={{ position: "absolute", left: z.x1 * sx, top: z.y1 * sy, width: (z.x2 - z.x1) * sx, height: (z.y2 - z.y1) * sy, background: z.color + "cc", border: "1px solid rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <span style={{ fontSize: 8, color: "#fff", fontWeight: "bold", textShadow: "0 1px 1px rgba(0,0,0,0.6)", whiteSpace: "nowrap" }}>{z.label}</span>
+        </div>
       ))}
       <div style={{ position: "absolute", left: pos.x * sx - 3, top: pos.y * sy - 3, width: 6, height: 6, borderRadius: "50%", background: "#fff", border: `2px solid ${C.danger}`, boxShadow: "0 0 4px #fff", zIndex: 2 }} />
     </div>
