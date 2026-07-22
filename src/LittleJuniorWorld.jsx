@@ -860,22 +860,46 @@ function albaQuests(idx) {
   }
   return out;
 }
-
+function ManagerChat({ name, onClose }) {
+  const [msgs, setMsgs] = useState([{ me: false, text: `안녕하세요, 담당자 ${name}입니다. 무엇을 도와드릴까요?` }]);
+  const [text, setText] = useState("");
+  const replies = ["네 확인했어요!", "그건 이렇게 진행하면 돼요 👍", "잠시만요, 알아볼게요", "오케이 바로 처리할게요", "좋은 질문이에요!", "그 건은 내일까지 부탁해요 🙏"];
+  const send = () => { const t = text.trim(); if (!t) return; setMsgs((m) => [...m, { me: true, text: t }]); setText(""); setTimeout(() => setMsgs((m) => [...m, { me: false, text: replies[Math.floor(Math.random() * replies.length)] }]), 700); };
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
+        <Panel style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "#7a8b99", color: C.white, borderBottom: `3px solid ${C.ink}` }}>
+            <span style={{ fontSize: 20 }}>🧑‍💼</span><b style={{ flex: 1 }}>담당자 {name}</b>
+            <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+          </div>
+          <div style={{ height: 240, overflow: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 6, background: "#efe6d2" }}>
+            {msgs.map((m, i) => (
+              <div key={i} style={{ alignSelf: m.me ? "flex-end" : "flex-start", background: m.me ? C.gem : C.white, border: `2px solid ${C.ink}`, padding: "5px 9px", fontSize: 13, maxWidth: "78%" }}>{m.text}</div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6, padding: 8, borderTop: `3px solid ${C.ink}` }}>
+            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지 입력 후 Enter" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+            <PxButton tone="good" onClick={send} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
 function AlbaView({ onBack }) {
   const [sel, setSel] = useState(null);
   const [hours, setHours] = useState("");
   const [checked, setChecked] = useState({});
+  const [done, setDone] = useState({});
+  const [chatWith, setChatWith] = useState(null);
   const names = [...ALBA_NAMES].sort((a, b) => a.localeCompare(b, "ko"));
   const toggle = (id) => setChecked((c) => ({ ...c, [id]: !c[id] }));
+  const toggleDone = (id) => setDone((d) => ({ ...d, [id]: !d[id] }));
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
       <TitleBar icon="🛠" title="알바" sub="담당자별 업무 리스트" onBack={onBack} bg="#7a8b99" fg={C.white} />
       <div style={{ padding: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, background: C.white, border: `3px solid ${C.ink}`, padding: "8px 12px", flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13, fontWeight: "bold" }}>⏱ 오늘 총 업무 시간</span>
-          <input value={hours} onChange={(e) => setHours(e.target.value)} placeholder="예: 6시간 30분" style={{ flex: 1, minWidth: 120, padding: 7, border: `2px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.parch }} />
-        </div>
-
         {!sel ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
             {names.map((nm) => (
@@ -886,24 +910,30 @@ function AlbaView({ onBack }) {
           <div>
             <PxButton tone="ink" onClick={() => setSel(null)} style={{ fontSize: 11, padding: "5px 9px", marginBottom: 10 }}>← 목록</PxButton>
             <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 13, marginBottom: 10 }}>🧑 {sel}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, background: C.white, border: `3px solid ${C.ink}`, padding: "8px 12px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: 13, fontWeight: "bold" }}>⏱ 오늘 총 업무 시간</span>
+              <input value={hours} onChange={(e) => setHours(e.target.value)} placeholder="예: 6시간 30분" style={{ flex: 1, minWidth: 120, padding: 7, border: `2px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.parch }} />
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {albaQuests(names.indexOf(sel)).map((q) => (
-                <div key={q.id} style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `3px solid ${C.ink}`, padding: "8px 10px" }}>
+                <div key={q.id} style={{ display: "flex", alignItems: "center", gap: 8, rowGap: 6, background: C.white, border: `3px solid ${C.ink}`, padding: "8px 10px", flexWrap: "wrap", opacity: done[q.id] ? 0.55 : 1 }}>
                   <span style={{ fontSize: 11, fontWeight: "bold", color: "#fff", background: q.type === "신규" ? "#c0392b" : "#3a7bd5", padding: "2px 7px", whiteSpace: "nowrap" }}>{q.type}</span>
-                  <span style={{ flex: 1, fontSize: 13 }}>{q.title}</span>
+                  <span style={{ flex: 1, minWidth: 90, fontSize: 13, textDecoration: done[q.id] ? "line-through" : "none" }}>{q.title}</span>
                   {q.type === "신규" && (
-                    <PxButton tone="wood" onClick={() => alert(`담당자: ${q.manager}`)} style={{ fontSize: 11, padding: "5px 8px" }}>담당자 {q.manager}</PxButton>
+                    <PxButton tone="wood" onClick={() => setChatWith(q.manager)} style={{ fontSize: 11, padding: "5px 8px" }}>💬 담당자 {q.manager}</PxButton>
                   )}
                   <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
                     <input type="checkbox" checked={!!checked[q.id]} onChange={() => toggle(q.id)} style={{ width: 16, height: 16 }} />
                     진행가능
                   </label>
+                  <PxButton tone={done[q.id] ? "good" : "ink"} onClick={() => toggleDone(q.id)} style={{ fontSize: 11, padding: "5px 8px", whiteSpace: "nowrap" }}>{done[q.id] ? "✅ 완료" : "완료"}</PxButton>
                 </div>
               ))}
             </div>
           </div>
         )}
       </div>
+      {chatWith && <ManagerChat name={chatWith} onClose={() => setChatWith(null)} />}
     </Panel>
   );
 }
