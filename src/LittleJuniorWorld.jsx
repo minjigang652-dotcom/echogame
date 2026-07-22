@@ -842,6 +842,71 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 }
 
 /* ======================= 대형건물(퀘스트) ======================= */
+/* ======================= 알바(담당자 리스트) ======================= */
+const ALBA_NAMES = ["이진", "이름", "혜림", "강도현", "김서연", "박지후", "정민아", "최유나", "한소율", "오태경", "서지안", "노현우"];
+const ALBA_QUEST_POOL = ["블로그 포스팅", "스마트스토어 상품 등록", "유튜브 영상 편집", "릴스 자막 달기", "카페 이벤트 관리", "지식인 답변", "상세페이지 디자인", "키워드 리서치", "댓글 모니터링", "월간 리포트 작성", "썸네일 제작", "고객 문의 응대"];
+const ALBA_MANAGERS = ["민지", "정인", "창민", "도희"];
+function albaQuests(idx) {
+  const out = [];
+  const n = 3 + (idx % 2);
+  for (let i = 0; i < n; i++) {
+    const isNew = (idx + i) % 3 === 0;
+    out.push({
+      id: `q${idx}_${i}`,
+      title: ALBA_QUEST_POOL[(idx * 2 + i) % ALBA_QUEST_POOL.length],
+      type: isNew ? "신규" : "반복",
+      manager: isNew ? ALBA_MANAGERS[(idx + i) % ALBA_MANAGERS.length] : null,
+    });
+  }
+  return out;
+}
+
+function AlbaView({ onBack }) {
+  const [sel, setSel] = useState(null);
+  const [hours, setHours] = useState("");
+  const [checked, setChecked] = useState({});
+  const names = [...ALBA_NAMES].sort((a, b) => a.localeCompare(b, "ko"));
+  const toggle = (id) => setChecked((c) => ({ ...c, [id]: !c[id] }));
+  return (
+    <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <TitleBar icon="🛠" title="알바" sub="담당자별 업무 리스트" onBack={onBack} bg="#7a8b99" fg={C.white} />
+      <div style={{ padding: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, background: C.white, border: `3px solid ${C.ink}`, padding: "8px 12px", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13, fontWeight: "bold" }}>⏱ 오늘 총 업무 시간</span>
+          <input value={hours} onChange={(e) => setHours(e.target.value)} placeholder="예: 6시간 30분" style={{ flex: 1, minWidth: 120, padding: 7, border: `2px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.parch }} />
+        </div>
+
+        {!sel ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+            {names.map((nm) => (
+              <button key={nm} onClick={() => setSel(nm)} style={{ cursor: "pointer", aspectRatio: "1 / 1", background: C.parch, border: `3px solid ${C.ink}`, boxShadow: `inset 0 0 0 2px ${C.parchEdge}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: "bold", color: C.ink }}>{nm}</button>
+            ))}
+          </div>
+        ) : (
+          <div>
+            <PxButton tone="ink" onClick={() => setSel(null)} style={{ fontSize: 11, padding: "5px 9px", marginBottom: 10 }}>← 목록</PxButton>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 13, marginBottom: 10 }}>🧑 {sel}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {albaQuests(names.indexOf(sel)).map((q) => (
+                <div key={q.id} style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `3px solid ${C.ink}`, padding: "8px 10px" }}>
+                  <span style={{ fontSize: 11, fontWeight: "bold", color: "#fff", background: q.type === "신규" ? "#c0392b" : "#3a7bd5", padding: "2px 7px", whiteSpace: "nowrap" }}>{q.type}</span>
+                  <span style={{ flex: 1, fontSize: 13 }}>{q.title}</span>
+                  {q.type === "신규" && (
+                    <PxButton tone="wood" onClick={() => alert(`담당자: ${q.manager}`)} style={{ fontSize: 11, padding: "5px 8px" }}>담당자 {q.manager}</PxButton>
+                  )}
+                  <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    <input type="checkbox" checked={!!checked[q.id]} onChange={() => toggle(q.id)} style={{ width: 16, height: 16 }} />
+                    진행가능
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </Panel>
+  );
+}
 function BigBuildingView({ b, qs, day, onRun, onBack }) {
   const [activeCat, setActiveCat] = useState(null);
   const cats = b.categories || null;
@@ -2586,8 +2651,7 @@ export default function App() {
         {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} bubble={bubble} townRain={townRain} cmRain={cmRain} />}
         {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
-        {view === "big" && bigMeta && <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />}
-        {view === "house" && houseMeta && <HomeView house={houseMeta} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
+        {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && <HomeView house={houseMeta} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
         {view === "thanks" && <ThanksView gems={gems} inventory={thanksInv} postits={postits} onBuy={(it) => { setGems((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={(p) => setPostits((v) => [...v, { ...p, id: Date.now() }])} onBack={backToWorld} bubble={bubble} />}
         {view === "heart" && <HeartView gems={gems} worries={worries} onPost={(text, cost) => { setGems((g) => g - cost); setWorries((w) => [{ id: Date.now(), text }, ...w]); }} onBack={backToWorld} bubble={bubble} />}
         {view === "listening" && <ListeningView onBack={backToWorld} gems={gems} onSpend={(n) => setGems((g) => g - n)} bubble={bubble} />}
