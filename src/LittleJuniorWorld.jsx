@@ -2340,7 +2340,12 @@ export default function App() {
   };
 
   // 신규: 배경음악 / 채팅 / 말풍선 / 피드백 / 메뉴
-  const [worldBgm, setWorldBgm] = useState({ title: "Keshi - 2 Soon", playing: true });
+  const [worldBgm, setWorldBgm] = useState({ title: "3호선 매봉역", playing: false });
+  const audioRef = useRef(null);
+  useEffect(() => {
+    const a = audioRef.current; if (!a) return;
+    if (worldBgm.playing) a.play().catch(() => {}); else a.pause();
+  }, [worldBgm.playing]);
   const [chat, setChat] = useState([]);
   const [shout, setShout] = useState(false);
   const [bubble, setBubble] = useState(null);
@@ -2441,6 +2446,7 @@ export default function App() {
   return (
     <div style={{ fontFamily: "'DotGothic16', monospace", minHeight: "100vh", background: `repeating-linear-gradient(45deg, ${C.grass} 0 24px, ${C.grassDark} 24px 48px)`, color: C.ink, padding: 14, boxSizing: "border-box" }}>
       <StyleBlock />
+      <audio ref={audioRef} src={import.meta.env.BASE_URL + "bgm.mp3"} loop preload="auto" />
       <div style={{ maxWidth: 960, margin: "0 auto 12px" }}>
         <Panel style={{ padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
