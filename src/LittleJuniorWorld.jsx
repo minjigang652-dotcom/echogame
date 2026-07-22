@@ -560,7 +560,28 @@ const WORLD_OBJS = buildWorld();
 const WORLD = { w: 2620, h: 1520 };
 const RIVER_X = 2140, RIVER_W = 120;
 const BRIDGE_Y1 = 690, BRIDGE_Y2 = 800;   // 이 구간(다리)에서만 강을 건널 수 있음
-
+function MiniMap({ pos }) {
+  const W = 150, H = Math.round((W * WORLD.h) / WORLD.w);
+  const sx = W / WORLD.w, sy = H / WORLD.h;
+  const dotColor = (o) =>
+    o.kind === "center" ? C.gem :
+    o.kind === "big" ? "#5b8def" :
+    o.kind === "house" ? "#c98ba0" :
+    o.kind === "rent" ? "#e0a13d" :
+    o.kind === "facility" ? "#4bb4d8" :
+    o.kind === "bank" ? "#caa15f" :
+    o.kind === "npc" ? "#8e5a9e" : "#7bbf8f";
+  return (
+    <div style={{ position: "absolute", right: 10, bottom: 10, width: W, height: H, background: "rgba(28,38,24,0.82)", border: `2px solid ${C.ink}`, zIndex: 16, overflow: "hidden" }}>
+      <div style={{ position: "absolute", left: 4, top: 3, fontSize: 8, color: "#cfe0c4", letterSpacing: 1 }}>MAP</div>
+      <div style={{ position: "absolute", left: RIVER_X * sx, top: 0, width: Math.max(2, RIVER_W * sx), height: "100%", background: "#3a6ea5" }} />
+      {WORLD_OBJS.filter((o) => o.r).map((o) => (
+        <div key={o.id} title={o.label} style={{ position: "absolute", left: o.x * sx - 2, top: o.y * sy - 2, width: 4, height: 4, background: dotColor(o), border: "1px solid rgba(0,0,0,0.45)" }} />
+      ))}
+      <div style={{ position: "absolute", left: pos.x * sx - 3, top: pos.y * sy - 3, width: 6, height: 6, borderRadius: "50%", background: "#fff", border: `2px solid ${C.danger}`, boxShadow: "0 0 4px #fff", zIndex: 2 }} />
+    </div>
+  );
+}
 function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false }) {
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
@@ -764,6 +785,8 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
           <span style={{ background: C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}` }}>📅 DAY {day}</span>
           <PxButton tone="blue" onClick={onNextDay} style={{ fontSize: 11, padding: "6px 9px" }}>🌙 다음 날</PxButton>
         </div>
+
+        <MiniMap pos={pos} />
 
         {/* NPC 대화창 */}
         {dialog && (
