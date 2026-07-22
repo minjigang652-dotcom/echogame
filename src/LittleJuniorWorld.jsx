@@ -1501,7 +1501,7 @@ function JjeopView({ onBack, bubble }) {
   const [step, setStep] = useState(1);
   const [fMenu, setFMenu] = useState(null);
   const furniture = [
-    { id: "table", x: 250, y: 150, w: 140, h: 140, round: true, color: "#caa06a", emoji: "🍽️", label: "원형 테이블 (앉기)", onInteract: () => { setToday(null); setModal("table"); } },
+    { id: "table", x: 250, y: 150, w: 140, h: 140, round: true, color: "#caa06a", emoji: "🍽️", label: "원형 테이블 (앉기)", onInteract: () => { setToday(jjeopPick()); setModal("table"); } },
     { id: "rec", x: 40, y: 180, w: 100, h: 90, color: "#7bbf8f", emoji: "📋", label: "메뉴 추천 테이블", onInteract: () => setModal("rec") },
     { id: "fortune", x: 500, y: 170, w: 100, h: 100, color: "#8e5a9e", emoji: "🔮", label: "점심술사", onInteract: () => { setStep(1); setFMenu(null); setModal("fortune"); } },
   ];
@@ -1513,20 +1513,14 @@ function JjeopView({ onBack, bubble }) {
   const Q = { 1: "메뉴를 고르지 못하고 있나요?", 2: "제가 골라드릴까요?", 3: "골라준대로 꼭 드셔야됩니다. 꼭 드실건가요?", 4: "진짜로 꼭 드실거죠?" };
   return (
     <RoomView title="쩝쩝박사" icon="🍴" sub="가운데 테이블에서 오늘의 메뉴 · 메뉴 추천 · 점심술사" bg="#efe0cf" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!modal} headerBg="#c0563a" bubble={bubble}>
-      {modal === "table" && (
+      {modal === "table" && today && (
         <RoomModal title="🪑 원형 테이블" onClose={() => setModal(null)} maxW={380}>
-          {!today ? (
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 13, marginBottom: 12 }}>자리에 앉았어요! 🪑</div>
-              <button onClick={() => setToday(jjeopPick())} style={{ cursor: "pointer", fontSize: 44, background: C.white, border: `3px solid ${C.ink}`, padding: "14px 22px" }}>🍴 오늘 뭐 먹지?</button>
-            </div>
-          ) : (
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 13, color: C.inkSoft }}>오늘의 메뉴</div>
-              <div style={{ fontSize: 72, margin: "8px 0" }}>{today.emoji}</div>
-              <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 16 }}>{today.name}</div>
-            </div>
-          )}
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 13, color: C.inkSoft }}>오늘의 메뉴는 이거~</div>
+            <div style={{ fontSize: 72, margin: "8px 0" }}>{today.emoji}</div>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 16 }}>{today.name}</div>
+            <div style={{ fontSize: 15, marginTop: 12, color: "#c0563a" }}>맛있게 드세요 ~ ♥</div>
+          </div>
         </RoomModal>
       )}
       {modal === "rec" && (
