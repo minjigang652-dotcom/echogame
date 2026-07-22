@@ -585,6 +585,15 @@ function MiniMap({ pos }) {
     </div>
   );
 }
+function skyOverlay(h) {
+  if (h < 5) return { bg: "linear-gradient(180deg, rgba(10,14,40,0.62), rgba(20,24,55,0.5))", label: "🌙 밤" };
+  if (h < 7) return { bg: "linear-gradient(180deg, rgba(60,40,90,0.45), rgba(240,150,120,0.28))", label: "🌅 새벽" };
+  if (h < 10) return { bg: "linear-gradient(180deg, rgba(255,220,150,0.18), rgba(255,240,200,0.05))", label: "🌤 아침" };
+  if (h < 17) return { bg: "transparent", label: "☀️ 낮" };
+  if (h < 19) return { bg: "linear-gradient(180deg, rgba(255,110,40,0.34), rgba(255,90,120,0.3))", label: "🌇 노을" };
+  if (h < 21) return { bg: "linear-gradient(180deg, rgba(70,50,110,0.46), rgba(120,70,110,0.4))", label: "🌆 저녁" };
+  return { bg: "linear-gradient(180deg, rgba(10,14,40,0.6), rgba(20,24,55,0.48))", label: "🌙 밤" };
+}
 function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false }) {
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
@@ -611,6 +620,10 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
   handleRef.current = handleObj;
 
   const focusGame = () => { if (vpRef.current) vpRef.current.focus(); if (hintRef.current) { hintRef.current = false; setHint(false); } };
+
+  const [hour, setHour] = useState(() => new Date().getHours());
+  useEffect(() => { const iv = setInterval(() => setHour(new Date().getHours()), 60000); return () => clearInterval(iv); }, []);
+  const sky = skyOverlay(hour);
 
   // 뷰포트 크기 측정 + 자동 포커스(방향키 즉시 반응)
   useEffect(() => {
@@ -688,9 +701,10 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 
   const spriteFor = (o) => {
     if (o.id === "sandbag") return <Sandbag size={92} />;
-    switch (o.kind) {
-    if (o.id === "naverschool") return <School wall="#bfe3c8" roof="#2db400" size={140} />;
-    if (o.id === "videoschool") return <School wall="#e7cfe9" roof="#8e5a9e" size={140} />;
+      if (o.id === "naverschool") return <School wall="#bfe3c8" roof="#2db400" size={140} />;
+      if (o.id === "videoschool") return <School wall="#e7cfe9" roof="#8e5a9e" size={140} />;
+      switch (o.kind) {
+        case "center": return <Villa size={230} />;
       case "center": return <Villa size={230} />;
       case "bank": return <PixelBank size={150} />;
       case "board": return <Board size={120} />;
@@ -778,6 +792,8 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
           </div>
         </div>
 
+        {sky.bg !== "transparent" && <div style={{ position: "absolute", inset: 0, background: sky.bg, pointerEvents: "none", zIndex: 14, transition: "background 2s linear" }} />}
+
         {/* 처음 이동 안내 */}
         {hint && (
           <div style={{ position: "absolute", left: 10, bottom: 10, background: C.ink, color: C.gem, border: `2px solid ${C.gem}`, fontSize: 11, padding: "5px 9px", zIndex: 15 }}>
@@ -787,6 +803,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 
         {/* HUD 오버레이: 날짜 */}
         <div style={{ position: "absolute", right: 10, top: 10, display: "flex", gap: 8, alignItems: "center" }}>
+          <span style={{ background: C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}` }}>{sky.label}</span>
           <span style={{ background: C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}` }}>📅 DAY {day}</span>
           <PxButton tone="blue" onClick={onNextDay} style={{ fontSize: 11, padding: "6px 9px" }}>🌙 다음 날</PxButton>
         </div>
