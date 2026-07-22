@@ -1703,18 +1703,25 @@ function playPunch() {
 
 function SandbagView({ onBack, scores, onEnd }) {
   const [count, setCount] = useState(0);
+  const [mode, setMode] = useState("mouse");
   const [fx, setFx] = useState(0);
   const [ending, setEnding] = useState(false);
   const [nick, setNick] = useState("");
   const hit = () => { setCount((c) => c + 1); setFx(Date.now()); playPunch(); };
   const finish = () => { if (count <= 0) { onBack(); return; } setEnding(true); };
   const submit = () => { onEnd(nick.trim() || "익명", count); setCount(0); setNick(""); setEnding(false); };
+  useEffect(() => {
+    if (mode !== "keyboard") return;
+    const onKey = (e) => { if ((e.code === "Space" || e.key === " ") && !ending) { e.preventDefault(); hit(); } };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mode, ending]);
   const ranked = [...scores].sort((a, b) => b.count - a.count).slice(0, 8);
   return (
     <Panel style={{ padding: 0, overflow: "hidden", position: "relative" }}>
       <TitleBar icon="🥊" title="샌드백 치기" sub="샌드백을 마구 클릭! · 끝을 누르면 랭킹 집계" onBack={onBack} bg="#c0563a" fg={C.white} />
       <div style={{ display: "flex", flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 320px", position: "relative", height: 420, background: "#2a2233", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: GLOVE_CURSOR }} onClick={hit}>
+        <div style={{ flex: "1 1 320px", position: "relative", height: 420, background: "#2a2233", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: mode === "mouse" ? GLOVE_CURSOR : "default" }} onClick={mode === "mouse" ? hit : undefined}>
           <div style={{ position: "absolute", top: 12, right: 14, textAlign: "center" }}>
             <div style={{ fontSize: 11, color: "#ffe680" }}>클릭</div>
             <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 26, color: C.gem }}>{count}</div>
@@ -1723,7 +1730,13 @@ function SandbagView({ onBack, scores, onEnd }) {
           <div key={fx} className={fx ? "bag-hit" : ""} style={{ pointerEvents: "none" }}>
             <Sandbag size={160} />
           </div>
-          <div style={{ position: "absolute", bottom: 14, color: "#b9a7d6", fontSize: 12, pointerEvents: "none" }}>👊 샌드백을 클릭하세요!</div>
+          <div style={{ position: "absolute", bottom: 12, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, pointerEvents: "none" }}>
+            <div style={{ color: "#b9a7d6", fontSize: 12 }}>{mode === "mouse" ? "👊 샌드백을 클릭!" : "⌨️ 스페이스바 연타!"}</div>
+            <div style={{ display: "flex", gap: 6, pointerEvents: "auto" }}>
+              <PxButton tone={mode === "mouse" ? "good" : "wood"} onClick={(e) => { e.stopPropagation(); setMode("mouse"); e.currentTarget.blur(); }} style={{ fontSize: 11, padding: "5px 10px" }}>🖱️ 마우스</PxButton>
+              <PxButton tone={mode === "keyboard" ? "good" : "wood"} onClick={(e) => { e.stopPropagation(); setMode("keyboard"); e.currentTarget.blur(); }} style={{ fontSize: 11, padding: "5px 10px" }}>⌨️ 키보드</PxButton>
+            </div>
+          </div>
         </div>
         <div style={{ flex: "1 1 220px", padding: 14, background: C.parch, borderLeft: `3px solid ${C.ink}` }}>
           <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 10 }}>🏆 랭킹</div>
@@ -2305,7 +2318,7 @@ export default function App() {
   ]);
   const [worries, setWorries] = useState([]);
   const [rented, setRented] = useState({});
-  const [boxScores, setBoxScores] = useState([]);
+  const [boxScores, setBoxScores] = useState([{ nick: "창민", count: 18294719 }, { nick: "정인", count: 129572 }]);
   const [townRegion, setTownRegion] = useState("서울");
   const [regionOpen, setRegionOpen] = useState(false);
   const wxPoints = useMemo(() => ({ town: REGIONS[townRegion], chiangmai: { lat: 18.7883, lon: 98.9853 } }), [townRegion]);
