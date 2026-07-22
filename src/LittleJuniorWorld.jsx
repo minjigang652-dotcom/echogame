@@ -1516,13 +1516,9 @@ function JjeopView({ onBack, bubble }) {
       {modal === "table" && (
         <RoomModal title="🪑 원형 테이블" onClose={() => setModal(null)} maxW={380}>
           {!today ? (
-            <div>
-              <div style={{ fontSize: 13, marginBottom: 10 }}>자리에 앉았어요! 테이블 위 음식을 눌러보세요 👇</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>
-                {JJEOP_MENU.slice(0, 8).map((m) => (
-                  <button key={m.name} onClick={() => setToday(jjeopPick())} style={{ cursor: "pointer", fontSize: 30, background: C.white, border: `3px solid ${C.ink}`, padding: 6 }}>{m.emoji}</button>
-                ))}
-              </div>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 13, marginBottom: 12 }}>자리에 앉았어요! 🪑</div>
+              <button onClick={() => setToday(jjeopPick())} style={{ cursor: "pointer", fontSize: 44, background: C.white, border: `3px solid ${C.ink}`, padding: "14px 22px" }}>🍴 오늘 뭐 먹지?</button>
             </div>
           ) : (
             <div style={{ textAlign: "center" }}>
