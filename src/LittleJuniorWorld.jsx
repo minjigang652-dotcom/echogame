@@ -1458,18 +1458,61 @@ function ReelsView({ onBack, bubble }) {
 }
 
 /* ======================= 미니게임 방 ======================= */
+
+const CONTESTS = [
+  { id: "c1", title: "반응속도 챔피언십", date: "8/2 (토) 20:00", game: "reaction" },
+  { id: "c2", title: "가위바위보 왕중왕전", date: "8/9 (토) 20:00", game: "rps" },
+  { id: "c3", title: "숫자 순서 스피드런", date: "8/16 (토) 20:00", game: "sequence" },
+];
+const CONTEST_RANK = {
+  reaction: [{ n: "유리", s: 312 }, { n: "정인", s: 298 }, { n: "의준", s: 284 }, { n: "호중", s: 271 }, { n: "희정", s: 255 }],
+  rps: [{ n: "호중", s: 27 }, { n: "희정", s: 24 }, { n: "정인", s: 22 }, { n: "유리", s: 19 }, { n: "의준", s: 17 }],
+  sequence: [{ n: "의준", s: 18 }, { n: "유리", s: 16 }, { n: "희정", s: 15 }, { n: "정인", s: 13 }, { n: "호중", s: 12 }],
+};
+
+function ContestModal({ onClose, onPlay }) {
+  return (
+    <RoomModal title="🏆 미니게임 대회" onClose={onClose} maxW={440}>
+      <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10 }}>다가오는 대회 일정과 순위예요. 게임 링크로 바로 연습해보세요!</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {CONTESTS.map((c) => (
+          <div key={c.id} style={{ background: C.white, border: `3px solid ${C.ink}`, padding: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 11, fontWeight: "bold", color: "#fff", background: "#8e5a9e", padding: "2px 7px", whiteSpace: "nowrap" }}>📅 {c.date}</span>
+              <b style={{ flex: 1, fontSize: 14, minWidth: 100 }}>{c.title}</b>
+              <PxButton tone="good" onClick={() => onPlay(c.game)} style={{ fontSize: 11, padding: "5px 9px" }}>🎮 게임 링크</PxButton>
+            </div>
+            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 3 }}>
+              {CONTEST_RANK[c.game].map((r, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, borderBottom: `1px dashed ${C.parchEdge}`, paddingBottom: 2 }}>
+                  <span style={{ width: 18, fontWeight: "bold", color: i === 0 ? "#a86e13" : C.inkSoft }}>{i + 1}</span>
+                  <span style={{ flex: 1 }}>{r.n}</span>
+                  <b>{r.s}</b>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </RoomModal>
+  );
+}
+
 function MiniGameRoom({ onBack, onReward, bubble }) {
   const [game, setGame] = useState(null); // 'reaction' | 'rps' | 'sequence'
+  const [contest, setContest] = useState(false);
   const furniture = [
     { id: "reaction", x: 60, y: 110, w: 130, h: 100, color: "#5b8def", emoji: "⚡", label: "반응속도", onInteract: () => setGame("reaction") },
     { id: "rps", x: 260, y: 110, w: 130, h: 100, color: "#d76b96", emoji: "✊", label: "가위바위보", onInteract: () => setGame("rps") },
     { id: "seq", x: 460, y: 110, w: 130, h: 100, color: "#e0a13d", emoji: "🔢", label: "숫자 순서", onInteract: () => setGame("sequence") },
+    { id: "contest", x: 260, y: 260, w: 150, h: 100, color: "#c9a15f", emoji: "🏆", label: "대회 코너", onInteract: () => setContest(true) },
   ];
   return (
-    <RoomView title="미니게임 방" icon="🎮" sub="게임 테이블에 다가가 Space · 마우스로 플레이" bg="#20182e" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!game} headerBg="#8e5a9e" bubble={bubble}>
+    <RoomView title="미니게임 방" icon="🎮" sub="게임 테이블에 다가가 Space · 🏆 대회 코너에서 일정·순위 확인" bg="#20182e" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!game || contest} headerBg="#8e5a9e" bubble={bubble}>
       {game === "reaction" && <ReactionGame onClose={() => setGame(null)} onReward={onReward} />}
       {game === "rps" && <RpsGame onClose={() => setGame(null)} onReward={onReward} />}
       {game === "sequence" && <SequenceGame onClose={() => setGame(null)} onReward={onReward} />}
+      {contest && <ContestModal onClose={() => setContest(false)} onPlay={(g) => { setContest(false); setGame(g); }} />}
     </RoomView>
   );
 }
