@@ -520,6 +520,8 @@ function buildWorld() {
   const list = [];
   // 중심 주민센터
   list.push({ id: "center", kind: "center", x: 1300, y: 760, r: 90, label: "🏛 주민센터", sub: "마을 중심 · 회의/모임" });
+  list.push({ id: "naverschool", kind: "small", x: 1800, y: 300, r: 70, label: "📗 네이버스쿨" });
+  list.push({ id: "videoschool", kind: "small", x: 2030, y: 300, r: 70, label: "🎬 영상스쿨" });
   list.push({ id: "sandbag", kind: "small", x: 800, y: 360, r: 55, label: "🥊 샌드백", tint: "#c0563a" });
   list.push({ id: "musinsa", kind: "small", x: 1650, y: 1260, r: 55, label: "🛍️ 무신사", tint: "#2b2b2b" });
 list.push({ id: "jjeop", kind: "small", x: 1820, y: 1210, r: 55, label: "🍴 쩝쩝박사", tint: "#c0563a" });
@@ -544,6 +546,8 @@ list.push({ id: "jjeop", kind: "small", x: 1820, y: 1210, r: 55, label: "🍴 �
   smalls.forEach((s) => list.push({ id: s.id, kind: "small", x: s.x, y: s.y, r: 55, label: s.label, tint: s.tint }));
   // 수영장 / 헬스장 (주민센터 남쪽)
   list.push({ id: "pool", kind: "facility", x: 1170, y: 1250, r: 78, label: "🏊 수영장", color: "#4bb4d8", colorDk: "#2e8fb3", icon: "🏊" });
+  list.push({ id: "never", kind: "npc", npc: "never", x: 950, y: 1230, r: 55, label: "🟢 네버",
+    lines: ["안녕하세요 네버입니다", "네이버를 알고싶으시면 네이버스쿨로 가주세요"] });
   list.push({ id: "gym", kind: "facility", x: 1440, y: 1260, r: 78, label: "💪 헬스장", color: "#c0563a", colorDk: "#96412c", icon: "🏋️" });
   // NPC: 동상 & 봉준호
   list.push({ id: "statue", kind: "npc", npc: "statue", x: 900, y: 900, r: 55, label: "🗿 황혼의 파수꾼",
@@ -560,8 +564,41 @@ const WORLD_OBJS = buildWorld();
 const WORLD = { w: 2620, h: 1520 };
 const RIVER_X = 2140, RIVER_W = 120;
 const BRIDGE_Y1 = 690, BRIDGE_Y2 = 800;   // 이 구간(다리)에서만 강을 건널 수 있음
-
-function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false }) {
+function LetterN({ size = 80 }) {
+  return (
+    <svg width={size} height={size * 1.2} viewBox="0 0 20 24" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <rect x="3" y="21" width="14" height="3" fill="#2b1f14" />
+      <rect x="3" y="2" width="4" height="19" fill="#2db400" stroke="#1a7000" strokeWidth="0.5" />
+      <rect x="13" y="2" width="4" height="19" fill="#2db400" stroke="#1a7000" strokeWidth="0.5" />
+      <polygon points="6,2 9,2 16,21 13,21" fill="#2db400" stroke="#1a7000" strokeWidth="0.5" />
+    </svg>
+  );
+}
+const MAP_ZONES = [
+  { label: "업무", color: "#5b8def", x1: 820, y1: 210, x2: 1680, y2: 560 },
+  { label: "주민센터", color: "#d9a441", x1: 1150, y1: 610, x2: 1470, y2: 910 },
+  { label: "집", color: "#c98ba0", x1: 380, y1: 490, x2: 830, y2: 1300 },
+  { label: "놀이", color: "#3fa07a", x1: 1680, y1: 500, x2: 2090, y2: 1260 },
+  { label: "운동", color: "#4bb4d8", x1: 1080, y1: 1170, x2: 1560, y2: 1340 },
+  { label: "치앙마이", color: "#8e6bb0", x1: 2260, y1: 560, x2: 2600, y2: 1120 },
+];
+function MiniMap({ pos }) {
+  const W = 168, H = Math.round((W * WORLD.h) / WORLD.w);
+  const sx = W / WORLD.w, sy = H / WORLD.h;
+  return (
+    <div style={{ position: "absolute", right: 10, bottom: 10, width: W, height: H, background: "rgba(20,28,18,0.85)", border: `2px solid ${C.ink}`, zIndex: 16, overflow: "hidden" }}>
+      <div style={{ position: "absolute", left: RIVER_X * sx, top: 0, width: Math.max(2, RIVER_W * sx), height: "100%", background: "#3a6ea5" }} />
+      {MAP_ZONES.map((z) => (
+        <div key={z.label} style={{ position: "absolute", left: z.x1 * sx, top: z.y1 * sy, width: (z.x2 - z.x1) * sx, height: (z.y2 - z.y1) * sy, background: z.color + "cc", border: "1px solid rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <span style={{ fontSize: 8, color: "#fff", fontWeight: "bold", textShadow: "0 1px 1px rgba(0,0,0,0.6)", whiteSpace: "nowrap" }}>{z.label}</span>
+        </div>
+      ))}
+      <div style={{ position: "absolute", left: pos.x * sx - 3, top: pos.y * sy - 3, width: 6, height: 6, borderRadius: "50%", background: "#fff", border: `2px solid ${C.danger}`, boxShadow: "0 0 4px #fff", zIndex: 2 }} />
+    </div>
+  );
+}
+function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack }) {
+  const [songOpen, setSongOpen] = useState(false);
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
@@ -664,6 +701,8 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 
   const spriteFor = (o) => {
     if (o.id === "sandbag") return <Sandbag size={92} />;
+    if (o.id === "naverschool") return <School wall="#bfe3c8" roof="#2db400" size={140} />;
+    if (o.id === "videoschool") return <School wall="#e7cfe9" roof="#8e5a9e" size={140} />;
     switch (o.kind) {
       case "center": return <Villa size={230} />;
       case "bank": return <PixelBank size={150} />;
@@ -673,7 +712,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
       case "small": return <SmallHut tint={o.tint} size={100} />;
       case "facility": return <Facility color={o.color} colorDk={o.colorDk} icon={o.icon} size={160} />;
       case "sign": return <Signpost size={100} />;
-      case "npc": return o.npc === "statue" ? <Statue size={72} /> : <ManBong size={48} />;
+      case "npc": return o.npc === "statue" ? <Statue size={72} /> : o.npc === "never" ? <LetterN size={82} /> : <ManBong size={48} />;
       case "rent": return <PixelHouse roof={o.meta.roof} roofDk={o.meta.roofDk} wall={o.meta.wall} size={104} />;
       default: return null;
     }
@@ -685,7 +724,16 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
         <b style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10 }}>ECHO TOWN</b>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", background: "#241a33", color: "#ffe680", border: `2px solid ${C.ink}`, padding: "4px 8px" }}>
           <span className={bgm.playing ? "gem-spin" : ""} style={{ fontSize: 15 }}>♬</span>
-          <b style={{ fontSize: 12 }}>{bgm.title}</b>
+          <div style={{ position: "relative" }}>
+            <button onClick={() => setSongOpen((v) => !v)} style={{ background: "none", border: "none", color: "#ffe680", fontSize: 12, fontWeight: "bold", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>{bgm.title} ▾</button>
+            {songOpen && (
+              <div style={{ position: "absolute", top: "120%", left: 0, background: C.parch, border: `2px solid ${C.ink}`, zIndex: 30, minWidth: 160, maxHeight: 220, overflowY: "auto", boxShadow: `0 3px 0 ${C.parchEdge}` }}>
+                {tracks.map((t) => (
+                  <button key={t.file} onClick={() => { onSelectTrack && onSelectTrack(t); setSongOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", background: t.title === bgm.title ? C.gem : "transparent", border: "none", borderBottom: `1px solid ${C.parchEdge}`, color: C.ink, fontSize: 12, padding: "7px 10px", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>{t.title}</button>
+                ))}
+              </div>
+            )}
+          </div>
           <PxButton tone="gold" onClick={onToggleBgm} style={{ fontSize: 11, padding: "3px 8px" }}>{bgm.playing ? "⏸" : "▶"}</PxButton>
           <PxButton tone="blue" onClick={() => setReqOpen(true)} style={{ fontSize: 11, padding: "3px 8px" }}>🎵 신청곡(5젬)</PxButton>
         </div>
@@ -765,6 +813,8 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
           <PxButton tone="blue" onClick={onNextDay} style={{ fontSize: 11, padding: "6px 9px" }}>🌙 다음 날</PxButton>
         </div>
 
+        <MiniMap pos={pos} />
+
         {/* NPC 대화창 */}
         {dialog && (
           <div style={{ position: "absolute", left: "50%", bottom: 14, transform: "translateX(-50%)", width: "min(92%, 460px)", zIndex: 25 }}>
@@ -802,6 +852,101 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 }
 
 /* ======================= 대형건물(퀘스트) ======================= */
+/* ======================= 알바(담당자 리스트) ======================= */
+const ALBA_NAMES = ["이진", "이름", "혜림", "강도현", "김서연", "박지후", "정민아", "최유나", "한소율", "오태경", "서지안", "노현우"];
+const ALBA_QUEST_POOL = ["블로그 포스팅", "스마트스토어 상품 등록", "유튜브 영상 편집", "릴스 자막 달기", "카페 이벤트 관리", "지식인 답변", "상세페이지 디자인", "키워드 리서치", "댓글 모니터링", "월간 리포트 작성", "썸네일 제작", "고객 문의 응대"];
+const ALBA_MANAGERS = ["민지", "정인", "창민", "도희"];
+function albaQuests(idx) {
+  const out = [];
+  const n = 3 + (idx % 2);
+  for (let i = 0; i < n; i++) {
+    const isNew = (idx + i) % 3 === 0;
+    out.push({
+      id: `q${idx}_${i}`,
+      title: ALBA_QUEST_POOL[(idx * 2 + i) % ALBA_QUEST_POOL.length],
+      type: isNew ? "신규" : "반복",
+      manager: isNew ? ALBA_MANAGERS[(idx + i) % ALBA_MANAGERS.length] : null,
+    });
+  }
+  return out;
+}
+function ManagerChat({ name, onClose }) {
+  const [msgs, setMsgs] = useState([{ me: false, text: `안녕하세요, 담당자 ${name}입니다. 무엇을 도와드릴까요?` }]);
+  const [text, setText] = useState("");
+  const replies = ["네 확인했어요!", "그건 이렇게 진행하면 돼요 👍", "잠시만요, 알아볼게요", "오케이 바로 처리할게요", "좋은 질문이에요!", "그 건은 내일까지 부탁해요 🙏"];
+  const send = () => { const t = text.trim(); if (!t) return; setMsgs((m) => [...m, { me: true, text: t }]); setText(""); setTimeout(() => setMsgs((m) => [...m, { me: false, text: replies[Math.floor(Math.random() * replies.length)] }]), 700); };
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
+        <Panel style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "#7a8b99", color: C.white, borderBottom: `3px solid ${C.ink}` }}>
+            <span style={{ fontSize: 20 }}>🧑‍💼</span><b style={{ flex: 1 }}>담당자 {name}</b>
+            <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+          </div>
+          <div style={{ height: 240, overflow: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 6, background: "#efe6d2" }}>
+            {msgs.map((m, i) => (
+              <div key={i} style={{ alignSelf: m.me ? "flex-end" : "flex-start", background: m.me ? C.gem : C.white, border: `2px solid ${C.ink}`, padding: "5px 9px", fontSize: 13, maxWidth: "78%" }}>{m.text}</div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6, padding: 8, borderTop: `3px solid ${C.ink}` }}>
+            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지 입력 후 Enter" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+            <PxButton tone="good" onClick={send} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
+function AlbaView({ onBack }) {
+  const [sel, setSel] = useState(null);
+  const [hours, setHours] = useState("");
+  const [checked, setChecked] = useState({});
+  const [done, setDone] = useState({});
+  const [chatWith, setChatWith] = useState(null);
+  const names = [...ALBA_NAMES].sort((a, b) => a.localeCompare(b, "ko"));
+  const toggle = (id) => setChecked((c) => ({ ...c, [id]: !c[id] }));
+  const toggleDone = (id) => setDone((d) => ({ ...d, [id]: !d[id] }));
+  return (
+    <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <TitleBar icon="🛠" title="알바" sub="담당자별 업무 리스트" onBack={onBack} bg="#7a8b99" fg={C.white} />
+      <div style={{ padding: 14 }}>
+        {!sel ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+            {names.map((nm) => (
+              <button key={nm} onClick={() => setSel(nm)} style={{ cursor: "pointer", aspectRatio: "1 / 1", background: C.parch, border: `3px solid ${C.ink}`, boxShadow: `inset 0 0 0 2px ${C.parchEdge}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: "bold", color: C.ink }}>{nm}</button>
+            ))}
+          </div>
+        ) : (
+          <div>
+            <PxButton tone="ink" onClick={() => setSel(null)} style={{ fontSize: 11, padding: "5px 9px", marginBottom: 10 }}>← 목록</PxButton>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 13, marginBottom: 10 }}>🧑 {sel}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, background: C.white, border: `3px solid ${C.ink}`, padding: "8px 12px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: 13, fontWeight: "bold" }}>⏱ 오늘 총 업무 시간</span>
+              <input value={hours} onChange={(e) => setHours(e.target.value)} placeholder="예: 6시간 30분" style={{ flex: 1, minWidth: 120, padding: 7, border: `2px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.parch }} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {albaQuests(names.indexOf(sel)).map((q) => (
+                <div key={q.id} style={{ display: "flex", alignItems: "center", gap: 8, rowGap: 6, background: C.white, border: `3px solid ${C.ink}`, padding: "8px 10px", flexWrap: "wrap", opacity: done[q.id] ? 0.55 : 1 }}>
+                  <span style={{ fontSize: 11, fontWeight: "bold", color: "#fff", background: q.type === "신규" ? "#c0392b" : "#3a7bd5", padding: "2px 7px", whiteSpace: "nowrap" }}>{q.type}</span>
+                  <span style={{ flex: 1, minWidth: 90, fontSize: 13, textDecoration: done[q.id] ? "line-through" : "none" }}>{q.title}</span>
+                  {q.type === "신규" && (
+                    <PxButton tone="wood" onClick={() => setChatWith(q.manager)} style={{ fontSize: 11, padding: "5px 8px" }}>💬 담당자 {q.manager}</PxButton>
+                  )}
+                  <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    <input type="checkbox" checked={!!checked[q.id]} onChange={() => toggle(q.id)} style={{ width: 16, height: 16 }} />
+                    진행가능
+                  </label>
+                  <PxButton tone={done[q.id] ? "good" : "ink"} onClick={() => toggleDone(q.id)} style={{ fontSize: 11, padding: "5px 8px", whiteSpace: "nowrap" }}>{done[q.id] ? "✅ 완료" : "완료"}</PxButton>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      {chatWith && <ManagerChat name={chatWith} onClose={() => setChatWith(null)} />}
+    </Panel>
+  );
+}
 function BigBuildingView({ b, qs, day, onRun, onBack }) {
   const [activeCat, setActiveCat] = useState(null);
   const cats = b.categories || null;
@@ -1323,18 +1468,61 @@ function ReelsView({ onBack, bubble }) {
 }
 
 /* ======================= 미니게임 방 ======================= */
+
+const CONTESTS = [
+  { id: "c1", title: "반응속도 챔피언십", date: "8/2 (토) 20:00", game: "reaction" },
+  { id: "c2", title: "가위바위보 왕중왕전", date: "8/9 (토) 20:00", game: "rps" },
+  { id: "c3", title: "숫자 순서 스피드런", date: "8/16 (토) 20:00", game: "sequence" },
+];
+const CONTEST_RANK = {
+  reaction: [{ n: "유리", s: 312 }, { n: "정인", s: 298 }, { n: "의준", s: 284 }, { n: "호중", s: 271 }, { n: "희정", s: 255 }],
+  rps: [{ n: "호중", s: 27 }, { n: "희정", s: 24 }, { n: "정인", s: 22 }, { n: "유리", s: 19 }, { n: "의준", s: 17 }],
+  sequence: [{ n: "의준", s: 18 }, { n: "유리", s: 16 }, { n: "희정", s: 15 }, { n: "정인", s: 13 }, { n: "호중", s: 12 }],
+};
+
+function ContestModal({ onClose, onPlay }) {
+  return (
+    <RoomModal title="🏆 미니게임 대회" onClose={onClose} maxW={440}>
+      <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10 }}>다가오는 대회 일정과 순위예요. 게임 링크로 바로 연습해보세요!</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {CONTESTS.map((c) => (
+          <div key={c.id} style={{ background: C.white, border: `3px solid ${C.ink}`, padding: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 11, fontWeight: "bold", color: "#fff", background: "#8e5a9e", padding: "2px 7px", whiteSpace: "nowrap" }}>📅 {c.date}</span>
+              <b style={{ flex: 1, fontSize: 14, minWidth: 100 }}>{c.title}</b>
+              <PxButton tone="good" onClick={() => onPlay(c.game)} style={{ fontSize: 11, padding: "5px 9px" }}>🎮 게임 링크</PxButton>
+            </div>
+            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 3 }}>
+              {CONTEST_RANK[c.game].map((r, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, borderBottom: `1px dashed ${C.parchEdge}`, paddingBottom: 2 }}>
+                  <span style={{ width: 18, fontWeight: "bold", color: i === 0 ? "#a86e13" : C.inkSoft }}>{i + 1}</span>
+                  <span style={{ flex: 1 }}>{r.n}</span>
+                  <b>{r.s}</b>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </RoomModal>
+  );
+}
+
 function MiniGameRoom({ onBack, onReward, bubble }) {
   const [game, setGame] = useState(null); // 'reaction' | 'rps' | 'sequence'
+  const [contest, setContest] = useState(false);
   const furniture = [
     { id: "reaction", x: 60, y: 110, w: 130, h: 100, color: "#5b8def", emoji: "⚡", label: "반응속도", onInteract: () => setGame("reaction") },
     { id: "rps", x: 260, y: 110, w: 130, h: 100, color: "#d76b96", emoji: "✊", label: "가위바위보", onInteract: () => setGame("rps") },
     { id: "seq", x: 460, y: 110, w: 130, h: 100, color: "#e0a13d", emoji: "🔢", label: "숫자 순서", onInteract: () => setGame("sequence") },
+    { id: "contest", x: 260, y: 260, w: 150, h: 100, color: "#c9a15f", emoji: "🏆", label: "대회 코너", onInteract: () => setContest(true) },
   ];
   return (
-    <RoomView title="미니게임 방" icon="🎮" sub="게임 테이블에 다가가 Space · 마우스로 플레이" bg="#20182e" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!game} headerBg="#8e5a9e" bubble={bubble}>
+    <RoomView title="미니게임 방" icon="🎮" sub="게임 테이블에 다가가 Space · 🏆 대회 코너에서 일정·순위 확인" bg="#20182e" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!game || contest} headerBg="#8e5a9e" bubble={bubble}>
       {game === "reaction" && <ReactionGame onClose={() => setGame(null)} onReward={onReward} />}
       {game === "rps" && <RpsGame onClose={() => setGame(null)} onReward={onReward} />}
       {game === "sequence" && <SequenceGame onClose={() => setGame(null)} onReward={onReward} />}
+      {contest && <ContestModal onClose={() => setContest(false)} onPlay={(g) => { setContest(false); setGame(g); }} />}
     </RoomView>
   );
 }
@@ -1769,6 +1957,56 @@ function SandbagView({ onBack, scores, onEnd }) {
           </div>
         </div>
       )}
+    </Panel>
+  );
+}/* ======================= 스쿨(네이버/영상) ======================= */
+function School({ wall = "#8fd0d6", roof = "#c95d7b", size = 140 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <rect x="10" y="1" width="4" height="4" fill={roof} stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="11" y="2" width="2" height="2" fill="#ffe680" />
+      <polygon points="12,0 15,2 9,2" fill={roof} stroke="#2b1f14" strokeWidth="0.4" />
+      <polygon points="3,9 12,4 21,9" fill={roof} stroke="#2b1f14" strokeWidth="0.5" />
+      <rect x="4" y="9" width="16" height="13" fill={wall} stroke="#2b1f14" strokeWidth="0.5" />
+      <rect x="10" y="15" width="4" height="7" fill="#8a5a3b" stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="5.5" y="11" width="3" height="3" fill="#fff" stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="15.5" y="11" width="3" height="3" fill="#fff" stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="9" y="22" width="6" height="1.5" fill="#cbb58a" />
+    </svg>
+  );
+}
+
+const SCHOOLS = {
+  naverschool: { title: "네이버스쿨", icon: "📗", color: "#2db400", steps: [
+    { t: "개념 정리", d: "네이버 생태계(블로그·카페·지식인)의 기본 개념과 구조를 이해해요." },
+    { t: "블로그", d: "주제 선정 → 글쓰기 → 최적화까지 블로그 운영의 기본을 배워요." },
+    { t: "카페", d: "카페 개설·운영, 멤버 관리와 커뮤니티 활성화 방법을 익혀요." },
+    { t: "지식인", d: "질문·답변으로 전문성을 쌓고 신뢰도를 올리는 전략을 배워요." },
+  ] },
+  videoschool: { title: "영상스쿨", icon: "🎬", color: "#8e5a9e", steps: [
+    { t: "코어 개념", d: "영상의 기본 원리(구도·컷·리듬)와 핵심 개념을 잡아요." },
+    { t: "레퍼런스", d: "좋은 영상을 찾고 분석해 나만의 레퍼런스를 모아요." },
+    { t: "원고작성 & 소재수집", d: "기획·대본을 쓰고 촬영할 소재를 수집해요." },
+    { t: "영상제작", d: "촬영 → 편집 → 마무리까지 실제 영상을 완성해요." },
+  ] },
+};
+
+function SchoolView({ school, onBack }) {
+  const s = SCHOOLS[school];
+  return (
+    <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <TitleBar icon={s.icon} title={s.title} sub="1 → 4번 순서대로 따라가는 가이드" onBack={onBack} bg={s.color} fg={C.white} />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 3, background: C.ink, padding: 3 }}>
+        {s.steps.map((st, i) => (
+          <div key={i} style={{ background: C.parch, padding: 16, minHeight: 150, display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 18, color: s.color }}>{i + 1}</span>
+              <b style={{ fontSize: 15 }}>{st.t}</b>
+            </div>
+            <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.6 }}>{st.d}</div>
+          </div>
+        ))}
+      </div>
     </Panel>
   );
 }
@@ -2280,6 +2518,24 @@ function useWeather(points) {
   }, [keyStr]);
   return wx;
 }
+const WORLD_TRACKS = [
+  { title: "BIRDS OF A FEATHER", file: "song (1).mp3" },
+  { title: "짱구는 못말려 오프닝 오리지널", file: "song (2).mp3" },
+  { title: "퇴근시간", file: "song (3).mp3" },
+  { title: "Cafe", file: "song (4).mp3" },
+  { title: "Be There", file: "song (5).mp3" },
+  { title: "Chosen", file: "song (6).mp3" },
+  { title: "파도", file: "song (7).mp3" },
+  { title: "차우차우", file: "song (8).mp3" },
+  { title: "Champagne Supernova (Remastered)", file: "song (9).mp3" },
+  { title: "Born Hater ft. Beenzino, Verbal Jint, B.I", file: "song (10).mp3" },
+  { title: "Bus 안에서", file: "song (11).mp3" },
+  { title: "초록비 (Green Rain)", file: "song (12).mp3" },
+  { title: "Bonnie & Clyde", file: "song (13).mp3" },
+  { title: "Aqua Man", file: "song (14).mp3" },
+  { title: "Automatic", file: "song (15).mp3" },
+  { title: "Another One Bites the Dust", file: "song (16).mp3" },
+];
 export default function App() {
   const [view, setView] = useState("world");
   const [houseId, setHouseId] = useState(null);
@@ -2340,12 +2596,13 @@ export default function App() {
   };
 
   // 신규: 배경음악 / 채팅 / 말풍선 / 피드백 / 메뉴
-  const [worldBgm, setWorldBgm] = useState({ title: "3호선 매봉역", playing: false });
+  const [worldBgm, setWorldBgm] = useState({ title: WORLD_TRACKS[0].title, file: WORLD_TRACKS[0].file, playing: false });
+  const selectTrack = (t) => setWorldBgm((b) => ({ ...b, title: t.title, file: t.file, playing: true }));
   const audioRef = useRef(null);
   useEffect(() => {
     const a = audioRef.current; if (!a) return;
     if (worldBgm.playing) a.play().catch(() => {}); else a.pause();
-  }, [worldBgm.playing]);
+  }, [worldBgm.playing, worldBgm.file]);
   const [chat, setChat] = useState([]);
   const [shout, setShout] = useState(false);
   const [bubble, setBubble] = useState(null);
@@ -2446,7 +2703,7 @@ export default function App() {
   return (
     <div style={{ fontFamily: "'DotGothic16', monospace", minHeight: "100vh", background: `repeating-linear-gradient(45deg, ${C.grass} 0 24px, ${C.grassDark} 24px 48px)`, color: C.ink, padding: 14, boxSizing: "border-box" }}>
       <StyleBlock />
-      <audio ref={audioRef} src={import.meta.env.BASE_URL + "bgm.mp3"} loop preload="auto" />
+      <audio ref={audioRef} src={import.meta.env.BASE_URL + encodeURIComponent(worldBgm.file)} loop preload="auto" />
       <div style={{ maxWidth: 960, margin: "0 auto 12px" }}>
         <Panel style={{ padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -2493,11 +2750,10 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} bubble={bubble} townRain={townRain} cmRain={cmRain} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} bubble={bubble} townRain={townRain} cmRain={cmRain} />}
         {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
-        {view === "big" && bigMeta && <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />}
-        {view === "house" && houseMeta && <HomeView house={houseMeta} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
+        {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && <HomeView house={houseMeta} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
         {view === "thanks" && <ThanksView gems={gems} inventory={thanksInv} postits={postits} onBuy={(it) => { setGems((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={(p) => setPostits((v) => [...v, { ...p, id: Date.now() }])} onBack={backToWorld} bubble={bubble} />}
         {view === "heart" && <HeartView gems={gems} worries={worries} onPost={(text, cost) => { setGems((g) => g - cost); setWorries((w) => [{ id: Date.now(), text }, ...w]); }} onBack={backToWorld} bubble={bubble} />}
         {view === "listening" && <ListeningView onBack={backToWorld} gems={gems} onSpend={(n) => setGems((g) => g - n)} bubble={bubble} />}
@@ -2506,6 +2762,7 @@ export default function App() {
         {view === "pool" && <PoolView onBack={backToWorld} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => award(4)} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
+        {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
         {view === "sandbag" && <SandbagView onBack={backToWorld} scores={boxScores} onEnd={(nick, count) => setBoxScores((s) => [...s, { nick, count }])} />}
         {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
         {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} />}
