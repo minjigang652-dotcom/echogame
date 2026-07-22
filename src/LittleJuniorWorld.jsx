@@ -2127,6 +2127,36 @@ function VitalBar({ label, val, color }) {
   );
 }
 /* ============================== 앱 =================================== */
+function wxIcon(code) {
+  if (code == null) return "⏳";
+  if (code === 0) return "☀️";
+  if (code <= 2) return "🌤️";
+  if (code === 3) return "☁️";
+  if (code <= 48) return "🌫️";
+  if (code <= 67) return "🌧️";
+  if (code <= 77) return "🌨️";
+  if (code <= 82) return "🌦️";
+  if (code <= 86) return "🌨️";
+  if (code >= 95) return "⛈️";
+  return "🌡️";
+}
+const WX_POINTS = { seoul: { lat: 37.5665, lon: 126.978 }, chiangmai: { lat: 18.7883, lon: 98.9853 } };
+function useWeather(points) {
+  const [wx, setWx] = useState({});
+  const keyStr = JSON.stringify(points);
+  useEffect(() => {
+    let alive = true;
+    Object.entries(points).forEach(([key, p]) => {
+      if (!p) return;
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&current=temperature_2m,weather_code`)
+        .then((r) => r.json())
+        .then((d) => { if (alive && d && d.current) setWx((w) => ({ ...w, [key]: { temp: Math.round(d.current.temperature_2m), code: d.current.weather_code } })); })
+        .catch(() => {});
+    });
+    return () => { alive = false; };
+  }, [keyStr]);
+  return wx;
+}
 export default function App() {
   const [view, setView] = useState("world");
   const [houseId, setHouseId] = useState(null);
@@ -2165,6 +2195,10 @@ export default function App() {
   ]);
   const [worries, setWorries] = useState([]);
   const [rented, setRented] = useState({});
+  const weather = useWeather(WX_POINTS);
+  const wxZone = worldPos.x >= RIVER_X ? "chiangmai" : "seoul";
+  const wxName = wxZone === "chiangmai" ? "치앙마이" : "서울";
+  const curWx = weather[wxZone];
   const [outfit, setOutfit] = useState({ top: null, bottom: null, shoes: null });
   const [owned, setOwned] = useState({});
   const tryOnClothing = (catKey, item) => setOutfit((o) => ({ ...o, [catKey]: item }));
@@ -2291,6 +2325,13 @@ export default function App() {
           <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 150 }}>
               <VitalBar label="HP" val={hp} color={C.danger} />
               <VitalBar label="MP" val={mp} color="#3a7bd5" />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.parch, border: `2px solid ${C.ink}`, padding: "4px 8px" }}>
+              <span style={{ fontSize: 16 }}>{curWx ? wxIcon(curWx.code) : "⏳"}</span>
+              <div style={{ lineHeight: 1.1 }}>
+                <div style={{ fontSize: 13, fontWeight: "bold" }}>{curWx ? `${curWx.temp}°` : "--"}</div>
+                <div style={{ fontSize: 9, color: C.inkSoft }}>{wxName}</div>
+              </div>
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 11, color: C.inkSoft }}>보유 스타 젬</div>
