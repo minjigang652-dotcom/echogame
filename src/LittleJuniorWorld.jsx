@@ -30,7 +30,7 @@ const GEM_TO_WON = 10000;
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
 const BIG_BUILDINGS = [
-  { id: "alba", name: "알바", icon: "🛠", color: "#7a8b99", colorDk: "#5c6b78",
+  { id: "alba", name: "초보자", icon: "🛠", color: "#7a8b99", colorDk: "#5c6b78",
     categories: ["네이버", "영상", "기타"],
     quests: [
       { id: "ab_n1", cat: "네이버", title: "최신글 작업", desc: "몰입의방 - 최신글 댓글 작업", reward: 12, duration: 1600, repeat: true },
@@ -520,6 +520,7 @@ function buildWorld() {
   const list = [];
   // 중심 주민센터
   list.push({ id: "center", kind: "center", x: 1300, y: 760, r: 90, label: "🏛 주민센터", sub: "마을 중심 · 회의/모임" });
+  list.push({ id: "project", kind: "small", x: 1120, y: 970, r: 60, label: "📊 프로젝트 게시판" });
   list.push({ id: "naverschool", kind: "small", x: 1800, y: 300, r: 70, label: "📗 네이버스쿨" });
   list.push({ id: "videoschool", kind: "small", x: 2030, y: 300, r: 70, label: "🎬 영상스쿨" });
   list.push({ id: "sandbag", kind: "small", x: 800, y: 360, r: 55, label: "🥊 샌드백", tint: "#c0563a" });
@@ -782,6 +783,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
   const camY = Math.max(0, Math.min(WORLD.h - vp.h, pos.y - vp.h / 2));
 
   const spriteFor = (o) => {
+    if (o.id === "project") return <Board size={110} />;
     if (o.id === "sandbag") return <Sandbag size={92} />;
     if (o.id === "naverschool") return <School wall="#bfe3c8" roof="#2db400" size={140} />;
     if (o.id === "videoschool") return <School wall="#e7cfe9" roof="#8e5a9e" size={140} />;
@@ -1336,17 +1338,20 @@ function ThanksView({ gems, inventory, postits, onBuy, onPost, onBack, bubble })
 
 /* ======================= 마음의 방(마음우체통) ======================= */
 function HeartView({ gems, worries, onPost, onBack, bubble }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(null); // null | "고해성사" | "서운"
   const [cost, setCost] = useState(1);
   const [text, setText] = useState("");
   const furniture = [
-    { id: "mailbox", x: 260, y: 120, w: 110, h: 140, color: "#c0563a", emoji: "📮", label: "마음우체통", onInteract: () => setOpen(true) },
-    { id: "bench", x: 60, y: 300, w: 120, h: 56, color: "#a9814a", emoji: "🪑", label: "벤치", toast: "잠시 앉아 마음을 가라앉힌다" },
+    { id: "confess", x: 150, y: 120, w: 110, h: 140, color: "#c0563a", emoji: "📮", label: "고해성사함", onInteract: () => { setOpen("고해성사"); setText(""); } },
+    { id: "grievance", x: 380, y: 120, w: 110, h: 140, color: "#8e5a9e", emoji: "💌", label: "서운함 우체통", onInteract: () => { setOpen("서운"); setText(""); } },
+    { id: "bench", x: 60, y: 320, w: 120, h: 56, color: "#a9814a", emoji: "🪑", label: "벤치", toast: "잠시 앉아 마음을 가라앉힌다" },
   ];
+  const isConfess = open === "고해성사";
+  const list = worries.filter((w) => w.kind === open);
   return (
-    <RoomView title="마음의 방" icon="💌" sub="퇴근길코어 고민을 익명으로 털어놓는 곳" bg="#efe0e6" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={open} headerBg="#d76b96" bubble={bubble}>
+    <RoomView title="마음의 방" icon="💌" sub="고해성사 · 서운함을 익명으로 털어놓는 곳" bg="#efe0e6" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!open} headerBg="#d76b96" bubble={bubble}>
       {open && (
-        <RoomModal title="📮 마음우체통" onClose={() => setOpen(false)}>
+        <RoomModal title={isConfess ? "🙏 고해성사함" : "💌 서운함 우체통"} onClose={() => setOpen(null)}>
           <div style={{ fontSize: 12, marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
             <span style={{ color: C.inkSoft }}>익명으로 남겨요. 아무도 누군지 몰라요.</span><GemBadge amount={gems} />
           </div>
@@ -1355,26 +1360,23 @@ function HeartView({ gems, worries, onPost, onBack, bubble }) {
               <PxButton key={v} tone={cost === v ? "gold" : "wood"} onClick={() => setCost(v)} style={{ fontSize: 12, padding: "6px 10px" }}>⭐ {v} 넣기</PxButton>
             ))}
           </div>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="오늘의 고민을 털어놓아 보세요…"
+          <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={isConfess ? "고백할 것을 털어놓아 보세요…" : "서운했던 일을 남겨보세요…"}
             style={{ width: "100%", boxSizing: "border-box", height: 100, padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: "#fffdf5", resize: "none" }} />
-          <PxButton tone="good" disabled={!text.trim() || gems < cost} onClick={() => { onPost(text.trim(), cost); setText(""); setOpen(false); }} style={{ width: "100%", marginTop: 8, padding: 10, fontSize: 13 }}>
+          <PxButton tone="good" disabled={!text.trim() || gems < cost} onClick={() => { onPost(text.trim(), cost, open); setText(""); }} style={{ width: "100%", marginTop: 8, padding: 10, fontSize: 13 }}>
             {gems < cost ? "젬이 부족해요" : `⭐ ${cost} 내고 익명으로 넣기`}
           </PxButton>
-          {worries.length > 0 && (
+          {list.length > 0 && (
             <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 6 }}>우체통에 쌓인 익명의 마음들</div>
+              <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 6 }}>{isConfess ? "고해성사함에 쌓인 고백들" : "서운함 우체통에 쌓인 마음들"}</div>
               <div style={{ maxHeight: 140, overflow: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
-                {worries.map((w) => (
-                  <div key={w.id} style={{ background: "#fff", border: `2px solid ${C.ink}`, padding: 8, fontSize: 12 }}>🕊️ 익명 · {w.text}</div>
+                {list.map((w) => (
+                  <div key={w.id} style={{ background: "#fff", border: `2px solid ${C.ink}`, padding: 8, fontSize: 12 }}>{isConfess ? "🙏 그랬구나 · " : "💢 서운해요 · "}{w.text}</div>
                 ))}
               </div>
             </div>
           )}
         </RoomModal>
       )}
-    </RoomView>
-  );
-}
 
 /* ======================= 리스닝 방(디제이 + 관객석 + BGM) ======================= */
 function parseYouTubeId(url) {
@@ -2241,6 +2243,43 @@ function SchoolView({ school, onBack }) {
       </div>
     </Panel>
   );
+}/* ======================= 프로젝트 상황 게시판 ======================= */
+const PROJECTS = [
+  { name: "에코타운 오픈 준비", owner: "창민", progress: 82 },
+  { name: "치앙마이 렌트 시스템", owner: "정인", progress: 65 },
+  { name: "무신사 입점 협업", owner: "지혜", progress: 40 },
+  { name: "여름 워크샵 기획", owner: "도희", progress: 95 },
+  { name: "신규 알바 온보딩", owner: "민서", progress: 25 },
+  { name: "릴스 콘텐츠 30개 제작", owner: "유리", progress: 55 },
+  { name: "월말 정산 마감", owner: "호중", progress: 100 },
+];
+function ProjectView({ onBack }) {
+  return (
+    <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <TitleBar icon="📊" title="프로젝트 상황 게시판" sub="진행 중인 프로젝트 현황" onBack={onBack} bg="#4b7bd8" fg={C.white} />
+      <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+        {PROJECTS.map((p, i) => {
+          const color = p.progress >= 100 ? "#3fa07a" : p.progress >= 80 ? "#3fa07a" : p.progress >= 50 ? "#d9a441" : "#c0563a";
+          const stat = p.progress >= 100 ? "✅ 완료" : p.progress >= 80 ? "🔥 마무리 단계" : p.progress >= 50 ? "🚧 진행 중" : "🌱 초기 단계";
+          return (
+            <div key={i} style={{ background: C.white, border: `3px solid ${C.ink}`, padding: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 6 }}>
+                <b style={{ fontSize: 14 }}>{p.name}</b>
+                <span style={{ fontSize: 11, color: C.inkSoft }}>담당 {p.owner}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ flex: 1, height: 16, background: "#e2d3ab", border: `2px solid ${C.ink}` }}>
+                  <div style={{ height: "100%", width: `${p.progress}%`, background: color, transition: "width .3s" }} />
+                </div>
+                <b style={{ fontSize: 13, width: 42, textAlign: "right" }}>{p.progress}%</b>
+              </div>
+              <div style={{ fontSize: 11, color: color, marginTop: 4, fontWeight: "bold" }}>{stat}</div>
+            </div>
+          );
+        })}
+      </div>
+    </Panel>
+  );
 }
 /* ======================= 흡연의 방(플레이버) ======================= */
 const SMOKE_PEOPLE = ["정인", "호중", "희정", "유리", "의준"];
@@ -3086,13 +3125,14 @@ export default function App() {
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && <HomeView house={houseMeta} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
         {view === "thanks" && <ThanksView gems={gems} inventory={thanksInv} postits={postits} onBuy={(it) => { setGems((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={(p) => setPostits((v) => [...v, { ...p, id: Date.now() }])} onBack={backToWorld} bubble={bubble} />}
-        {view === "heart" && <HeartView gems={gems} worries={worries} onPost={(text, cost) => { setGems((g) => g - cost); setWorries((w) => [{ id: Date.now(), text }, ...w]); }} onBack={backToWorld} bubble={bubble} />}
+        {view === "heart" && <HeartView gems={gems} worries={worries} onPost={(text, cost, kind) => { setGems((g) => g - cost); setWorries((w) => [{ id: Date.now(), text, kind }, ...w]); }}
         {view === "listening" && <ListeningView onBack={backToWorld} gems={gems} onSpend={(n) => setGems((g) => g - n)} bubble={bubble} />}
         {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} />}
         {view === "minigame" && <MiniGameRoom onBack={backToWorld} onReward={(n) => award(n)} bubble={bubble} />}
         {view === "pool" && <PoolView onBack={backToWorld} onReward={(n) => award(n)} scores={swimScores} onRecord={(nick, time) => setSwimScores((s) => [...s, { nick, time }])} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => award(4)} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
+        {view === "project" && <ProjectView onBack={backToWorld} />}
         {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
         {view === "sandbag" && <SandbagView onBack={backToWorld} scores={boxScores} onEnd={(nick, count) => setBoxScores((s) => [...s, { nick, count }])} />}
         {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
