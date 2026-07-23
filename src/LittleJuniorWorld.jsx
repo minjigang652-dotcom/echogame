@@ -2929,13 +2929,13 @@ const BOSS_MAPS_INIT = [
   },
 ];
 
-function BossMapView({ onBack, onReward }) {
+function BossMapView({ onBack, onReward, onGoSchool }) {
   const [maps, setMaps] = useState(BOSS_MAPS_INIT);
   const [mapIdx, setMapIdx] = useState(0);
   const [collOpen, setCollOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [addTab, setAddTab] = useState("quest");
-  const [fQ, setFQ] = useState({ stage: 1, title: "", icon: "🎯", gem: 5, desc: "", task: "" });
+  const [fQ, setFQ] = useState({ stage: 1, title: "", icon: "🎯", gem: 5, desc: "", task: "", level: "초보자", field: "naverschool" });
   const [fM, setFM] = useState({ name: "", icon: "🗺", boss: "", bossIcon: "👹" });
   const [cleared, setCleared] = useState({});
   const [sel, setSel] = useState(null);
@@ -3042,13 +3042,13 @@ function BossMapView({ onBack, onReward }) {
   const addQuest = () => {
     if (!fQ.title.trim()) return;
     const id = "cq" + Date.now();
-    const nq = { id, title: fQ.title.trim(), icon: fQ.icon || "🎯", gem: Number(fQ.gem) || 5, desc: fQ.desc.trim() || "새로 추가된 퀘스트", task: fQ.task.trim() || fQ.title.trim() };
+    const nq = { id, title: fQ.title.trim(), icon: fQ.icon || "🎯", gem: Number(fQ.gem) || 5, desc: fQ.desc.trim() || "새로 추가된 퀘스트", task: fQ.task.trim() || fQ.title.trim(), level: fQ.level, field: fQ.level === "초보자" ? fQ.field : null };
     setMaps((ms) => ms.map((m, i) => {
       if (i !== mapIdx) return m;
       const stages = m.stages.map((st) => (st.n !== Number(fQ.stage) ? st : { ...st, quests: [...st.quests, nq] }));
       return { ...m, stages };
     }));
-    setFQ({ stage: fQ.stage, title: "", icon: "🎯", gem: 5, desc: "", task: "" });
+    setFQ({ ...fQ, title: "", desc: "", task: "" });
     setAddOpen(false);
   };
   const addMap = () => {
@@ -3126,7 +3126,9 @@ function BossMapView({ onBack, onReward }) {
                     transition: "box-shadow .2s, transform .2s", transform: active ? "scale(1.08)" : "scale(1)" }}>
                     {isDone ? "✅" : locked ? "🔒" : nd.icon}
                   </div>
-                  <div style={{ marginTop: 5, fontSize: 11, fontWeight: "bold", color: nd.isBoss ? C.white : C.ink, background: nd.isBoss ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.92)", borderRadius: 12, padding: "2px 9px", whiteSpace: "nowrap", boxShadow: "0 2px 3px rgba(0,0,0,0.18)" }}>{nd.title}</div>
+                  <div style={{ marginTop: 5, fontSize: 11, fontWeight: "bold", color: nd.isBoss ? C.white : C.ink, background: nd.isBoss ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.92)", borderRadius: 12, padding: "2px 9px", whiteSpace: "nowrap", boxShadow: "0 2px 3px rgba(0,0,0,0.18)" }}>
+                    {nd.level ? (nd.level === "초보자" ? "🌱" : "🔥") : ""}{nd.title}
+                  </div>
                 </div>
               );
             })}
@@ -3214,6 +3216,17 @@ function BossMapView({ onBack, onReward }) {
                     <input value={fQ.title} onChange={(e) => setFQ({ ...fQ, title: e.target.value })} placeholder="퀘스트 이름" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
                     <input value={fQ.gem} onChange={(e) => setFQ({ ...fQ, gem: e.target.value })} type="number" style={{ width: 60, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 13 }} />
                   </div>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    {["초보자", "숙련자"].map((lv) => (
+                      <PxButton key={lv} tone={fQ.level === lv ? (lv === "초보자" ? "good" : "danger") : "wood"} onClick={() => setFQ({ ...fQ, level: lv })} style={{ flex: 1, fontSize: 12, padding: 8 }}>{lv === "초보자" ? "🌱 초보자" : "🔥 숙련자"}</PxButton>
+                    ))}
+                  </div>
+                  {fQ.level === "초보자" && (
+                    <div style={{ display: "flex", gap: 5 }}>
+                      <PxButton tone={fQ.field === "naverschool" ? "good" : "wood"} onClick={() => setFQ({ ...fQ, field: "naverschool" })} style={{ flex: 1, fontSize: 12, padding: 8 }}>📗 네이버</PxButton>
+                      <PxButton tone={fQ.field === "videoschool" ? "good" : "wood"} onClick={() => setFQ({ ...fQ, field: "videoschool" })} style={{ flex: 1, fontSize: 12, padding: 8 }}>🎬 영상</PxButton>
+                    </div>
+                  )}
                   <input value={fQ.desc} onChange={(e) => setFQ({ ...fQ, desc: e.target.value })} placeholder="한 줄 설명 (선택)" style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
                   <input value={fQ.task} onChange={(e) => setFQ({ ...fQ, task: e.target.value })} placeholder="목표 (선택)" style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
                   <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
@@ -3251,11 +3264,22 @@ function BossMapView({ onBack, onReward }) {
               <div style={{ textAlign: "center" }}>
                 <div style={{ width: 78, height: 78, margin: "0 auto", borderRadius: "50%", background: sel.isBoss ? "radial-gradient(circle at 35% 30%, #ffffff44, #8c2f21)" : `radial-gradient(circle at 35% 30%, #fffbe8, ${map.color})`, border: `3px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 38, boxShadow: "0 5px 10px rgba(0,0,0,0.3)" }}>{sel.icon}</div>
                 <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 8 }}>{sel.isBoss ? "👑 BOSS" : `${sel.stage} STAGE · ${sel.stageName}`}</div>
+                {sel.level && (
+                  <div style={{ display: "flex", gap: 5, justifyContent: "center", marginTop: 6 }}>
+                    <span style={{ fontSize: 10, fontWeight: "bold", color: C.white, background: sel.level === "초보자" ? "#2f9e6e" : "#c0563a", borderRadius: 10, padding: "2px 9px" }}>{sel.level === "초보자" ? "🌱 초보자" : "🔥 숙련자"}</span>
+                    {sel.field && <span style={{ fontSize: 10, fontWeight: "bold", color: C.white, background: sel.field === "naverschool" ? "#2db400" : "#8e5a9e", borderRadius: 10, padding: "2px 9px" }}>{sel.field === "naverschool" ? "📗 네이버" : "🎬 영상"}</span>}
+                  </div>
+                )}
                 <div style={{ fontSize: 17, fontWeight: "bold", margin: "4px 0 8px" }}>{sel.title}</div>
               </div>
               <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10, textAlign: "center", lineHeight: 1.6 }}>{sel.desc}</div>
               <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: 12, fontSize: 13, lineHeight: 1.6 }}>🎯 {sel.task}</div>
               <div style={{ fontSize: 12, textAlign: "center", margin: "10px 0", color: "#a86e13", fontWeight: "bold" }}>보상 ⭐ {sel.gem}</div>
+              {sel.level === "초보자" && sel.field && onGoSchool && (
+                <PxButton tone="blue" onClick={() => onGoSchool(sel.field)} style={{ width: "100%", padding: 10, fontSize: 13, marginBottom: 10 }}>
+                  {sel.field === "naverschool" ? "📗 네이버스쿨로 가서 배우기 →" : "🎬 영상스쿨로 가서 배우기 →"}
+                </PxButton>
+              )}
               {lockReason(sel) && <div style={{ background: "#fbe4e0", border: `2px solid ${C.danger}`, borderRadius: 8, color: C.danger, padding: 9, fontSize: 12, marginBottom: 10, textAlign: "center" }}>🔒 {lockReason(sel)}</div>}
               <div style={{ display: "flex", gap: 8 }}>
                 <PxButton tone="ink" onClick={() => setSel(null)} style={{ flex: 1, padding: 10, fontSize: 13 }}>닫기</PxButton>
@@ -4343,7 +4367,7 @@ export default function App() {
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => award(4)} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
         {view === "ikea" && <IkeaView gems={gems} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
-        {view === "project" && <BossMapView onBack={backToWorld} onReward={(n) => award(n)} />}
+        {view === "project" && <BossMapView onBack={backToWorld} onReward={(n) => award(n)} onGoSchool={(id) => setView(id)} />}
         {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
         {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count, target) => setBoxScores((s) => [...s, { nick, count, target }])} />}
         {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
