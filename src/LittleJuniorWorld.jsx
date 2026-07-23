@@ -124,8 +124,8 @@ const CAL_EVENTS = {
 /* ======================= 스프라이트 ======================= */
 function Villa({ size = 220 }) {
   return (
-    <svg width={size} height={size * 0.86} viewBox="0 0 60 52" style={{ overflow: "visible", imageRendering: "pixelated" }}>
-      <g transform="translate(0,8)" shapeRendering="crispEdges">
+    <svg width={size} height={size * 1.05} viewBox="0 0 60 63" style={{ overflow: "visible", imageRendering: "pixelated" }}>
+      <g transform="translate(0,19)" shapeRendering="crispEdges">
         <rect x="4" y="16" width="52" height="24" fill={C.parch} stroke={C.ink} strokeWidth="1" />
         <polygon points="30,2 58,16 2,16" fill={C.villa} />
         <polygon points="30,2 58,16 52,16 30,6 8,16 2,16" fill={C.villaDk} />
@@ -137,14 +137,25 @@ function Villa({ size = 220 }) {
         <rect x="42" y="22" width="6" height="6" fill={C.water} stroke={C.ink} strokeWidth="0.5" />
         <rect x="4" y="38" width="52" height="2" fill={C.parchEdge} />
       </g>
-      {/* 펄럭이는 ECHO 깃발 */}
+
+      {/* 🟢 길고 큰 ECHO 초록 깃발 */}
       <g>
-        <rect x="29.3" y="0" width="1.4" height="12" fill={C.ink} />
-        <circle cx="30" cy="-0.8" r="1.5" fill={C.gem} stroke={C.ink} strokeWidth="0.5" />
-        <g className="echo-flag" style={{ transformOrigin: "30px 2px" }}>
-          <path d="M30.7 0.6 h18 v9 h-18 z" fill={C.white} stroke={C.ink} strokeWidth="0.7" />
-          <text x="39.7" y="7" textAnchor="middle" fill="#2f9e6e" stroke="none"
-            style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "4.6px", fontWeight: "bold" }}>ECHO</text>
+        <rect x="29.2" y="-1" width="1.6" height="23" fill="#5a4632" stroke={C.ink} strokeWidth="0.4" />
+        <circle cx="30" cy="-2" r="1.7" fill={C.gem} stroke={C.ink} strokeWidth="0.5" />
+        <g className="echo-flag" style={{ transformOrigin: "30px 1px" }}>
+          <path d="M30.8 0 h24 v15 h-24 z" fill="#2f9e6e" stroke={C.ink} strokeWidth="0.8" />
+          <path d="M30.8 0 h24 v3.6 h-24 z" fill="#3fa07a" />
+          <text x="42.8" y="10.4" textAnchor="middle" fill={C.white} stroke="none"
+            style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "6.6px", fontWeight: "bold" }}>ECHO</text>
+        </g>
+      </g>
+
+      {/* 🔴 펄럭이는 빨간 삼각 깃발 */}
+      <g>
+        <rect x="10.4" y="9" width="1.2" height="14" fill="#5a4632" stroke={C.ink} strokeWidth="0.35" />
+        <circle cx="11" cy="8.2" r="1.2" fill={C.gem} stroke={C.ink} strokeWidth="0.4" />
+        <g className="red-flag" style={{ transformOrigin: "11px 10px" }}>
+          <path d="M11.5 9.6 L21 12.6 L11.5 15.6 Z" fill="#c0563a" stroke={C.ink} strokeWidth="0.7" strokeLinejoin="round" />
         </g>
       </g>
     </svg>
@@ -1168,6 +1179,18 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
         ch.on("broadcast", { event: "inviteack" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("inviteack", payload);
         });
+        ch.on("broadcast", { event: "dict" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("dict", payload);
+        });
+        ch.on("broadcast", { event: "dictreq" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("dictreq", payload);
+        });
+        ch.on("broadcast", { event: "dictres" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("dictres", payload);
+        });
+        ch.on("broadcast", { event: "gal" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("gal", payload);
+        });
         ch.on("broadcast", { event: "mchat" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("mchat", payload);
         });
@@ -1457,8 +1480,10 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
           ))}
 
           {/* 🌴 치앙마이 야자수 (강 건너) */}
-          {[[2230, 620, 62], [2300, 900, 74], [2210, 1080, 58], [2450, 640, 68], [2580, 880, 62],
-            [2300, 1180, 70], [2560, 1140, 58], [2450, 1250, 66], [2180, 780, 54], [2600, 700, 56]].map(([tx, ty, sz], i) => (
+          {[[2215, 700, 84], [2225, 860, 72], [2200, 1020, 90], [2210, 1180, 76], [2195, 560, 70],
+            [2330, 620, 88], [2320, 960, 74], [2350, 1140, 82], [2300, 1290, 70],
+            [2470, 600, 78], [2480, 900, 92], [2440, 1200, 74], [2500, 1320, 68],
+            [2590, 700, 86], [2600, 1000, 72], [2570, 1240, 80]].map(([tx, ty, sz], i) => (
             <div key={"palm" + i} style={{ position: "absolute", left: tx, top: ty, transform: "translate(-50%,-100%)" }}><PalmTree size={sz} /></div>
           ))}
 
@@ -4705,156 +4730,117 @@ function compressImage(file, maxSide = 900, quality = 0.72, mime = "image/jpeg")
   });
 }
 
-function CoreDictView({ onBack, myName = "" }) {
+function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord, onDelWord, onAddPhotos, onCaption, onDelPhoto, onSync, netCount = 1 }) {
   const [tab, setTab] = useState("word");
-  const [list, setList] = useState(() => loadJSON(DICT_KEY, []));
   const [q, setQ] = useState("");
+  const [msg, setMsg] = useState(null);
+  const say = (m) => { setMsg(m); setTimeout(() => setMsg(null), 2400); };
+
+  /* 등록/수정은 모달로 (목록 화면을 넓게 쓰기 위해) */
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [word, setWord] = useState("");
   const [mean, setMean] = useState("");
-  const [editing, setEditing] = useState(null);
-  const [msg, setMsg] = useState(null);
-  const say = (m) => { setMsg(m); setTimeout(() => setMsg(null), 2200); };
-
-  const persist = (v) => { setList(v); saveJSON(DICT_KEY, v); };
-  const reload = () => dbDictList().then((r) => {
-    const merged = mergeDict(r || [], loadJSON(DICT_KEY, []));
-    persist(merged);
-  }).catch(() => {});
-  useEffect(() => { reload(); }, []);
-
-  const save = () => {
+  const openNew = () => { setEditing(null); setWord(""); setMean(""); setFormOpen(true); };
+  const openEdit = (it) => { setEditing(it.word); setWord(it.word); setMean(it.meaning); setFormOpen(true); };
+  const submit = () => {
     const w = word.trim(), m = mean.trim();
     if (!w || !m) return;
-    const row = { word: w, meaning: m, updated_by: myName || "익명", updated_at: new Date().toISOString() };
-    const renamedFrom = editing && editing !== w ? editing : null;
-    // 1) 먼저 화면·로컬에 바로 반영 (등록한 단어가 절대 사라지지 않게)
-    persist(mergeDict([row], list.filter((it) => it.word !== w && it.word !== renamedFrom)));
-    setWord(""); setMean(""); setEditing(null);
-    say(editing ? "수정했어요 ✏️" : "등록했어요 📖");
-    // 2) 그다음 서버에도 저장 시도
-    if (renamedFrom) dbDictDelete(renamedFrom);
-    dbDictSave(w, m, myName || "익명").then((ok) => {
-      if (!ok) say("이 기기에 저장했어요 (서버 연결 대기 중)");
-      else reload();
-    });
+    onSaveWord(w, m, editing);
+    setFormOpen(false); setEditing(null); setWord(""); setMean("");
+    say(editing ? "수정했어요 ✏️ (모두에게 공유돼요)" : "등록했어요 📖 (모두에게 공유돼요)");
   };
-  const del = (w) => {
-    if (!window.confirm(`「${w}」를 삭제할까요?`)) return;
-    persist(list.filter((it) => it.word !== w));
-    dbDictDelete(w).then(() => reload());
-  };
-  const startEdit = (it) => { setTab("word"); setEditing(it.word); setWord(it.word); setMean(it.meaning); };
-  const shown = list.filter((it) => !q.trim() || it.word.includes(q.trim()) || (it.meaning || "").includes(q.trim()));
 
-  /* ===== 갤러리 ===== */
-  const [photos, setPhotos] = useState(() => loadJSON(GALLERY_KEY, []));
+  /* 가나다 순 정렬 + 검색 */
+  const shown = useMemo(() => {
+    const t = q.trim();
+    return dict
+      .filter((it) => !t || it.word.includes(t) || (it.meaning || "").includes(t) || (it.updated_by || "").includes(t))
+      .slice()
+      .sort((a, b) => a.word.localeCompare(b.word, "ko"));
+  }, [dict, q]);
+
+  /* 갤러리 */
   const [busy, setBusy] = useState(false);
   const [zoom, setZoom] = useState(null);
+  const [gq, setGq] = useState("");
   const fileRef = useRef(null);
-  const savePhotos = (v) => {
-    try {
-      window.localStorage.setItem(GALLERY_KEY, JSON.stringify(v));
-      setPhotos(v);
-      return true;
-    } catch (e) {
-      say("저장 공간이 가득 찼어요 — 오래된 사진을 지워주세요");
-      return false;
-    }
-  };
   const onPick = async (e) => {
     const files = Array.from(e.target.files || []);
+    if (fileRef.current) fileRef.current.value = "";
     if (!files.length) return;
     setBusy(true);
     const added = [];
-    for (const f of files) {
+    for (const f of files.slice(0, 6)) {
       if (!f.type.startsWith("image/")) continue;
-      try {
-        const data = await compressImage(f);
-        added.push({ id: Date.now() + Math.random(), src: data, caption: "", by: myName || "익명",
-          at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) });
-      } catch (err) { /* 개별 파일 실패는 건너뜁니다 */ }
+      try { added.push(await compressImage(f, 560, 0.55)); } catch (err) {}
     }
     setBusy(false);
-    if (added.length) { savePhotos([...added, ...photos]); say(`사진 ${added.length}장을 올렸어요 🖼`); }
+    if (added.length) { onAddPhotos(added); say(`사진 ${added.length}장을 올렸어요 🖼 (모두에게 공유돼요)`); }
     else say("이미지 파일을 읽지 못했어요");
-    if (fileRef.current) fileRef.current.value = "";
   };
-  const setCaption = (id, v) => {
-    const next = photos.map((p) => (p.id === id ? { ...p, caption: v } : p));
-    setPhotos(next);
-  };
-  const commitCaption = () => savePhotos(photos);
-  const delPhoto = (id) => { if (window.confirm("이 사진을 지울까요?")) savePhotos(photos.filter((p) => p.id !== id)); };
+  const shownPhotos = gallery.filter((p2) => !gq.trim() || (p2.caption || "").includes(gq.trim()) || (p2.by || "").includes(gq.trim()));
 
-  /* ===== 🔒 비밀사전 — 우리끼리 나눈 얘기의 핵심 요약 보관함 ===== */
+  /* 비밀사전 (내 기기 전용) */
   const [secrets, setSecrets] = useState(() => loadJSON(SECRET_KEY, []));
-  const [sTitle, setSTitle] = useState("");
-  const [sBody, setSBody] = useState("");
-  const [sTag, setSTag] = useState("");
-  const [sEdit, setSEdit] = useState(null);
-  const [sQ, setSQ] = useState("");
+  const [sTitle, setSTitle] = useState(""); const [sBody, setSBody] = useState(""); const [sTag, setSTag] = useState("");
+  const [sEdit, setSEdit] = useState(null); const [sQ, setSQ] = useState("");
   const persistSecrets = (v) => { setSecrets(v); saveJSON(SECRET_KEY, v); };
   const saveSecret = () => {
     const t = sTitle.trim(), b = sBody.trim();
     if (!t || !b) return;
-    if (sEdit) {
-      persistSecrets(secrets.map((x) => (x.id === sEdit ? { ...x, title: t, body: b, tag: sTag.trim(), by: myName || "익명", at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) } : x)));
-      say("수정했어요 ✏️");
-    } else {
-      persistSecrets([{ id: Date.now() + Math.random(), title: t, body: b, tag: sTag.trim(), by: myName || "익명",
-        at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) }, ...secrets]);
-      say("비밀사전에 저장했어요 🔒");
-    }
+    const at = new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    if (sEdit) persistSecrets(secrets.map((x) => (x.id === sEdit ? { ...x, title: t, body: b, tag: sTag.trim(), by: myName || "익명", at } : x)));
+    else persistSecrets([{ id: Date.now() + Math.random(), title: t, body: b, tag: sTag.trim(), by: myName || "익명", at }, ...secrets]);
     setSTitle(""); setSBody(""); setSTag(""); setSEdit(null);
+    say(sEdit ? "수정했어요 ✏️" : "비밀사전에 저장했어요 🔒");
   };
   const shownSecrets = secrets.filter((x) => !sQ.trim() || (x.title + x.body + (x.tag || "")).includes(sQ.trim()));
 
-  const TabBtn = ({ k, label }) => (
-    <button onClick={() => setTab(k)} style={{ flex: 1, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 13, padding: "9px 6px", borderRadius: 10, border: `2px solid ${C.ink}`,
-      background: tab === k ? "linear-gradient(180deg,#b07a4e,#8a5a3b)" : C.white, color: tab === k ? C.white : C.ink, fontWeight: "bold",
-      boxShadow: tab === k ? "0 3px 0 rgba(0,0,0,0.3)" : "0 2px 0 rgba(0,0,0,0.15)" }}>{label}</button>
+  const tabBtn = (k, label) => (
+    <button key={k} type="button" onClick={() => setTab(k)}
+      style={{ flex: 1, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 13, padding: "10px 6px", borderRadius: 10, border: `2px solid ${C.ink}`,
+        background: tab === k ? "linear-gradient(180deg,#b07a4e,#8a5a3b)" : C.white, color: tab === k ? C.white : C.ink, fontWeight: "bold",
+        boxShadow: tab === k ? "0 3px 0 rgba(0,0,0,0.3)" : "0 2px 0 rgba(0,0,0,0.15)" }}>{label}</button>
   );
 
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="📖" title="코어사전" sub="우리만의 단어와 사진을 함께 모아요" onBack={onBack} bg="#8a5a3b" fg={C.white} />
+      <TitleBar icon="📖" title="코어사전" sub="우리만의 단어와 사진을 함께 모아요 · 모두에게 공유됩니다" onBack={onBack} bg="#8a5a3b" fg={C.white}
+        right={<PxButton tone="wood" onClick={() => { onSync && onSync(); say("동기화 요청을 보냈어요 🔄"); }} style={{ fontSize: 11, padding: "5px 9px" }}>🔄 동기화</PxButton>} />
       <div style={{ padding: 14, background: "#f7efdc" }}>
         <div style={{ display: "flex", gap: 7, marginBottom: 12 }}>
-          <TabBtn k="word" label={`📗 단어 ${list.length}`} />
-          <TabBtn k="gallery" label={`🖼 갤러리 ${photos.length}`} />
-          <TabBtn k="secret" label={`🔒 비밀사전 ${secrets.length}`} />
+          {tabBtn("word", `📗 단어 ${dict.length}`)}
+          {tabBtn("gallery", `🖼 갤러리 ${gallery.length}`)}
+          {tabBtn("secret", `🔒 비밀사전 ${secrets.length}`)}
         </div>
 
-        {msg && <div style={{ fontSize: 12, color: C.good, textAlign: "center", marginBottom: 8, fontWeight: "bold" }}>{msg}</div>}
+        {msg && <div style={{ fontSize: 12.5, color: C.good, textAlign: "center", marginBottom: 9, fontWeight: "bold" }}>{msg}</div>}
 
         {tab === "word" && (
           <>
-            <div style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 7 }}>{editing ? `✏️ 「${editing}」 수정 중` : "✍️ 새 단어 등록"}</div>
-              <input value={word} onChange={(e) => setWord(e.target.value)} placeholder="단어 (예: 쩝쩝박사)" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, marginBottom: 7 }} />
-              <textarea value={mean} onChange={(e) => setMean(e.target.value)} placeholder="뜻 · 설명을 자유롭게 적어주세요" style={{ width: "100%", boxSizing: "border-box", height: 80, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "none" }} />
-              <div style={{ display: "flex", gap: 7, marginTop: 8 }}>
-                {editing && <PxButton tone="ink" onClick={() => { setEditing(null); setWord(""); setMean(""); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>}
-                <PxButton tone="gold" disabled={!word.trim() || !mean.trim()} onClick={save} style={{ flex: 2, padding: 10, fontSize: 13 }}>{editing ? "수정 저장" : "📖 사전에 등록"}</PxButton>
-              </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 단어 · 뜻 · 작성자 검색"
+                style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14 }} />
+              <PxButton tone="gold" onClick={openNew} style={{ fontSize: 13, padding: "10px 14px", whiteSpace: "nowrap" }}>＋ 단어 등록</PxButton>
             </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 단어 검색" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
-              <span style={{ fontSize: 11, color: C.inkSoft }}>{shown.length}개</span>
+            <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>
+              가나다 순 · {shown.length}개{q.trim() ? ` (전체 ${dict.length}개 중)` : ""} · 👥 접속 {netCount}명과 공유 중
             </div>
-            <div style={{ maxHeight: 320, overflow: "auto", display: "flex", flexDirection: "column", gap: 7 }}>
+            <div style={{ maxHeight: 400, overflow: "auto", display: "flex", flexDirection: "column", gap: 7 }}>
               {shown.length === 0 ? (
-                <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 24 }}>아직 등록된 단어가 없어요 📖<br />첫 단어를 등록해보세요!</div>
+                <div style={{ fontSize: 12.5, color: C.inkSoft, textAlign: "center", padding: 30, lineHeight: 1.9 }}>
+                  {q.trim() ? "검색 결과가 없어요 🔍" : <>아직 등록된 단어가 없어요 📖<br />＋ 단어 등록으로 첫 단어를 남겨보세요!</>}
+                </div>
               ) : shown.map((it) => (
                 <div key={it.word} style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 11 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <b style={{ flex: 1, fontSize: 14 }}>📗 {it.word}</b>
-                    <PxButton tone="wood" onClick={() => startEdit(it)} style={{ fontSize: 10, padding: "4px 8px" }}>✏️ 수정</PxButton>
-                    <PxButton tone="danger" onClick={() => del(it.word)} style={{ fontSize: 10, padding: "4px 8px" }}>🗑</PxButton>
+                    <b style={{ flex: 1, fontSize: 15, wordBreak: "break-word" }}>📗 {it.word}</b>
+                    <PxButton tone="wood" onClick={() => openEdit(it)} style={{ fontSize: 10, padding: "4px 8px" }}>✏️</PxButton>
+                    <PxButton tone="danger" onClick={() => { if (window.confirm(`「${it.word}」를 삭제할까요? 모두에게서 사라져요.`)) onDelWord(it.word); }} style={{ fontSize: 10, padding: "4px 8px" }}>🗑</PxButton>
                   </div>
-                  <div style={{ fontSize: 13, lineHeight: 1.7, marginTop: 5, whiteSpace: "pre-wrap" }}>{it.meaning}</div>
-                  {it.updated_by && <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 5 }}>✍️ 최근 수정 {it.updated_by}</div>}
+                  <div style={{ fontSize: 13.5, lineHeight: 1.75, marginTop: 6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{it.meaning}</div>
+                  {it.updated_by && <div style={{ fontSize: 10.5, color: C.inkSoft, marginTop: 6 }}>✍️ {it.updated_by}</div>}
                 </div>
               ))}
             </div>
@@ -4863,40 +4849,40 @@ function CoreDictView({ onBack, myName = "" }) {
 
         {tab === "gallery" && (
           <>
-            <div style={{ background: C.white, border: `3px dashed ${C.ink}`, borderRadius: 10, padding: 16, marginBottom: 12, textAlign: "center" }}>
-              <div style={{ fontSize: 34 }}>🖼</div>
-              <div style={{ fontSize: 13, fontWeight: "bold", margin: "6px 0 4px" }}>사진 올리기</div>
-              <div style={{ fontSize: 11, color: C.inkSoft, lineHeight: 1.7, marginBottom: 10 }}>여러 장 한 번에 선택할 수 있어요.<br />사진 아래에 한 줄 설명을 바로 적을 수 있습니다.</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
+              <input value={gq} onChange={(e) => setGq(e.target.value)} placeholder="🔍 설명 · 올린 사람 검색"
+                style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14 }} />
               <input ref={fileRef} type="file" accept="image/*" multiple onChange={onPick} style={{ display: "none" }} />
-              <PxButton tone="gold" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()} style={{ width: "100%", padding: 12, fontSize: 14 }}>
-                {busy ? "올리는 중… ⏳" : "📷 사진 선택하기"}
+              <PxButton tone="gold" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()} style={{ fontSize: 13, padding: "10px 14px", whiteSpace: "nowrap" }}>
+                {busy ? "올리는 중…" : "📷 사진 올리기"}
               </PxButton>
             </div>
-
-            {photos.length === 0 ? (
-              <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 28, lineHeight: 1.8 }}>아직 올라온 사진이 없어요 🖼<br />첫 사진을 올려보세요!</div>
+            <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>누구나 올리고 누구나 볼 수 있어요 · 한 번에 최대 6장 · 👥 접속 {netCount}명과 공유 중</div>
+            {shownPhotos.length === 0 ? (
+              <div style={{ fontSize: 12.5, color: C.inkSoft, textAlign: "center", padding: 34, lineHeight: 1.9 }}>
+                {gq.trim() ? "검색 결과가 없어요 🔍" : <>아직 올라온 사진이 없어요 🖼<br />첫 사진을 올려보세요!</>}
+              </div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10, maxHeight: 420, overflow: "auto" }}>
-                {photos.map((p) => (
-                  <div key={p.id} style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, overflow: "hidden" }}>
-                    <button onClick={() => setZoom(p)} title="크게 보기" style={{ display: "block", width: "100%", padding: 0, border: "none", background: "#e9e3d6", cursor: "zoom-in" }}>
-                      <img src={p.src} alt={p.caption || "사진"} style={{ display: "block", width: "100%", aspectRatio: "1/1", objectFit: "cover" }} />
+                {shownPhotos.map((ph) => (
+                  <div key={ph.id} style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, overflow: "hidden" }}>
+                    <button type="button" onClick={() => setZoom(ph)} title="크게 보기" style={{ display: "block", width: "100%", padding: 0, border: "none", background: "#e9e3d6", cursor: "zoom-in" }}>
+                      <img src={ph.src} alt={ph.caption || "사진"} style={{ display: "block", width: "100%", aspectRatio: "1/1", objectFit: "cover" }} />
                     </button>
                     <div style={{ padding: 7 }}>
-                      <input value={p.caption} onChange={(e) => setCaption(p.id, e.target.value)} onBlur={commitCaption}
-                        onKeyDown={(e) => { if (e.key === "Enter") { commitCaption(); e.currentTarget.blur(); } }}
-                        placeholder="한 줄 설명을 적어주세요"
+                      <input defaultValue={ph.caption} onBlur={(e) => onCaption(ph.id, e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                        placeholder="한 줄 설명"
                         style={{ width: "100%", boxSizing: "border-box", padding: "6px 7px", border: `2px solid ${C.ink}`, borderRadius: 5, fontFamily: "'DotGothic16', monospace", fontSize: 12, background: "#fffdf6" }} />
                       <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 5 }}>
-                        <span style={{ flex: 1, fontSize: 9.5, color: C.inkSoft, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🧑 {p.by} · {p.at}</span>
-                        <button onClick={() => delPhoto(p.id)} title="삭제" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: C.inkSoft }}>🗑</button>
+                        <span style={{ flex: 1, fontSize: 9.5, color: C.inkSoft, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🧑 {ph.by} · {ph.at}</span>
+                        <button type="button" onClick={() => { if (window.confirm("이 사진을 지울까요? 모두에게서 사라져요.")) onDelPhoto(ph.id); }} title="삭제" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: C.inkSoft }}>🗑</button>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-            <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginTop: 10 }}>* 사진은 이 브라우저에 저장돼요 (자동으로 압축됩니다).</div>
           </>
         )}
 
@@ -4907,34 +4893,29 @@ function CoreDictView({ onBack, myName = "" }) {
                 <span style={{ fontSize: 20 }}>🔒</span>
                 <b style={{ color: "#7fe3ff", fontSize: 14 }}>{sEdit ? "요약 수정 중" : "새 핵심 요약"}</b>
               </div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.62)", lineHeight: 1.6, marginBottom: 8 }}>
-                우리끼리 나눈 얘기를 핵심만 남겨 보관하는 방이에요. (나중에 AI 자동 요약을 붙일 자리)
-              </div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.62)", lineHeight: 1.6, marginBottom: 8 }}>나눈 얘기를 핵심만 남겨 보관하는 방이에요. (내 기기에만 저장 · AI 자동 요약 자리)</div>
               <input value={sTitle} onChange={(e) => setSTitle(e.target.value)} placeholder="제목 (예: 7월 상품기획 회의)"
                 style={{ width: "100%", boxSizing: "border-box", padding: 9, border: "2px solid #7fe3ff", borderRadius: 7, background: "rgba(255,255,255,0.94)", fontFamily: "'DotGothic16', monospace", fontSize: 13.5, marginBottom: 6 }} />
-              <textarea value={sBody} onChange={(e) => setSBody(e.target.value)} rows={5} placeholder={"핵심 요약을 적어주세요\n· 결론\n· 다음 할 일\n· 기억해둘 것"}
+              <textarea value={sBody} onChange={(e) => setSBody(e.target.value)} rows={4} placeholder={"핵심 요약\n· 결론\n· 다음 할 일"}
                 style={{ width: "100%", boxSizing: "border-box", padding: 9, border: "2px solid rgba(127,227,255,0.4)", borderRadius: 7, background: "rgba(255,255,255,0.9)", fontFamily: "'DotGothic16', monospace", fontSize: 12.5, resize: "vertical", marginBottom: 6 }} />
-              <input value={sTag} onChange={(e) => setSTag(e.target.value)} placeholder="태그 (선택 · 예: 기획, 디자인)"
+              <input value={sTag} onChange={(e) => setSTag(e.target.value)} placeholder="태그 (선택)"
                 style={{ width: "100%", boxSizing: "border-box", padding: 8, border: "2px solid rgba(127,227,255,0.4)", borderRadius: 7, background: "rgba(255,255,255,0.9)", fontFamily: "'DotGothic16', monospace", fontSize: 12.5 }} />
               <div style={{ display: "flex", gap: 7, marginTop: 8 }}>
                 {sEdit && <PxButton tone="ink" onClick={() => { setSEdit(null); setSTitle(""); setSBody(""); setSTag(""); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>}
-                <PxButton tone="blue" disabled={!sTitle.trim() || !sBody.trim()} onClick={saveSecret} style={{ flex: 2, padding: 10, fontSize: 13 }}>{sEdit ? "수정 저장" : "🔒 비밀사전에 저장"}</PxButton>
+                <PxButton tone="blue" disabled={!sTitle.trim() || !sBody.trim()} onClick={saveSecret} style={{ flex: 2, padding: 10, fontSize: 13 }}>{sEdit ? "수정 저장" : "🔒 저장"}</PxButton>
               </div>
             </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <input value={sQ} onChange={(e) => setSQ(e.target.value)} placeholder="🔍 요약 검색" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
-              <span style={{ fontSize: 11, color: C.inkSoft }}>{shownSecrets.length}개</span>
-            </div>
-            <div style={{ maxHeight: 340, overflow: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+            <input value={sQ} onChange={(e) => setSQ(e.target.value)} placeholder="🔍 요약 검색"
+              style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, marginBottom: 8 }} />
+            <div style={{ maxHeight: 320, overflow: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
               {shownSecrets.length === 0 ? (
-                <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 26, lineHeight: 1.8 }}>아직 저장된 요약이 없어요 🔒<br />오늘 나눈 얘기의 핵심을 남겨보세요.</div>
+                <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 26, lineHeight: 1.8 }}>아직 저장된 요약이 없어요 🔒</div>
               ) : shownSecrets.map((x) => (
                 <div key={x.id} style={{ background: C.white, border: `2px solid ${C.ink}`, borderLeft: "6px solid #4b3c85", borderRadius: 8, padding: 11 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <b style={{ flex: 1, fontSize: 14, wordBreak: "break-word" }}>🔒 {x.title}</b>
                     <PxButton tone="wood" onClick={() => { setSEdit(x.id); setSTitle(x.title); setSBody(x.body); setSTag(x.tag || ""); }} style={{ fontSize: 10, padding: "4px 8px" }}>✏️</PxButton>
-                    <PxButton tone="danger" onClick={() => { if (window.confirm(`「${x.title}」 요약을 지울까요?`)) persistSecrets(secrets.filter((y) => y.id !== x.id)); }} style={{ fontSize: 10, padding: "4px 8px" }}>🗑</PxButton>
+                    <PxButton tone="danger" onClick={() => { if (window.confirm("이 요약을 지울까요?")) persistSecrets(secrets.filter((y) => y.id !== x.id)); }} style={{ fontSize: 10, padding: "4px 8px" }}>🗑</PxButton>
                   </div>
                   {x.tag && <div style={{ marginTop: 4 }}><span style={{ fontSize: 10, background: "#e7e0f5", border: `1px solid ${C.ink}`, borderRadius: 10, padding: "1px 8px" }}>#{x.tag}</span></div>}
                   <div style={{ fontSize: 12.5, lineHeight: 1.8, marginTop: 6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{x.body}</div>
@@ -4942,10 +4923,32 @@ function CoreDictView({ onBack, myName = "" }) {
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginTop: 10 }}>* 비밀사전은 이 브라우저에 저장돼요. (AI 자동 요약은 다음 단계에서 연결할 예정)</div>
           </>
         )}
       </div>
+
+      {/* 단어 등록 모달 */}
+      {formOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120, padding: 14 }} onClick={() => setFormOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 400 }}>
+            <Panel style={{ padding: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 22 }}>📖</span>
+                <b style={{ flex: 1, fontSize: 15 }}>{editing ? `「${editing}」 수정` : "새 단어 등록"}</b>
+                <PxButton tone="ink" onClick={() => setFormOpen(false)} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+              </div>
+              <input value={word} onChange={(e) => setWord(e.target.value)} autoFocus placeholder="단어 (예: 쩝쩝박사)"
+                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 15, marginBottom: 8 }} />
+              <textarea value={mean} onChange={(e) => setMean(e.target.value)} rows={5} placeholder="뜻 · 설명을 자유롭게 적어주세요"
+                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13.5, resize: "vertical" }} />
+              <PxButton tone="gold" disabled={!word.trim() || !mean.trim()} onClick={submit} style={{ width: "100%", marginTop: 10, padding: 12, fontSize: 14 }}>
+                {editing ? "수정 저장" : "📖 사전에 등록"}
+              </PxButton>
+              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 7 }}>등록하면 접속 중인 모두에게 바로 공유돼요</div>
+            </Panel>
+          </div>
+        </div>
+      )}
 
       {zoom && (
         <div onClick={() => setZoom(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 130, padding: 18, cursor: "zoom-out" }}>
@@ -4958,7 +4961,6 @@ function CoreDictView({ onBack, myName = "" }) {
   );
 }
 
-/* ======================= 흡연의 방(플레이버) ======================= */
 const SMOKE_PEOPLE = ["정인", "호중", "희정", "유리", "의준"];
 const SMOKE_LINES = ["오늘 왜이렇게 춥냐 ㅋㅋ", "커피 한잔 하실분~", "아 마감 언제끝나ㅠ", "날씨 좋다 그치", "점심 뭐먹지", "주말에 뭐함?", "일 너무 많아 진짜", "ㅋㅋㅋㅋㅋㅋ", "맞아맞아", "와 대박", "나 이제 끊을거야 (3일째)", "치앙마이 가고싶다", "한 대 피우고 가자", "오늘도 화이팅~"];
 
@@ -5062,6 +5064,10 @@ function SmokeView({ onBack, bubble }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724c", type: "업데이트", date: "2026-07-24", title: "📖 코어사전 전면 개편 — 모두와 공유",
+    body: "· 등록한 단어가 접속 중인 모두에게 실시간으로 공유돼요\n· 접속하면 다른 사람이 등록한 단어를 자동으로 받아와요 (🔄 동기화 버튼으로 수동 요청도 가능)\n· 등록창을 없애고 ＋ 단어 등록 버튼 → 팝업으로 바꿔 목록을 넓게 썼어요\n· 단어 · 뜻 · 작성자를 검색할 수 있어요\n· 등록된 단어가 가나다 순으로 정렬돼요\n· 🖼 갤러리 탭이 정상 동작하고, 누구나 사진을 올리고 볼 수 있어요 (한 번에 최대 6장)" },
+  { id: "u20260724b", type: "업데이트", date: "2026-07-24", title: "🚩 ECHO 깃발 · 🌴 야자수 보강",
+    body: "· 주민센터에 길고 큰 초록 ECHO 깃발이 꽂혔어요\n· 옆에 작은 빨간 삼각 깃발이 빠르게 펄럭여요\n· 🌴 치앙마이 야자수를 10 → 16그루로 늘리고 크게 키웠어요 (다리 건너자마자 보이도록 배치)" },
   { id: "u20260724a", type: "업데이트", date: "2026-07-24", title: "🎁 선물 도착 알림 · 🎬 유튜브 계속 재생 · 🚩 ECHO 깃발",
     body: "· 선물을 받으면 「선물이 도착했습니다」 팝업이 떠요 — 🎒 선물함으로 이동 / 닫기 선택\n· 선물함에서 🙌 들고다니기 · 🏠 집에 두기 · 😋 먹기 · 🧊 냉장고 보관을 바로 고를 수 있어요\n· 🎬 유튜브로 재생한 곡이 리스닝 방을 나가도 계속 들려요 (좌측 하단 미니 플레이어)\n· 🔗 링크 · 🎤 가수 · 🎵 제목을 따로 입력해서 「가수 - 제목」으로 표시돼요\n· 🚩 주민센터 지붕에 초록 ECHO 글씨 깃발이 펄럭여요\n· 🌴 치앙마이에 야자수 10그루가 바람에 흔들려요\n· 🧠 사고 도감 글씨를 크게 키우고 3열로 넓혔어요" },
   { id: "u20260723y", type: "업데이트", date: "2026-07-23", title: "🎵 BGM 자동 재생·셔플 · 🌧 비 효과 리뉴얼",
@@ -6609,9 +6615,13 @@ export default function App() {
   const netDanceRef = useRef(null);
   const netHouseRef = useRef(null);
   const netLookRef = useRef(null);
+  const netSendEventRef = useRef(null);
+  const myNameRef = useRef("");
   const netCarryRef = useRef(null);
   const netRoomPosRef = useRef({ x: 0, y: 0 });
   const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat, sendEvent: netSendEvent } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef, netOutfitRef, netViewRef, netRoomPosRef, netDanceRef, netHouseRef, netLookRef, netCarryRef);
+  useEffect(() => { netSendEventRef.current = netSendEvent; }, [netSendEvent]);
+  useEffect(() => { myNameRef.current = myName; }, [myName]);
   const [nameOpen, setNameOpen] = useState(() => !loadJSON("echotown_myname", ""));
   const [nameInput, setNameInput] = useState("");
   const [couponOpen, setCouponOpen] = useState(false);
@@ -6929,6 +6939,55 @@ export default function App() {
   const [mailTarget, setMailTarget] = useState(null);
   const [giftTarget, setGiftTarget] = useState(null);
   const [giftAlert, setGiftAlert] = useState(null);
+
+  /* 📖 코어사전 · 🖼 갤러리 — 접속자 모두와 공유 */
+  const [dict, setDict] = useState(() => loadJSON(DICT_KEY, []));
+  const [gallery, setGallery] = useState(() => loadJSON(GALLERY_KEY, []));
+  const dictRef = useRef(dict); dictRef.current = dict;
+  const galRef = useRef(gallery); galRef.current = gallery;
+  useEffect(() => { saveJSON(DICT_KEY, dict); }, [dict]);
+  useEffect(() => { try { window.localStorage.setItem(GALLERY_KEY, JSON.stringify(gallery.slice(0, 40))); } catch (e) {} }, [gallery]);
+  /* 서버(supabase) 사전도 함께 읽어와 합칩니다 */
+  const loadDict = useCallback(() => {
+    dbDictList().then((r) => { if (r && r.length) setDict((v) => mergeDict(r, v)); }).catch(() => {});
+  }, []);
+  useEffect(() => { loadDict(); }, [loadDict]);
+  /* 접속 후 다른 사람들에게 사전·갤러리를 요청 */
+  const askSync = useCallback(() => {
+    if (netSendEventRef.current) netSendEventRef.current("dictreq", { from: myNameRef.current || "" });
+  }, []);
+  useEffect(() => {
+    if (!myName) return;
+    const t = setTimeout(askSync, 2500);
+    return () => clearTimeout(t);
+  }, [myName, askSync]);
+
+  const saveWord = (w, m, renamedFrom) => {
+    const row = { word: w, meaning: m, updated_by: myName || "익명", updated_at: new Date().toISOString() };
+    setDict((v) => mergeDict([row], v.filter((x) => x.word !== w && x.word !== renamedFrom)));
+    if (netSendEvent) netSendEvent("dict", { row, renamedFrom: renamedFrom || null });
+    if (renamedFrom && renamedFrom !== w) dbDictDelete(renamedFrom);
+    dbDictSave(w, m, myName || "익명").then((ok) => { if (ok) loadDict(); });
+  };
+  const delWord = (w) => {
+    setDict((v) => v.filter((x) => x.word !== w));
+    if (netSendEvent) netSendEvent("dict", { del: w });
+    dbDictDelete(w);
+  };
+  const addPhotos = (srcs) => {
+    const at = new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    const rows = srcs.map((src, i) => ({ id: `${Date.now()}_${i}_${Math.random().toString(36).slice(2, 7)}`, src, caption: "", by: myName || "익명", at }));
+    setGallery((v) => [...rows, ...v].slice(0, 80));
+    rows.forEach((ph, i) => setTimeout(() => { if (netSendEvent) netSendEvent("gal", { photo: ph }); }, 260 * i));
+  };
+  const setCaption = (id, caption) => {
+    setGallery((v) => v.map((x) => (x.id === id ? { ...x, caption } : x)));
+    if (netSendEvent) netSendEvent("gal", { cap: { id, caption } });
+  };
+  const delPhoto = (id) => {
+    setGallery((v) => v.filter((x) => x.id !== id));
+    if (netSendEvent) netSendEvent("gal", { del: id });
+  };
   /* 🎬 유튜브 재생 (방을 나가도 유지) */
   const [ytNow, setYtNow] = useState(null);
   const [ytOpen, setYtOpen] = useState(true);
@@ -7031,12 +7090,35 @@ export default function App() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qlock" || kind === "qleave" || kind === "mchat") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qlock" || kind === "qleave" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "inviteack") {
         showNotice(`${p.from}님이 회의에 ${p.ok ? "참석" : "불참"}한다고 답했어요${!p.ok && p.reason ? " — " + p.reason : ""}`);
         pushMsg("dm", { from: p.from, text: p.ok ? "회의 초대에 참석하겠습니다 👍" : `회의 초대 불참합니다.\n사유: ${p.reason || "(사유 없음)"}` });
+      }
+      if (kind === "dict") {
+        if (p.del) setDict((v) => v.filter((x) => x.word !== p.del));
+        else if (p.row) setDict((v) => mergeDict([p.row], v.filter((x) => x.word !== p.row.word && x.word !== p.renamedFrom)));
+        return;
+      }
+      if (kind === "gal") {
+        if (p.del) setGallery((v) => v.filter((x) => x.id !== p.del));
+        else if (p.cap) setGallery((v) => v.map((x) => (x.id === p.cap.id ? { ...x, caption: p.cap.caption } : x)));
+        else if (p.photo) setGallery((v) => (v.some((x) => x.id === p.photo.id) ? v : [p.photo, ...v].slice(0, 80)));
+        return;
+      }
+      if (kind === "dictreq") {
+        if (p.from === (myName || "")) return;
+        const mine = dictRef.current || [];
+        if (mine.length && netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine });
+        const gs = galRef.current || [];
+        gs.slice(0, 12).forEach((ph, i) => setTimeout(() => { if (netSendEvent) netSendEvent("gal", { photo: ph }); }, 350 * (i + 1)));
+        return;
+      }
+      if (kind === "dictres") {
+        if (p.dict) setDict((v) => mergeDict(p.dict, v));
+        return;
       }
       if (kind === "mchat") { if (p.who !== (myName || "나")) pushMeetingChat(p.room, { who: p.who, text: p.text, me: false }); return; }
       if (kind === "dm") { pushDm(p.from, { me: false, text: p.text }); pushMsg("dm", { from: p.from, text: p.text }); showNotice(`💬 ${p.from}님: ${String(p.text).slice(0, 20)}`); }
@@ -7306,7 +7388,9 @@ export default function App() {
         {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => awardGold(n)} scores={swimScores} onRecord={(nick, time) => { setSwimScores((s) => [...s, { nick, time }]); bump("swim"); dbAddRank("swim", nick, time, null).then(reloadRanks); }} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => { awardGold(4); bump("gym"); }} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
-        {view === "coredict" && <CoreDictView myName={myName} onBack={backToWorld} />}
+        {view === "coredict" && <CoreDictView myName={myName} onBack={backToWorld} netCount={netCount}
+          dict={dict} gallery={gallery} onSaveWord={saveWord} onDelWord={delWord}
+          onAddPhotos={addPhotos} onCaption={setCaption} onDelPhoto={delPhoto} onSync={askSync} />}
         {view === "questdone" && <QuestDoneView myName={myName} onBack={backToWorld} bubble={bubble} />}
         {view === "ikea" && <IkeaView gems={gold} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
         {view === "project" && <BossMapView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss) => bump(isBoss ? "boss" : "quest")}
@@ -7624,7 +7708,9 @@ function StyleBlock() {
       .bag-hit { animation: bagHit .18s ease-out; }
       /* 🚩 주민센터 ECHO 깃발 · 🌴 야자수 흔들림 */
       @keyframes echoWave { 0%,100% { transform: skewY(0deg) scaleY(1); } 25% { transform: skewY(-5deg) scaleY(0.96); } 50% { transform: skewY(0deg) scaleY(1.03); } 75% { transform: skewY(5deg) scaleY(0.96); } }
-      .echo-flag { animation: echoWave 1.5s ease-in-out infinite; }
+      .echo-flag { animation: echoWave 2s ease-in-out infinite; }
+      @keyframes redWave { 0%,100% { transform: skewY(0deg) scaleX(1); } 30% { transform: skewY(-9deg) scaleX(0.93); } 60% { transform: skewY(8deg) scaleX(1.04); } }
+      .red-flag { animation: redWave .85s ease-in-out infinite; }
       @keyframes giftPop { 0% { transform: scale(0.4) rotate(-12deg); opacity: 0; } 60% { transform: scale(1.15) rotate(6deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); } }
       .gift-pop { display: inline-block; animation: giftPop .5s cubic-bezier(.34,1.56,.64,1) both; }
       @keyframes palmSway { 0%,100% { transform: rotate(-3.5deg); } 50% { transform: rotate(3.5deg); } }
@@ -7666,7 +7752,7 @@ function StyleBlock() {
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .gem-pop,.hero-bob,.gem-spin,.enter-prompt,.chat-bubble,.px-btn,.map-obj,.qs-aura,.qs-ring,.qs-float,.qs-spark circle,.rain-drop,.echo-flag,.palm-sway { animation:none !important; transition:none !important; }
+        .gem-pop,.hero-bob,.gem-spin,.enter-prompt,.chat-bubble,.px-btn,.map-obj,.qs-aura,.qs-ring,.qs-float,.qs-spark circle,.rain-drop,.echo-flag,.red-flag,.palm-sway { animation:none !important; transition:none !important; }
       }
     `}</style>
   );
