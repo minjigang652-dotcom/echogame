@@ -2482,9 +2482,12 @@ function SandbagView({ onBack, scores, onEnd, myName = "" }) {
   const [fx, setFx] = useState(0);
   const [ending, setEnding] = useState(false);
   const [nick, setNick] = useState(myName);
+  const [target, setTarget] = useState(null);
+  const [setupOpen, setSetupOpen] = useState(true);
+  const [targetInput, setTargetInput] = useState("");
   const hit = () => { setCount((c) => c + 1); setFx(Date.now()); playPunch(); };
   const finish = () => { if (count <= 0) { onBack(); return; } setEnding(true); };
-  const submit = () => { onEnd(nick.trim() || myName || "익명", count); setCount(0); setNick(myName); setEnding(false); };
+  const submit = () => { onEnd(nick.trim() || myName || "익명", count, target); setCount(0); setNick(myName); setEnding(false); };
   useEffect(() => {
     if (mode !== "keyboard") return;
     const onKey = (e) => { if ((e.code === "Space" || e.key === " ") && !ending) { e.preventDefault(); hit(); } };
@@ -2494,7 +2497,7 @@ function SandbagView({ onBack, scores, onEnd, myName = "" }) {
   const ranked = [...scores].sort((a, b) => b.count - a.count).slice(0, 8);
   return (
     <Panel style={{ padding: 0, overflow: "hidden", position: "relative" }}>
-      <TitleBar icon="🥊" title="샌드백 치기" sub="샌드백을 마구 클릭! · 끝을 누르면 랭킹 집계" onBack={onBack} bg="#c0563a" fg={C.white} />
+      <TitleBar icon="🥊" title="샌드백 치기" sub={target ? `🎯 ${target} 샌드백 · 끝을 누르면 랭킹 집계` : "샌드백을 마구 클릭! · 끝을 누르면 랭킹 집계"} onBack={onBack} bg="#c0563a" fg={C.white} />
       <div style={{ display: "flex", flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 320px", position: "relative", height: 420, background: "#2a2233", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: mode === "mouse" ? GLOVE_CURSOR : "default" }} onClick={mode === "mouse" ? hit : undefined}>
           <div style={{ position: "absolute", top: 12, right: 14, textAlign: "center" }}>
@@ -2502,7 +2505,8 @@ function SandbagView({ onBack, scores, onEnd, myName = "" }) {
             <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 26, color: C.gem }}>{count}</div>
             <PxButton tone="danger" onClick={(e) => { e.stopPropagation(); finish(); }} style={{ marginTop: 6, fontSize: 12, padding: "6px 14px" }}>끝</PxButton>
           </div>
-          <div key={fx} className={fx ? "bag-hit" : ""} style={{ pointerEvents: "none" }}>
+          <div key={fx} className={fx ? "bag-hit" : ""} style={{ pointerEvents: "none", position: "relative" }}>
+            {target && <div style={{ position: "absolute", left: "50%", top: 26, transform: "translateX(-50%)", background: "#fffbe8", color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "1px 8px", fontSize: 12, fontWeight: "bold", whiteSpace: "nowrap", zIndex: 2 }}>{target}</div>}
             <Sandbag size={160} />
           </div>
           <div style={{ position: "absolute", bottom: 12, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, pointerEvents: "none" }}>
@@ -2522,7 +2526,7 @@ function SandbagView({ onBack, scores, onEnd, myName = "" }) {
               {ranked.map((s, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `2px solid ${C.ink}`, padding: "5px 8px", fontSize: 13 }}>
                   <span style={{ width: 20, fontWeight: "bold", color: i === 0 ? "#a86e13" : C.inkSoft }}>{i + 1}</span>
-                  <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.nick}</span>
+                  <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.nick}{s.target ? <span style={{ color: C.danger, fontSize: 10 }}> → {s.target}</span> : ""}</span>
                   <b>{s.count}</b>
                 </div>
               ))}
@@ -2530,11 +2534,29 @@ function SandbagView({ onBack, scores, onEnd, myName = "" }) {
           )}
         </div>
       </div>
+      {setupOpen && (
+        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 25, padding: 14 }}>
+          <div style={{ width: "100%", maxWidth: 320 }}>
+            <Panel style={{ padding: 18 }}>
+              <div style={{ textAlign: "center", fontSize: 34 }}>🥊</div>
+              <div style={{ textAlign: "center", fontSize: 14, fontWeight: "bold", margin: "8px 0 12px" }}>어떤 샌드백을 칠까요?</div>
+              <PxButton tone="wood" onClick={() => { setTarget(null); setSetupOpen(false); }} style={{ width: "100%", padding: 12, fontSize: 13, marginBottom: 8 }}>🥊 그냥 때리기</PxButton>
+              <div style={{ background: C.white, border: `3px solid ${C.ink}`, padding: 10 }}>
+                <div style={{ fontSize: 12, marginBottom: 6 }}>🎯 누구 샌드백을 원하시나요?</div>
+                <input value={targetInput} onChange={(e) => setTargetInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && targetInput.trim()) { setTarget(targetInput.trim()); setSetupOpen(false); } }} maxLength={8} placeholder="이름 입력" style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.parch }} />
+                <PxButton tone="danger" disabled={!targetInput.trim()} onClick={() => { setTarget(targetInput.trim()); setSetupOpen(false); }} style={{ width: "100%", marginTop: 8, padding: 10, fontSize: 13 }}>이 사람 샌드백 만들기</PxButton>
+              </div>
+              <PxButton tone="ink" onClick={onBack} style={{ width: "100%", marginTop: 10, padding: 9, fontSize: 12 }}>나가기</PxButton>
+            </Panel>
+          </div>
+        </div>
+      )}
+
       {ending && (
         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, padding: 14 }} onClick={() => setEnding(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 320 }}>
             <Panel style={{ padding: 16 }}>
-              <div style={{ textAlign: "center", marginBottom: 10 }}>총 <b style={{ fontSize: 20, color: C.danger }}>{count}</b>번 쳤어요! 💥</div>
+              <div style={{ textAlign: "center", marginBottom: 10 }}>{target ? <span style={{ fontSize: 12, color: C.danger }}>🎯 {target} 샌드백<br /></span> : null}총 <b style={{ fontSize: 20, color: C.danger }}>{count}</b>번 쳤어요! 💥</div>
               <input value={nick} onChange={(e) => setNick(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} maxLength={10} placeholder="닉네임 (랭킹 등록)" autoFocus style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: C.white }} />
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <PxButton tone="ink" onClick={() => setEnding(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>더 치기</PxButton>
@@ -4323,7 +4345,7 @@ export default function App() {
         {view === "ikea" && <IkeaView gems={gems} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
         {view === "project" && <BossMapView onBack={backToWorld} onReward={(n) => award(n)} />}
         {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
-        {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count) => setBoxScores((s) => [...s, { nick, count }])} />}
+        {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count, target) => setBoxScores((s) => [...s, { nick, count, target }])} />}
         {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
         {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} onReward={(n) => award(n)} />}
         {view === "board" && <BoardView onBack={backToWorld} />}
