@@ -492,7 +492,7 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
           {net && net.others && Object.values(net.others).filter((o) => o.v && o.v === net.view).map((o) => (
             <div key={o.id} style={{ position: "absolute", left: o.rx || 0, top: o.ry || 0, transform: "translate(-50%,-70%)", zIndex: 5, opacity: 0.95, transition: "left .18s linear, top .18s linear", pointerEvents: "none" }}>
               {o.bubble && (
-                <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px" }}>{o.bubble}</div>
+                <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 190, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px" }}>{o.bubble}</div>
               )}
               <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
               <div className={o.dm ? "dance-" + o.dm : ""} style={{ transformOrigin: "bottom center" }}>
@@ -504,7 +504,7 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
           {/* 플레이어 */}
           <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-70%)", zIndex: 6, pointerEvents: "none" }}>
             {bubble && (
-              <div className="chat-bubble" style={{ position: "absolute", bottom: "112%", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", maxWidth: 220, background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>
+              <div className="chat-bubble" style={{ position: "absolute", bottom: "112%", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 200, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>
                 {bubble}
               </div>
             )}
@@ -735,7 +735,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           if (onChatRef && onChatRef.current) onChatRef.current(payload);
           if (payload.id === MY_ID) return;
           const bid = Date.now() + Math.random();
-          setOthers((o) => ({ ...o, [payload.id]: { ...(o[payload.id] || { id: payload.id, name: payload.name, x: 0, y: 0 }), bubble: payload.text, bubbleId: bid, ts: Date.now() } }));
+          setOthers((o) => ({ ...o, [payload.id]: { ...(o[payload.id] || { id: payload.id, name: payload.name, x: 0, y: 0 }), bubble: String(payload.text || "").slice(0, 50), bubbleId: bid, ts: Date.now() } }));
           setTimeout(() => setOthers((o) => (o[payload.id] && o[payload.id].bubbleId === bid ? { ...o, [payload.id]: { ...o[payload.id], bubble: null } } : o)), 3600);
         });
         ch.on("broadcast", { event: "bye" }, ({ payload }) => {
@@ -1015,7 +1015,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
           {Object.values(others).filter((o) => (o.v || "world") === "world").map((o) => (
             <div key={o.id} style={{ position: "absolute", left: o.x, top: o.y, transform: "translate(-50%,-100%)", zIndex: 17, opacity: 0.95, transition: "left .18s linear, top .18s linear" }}>
               {o.bubble && (
-                <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>{o.bubble}</div>
+                <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 190, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>{o.bubble}</div>
               )}
               <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
               <div className={o.dm ? "dance-" + o.dm : ""} style={{ transformOrigin: "bottom center" }}>
@@ -1027,7 +1027,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
           {/* 플레이어 */}
           <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-70%)", zIndex: 20, pointerEvents: "none" }}>
             {bubble && (
-              <div className="chat-bubble" style={{ position: "absolute", bottom: "112%", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", maxWidth: 220, background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>
+              <div className="chat-bubble" style={{ position: "absolute", bottom: "112%", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 200, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>
                 {bubble}
               </div>
             )}
@@ -1935,7 +1935,7 @@ function LiarGame({ onClose, onReward, myName = "" }) {
         return (
           <div key={i} style={{ position: "absolute", ...pos, transform: "translate(-50%,-50%)", textAlign: "center", zIndex: b ? 5 : 2 }}>
             {b && (
-              <div className="chat-bubble" style={{ position: "absolute", bottom: "108%", left: "50%", transform: "translateX(-50%)", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "3px 7px", fontSize: 11, whiteSpace: "nowrap", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis" }}>{b.text}</div>
+              <div className="chat-bubble" style={{ position: "absolute", bottom: "108%", left: "50%", transform: "translateX(-50%)", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "3px 7px", fontSize: 11, whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 150, lineHeight: 1.35, textAlign: "center" }}>{b.text}</div>
             )}
             <div style={{ fontSize: 26, filter: active ? "drop-shadow(0 0 6px #ffe680)" : "none" }}>{p.avatar}</div>
             <div style={{ fontSize: 9, color: C.white, background: active ? "#a86e13" : "rgba(0,0,0,0.55)", border: `1px solid ${C.ink}`, padding: "0 4px", whiteSpace: "nowrap" }}>{p.name}</div>
@@ -4568,7 +4568,8 @@ export default function App() {
   const award = useCallback((n) => { setGems((g) => g + n); setLifetime((l) => l + n); }, []);
 
   const sayBubble = useCallback((text) => {
-    setBubble(text);
+    const t = String(text || "");
+    setBubble(t.length > 50 ? t.slice(0, 50) + "…" : t);
     clearTimeout(bubbleTimer.current);
     bubbleTimer.current = setTimeout(() => setBubble(null), 3000);
   }, []);
