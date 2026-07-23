@@ -745,8 +745,8 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 
   useEffect(() => {
     let raf;
-    const SPEED = 4.2 * (vehicleRef.current ? vehicleRef.current.speed : 1);
     const loop = () => {
+      const SPEED = 4.2 * (vehicleRef.current ? vehicleRef.current.speed : 1);
       const k = keys.current;
       let { x, y } = posRef.current;
       let dx = 0, dy = 0;
@@ -2924,13 +2924,13 @@ function BossMapView({ onBack, onReward }) {
 
   const nodes = [];
   map.stages.forEach((st, si) => {
-    const baseY = si * STAGE_H;
+    const baseY = BOSS_H + (map.stages.length - 1 - si) * STAGE_H;
     st.quests.forEach((q, qi) => {
       const col = qi % 3, row = Math.floor(qi / 3);
       nodes.push({ ...q, stage: st.n, stageName: st.name, x: 110 + col * 190, y: baseY + 130 + row * 120 });
     });
   });
-  nodes.push({ ...map.boss, stage: map.stages.length, stageName: "보스", isBoss: true, x: MAP_W / 2, y: map.stages.length * STAGE_H + 150 });
+  nodes.push({ ...map.boss, stage: map.stages.length, stageName: "보스", isBoss: true, x: MAP_W / 2, y: 150 });
   nodesRef.current = nodes;
 
   const stageDone = (n) => map.stages.filter((s) => s.n <= n).every((s) => s.quests.every((q) => done[q.id]));
@@ -2998,13 +2998,19 @@ function BossMapView({ onBack, onReward }) {
     return () => cancelAnimationFrame(raf);
   }, [MAP_H]);
 
-  const switchMap = (i) => { setMapIdx(i); posRef.current = { x: 300, y: 90 }; setPos({ x: 300, y: 90 }); setCam(0); setSel(null); };
+  useEffect(() => {
+    const y = MAP_H - 70;
+    posRef.current = { x: 300, y };
+    setPos({ x: 300, y });
+    setCam(Math.max(0, MAP_H - VIEW_H));
+  }, [mapIdx, MAP_H]);
+  const switchMap = (i) => { setMapIdx(i); setSel(null); };
   const totalQ = nodes.length;
   const doneQ = nodes.filter((n) => done[n.id]).length;
 
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="🗺" title="보스맵 도전기" sub="WASD로 이동 · 퀘스트 앞에서 E · 스테이지는 순서대로" onBack={onBack} bg="#241c33" fg={C.white} />
+      <TitleBar icon="🗺" title="보스맵 도전기" sub="WASD로 이동 · 아래에서 위로 진행 · 퀘스트 앞에서 E" onBack={onBack} bg="#241c33" fg={C.white} />
       <div style={{ padding: 14, background: "linear-gradient(180deg,#f6f2e8,#eae3d4)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: "8px 12px", boxShadow: "0 2px 0 rgba(0,0,0,0.15)" }}>
           <span style={{ fontSize: 20 }}>{map.icon}</span>
@@ -3021,7 +3027,7 @@ function BossMapView({ onBack, onReward }) {
               const open = stageOpen(st.n);
               const cleared_ = stageDone(st.n);
               return (
-                <div key={st.n} style={{ position: "absolute", left: 0, top: si * STAGE_H, width: "100%", height: STAGE_H,
+                <div key={st.n} style={{ position: "absolute", left: 0, top: BOSS_H + (map.stages.length - 1 - si) * STAGE_H, width: "100%", height: STAGE_H,
                   background: `linear-gradient(180deg, ${si % 2 ? map.soft : "#ffffff"}, ${map.soft})`,
                   borderBottom: "2px dashed rgba(0,0,0,0.15)", filter: open ? "none" : "grayscale(0.75) brightness(0.95)" }}>
                   <div style={{ position: "absolute", left: 14, top: 12, display: "flex", alignItems: "center", gap: 6, background: open ? `linear-gradient(90deg,${map.color},${map.deep})` : "#9a9a9a", color: C.white, borderRadius: 20, padding: "5px 14px", fontSize: 12, fontWeight: "bold", boxShadow: "0 2px 4px rgba(0,0,0,0.25)" }}>
@@ -3032,7 +3038,7 @@ function BossMapView({ onBack, onReward }) {
                 </div>
               );
             })}
-            <div style={{ position: "absolute", left: 0, top: map.stages.length * STAGE_H, width: "100%", height: BOSS_H, background: "radial-gradient(circle at 50% 45%, #4a2f4f, #241c33)" }}>
+            <div style={{ position: "absolute", left: 0, top: 0, width: "100%", height: BOSS_H, background: "radial-gradient(circle at 50% 55%, #4a2f4f, #241c33)" }}>
               <div style={{ position: "absolute", left: 14, top: 12, background: "linear-gradient(90deg,#c0563a,#8c2f21)", color: C.white, borderRadius: 20, padding: "5px 14px", fontSize: 12, fontWeight: "bold", boxShadow: "0 2px 4px rgba(0,0,0,0.4)" }}>👑 BOSS</div>
             </div>
 
@@ -3071,7 +3077,7 @@ function BossMapView({ onBack, onReward }) {
 
           {near && <div className="enter-prompt" style={{ position: "absolute", left: "50%", bottom: 12, transform: "translateX(-50%)", background: "rgba(20,16,28,0.9)", color: C.white, border: `2px solid ${C.gem}`, borderRadius: 20, padding: "6px 16px", fontSize: 12, zIndex: 8 }}>E · 퀘스트 열기</div>}
           {warn && <div style={{ position: "absolute", left: "50%", top: 12, transform: "translateX(-50%)", background: "rgba(192,86,58,0.95)", color: C.white, borderRadius: 20, padding: "6px 16px", fontSize: 12, zIndex: 9, boxShadow: "0 3px 8px rgba(0,0,0,0.3)" }}>🔒 {warn}</div>}
-          <div style={{ position: "absolute", right: 8, top: 8, background: "rgba(0,0,0,0.4)", color: C.white, borderRadius: 12, padding: "3px 9px", fontSize: 10, zIndex: 8 }}>↕ W/S로 위아래 이동</div>
+          <div style={{ position: "absolute", right: 8, top: 8, background: "rgba(0,0,0,0.4)", color: C.white, borderRadius: 12, padding: "3px 9px", fontSize: 10, zIndex: 8 }}>↕ 위로 올라가서 보스를 만나보세요</div>
         </div>
 
         <div style={{ display: "flex", gap: 7, marginTop: 12, flexWrap: "wrap" }}>
@@ -3544,8 +3550,8 @@ function InventoryButton({ onClick, count }) {
 }
 
 function InventoryModal({ onClose, gems, outfit, ownedClothes, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, onEquipCloth, onToggleIkea }) {
-  const [tab, setTab] = useState("cloth");
-  const TABS = { cloth: "👕 의류", furni: "🛋 가구", vehicle: "🚲 탈것", house: "🏠 외관", etc: "🎁 소지품" };
+  const [tab, setTab] = useState("vehicle");
+  const TABS = { vehicle: "🚲 탈것", cloth: "👕 의류", furni: "🛋 가구", house: "🏠 외관", etc: "🎁 소지품" };
   const clothList = [];
   Object.keys(CLOTHES).forEach((cat) => CLOTHES[cat].forEach((it) => { if (ownedClothes[it.id]) clothList.push({ ...it, cat }); }));
   const furniList = IKEA_ITEMS.furni.filter((it) => ikeaOwned[it.id]);
