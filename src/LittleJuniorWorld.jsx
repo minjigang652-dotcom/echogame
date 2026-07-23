@@ -3489,7 +3489,120 @@ function ChatDock({ messages, shout, onToggleShout, onSend, gems = 0 }) {
     </div>
   );
 }
+function InventoryButton({ onClick, count }) {
+  return (
+    <button onClick={onClick} title="인벤토리" style={{ position: "fixed", right: 14, bottom: 132, zIndex: 60, width: 46, height: 46, background: C.wood, border: `3px solid ${C.ink}`, boxShadow: `0 3px 0 ${C.ink}`, cursor: "pointer", fontSize: 20, color: C.white }}>
+      🎒
+      {count > 0 && <span style={{ position: "absolute", right: -4, top: -4, background: C.danger, color: C.white, border: `2px solid ${C.ink}`, fontSize: 9, padding: "0 4px" }}>{count}</span>}
+    </button>
+  );
+}
 
+function InventoryModal({ onClose, gems, outfit, ownedClothes, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, onEquipCloth, onToggleIkea }) {
+  const [tab, setTab] = useState("cloth");
+  const TABS = { cloth: "👕 의류", furni: "🛋 가구", vehicle: "🚲 탈것", house: "🏠 외관", etc: "🎁 소지품" };
+  const clothList = [];
+  Object.keys(CLOTHES).forEach((cat) => CLOTHES[cat].forEach((it) => { if (ownedClothes[it.id]) clothList.push({ ...it, cat }); }));
+  const furniList = IKEA_ITEMS.furni.filter((it) => ikeaOwned[it.id]);
+  const vehList = IKEA_ITEMS.vehicle.filter((it) => ikeaOwned[it.id]);
+  const houseList = IKEA_ITEMS.house.filter((it) => ikeaOwned[it.id]);
+  const empty = (t) => <div style={{ fontSize: 12, color: C.inkSoft, padding: 16, textAlign: "center" }}>{t}</div>;
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420 }}>
+        <Panel style={{ padding: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 22 }}>🎒</span>
+            <b style={{ flex: 1, fontSize: 14 }}>인벤토리</b>
+            <GemBadge amount={gems} />
+            <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+          </div>
+          <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
+            {Object.keys(TABS).map((k) => (
+              <PxButton key={k} tone={tab === k ? "good" : "wood"} onClick={() => setTab(k)} style={{ flex: 1, minWidth: 70, fontSize: 10, padding: "6px 4px" }}>{TABS[k]}</PxButton>
+            ))}
+          </div>
+
+          <div style={{ maxHeight: 300, overflow: "auto" }}>
+            {tab === "cloth" && (clothList.length === 0 ? empty("아직 산 옷이 없어요. 무신사에 가보세요! 🛍️") : (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                {clothList.map((it) => {
+                  const on = outfit[it.cat] && outfit[it.cat].id === it.id;
+                  return (
+                    <button key={it.id} onClick={() => onEquipCloth(it.cat, it)} style={{ cursor: "pointer", background: on ? C.gem : C.white, border: `3px solid ${C.ink}`, padding: 7, textAlign: "center", fontFamily: "'DotGothic16', monospace" }}>
+                      <div style={{ height: 34, background: it.color, border: `2px solid ${C.ink}` }} />
+                      <div style={{ fontSize: 10, marginTop: 3 }}>{it.name}</div>
+                      <div style={{ fontSize: 10, color: on ? C.ink : C.inkSoft, fontWeight: "bold" }}>{on ? "착용중 ✓" : "착용하기"}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+
+            {tab === "furni" && (furniList.length === 0 ? empty("가구가 없어요. 이케아에 가보세요! 🛒") : (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                {furniList.map((it) => {
+                  const on = myFurni.includes(it.id);
+                  return (
+                    <button key={it.id} onClick={() => onToggleIkea("furni", it)} style={{ cursor: "pointer", background: on ? C.gem : C.white, border: `3px solid ${C.ink}`, padding: 7, textAlign: "center", fontFamily: "'DotGothic16', monospace" }}>
+                      <div style={{ fontSize: 26 }}>{it.emoji}</div>
+                      <div style={{ fontSize: 10 }}>{it.name}</div>
+                      <div style={{ fontSize: 10, color: on ? C.ink : C.inkSoft, fontWeight: "bold" }}>{on ? "배치됨 ✓" : "배치하기"}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+
+            {tab === "vehicle" && (vehList.length === 0 ? empty("탈것이 없어요. 이케아 교통수단 코너로! 🚲") : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {vehList.map((it) => {
+                  const on = vehicle && vehicle.id === it.id;
+                  return (
+                    <div key={it.id} style={{ display: "flex", alignItems: "center", gap: 8, background: on ? C.gem : C.white, border: `3px solid ${C.ink}`, padding: "7px 9px" }}>
+                      <span style={{ fontSize: 24 }}>{it.emoji}</span>
+                      <span style={{ flex: 1, fontSize: 12 }}><b>{it.name}</b><br /><span style={{ fontSize: 10, color: C.inkSoft }}>속도 x{it.speed}</span></span>
+                      <PxButton tone={on ? "ink" : "good"} onClick={() => onToggleIkea("vehicle", it)} style={{ fontSize: 10, padding: "5px 8px" }}>{on ? "내리기" : "타기"}</PxButton>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+
+            {tab === "house" && (houseList.length === 0 ? empty("집 외관이 없어요. 이케아 집 외관 코너로! 🏠") : (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                {houseList.map((it) => {
+                  const on = houseSkin && houseSkin.id === it.id;
+                  return (
+                    <button key={it.id} onClick={() => onToggleIkea("house", it)} style={{ cursor: "pointer", background: on ? C.gem : C.white, border: `3px solid ${C.ink}`, padding: 7, textAlign: "center", fontFamily: "'DotGothic16', monospace" }}>
+                      <div style={{ height: 34, background: it.wall, border: `2px solid ${C.ink}`, position: "relative" }}>
+                        <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: 12, background: it.roof }} />
+                      </div>
+                      <div style={{ fontSize: 10, marginTop: 3 }}>{it.name}</div>
+                      <div style={{ fontSize: 10, color: on ? C.ink : C.inkSoft, fontWeight: "bold" }}>{on ? "적용중 ✓" : "적용하기"}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+
+            {tab === "etc" && (thanksInv.length === 0 ? empty("소지품이 없어요. 감사의 방에서 선물을 사보세요 🎁") : (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                {thanksInv.map((it, i) => (
+                  <div key={i} style={{ background: C.white, border: `3px solid ${C.ink}`, padding: 7, textAlign: "center" }}>
+                    <div style={{ fontSize: 26 }}>{it.emoji || "🎁"}</div>
+                    <div style={{ fontSize: 11 }}>{it.name}</div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
 function MenuButton({ onClick }) {
   return (
     <button onClick={onClick} title="메뉴" style={{ position: "fixed", right: 14, bottom: 74, zIndex: 60, width: 46, height: 46, background: C.gem, border: `3px solid ${C.ink}`, boxShadow: `0 3px 0 ${C.ink}`, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
@@ -3867,6 +3980,7 @@ export default function App() {
   const [bubble, setBubble] = useState(null);
   const bubbleTimer = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [invOpen, setInvOpen] = useState(false);
 
   const timers = useRef({});
   useEffect(() => () => Object.values(timers.current).forEach(clearInterval), []);
@@ -4063,6 +4177,8 @@ export default function App() {
           setGems((g) => g - 1);
           setShout(true);
         }} />
+      <InventoryButton onClick={() => setInvOpen(true)} count={Object.keys(owned).length + Object.keys(ikeaOwned).length + thanksInv.length} />
+      {invOpen && <InventoryModal onClose={() => setInvOpen(false)} gems={gems} outfit={outfit} ownedClothes={owned} ikeaOwned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} thanksInv={thanksInv} onEquipCloth={tryOnClothing} onToggleIkea={buyIkea} />}
       <MenuButton onClick={() => setMenuOpen(true)} />
       <FeedbackButton />
       {menuOpen && <ProfileMenu onClose={() => setMenuOpen(false)} />}
