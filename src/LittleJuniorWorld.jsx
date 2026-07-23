@@ -738,6 +738,12 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           setOthers((o) => ({ ...o, [payload.id]: { ...(o[payload.id] || { id: payload.id, name: payload.name, x: 0, y: 0 }), bubble: String(payload.text || "").slice(0, 50), bubbleId: bid, ts: Date.now() } }));
           setTimeout(() => setOthers((o) => (o[payload.id] && o[payload.id].bubbleId === bid ? { ...o, [payload.id]: { ...o[payload.id], bubble: null } } : o)), 3600);
         });
+        ch.on("broadcast", { event: "mail" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("mail", payload);
+        });
+        ch.on("broadcast", { event: "bell" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("bell", payload);
+        });
         ch.on("broadcast", { event: "bye" }, ({ payload }) => {
           if (!payload) return;
           setOthers((o) => { const n = { ...o }; delete n[payload.id]; return n; });
@@ -787,16 +793,21 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
     };
   }, [myName]);
 
+  const sendEvent = useCallback((kind, payload) => {
+    const ch = chRef.current;
+    if (!ch) return;
+    try { ch.send({ type: "broadcast", event: kind, payload }); } catch (e) {}
+  }, []);
   const sendChat = useCallback((text, shout) => {
     const ch = chRef.current;
     if (!ch || !text) return;
     try { ch.send({ type: "broadcast", event: "chat", payload: { id: MY_ID, name: myName, text, shout: !!shout } }); } catch (e) {}
   }, [myName]);
 
-  return { others, count, status, sendChat };
+  return { others, count, status, sendChat, sendEvent };
 }
 
-function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null }) {
+function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null, onGift = null }) {
   const [songOpen, setSongOpen] = useState(false);
   const vehicleRef = useRef(vehicle);
   vehicleRef.current = vehicle;
@@ -1013,7 +1024,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 
           {/* 다른 접속자 */}
           {Object.values(others).filter((o) => (o.v || "world") === "world").map((o) => (
-            <div key={o.id} style={{ position: "absolute", left: o.x, top: o.y, transform: "translate(-50%,-100%)", zIndex: 17, opacity: 0.95, transition: "left .18s linear, top .18s linear" }}>
+            <div key={o.id} onClick={() => onGift && onGift(o.name)} title={`${o.name}님에게 선물하기`} style={{ position: "absolute", left: o.x, top: o.y, transform: "translate(-50%,-100%)", zIndex: 17, opacity: 0.95, transition: "left .18s linear, top .18s linear", cursor: "pointer" }}>
               {o.bubble && (
                 <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 190, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>{o.bubble}</div>
               )}
@@ -1413,6 +1424,186 @@ function MeetingView({ roomId, room, onUpdate, onBack }) {
 }
 
 /* ======================= 집(가구 + 메모장) ======================= */
+/* ======================= 집 · 초인종 · 우체통 ======================= */
+function playBell() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    const ctx = playBell._c || (playBell._c = new AC());
+    if (ctx.state === "suspended") ctx.resume();
+    const t = ctx.currentTime;
+    [[880, 0], [660, 0.32]].forEach(([hz, off]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "sine"; o.frequency.setValueAtTime(hz, t + off);
+      g.gain.setValueAtTime(0.001, t + off);
+      g.gain.exponentialRampToValueAtTime(0.35, t + off + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t + off + 0.9);
+      o.connect(g).connect(ctx.destination); o.start(t + off); o.stop(t + off + 1);
+    });
+  } catch (e) {}
+}
+function loadJSON(k, d) { try { const r = window.localStorage.getItem(k); return r ? JSON.parse(r) : d; } catch (e) { return d; } }
+function saveJSON(k, v) { try { window.localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+function HouseGate({ house, isMine, myName, hasPw, onSetPw, onEnter, onBell, onMail, onBack }) {
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [msg, setMsg] = useState(null);
+  const owner = (house.name || "").replace(/이네$|네$/, "");
+  const say = (m) => { setMsg(m); setTimeout(() => setMsg(null), 1800); };
+
+  if (isMine && !hasPw) {
+    return (
+      <Panel style={{ padding: 0, overflow: "hidden" }}>
+        <TitleBar icon="🏠" title={house.name} sub="첫 방문 · 비밀번호 설정" onBack={onBack} bg={house.roof} fg={C.white} />
+        <div style={{ padding: 22, textAlign: "center" }}>
+          <div style={{ fontSize: 44 }}>🎉</div>
+          <div style={{ fontSize: 16, fontWeight: "bold", margin: "10px 0 6px" }}>환영합니다 {myName}님!</div>
+          <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 14 }}>우리 집 비밀번호를 설정해주세요.<br />다음부터는 이 창이 뜨지 않아요.</div>
+          <input value={pw2} onChange={(e) => setPw2(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && pw2.trim()) onSetPw(pw2.trim()); }} maxLength={12} autoFocus placeholder="비밀번호 (예: 1234)" style={{ width: "100%", maxWidth: 260, boxSizing: "border-box", padding: 11, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, textAlign: "center", background: C.white }} />
+          <PxButton tone="good" disabled={!pw2.trim()} onClick={() => onSetPw(pw2.trim())} style={{ display: "block", width: "100%", maxWidth: 260, margin: "12px auto 0", padding: 12, fontSize: 14 }}>설정하고 들어가기</PxButton>
+        </div>
+      </Panel>
+    );
+  }
+
+  return (
+    <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <TitleBar icon="🏠" title={house.name} sub={isMine ? "우리 집 · 비밀번호를 입력하세요" : `${owner}님의 집 · 초인종을 눌러보세요`} onBack={onBack} bg={house.roof} fg={C.white} />
+      <div style={{ padding: 18, background: C.parch }}>
+        <div style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 14, marginBottom: 14 }}>
+          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8, textAlign: "center" }}>🔒 현관 비밀번호</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { if (isMine && onEnter(pw)) return; say("비밀번호가 틀렸어요"); setPw(""); } }} maxLength={12} type="password" placeholder="비밀번호" style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, textAlign: "center" }} />
+            <PxButton tone="good" onClick={() => { if (isMine && onEnter(pw)) return; say(isMine ? "비밀번호가 틀렸어요" : "주인만 아는 비밀번호예요"); setPw(""); }} style={{ padding: "10px 14px", fontSize: 13 }}>입장</PxButton>
+          </div>
+          {msg && <div style={{ marginTop: 8, fontSize: 12, color: C.danger, textAlign: "center" }}>{msg}</div>}
+        </div>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={() => { playBell(); onBell(owner); say("딩동! 초인종을 눌렀어요 🔔"); }} style={{ flex: 1, cursor: "pointer", background: "linear-gradient(180deg,#ffe680,#d9a441)", border: `3px solid ${C.ink}`, borderRadius: 12, padding: "18px 8px", fontFamily: "'DotGothic16', monospace", boxShadow: `0 4px 0 ${C.ink}` }}>
+            <div style={{ fontSize: 34 }}>🔔</div>
+            <div style={{ fontSize: 13, fontWeight: "bold", marginTop: 4 }}>초인종</div>
+          </button>
+          <button onClick={() => onMail(owner)} style={{ flex: 1, cursor: "pointer", background: "linear-gradient(180deg,#a8d5f2,#5b8def)", color: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: "18px 8px", fontFamily: "'DotGothic16', monospace", boxShadow: `0 4px 0 ${C.ink}` }}>
+            <div style={{ fontSize: 34 }}>📮</div>
+            <div style={{ fontSize: 13, fontWeight: "bold", marginTop: 4 }}>우체통</div>
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: C.inkSoft, textAlign: "center", marginTop: 12 }}>우체통으로 방명록·편지·선물을 보낼 수 있어요 (택배비 ⭐0.3)</div>
+      </div>
+    </Panel>
+  );
+}
+
+function MailboxModal({ owner, isMine, myName, gems, inventory, mail, onSend, onClose }) {
+  const [tab, setTab] = useState(isMine ? "in" : "write");
+  const [text, setText] = useState("");
+  const [pick, setPick] = useState(null);
+  const [done, setDone] = useState(false);
+  const cost = 0.3;
+  const send = () => {
+    if (!text.trim() && !pick) return;
+    if (gems < cost) return;
+    onSend({ to: owner, from: myName || "익명", text: text.trim(), item: pick });
+    setText(""); setPick(null); setDone(true);
+    setTimeout(() => setDone(false), 2000);
+  };
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 400 }}>
+        <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 22 }}>📮</span>
+            <b style={{ flex: 1, fontSize: 14 }}>{owner}님의 우체통</b>
+            <GemBadge amount={gems} />
+            <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+          </div>
+          {isMine && (
+            <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
+              <PxButton tone={tab === "in" ? "good" : "wood"} onClick={() => setTab("in")} style={{ flex: 1, fontSize: 12, padding: 8 }}>📬 받은 편지 {mail.length > 0 ? `(${mail.length})` : ""}</PxButton>
+              <PxButton tone={tab === "write" ? "good" : "wood"} onClick={() => setTab("write")} style={{ flex: 1, fontSize: 12, padding: 8 }}>✍️ 남기기</PxButton>
+            </div>
+          )}
+
+          {tab === "in" ? (
+            mail.length === 0 ? (
+              <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 24 }}>아직 도착한 편지가 없어요 📭</div>
+            ) : (
+              <div style={{ maxHeight: 300, overflow: "auto", display: "flex", flexDirection: "column", gap: 7 }}>
+                {[...mail].reverse().map((m, i) => (
+                  <div key={i} style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                      <b style={{ fontSize: 12, color: "#5b8def" }}>{m.from}</b>
+                      <span style={{ fontSize: 10, color: C.inkSoft }}>{m.at}</span>
+                      {m.item && <span style={{ marginLeft: "auto", fontSize: 18 }}>{m.item.emoji}</span>}
+                    </div>
+                    {m.text && <div style={{ fontSize: 13, lineHeight: 1.6 }}>{m.text}</div>}
+                    {m.item && <div style={{ fontSize: 11, color: "#a86e13", marginTop: 4 }}>🎁 {m.item.name} 를 받았어요!</div>}
+                  </div>
+                ))}
+              </div>
+            )
+          ) : (
+            <div>
+              <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 6 }}>방명록·편지를 남기고, 선물도 같이 보낼 수 있어요</div>
+              <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="예: 집 예쁘다! 놀러왔어요 :)" style={{ width: "100%", boxSizing: "border-box", height: 80, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 8, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "none", background: C.white }} />
+              <div style={{ fontSize: 12, fontWeight: "bold", margin: "10px 0 6px" }}>🎁 함께 보낼 선물 (선택)</div>
+              {inventory.length === 0 ? (
+                <div style={{ fontSize: 11, color: C.inkSoft }}>감사의 방에서 선물을 사면 여기에 나와요</div>
+              ) : (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {inventory.map((it, i) => (
+                    <button key={i} onClick={() => setPick(pick && pick._i === i ? null : { ...it, _i: i })} style={{ cursor: "pointer", background: pick && pick._i === i ? C.gem : C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "6px 9px", fontFamily: "'DotGothic16', monospace", fontSize: 12 }}>
+                      {it.emoji} {it.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
+                <span style={{ fontSize: 11, color: C.inkSoft, flex: 1 }}>택배비 ⭐{cost}</span>
+                <PxButton tone="gold" disabled={(!text.trim() && !pick) || gems < cost} onClick={send} style={{ padding: "10px 18px", fontSize: 13 }}>{gems < cost ? "젬 부족" : "📮 보내기"}</PxButton>
+              </div>
+              {done && <div style={{ fontSize: 12, color: C.good, textAlign: "center", marginTop: 8, fontWeight: "bold" }}>보냈어요! 📨</div>}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GiftModal({ target, inventory, myName, onSend, onClose }) {
+  const [text, setText] = useState("");
+  const [pick, setPick] = useState(null);
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 105, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340 }}>
+        <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16 }}>
+          <div style={{ textAlign: "center", fontSize: 36 }}>🎁</div>
+          <div style={{ textAlign: "center", fontSize: 15, fontWeight: "bold", margin: "6px 0 12px" }}>{target}님에게 선물하기</div>
+          <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="한마디 (선택)" style={{ width: "100%", boxSizing: "border-box", height: 60, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 8, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "none", background: C.white }} />
+          <div style={{ fontSize: 12, fontWeight: "bold", margin: "10px 0 6px" }}>보낼 선물</div>
+          {inventory.length === 0 ? (
+            <div style={{ fontSize: 11, color: C.inkSoft }}>감사의 방에서 선물을 사보세요 🎁</div>
+          ) : (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {inventory.map((it, i) => (
+                <button key={i} onClick={() => setPick(pick && pick._i === i ? null : { ...it, _i: i })} style={{ cursor: "pointer", background: pick && pick._i === i ? C.gem : C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "6px 9px", fontFamily: "'DotGothic16', monospace", fontSize: 12 }}>
+                  {it.emoji} {it.name}
+                </button>
+              ))}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <PxButton tone="ink" onClick={onClose} style={{ flex: 1, padding: 10, fontSize: 13 }}>닫기</PxButton>
+            <PxButton tone="gold" disabled={!pick && !text.trim()} onClick={() => { onSend({ to: target, from: myName || "익명", text: text.trim(), item: pick }); onClose(); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>보내기</PxButton>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras = [] }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(memo || "");
@@ -4454,7 +4645,7 @@ export default function App() {
   const netDanceRef = useRef(null);
   const netHouseRef = useRef(null);
   const netRoomPosRef = useRef({ x: 0, y: 0 });
-  const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef, netOutfitRef, netViewRef, netRoomPosRef, netDanceRef, netHouseRef);
+  const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat, sendEvent: netSendEvent } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef, netOutfitRef, netViewRef, netRoomPosRef, netDanceRef, netHouseRef);
   const [nameOpen, setNameOpen] = useState(true);
   const [nameInput, setNameInput] = useState("");
   const [couponOpen, setCouponOpen] = useState(false);
@@ -4526,6 +4717,13 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [invOpen, setInvOpen] = useState(false);
   const [badgeOpen, setBadgeOpen] = useState(false);
+  const [housePw, setHousePw] = useState(() => loadJSON("echotown_pw", null));
+  const [mail, setMail] = useState(() => loadJSON("echotown_mail", []));
+  const [unlocked, setUnlocked] = useState({});
+  const [mailTarget, setMailTarget] = useState(null);
+  const [giftTarget, setGiftTarget] = useState(null);
+  const [notice, setNotice] = useState(null);
+  const showNotice = (t) => { setNotice(t); setTimeout(() => setNotice(null), 3200); };
   const [stats, setStats] = useState(() => loadStats());
   const [newBadge, setNewBadge] = useState(null);
   const statsRef = useRef(stats);
@@ -4584,11 +4782,36 @@ export default function App() {
     if (isShout) setShout(false);
   }, [sayBubble, myName, netSendChat, bump]);
   useEffect(() => {
+    onChatRef.net = (kind, p) => {
+      if (!p || p.to !== (myName || "")) return;
+      if (kind === "bell") { playBell(); showNotice(`🔔 손님이 왔습니다! (${p.from}님)`); }
+      if (kind === "mail") {
+        const item = { from: p.from, text: p.text, item: p.item, at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
+        setMail((v) => { const n = [...v, item]; saveJSON("echotown_mail", n); return n; });
+        if (p.item) setThanksInv((v) => [...v, p.item]);
+        showNotice(`📬 ${p.from}님이 ${p.item ? "선물을 보냈어요!" : "편지를 남겼어요!"}`);
+      }
+    };
+  }, [myName]);
+  useEffect(() => {
     onChatRef.current = (m) => {
       if (!m || m.id === MY_ID) return;
       setChat((c) => [...c, { id: Date.now() + Math.random(), nick: m.name || "익명", text: m.text, shout: m.shout }].slice(-5));
     };
   }, []);
+  const sendMail = (payload) => {
+    if (gems < 0.3) return;
+    setGems((g) => g - 0.3);
+    if (payload.item) setThanksInv((v) => v.filter((_, i) => i !== payload.item._i));
+    if (netSendEvent) netSendEvent("mail", payload);
+    showNotice("📮 우체통에 넣었어요!");
+  };
+  const sendGift = (payload) => {
+    if (payload.item) setThanksInv((v) => v.filter((_, i) => i !== payload.item._i));
+    if (netSendEvent) netSendEvent("mail", payload);
+    showNotice(`🎁 ${payload.to}님에게 보냈어요!`);
+  };
+  const ringBell = (owner) => { if (netSendEvent) netSendEvent("bell", { to: owner, from: myName || "익명" }); };
   const requestWorldSong = (title) => {
     if (gems < 5) return;
     setGems((g) => g - 5);
@@ -4703,10 +4926,17 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} onGift={(n) => setGiftTarget(n)} />}
         {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
-        {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && <HomeView house={houseMeta} skin={houseMeta && isMyHouse(houseMeta.name) ? houseSkin : null} extras={houseMeta && isMyHouse(houseMeta.name) ? myFurni : []} extras={myFurni} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
+        {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && (unlocked[houseId] ? (
+          <HomeView house={houseMeta} skin={isMyHouse(houseMeta.name) ? houseSkin : null} extras={isMyHouse(houseMeta.name) ? myFurni : []} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />
+        ) : (
+          <HouseGate house={houseMeta} isMine={isMyHouse(houseMeta.name)} myName={myName} hasPw={!!housePw}
+            onSetPw={(p) => { setHousePw(p); saveJSON("echotown_pw", p); setUnlocked((u) => ({ ...u, [houseId]: true })); }}
+            onEnter={(p) => { if (p && p === housePw) { setUnlocked((u) => ({ ...u, [houseId]: true })); return true; } return false; }}
+            onBell={ringBell} onMail={(owner) => setMailTarget(owner)} onBack={backToWorld} />
+        ))}
         {view === "thanks" && <ThanksView gems={gems} inventory={thanksInv} postits={postits} onBuy={(it) => { setGems((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={(p) => setPostits((v) => [...v, { ...p, id: Date.now() }])} onBack={backToWorld} bubble={bubble} />}
         {view === "heart" && <HeartView gems={gems} worries={worries} onPost={(text, cost, kind) => { setGems((g) => g - cost); setWorries((w) => [{ id: Date.now(), text, kind }, ...w]); }} onBack={backToWorld} bubble={bubble} />}
         {view === "listening" && <ListeningView onBack={backToWorld} gems={gems} onSpend={(n) => setGems((g) => g - n)} bubble={bubble} />}
@@ -4774,6 +5004,11 @@ export default function App() {
           setGems((g) => g - 1);
           setShout(true);
         }} />
+      {mailTarget && <MailboxModal owner={mailTarget} isMine={mailTarget === myName} myName={myName} gems={gems} inventory={thanksInv} mail={mail} onSend={sendMail} onClose={() => setMailTarget(null)} />}
+      {giftTarget && <GiftModal target={giftTarget} inventory={thanksInv} myName={myName} onSend={sendGift} onClose={() => setGiftTarget(null)} />}
+      {notice && (
+        <div style={{ position: "fixed", left: "50%", top: 16, transform: "translateX(-50%)", zIndex: 150, background: C.ink, color: C.white, border: `3px solid ${C.gem}`, borderRadius: 10, padding: "10px 18px", fontSize: 13, fontFamily: "'DotGothic16', monospace", boxShadow: "0 6px 16px rgba(0,0,0,0.4)" }}>{notice}</div>
+      )}
       <BadgeButton onClick={() => setBadgeOpen(true)} count={BADGES.filter((b) => (stats[b.stat] || 0) >= b.need).length} />
       {badgeOpen && <BadgeModal onClose={() => setBadgeOpen(false)} stats={stats} />}
       {newBadge && (
