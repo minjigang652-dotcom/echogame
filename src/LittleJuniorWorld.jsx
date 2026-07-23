@@ -678,7 +678,7 @@ const SUPA_URL = "https://fbemzeslbvweojmgvohv.supabase.co";
 const SUPA_KEY = "sb_publishable_dErg2UZWZQjifyAgO5-ejg_5AH563FV";
 const MY_ID = Math.random().toString(36).slice(2, 10);
 
-function useMultiplayer(myName, posRef, facingRef) {
+function useMultiplayer(myName, posRef, facingRef, onChatRef) {
   const [others, setOthers] = useState({});
   const [count, setCount] = useState(1);
   const [status, setStatus] = useState("연결 중…");
@@ -702,7 +702,15 @@ function useMultiplayer(myName, posRef, facingRef) {
         });
         ch.on("broadcast", { event: "pos" }, ({ payload }) => {
           if (!payload || payload.id === MY_ID) return;
-          setOthers((o) => ({ ...o, [payload.id]: { ...payload, ts: Date.now() } }));
+          setOthers((o) => ({ ...o, [payload.id]: { ...(o[payload.id] || {}), ...payload, ts: Date.now() } }));
+        });
+        ch.on("broadcast", { event: "chat" }, ({ payload }) => {
+          if (!payload) return;
+          if (onChatRef && onChatRef.current) onChatRef.current(payload);
+          if (payload.id === MY_ID) return;
+          const bid = Date.now() + Math.random();
+          setOthers((o) => ({ ...o, [payload.id]: { ...(o[payload.id] || { id: payload.id, name: payload.name, x: 0, y: 0 }), bubble: payload.text, bubbleId: bid, ts: Date.now() } }));
+          setTimeout(() => setOthers((o) => (o[payload.id] && o[payload.id].bubbleId === bid ? { ...o, [payload.id]: { ...o[payload.id], bubble: null } } : o)), 3600);
         });
         ch.on("broadcast", { event: "bye" }, ({ payload }) => {
           if (!payload) return;
@@ -716,7 +724,7 @@ function useMultiplayer(myName, posRef, facingRef) {
             await ch.track({ name: myName });
             sendIv = setInterval(() => {
               const p = posRef.current || { x: 0, y: 0 };
-              ch.send({ type: "broadcast", event: "pos", payload: { id: MY_ID, name: myName, x: Math.round(p.x), y: Math.round(p.y), f: facingRef.current || 1 } });
+              ch.send({ type: "broadcast", event: "pos", payload: { id: MY_ID, name: myName, x: Math.round(p.x), y: Math.round(p.y), f: facingRef.current || 1, mv: !!(facingRef.movingRef && facingRef.movingRef.current) } });
             }, 160);
           } else if (st === "CHANNEL_ERROR" || st === "TIMED_OUT") {
             setStatus("연결 실패");
@@ -745,7 +753,13 @@ function useMultiplayer(myName, posRef, facingRef) {
     };
   }, [myName]);
 
-  return { others, count, status };
+  const sendChat = useCallback((text, shout) => {
+    const ch = chRef.current;
+    if (!ch || !text) return;
+    try { ch.send({ type: "broadcast", event: "chat", payload: { id: MY_ID, name: myName, text, shout: !!shout } }); } catch (e) {}
+  }, [myName]);
+
+  return { others, count, status, sendChat };
 }
 
 function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null }) {
@@ -952,9 +966,12 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 
           {/* 다른 접속자 */}
           {Object.values(others).map((o) => (
-            <div key={o.id} style={{ position: "absolute", left: o.x, top: o.y, transform: "translate(-50%,-100%)", zIndex: 17, opacity: 0.95 }}>
+            <div key={o.id} style={{ position: "absolute", left: o.x, top: o.y, transform: "translate(-50%,-100%)", zIndex: 17, opacity: 0.95, transition: "left .18s linear, top .18s linear" }}>
+              {o.bubble && (
+                <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>{o.bubble}</div>
+              )}
               <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
-              <Hero facing={o.f || 1} moving={false} size={34} />
+              <Hero facing={o.f || 1} moving={o.mv ? true : false} size={34} />
             </div>
           ))}
 
@@ -4243,9 +4260,17 @@ export default function App() {
   const netPosRef = useRef({ x: 1300, y: 950 });
   const netFacingRef = useRef(1);
   useEffect(() => { netPosRef.current = worldPos; }, [worldPos]);
-  const { others: netOthers, count: netCount, status: netStatus } = useMultiplayer(myName, netPosRef, netFacingRef);
+  const onChatRef = useRef(null);
+  const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef);
   const [nameOpen, setNameOpen] = useState(true);
   const [nameInput, setNameInput] = useState("");
+  const [couponOpen, setCouponOpen] = useState(false);
+  const [couponDone, setCouponDone] = useState(false);
+  const confirmName = (nm) => {
+    const t = (nm || "").trim(); if (!t) return;
+    setMyName(t); setNameOpen(false);
+    if (!couponDone) { setCouponDone(true); setGems((g) => g + 100); setLifetime((l) => l + 100); setCouponOpen(true); }
+  };
   const isMyHouse = (n) => !!(n && myName && n.replace(/이네$|네$/, "") === myName);
   const [ikeaOwned, setIkeaOwned] = useState({});
   const [houseSkin, setHouseSkin] = useState(null);
@@ -4325,10 +4350,17 @@ export default function App() {
   useEffect(() => () => clearTimeout(bubbleTimer.current), []);
   const postChat = useCallback((text, isShout) => {
     const t = text.trim(); if (!t) return;
-    setChat((c) => [...c, { id: Date.now(), nick: myName || "나", text: t, shout: isShout }].slice(-4));
+    setChat((c) => [...c, { id: Date.now(), nick: myName || "나", text: t, shout: isShout, me: true }].slice(-5));
     sayBubble(t);
+    if (netSendChat) netSendChat(t, isShout);
     if (isShout) setShout(false);
-  }, [sayBubble, myName]);
+  }, [sayBubble, myName, netSendChat]);
+  useEffect(() => {
+    onChatRef.current = (m) => {
+      if (!m || m.id === MY_ID) return;
+      setChat((c) => [...c, { id: Date.now() + Math.random(), nick: m.name || "익명", text: m.text, shout: m.shout }].slice(-5));
+    };
+  }, []);
   const requestWorldSong = (title) => {
     if (gems < 5) return;
     setGems((g) => g - 5);
@@ -4477,13 +4509,32 @@ export default function App() {
               <div style={{ textAlign: "center", fontSize: 34 }}>🌱</div>
               <div style={{ textAlign: "center", fontFamily: "'Press Start 2P', monospace", fontSize: 12, margin: "8px 0" }}>ECHO TOWN</div>
               <div style={{ fontSize: 13, textAlign: "center", marginBottom: 10 }}>마을에서 사용할 이름을 알려주세요!</div>
-              <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && nameInput.trim()) { setMyName(nameInput.trim()); setNameOpen(false); } }} maxLength={8} autoFocus placeholder="예: 정인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, background: C.white, textAlign: "center" }} />
+              <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") confirmName(nameInput); }} maxLength={8} autoFocus placeholder="예: 정인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, background: C.white, textAlign: "center" }} />
               <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center" }}>주민 이름(정인·창민·도희·유리·민지·희정·의준·호종)과 같으면 그 집이 내 집이 돼요!</div>
               <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                 {myName && <PxButton tone="ink" onClick={() => setNameOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>}
-                <PxButton tone="good" disabled={!nameInput.trim()} onClick={() => { setMyName(nameInput.trim()); setNameOpen(false); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>시작하기</PxButton>
+                <PxButton tone="good" disabled={!nameInput.trim()} onClick={() => confirmName(nameInput)} style={{ flex: 1, padding: 10, fontSize: 13 }}>시작하기</PxButton>
               </div>
             </Panel>
+          </div>
+        </div>
+      )}
+      {couponOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 130, padding: 14 }} onClick={() => setCouponOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340 }}>
+            <div style={{ background: "linear-gradient(180deg,#fff8e1,#ffe9a8)", border: `4px solid ${C.ink}`, borderRadius: 14, padding: 20, textAlign: "center", boxShadow: "0 12px 30px rgba(0,0,0,0.5)" }}>
+              <div style={{ fontSize: 46 }}>🎟️</div>
+              <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 12, margin: "10px 0 6px", color: "#a86e13" }}>WELCOME COUPON</div>
+              <div style={{ fontSize: 15, fontWeight: "bold", marginBottom: 8 }}>{myName}님, 사전예약 감사합니다!</div>
+              <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.7, marginBottom: 12 }}>
+                에코타운 사전예약자에게 드리는<br />웰컴 쿠폰이 발급되었어요.
+              </div>
+              <div style={{ background: C.white, border: `3px dashed ${C.ink}`, borderRadius: 10, padding: "14px 10px", marginBottom: 14 }}>
+                <div style={{ fontSize: 11, color: C.inkSoft }}>지급 보상</div>
+                <div style={{ fontSize: 26, fontWeight: "bold", color: "#a86e13" }}>⭐ 100 젬</div>
+              </div>
+              <PxButton tone="gold" onClick={() => setCouponOpen(false)} style={{ width: "100%", padding: 12, fontSize: 14 }}>받고 시작하기 🌱</PxButton>
+            </div>
           </div>
         </div>
       )}
