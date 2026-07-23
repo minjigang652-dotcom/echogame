@@ -3459,6 +3459,17 @@ const BOSS_MAPS_INIT = [
 function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree, onLeave }) {
   const net = useContext(NetContext);
   const [tMsg, setTMsg] = useState("");
+  const [editing, setEditing] = useState(null);
+  const canEdit = (nd) => !!nd && !nd.isBoss && (!nd.owner || nd.owner === myName);
+  const saveEdit = () => {
+    if (!editing || !editing.title.trim()) return;
+    setMaps((ms) => ms.map((m) => (m.id !== map.id ? m : ({ ...m, stages: m.stages.map((st) => ({ ...st, quests: st.quests.map((q) => (q.id !== editing.id ? q : { ...q, title: editing.title.trim(), icon: editing.icon || q.icon, gem: Number(editing.gem) || q.gem, desc: editing.desc, task: editing.task })) })) }))));
+    setEditing(null); setSel(null);
+  };
+  const delQuest = (qid) => {
+    setMaps((ms) => ms.map((m) => (m.id !== map.id ? m : ({ ...m, stages: m.stages.map((st) => ({ ...st, quests: st.quests.filter((q) => q.id !== qid) })) }))));
+    setSel(null); setEditing(null);
+  };
   const [maps, setMaps] = useState(BOSS_MAPS_INIT);
   const [mode, setMode] = useState("easy");
   const [mapIdx, setMapIdx] = useState(0);
@@ -3611,7 +3622,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
   const addQuest = () => {
     if (!fQ.title.trim()) return;
     const id = "cq" + Date.now();
-    const nq = { id, title: fQ.title.trim(), icon: fQ.icon || "🎯", gem: Number(fQ.gem) || 5, desc: fQ.desc.trim() || "새로 추가된 퀘스트", task: fQ.task.trim() || fQ.title.trim(), level: fQ.level, field: fQ.level === "초보자" ? fQ.field : null };
+    const nq = { id, title: fQ.title.trim(), icon: fQ.icon || "🎯", gem: Number(fQ.gem) || 5, desc: fQ.desc.trim() || "새로 추가된 퀘스트", task: fQ.task.trim() || fQ.title.trim(), level: fQ.level, field: fQ.level === "초보자" ? fQ.field : null, owner: myName || "익명" };
     setMaps((ms) => ms.map((m, i) => {
       if (i !== mapIdx) return m;
       const stages = m.stages.map((st) => (st.n !== Number(fQ.stage) ? st : { ...st, quests: [...st.quests, nq] }));
@@ -3938,8 +3949,30 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                   {sel.field === "naverschool" ? "📗 네이버스쿨로 가서 배우기 →" : "🎬 영상스쿨로 가서 배우기 →"}
                 </PxButton>
               )}
+              {editing && editing.id === sel.id ? (
+                <div style={{ background: "#fff", border: `2px solid ${C.ink}`, borderRadius: 10, padding: 11, marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 7 }}>✏️ 퀘스트 수정</div>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                    <input value={editing.icon} onChange={(e) => setEditing({ ...editing, icon: e.target.value })} maxLength={2} style={{ width: 46, textAlign: "center", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 15 }} />
+                    <input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} placeholder="이름" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                    <input value={editing.gem} onChange={(e) => setEditing({ ...editing, gem: e.target.value })} type="number" style={{ width: 56, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 13 }} />
+                  </div>
+                  <input value={editing.desc} onChange={(e) => setEditing({ ...editing, desc: e.target.value })} placeholder="한 줄 설명" style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, marginBottom: 6 }} />
+                  <input value={editing.task} onChange={(e) => setEditing({ ...editing, task: e.target.value })} placeholder="목표" style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                  <div style={{ display: "flex", gap: 7, marginTop: 9 }}>
+                    <PxButton tone="ink" onClick={() => setEditing(null)} style={{ flex: 1, padding: 9, fontSize: 12 }}>취소</PxButton>
+                    <PxButton tone="good" disabled={!editing.title.trim()} onClick={saveEdit} style={{ flex: 1, padding: 9, fontSize: 12 }}>저장</PxButton>
+                  </div>
+                </div>
+              ) : canEdit(sel) && (
+                <div style={{ display: "flex", gap: 7, marginBottom: 10 }}>
+                  <PxButton tone="wood" onClick={() => setEditing({ id: sel.id, title: sel.title, icon: sel.icon, gem: sel.gem, desc: sel.desc || "", task: sel.task || "" })} style={{ flex: 1, padding: 9, fontSize: 12 }}>✏️ 수정</PxButton>
+                  <PxButton tone="danger" onClick={() => { if (window.confirm(`「${sel.title}」 퀘스트를 삭제할까요?`)) delQuest(sel.id); }} style={{ flex: 1, padding: 9, fontSize: 12 }}>🗑 삭제</PxButton>
+                </div>
+              )}
+              {sel.owner && <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginBottom: 8 }}>✍️ 작성자 {sel.owner}</div>}
               <div style={{ display: "flex", gap: 8 }}>
-                <PxButton tone="ink" onClick={() => setSel(null)} style={{ flex: 1, padding: 10, fontSize: 13 }}>닫기</PxButton>
+                <PxButton tone="ink" onClick={() => { setSel(null); setEditing(null); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>닫기</PxButton>
                 <PxButton tone="gold" disabled={!!done[sel.id] || !!lockReason(sel)} onClick={() => clear(sel)} style={{ flex: 1, padding: 10, fontSize: 13 }}>{done[sel.id] ? "완료됨 ✓" : sel.isBoss ? "⚔ 격파!" : "✅ 완료"}</PxButton>
               </div>
             </div>
@@ -4137,6 +4170,12 @@ function SmokeView({ onBack, bubble }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260723f", type: "업데이트", date: "2026-07-23", title: "🧠 하드모드 = 광장 형식으로 변경",
+    body: "· 스테이지 구분 없이 하나의 넓은 광장에 퀘스트가 흩어져 배치돼요\n· 순서 상관없이 아무 퀘스트나 자유롭게 도전 가능\n· 광장 한가운데 보스 — 모든 퀘스트를 완료해야 도전할 수 있어요\n· 이지모드(어플·속옷·양말)는 기존 스테이지 방식 유지" },
+  { id: "u20260723g", type: "업데이트", date: "2026-07-23", title: "👥 파티 기능 강화",
+    body: "· 퀘스트 상단에 파티원 이름이 칩으로 표시돼요 (동의한 사람은 초록 ✓)\n· 🔒 파티 전원이 동의하면 퀘스트를 잠글 수 있어요 — 이후 다른 사람은 참여 불가\n· 🚪 진행 중인 퀘스트에서 나가기 버튼 추가\n· 보스맵 안에서도 다른 접속자가 보여요 (이름표·말풍선·춤·옷)" },
+  { id: "u20260723h", type: "업데이트", date: "2026-07-23", title: "✏️ 퀘스트 수정·삭제 · 📨 회의 초대장",
+    body: "· 퀘스트를 만든 사람이 직접 수정·삭제할 수 있어요 (작성자 표시)\n· 기존 기본 퀘스트는 누구나 수정·삭제 가능\n· 회의실에서 📨 초대장 보내기 추가 — 날짜·시간·예상 회의시간·초대원 선택\n· 받은 사람은 참석/불참으로 답할 수 있고, 초대장은 우체통에도 저장돼요\n· 게시판 🤝 모집 탭에 파티모집 글이 따로 모여요" },
   { id: "u20260723a", type: "업데이트", date: "2026-07-23", title: "🏠 집 시스템 오픈",
     body: "· 내 집 첫 방문 시 비밀번호 설정 (최초 1회)\n· 현관에서 비밀번호 입력 후 입장 — 비밀번호를 알면 누구나 입장 가능\n· 🔔 초인종: 집주인에게 알림 → 문 열어주기 / 거절하기 선택\n· 📮 우체통: 방명록·편지·선물 전송 (택배비 ⭐0.3), 받은 편지함 확인\n· 🎁 마을에서 다른 사람 캐릭터를 클릭하면 바로 선물 주기" },
   { id: "u20260723b", type: "업데이트", date: "2026-07-23", title: "🗺 보스맵 도전기 개편",
