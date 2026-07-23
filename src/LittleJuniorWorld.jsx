@@ -4017,6 +4017,8 @@ function BoardView({ onBack, myName = "" }) {
   const [wType, setWType] = useState("공지");
   const [wTitle, setWTitle] = useState("");
   const [wBody, setWBody] = useState("");
+  const [seen, setSeen] = useState(() => loadJSON("echotown_seen_updates", {}));
+  const markSeen = (id) => setSeen((v) => { const n = { ...v, [id]: true }; saveJSON("echotown_seen_updates", n); return n; });
   const reload = () => dbNotices().then((r) => setDbList(r || []));
   useEffect(() => { reload(); }, []);
   const post = () => {
@@ -4042,8 +4044,8 @@ function BoardView({ onBack, myName = "" }) {
             <Panel style={{ padding: 16 }}>
               <b style={{ fontSize: 14 }}>✍️ 새 글 쓰기</b>
               <div style={{ display: "flex", gap: 6, margin: "10px 0" }}>
-                {["공지", "이벤트"].map((t) => (
-                  <PxButton key={t} tone={wType === t ? "good" : "wood"} onClick={() => setWType(t)} style={{ flex: 1, fontSize: 12, padding: 8 }}>{t}</PxButton>
+                {["공지", "이벤트", "모집", "업데이트"].map((t) => (
+                  <PxButton key={t} tone={wType === t ? "good" : "wood"} onClick={() => setWType(t)} style={{ flex: 1, fontSize: 11, padding: 8 }}>{t}</PxButton>
                 ))}
               </div>
               <input value={wTitle} onChange={(e) => setWTitle(e.target.value)} placeholder="제목" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, marginBottom: 6 }} />
@@ -4059,12 +4061,53 @@ function BoardView({ onBack, myName = "" }) {
       <div style={{ display: "flex", gap: 6, padding: 10, background: C.parchLine, borderBottom: `3px solid ${C.parchEdge}` }}>
         <PxButton tone={tab === "notice" ? "gold" : "wood"} onClick={() => setTab("notice")} style={{ fontSize: 12, padding: "8px 12px" }}>📢 공지사항</PxButton>
         <PxButton tone={tab === "cal" ? "gold" : "wood"} onClick={() => setTab("cal")} style={{ fontSize: 12, padding: "8px 12px" }}>📅 캘린더</PxButton>
+        <PxButton tone={tab === "party" ? "gold" : "wood"} onClick={() => setTab("party")} style={{ fontSize: 12, padding: "8px 12px" }}>🤝 모집</PxButton>
+        <PxButton tone={tab === "update" ? "gold" : "wood"} onClick={() => setTab("update")} style={{ fontSize: 12, padding: "8px 12px" }}>
+          🆕 업데이트{dbList.filter((n) => n.type === "업데이트" && !seen[n.id]).length > 0 ? ` (${dbList.filter((n) => n.type === "업데이트" && !seen[n.id]).length})` : ""}
+        </PxButton>
       </div>
 
       <div style={{ padding: 16, background: `repeating-linear-gradient(0deg, ${C.parch} 0 40px, ${C.parchLine} 40px 80px)` }}>
+        {tab === "party" && (
+          <div style={{ display: "grid", gap: 8 }}>
+            {dbList.filter((n) => n.type === "모집").length === 0 ? (
+              <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 24 }}>아직 모집 중인 파티가 없어요 🤝<br />보스맵 하드모드에서 퀘스트를 수락하고 모집해보세요!</div>
+            ) : dbList.filter((n) => n.type === "모집").map((a) => (
+              <div key={a.id} style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 8, padding: "10px 12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 10, color: "#fff", background: "#8e5a9e", borderRadius: 10, padding: "2px 8px", whiteSpace: "nowrap" }}>🤝 모집</span>
+                  <b style={{ fontSize: 14 }}>{a.title}</b>
+                </div>
+                <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 5, lineHeight: 1.6 }}>{a.body}</div>
+                <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 4 }}>{a.date}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === "update" && (
+          <div style={{ display: "grid", gap: 8 }}>
+            {dbList.filter((n) => n.type === "업데이트" && !seen[n.id]).length === 0 ? (
+              <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 24 }}>확인하지 않은 업데이트가 없어요 ✅</div>
+            ) : dbList.filter((n) => n.type === "업데이트" && !seen[n.id]).map((a) => (
+              <div key={a.id} style={{ background: "#fffbe8", border: `3px solid ${C.ink}`, borderRadius: 8, padding: "10px 12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 10, color: C.ink, background: "#ffd75e", borderRadius: 10, padding: "2px 8px", whiteSpace: "nowrap" }}>🆕 업데이트</span>
+                  <b style={{ flex: 1, fontSize: 14 }}>{a.title}</b>
+                </div>
+                <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 5, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{a.body}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                  <span style={{ fontSize: 10, color: C.inkSoft, flex: 1 }}>{a.date}</span>
+                  <PxButton tone="good" onClick={() => markSeen(a.id)} style={{ fontSize: 11, padding: "6px 12px" }}>확인했어요 ✓</PxButton>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {tab === "notice" && (
           <div style={{ display: "grid", gap: 8 }}>
-            {[...dbList, ...ANNOUNCEMENTS].map((a) => (
+            {[...dbList.filter((n) => n.type !== "모집" && n.type !== "업데이트"), ...ANNOUNCEMENTS].map((a) => (
               <button key={a.id} onClick={() => setOpenDoc(a)} className="px-btn" style={{ textAlign: "left", background: C.white, border: `3px solid ${C.ink}`, padding: "10px 12px", cursor: "pointer", fontFamily: "'DotGothic16', monospace" }}>
                 <div style={{ fontSize: 14, fontWeight: "bold", display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 10, color: "#fff", background: a.type === "이벤트" ? "#d76b96" : "#5b8def", padding: "2px 6px", whiteSpace: "nowrap" }}>{a.type || "공지"}</span>
@@ -5317,7 +5360,7 @@ export default function App() {
           onAccept={(qid, title) => { setQAccept((a) => ({ ...a, [qid]: { party: [myName || "나"], started: false, title } })); if (netSendEvent) netSendEvent("qparty", { qid, who: myName || "나" }); showNotice("🤝 퀘스트를 수락했어요"); }}
           onStart={(qid) => { setQAccept((a) => ({ ...a, [qid]: { ...a[qid], started: true } })); showNotice("▶ 퀘스트를 시작했어요!"); }}
           onShout={(msg) => { postChat(msg, true); showNotice("📢 마을에 알렸어요"); }}
-          onBoard={(title) => { dbAddNotice("이벤트", `[파티모집] ${title}`, `${myName || "익명"}님이 「${title}」 퀘스트 파티원을 찾고 있어요!`); showNotice("📋 게시판에 모집글을 올렸어요"); }}
+          onBoard={(title) => { dbAddNotice("모집", `[파티모집] ${title}`, `${myName || "익명"}님이 「${title}」 퀘스트 파티원을 찾고 있어요!`); showNotice("📋 게시판에 모집글을 올렸어요"); }}
           onNote={(qid, v) => setQNotes((n) => ({ ...n, [qid]: v }))}
           onThreadSend={(qid, text) => { setQThreads((t) => ({ ...t, [qid]: [...(t[qid] || []), { who: myName || "나", text }] })); if (netSendEvent) netSendEvent("qchat", { qid, who: myName || "나", text }); }} />}
         {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
