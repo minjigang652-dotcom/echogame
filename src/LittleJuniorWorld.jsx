@@ -744,6 +744,9 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
         ch.on("broadcast", { event: "bell" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("bell", payload);
         });
+        ch.on("broadcast", { event: "pwtry" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("pwtry", payload);
+        });
         ch.on("broadcast", { event: "door" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("door", payload);
         });
@@ -1471,13 +1474,13 @@ function HouseGate({ house, isMine, myName, hasPw, onSetPw, onEnter, onBell, onM
 
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="🏠" title={house.name} sub={isMine ? "우리 집 · 비밀번호를 입력하세요" : `${owner}님의 집 · 초인종을 눌러보세요`} onBack={onBack} bg={house.roof} fg={C.white} />
+      <TitleBar icon="🏠" title={house.name} sub={isMine ? "우리 집 · 비밀번호를 입력하세요" : `${owner}님의 집 · 비밀번호를 알면 입장 가능`} onBack={onBack} bg={house.roof} fg={C.white} />
       <div style={{ padding: 18, background: C.parch }}>
         <div style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 14, marginBottom: 14 }}>
           <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8, textAlign: "center" }}>🔒 현관 비밀번호</div>
           <div style={{ display: "flex", gap: 6 }}>
-            <input value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { if (isMine && onEnter(pw)) return; say("비밀번호가 틀렸어요"); setPw(""); } }} maxLength={12} type="password" placeholder="비밀번호" style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, textAlign: "center" }} />
-            <PxButton tone="good" onClick={() => { if (isMine && onEnter(pw)) return; say(isMine ? "비밀번호가 틀렸어요" : "주인만 아는 비밀번호예요"); setPw(""); }} style={{ padding: "10px 14px", fontSize: 13 }}>입장</PxButton>
+            <input value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { const r = onEnter(pw); if (r === true) return; say(r === "wait" ? "확인 중… 잠시만요" : "비밀번호가 틀렸어요"); setPw(""); } }} maxLength={12} type="password" placeholder="비밀번호" style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, textAlign: "center" }} />
+            <PxButton tone="good" onClick={() => { const r = onEnter(pw); if (r === true) return; say(r === "wait" ? "확인 중… 잠시만요" : "비밀번호가 틀렸어요"); setPw(""); }} style={{ padding: "10px 14px", fontSize: 13 }}>입장</PxButton>
           </div>
           {msg && <div style={{ marginTop: 8, fontSize: 12, color: C.danger, textAlign: "center" }}>{msg}</div>}
         </div>
@@ -1492,7 +1495,7 @@ function HouseGate({ house, isMine, myName, hasPw, onSetPw, onEnter, onBell, onM
             <div style={{ fontSize: 13, fontWeight: "bold", marginTop: 4 }}>우체통</div>
           </button>
         </div>
-        <div style={{ fontSize: 11, color: C.inkSoft, textAlign: "center", marginTop: 12 }}>우체통으로 방명록·편지·선물을 보낼 수 있어요 (택배비 ⭐0.3)</div>
+        <div style={{ fontSize: 11, color: C.inkSoft, textAlign: "center", marginTop: 12 }}>비밀번호를 알면 누구나 입장할 수 있어요 · 우체통 택배비 ⭐0.3</div>
       </div>
     </Panel>
   );
@@ -4824,6 +4827,11 @@ export default function App() {
     onChatRef.net = (kind, p) => {
       if (!p || p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
+      if (kind === "pwtry") {
+        const ok = !!housePw && p.pw === housePw;
+        if (netSendEvent) netSendEvent("door", { to: p.from, from: myName, ok });
+        if (ok) showNotice(`🔓 ${p.from}님이 비밀번호로 들어왔어요`);
+      }
       if (kind === "door") {
         if (p.ok) { setUnlocked((u) => (houseIdRef.current ? { ...u, [houseIdRef.current]: true } : u)); showNotice("🚪 문이 열렸어요! 들어가세요"); }
         else showNotice("🚫 지금은 곤란하대요…");
@@ -4835,7 +4843,7 @@ export default function App() {
         showNotice(`📬 ${p.from}님이 ${p.item ? "선물을 보냈어요!" : "편지를 남겼어요!"}`);
       }
     };
-  }, [myName]);
+  }, [myName, housePw, netSendEvent]);
   useEffect(() => {
     onChatRef.current = (m) => {
       if (!m || m.id === MY_ID) return;
@@ -4977,7 +4985,16 @@ export default function App() {
         ) : (
           <HouseGate house={houseMeta} isMine={isMyHouse(houseMeta.name)} myName={myName} hasPw={!!housePw}
             onSetPw={(p) => { setHousePw(p); saveJSON("echotown_pw", p); }}
-            onEnter={(p) => { if (p && p === housePw) { setUnlocked((u) => ({ ...u, [houseId]: true })); return true; } return false; }}
+            onEnter={(p) => {
+              if (!p) return false;
+              if (isMyHouse(houseMeta.name)) {
+                if (p === housePw) { setUnlocked((u) => ({ ...u, [houseId]: true })); return true; }
+                return false;
+              }
+              const ow = (houseMeta.name || "").replace(/이네$|네$/, "");
+              if (netSendEvent) { netSendEvent("pwtry", { to: ow, from: myName, pw: p }); return "wait"; }
+              return false;
+            }}
             onBell={ringBell} onMail={(owner) => setMailTarget(owner)} onBack={backToWorld} />
         ))}
         {view === "thanks" && <ThanksView gems={gems} inventory={thanksInv} postits={postits} onBuy={(it) => { setGems((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={(p) => setPostits((v) => [...v, { ...p, id: Date.now() }])} onBack={backToWorld} bubble={bubble} />}
