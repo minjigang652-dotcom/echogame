@@ -2827,100 +2827,237 @@ function SchoolView({ school, onBack }) {
   );
 }
 /* ======================= 보스맵 도전기 ======================= */
-const BOSS_STAGES = {
-  easy: [
-    { id: "e1", boss: "슬라임 신입", icon: "🟢", star: 1, gem: 5, desc: "에코타운 오픈 준비 · 마을 정비와 체크리스트를 끝내라.", task: "오픈 전 점검 항목 10개를 정리한다." },
-    { id: "e2", boss: "서류 골렘", icon: "📄", star: 2, gem: 8, desc: "치앙마이 렌트 시스템 · 서류 더미를 뚫어라.", task: "렌트 신청 흐름을 5단계로 정리한다." },
-    { id: "e3", boss: "협업 히드라", icon: "🐍", star: 3, gem: 12, desc: "무신사 입점 협업 · 머리 셋 달린 협업을 조율하라.", task: "담당자 3명의 요구사항을 하나의 안으로 합친다." },
-    { id: "e4", boss: "마감의 군주", icon: "⏰", star: 4, gem: 20, desc: "월말 정산 마감 · 시간을 지배하는 보스.", task: "마감 하루 전까지 정산을 끝낸다." },
-    { id: "e5", boss: "릴스 드래곤", icon: "🐉", star: 5, gem: 30, desc: "릴스 콘텐츠 30개 제작 · 최종 보스.", task: "30개 콘텐츠를 기획→촬영→편집까지 완주한다." },
-  ],
-  hard: [
-    { id: "h1", boss: "왜?의 파수꾼", icon: "❓", star: 2, gem: 15, desc: "모든 답에 '왜?'를 다섯 번 되묻는 파수꾼.", task: "최근 결정 하나를 골라 '왜'를 5번 파고들어 근본 원인을 찾아라." },
-    { id: "h2", boss: "거울 마왕", icon: "🪞", star: 3, gem: 20, desc: "네 주장을 그대로 반사해 되돌려주는 마왕.", task: "내 의견의 반대 입장을 3줄로 설득력 있게 써라." },
-    { id: "h3", boss: "숫자의 마술사", icon: "🔢", star: 4, gem: 25, desc: "그럴듯한 숫자로 속이는 마술사.", task: "숫자 없이 설명한 주장에 근거 지표 2개를 붙여라." },
-    { id: "h4", boss: "무한 회의 데몬", icon: "🌀", star: 4, gem: 28, desc: "끝나지 않는 회의로 시간을 삼키는 악마.", task: "1시간 회의를 15분으로 줄일 안건 구조를 설계하라." },
-    { id: "h5", boss: "공허의 기획자", icon: "🕳", star: 5, gem: 40, desc: "아무 제약 없는 백지를 던지는 최종 보스.", task: "제약 0인 상태에서 새 기획 1개를 목표·타깃·성공지표까지 세워라." },
-  ],
-};
-const STAGE_POS = [
-  { x: 16, y: 84 }, { x: 42, y: 70 }, { x: 22, y: 52 }, { x: 52, y: 38 }, { x: 30, y: 20 },
-  { x: 62, y: 12 }, { x: 82, y: 26 }, { x: 74, y: 48 },
+const BOSS_MAPS = [
+  {
+    id: "bm1", name: "에코타운 오픈", icon: "🏘", color: "#3fa07a", grass: "#cfe3c0",
+    boss: { id: "b1", title: "오픈일의 군주", icon: "👑", gem: 30, desc: "정해진 날짜는 절대 물러서지 않는다.", task: "오픈 체크리스트 전 항목 완료 후 최종 점검" },
+    stages: [
+      { n: 1, name: "준비의 숲", quests: [
+        { id: "q11", title: "목표 정의", icon: "🎯", gem: 4, desc: "무엇을 여는지 한 줄로 정한다.", task: "오픈의 목표를 한 문장으로 적기" },
+        { id: "q12", title: "할 일 쪼개기", icon: "🧩", gem: 5, desc: "큰 덩어리를 잘게 나눈다.", task: "해야 할 일 10개로 분해", need: "q11" },
+        { id: "q13", title: "담당 정하기", icon: "🧑‍🤝‍🧑", gem: 4, desc: "누가 무엇을 할지 정한다.", task: "항목별 담당자 배정" },
+      ] },
+      { n: 2, name: "제작의 언덕", quests: [
+        { id: "q21", title: "화면 만들기", icon: "🖥", gem: 6, desc: "보이는 것부터 완성한다.", task: "핵심 화면 3개 제작" },
+        { id: "q22", title: "콘텐츠 채우기", icon: "📝", gem: 6, desc: "빈칸을 채운다.", task: "문구·이미지 채워넣기", need: "q21" },
+      ] },
+      { n: 3, name: "점검의 고원", quests: [
+        { id: "q31", title: "테스트", icon: "🔍", gem: 7, desc: "직접 눌러본다.", task: "전 기능 클릭 테스트" },
+        { id: "q32", title: "버그 수정", icon: "🛠", gem: 8, desc: "발견한 걸 고친다.", task: "발견 버그 전부 수정", need: "q31" },
+      ] },
+    ],
+  },
+  {
+    id: "bm2", name: "치앙마이 렌트", icon: "🌴", color: "#4bb4d8", grass: "#cdeaf4",
+    boss: { id: "b2", title: "서류 골렘", icon: "📄", gem: 28, desc: "서류 더미로 만들어진 거대한 벽.", task: "계약·정산 서류 전부 정리해 제출" },
+    stages: [
+      { n: 1, name: "조사의 해변", quests: [
+        { id: "r11", title: "수요 조사", icon: "📊", gem: 5, desc: "누가 원하는지 확인.", task: "신청 의향 10명 조사" },
+        { id: "r12", title: "가격 정하기", icon: "💰", gem: 5, desc: "얼마에 빌려줄까?", task: "젬 기준 렌트비 책정", need: "r11" },
+      ] },
+      { n: 2, name: "설계의 정글", quests: [
+        { id: "r21", title: "신청 흐름", icon: "🔁", gem: 6, desc: "5단계로 정리.", task: "신청→심사→계약→입금→입주 정의" },
+        { id: "r22", title: "예외 처리", icon: "⚠️", gem: 7, desc: "안 될 때는?", task: "취소·환불 규칙 만들기", need: "r21" },
+      ] },
+      { n: 3, name: "운영의 사원", quests: [
+        { id: "r31", title: "시범 운영", icon: "🚦", gem: 8, desc: "한 명만 먼저.", task: "테스트 입주 1건 진행" },
+      ] },
+    ],
+  },
+  {
+    id: "bm3", name: "릴스 30편", icon: "🎬", color: "#8e5a9e", grass: "#e0d3ee",
+    boss: { id: "b3", title: "릴스 드래곤", icon: "🐉", gem: 40, desc: "30편을 다 삼켜야 잠드는 용.", task: "30편 업로드 완주" },
+    stages: [
+      { n: 1, name: "소재의 동굴", quests: [
+        { id: "s11", title: "소재 30개", icon: "💡", gem: 6, desc: "재료부터 모은다.", task: "아이디어 30줄 적기" },
+        { id: "s12", title: "후크 만들기", icon: "🪝", gem: 7, desc: "첫 3초가 전부.", task: "후크 10개 작성", need: "s11" },
+      ] },
+      { n: 2, name: "촬영의 계곡", quests: [
+        { id: "s21", title: "촬영 세팅", icon: "🎥", gem: 6, desc: "매번 같은 조건.", task: "앵글·조명·오디오 고정" },
+        { id: "s22", title: "10편 촬영", icon: "📹", gem: 9, desc: "일단 찍는다.", task: "영상 10편 촬영", need: "s21" },
+      ] },
+      { n: 3, name: "편집의 탑", quests: [
+        { id: "s31", title: "편집 템플릿", icon: "✂️", gem: 7, desc: "반복을 줄인다.", task: "자막·전환 템플릿 제작" },
+        { id: "s32", title: "10편 업로드", icon: "⬆️", gem: 10, desc: "세상에 내보낸다.", task: "10편 업로드", need: "s31" },
+      ] },
+    ],
+  },
 ];
+
 function BossMapView({ onBack, onReward }) {
-  const [tab, setTab] = useState("easy");
+  const [mapIdx, setMapIdx] = useState(0);
   const [cleared, setCleared] = useState({});
   const [sel, setSel] = useState(null);
-  const stages = BOSS_STAGES[tab];
-  const doneCount = stages.filter((s) => cleared[s.id]).length;
-  const accent = tab === "easy" ? "#3fa07a" : "#c0563a";
-  const clear = (s) => { if (cleared[s.id]) return; setCleared((c) => ({ ...c, [s.id]: true })); onReward && onReward(s.gem); };
-  const pts = stages.map((_, i) => STAGE_POS[i] || { x: 50, y: 50 });
+  const [warn, setWarn] = useState(null);
+  const [pos, setPos] = useState({ x: 90, y: 250 });
+  const [facing, setFacing] = useState(1);
+  const [moving, setMoving] = useState(false);
+  const [near, setNear] = useState(null);
+  const [cam, setCam] = useState(0);
+  const keys = useRef({});
+  const posRef = useRef({ x: 90, y: 250 });
+  const nearRef = useRef(null);
+  const openRef = useRef(false);
+  const nodesRef = useRef([]);
+  const VIEW_W = 620, MAP_H = 360, STAGE_W = 460;
+
+  const map = BOSS_MAPS[mapIdx];
+  const MAP_W = map.stages.length * STAGE_W + 320;
+  const done = cleared[map.id] || {};
+
+  const nodes = [];
+  map.stages.forEach((st, si) => {
+    const baseX = 60 + si * STAGE_W;
+    st.quests.forEach((q, qi) => {
+      nodes.push({ ...q, stage: st.n, stageName: st.name, x: baseX + 70 + qi * 130, y: qi % 2 === 0 ? 150 : 250 });
+    });
+  });
+  nodes.push({ ...map.boss, stage: map.stages.length, stageName: "보스", isBoss: true, x: map.stages.length * STAGE_W + 150, y: 200 });
+  nodesRef.current = nodes;
+
+  const stageDone = (n) => map.stages.filter((s) => s.n <= n).every((s) => s.quests.every((q) => done[q.id]));
+  const stageOpen = (n) => n === 1 || stageDone(n - 1);
+  const lockReason = (nd) => {
+    if (!stageOpen(nd.stage)) return `${nd.stage - 1}스테이지를 먼저 클리어해야 합니다`;
+    if (nd.isBoss && !stageDone(map.stages.length)) return "모든 스테이지를 완료해야 보스에 도전할 수 있습니다";
+    if (nd.need && !done[nd.need]) {
+      const pq = nodes.find((x) => x.id === nd.need);
+      return `「${pq ? pq.title : nd.need}」 완료해야 진행할 수 있습니다`;
+    }
+    return null;
+  };
+  const clear = (nd) => {
+    const r = lockReason(nd);
+    if (r) { setWarn(r); setTimeout(() => setWarn(null), 2000); return; }
+    if (done[nd.id]) return;
+    setCleared((c) => ({ ...c, [map.id]: { ...(c[map.id] || {}), [nd.id]: true } }));
+    onReward && onReward(nd.gem);
+    setSel(null);
+  };
+
+  useEffect(() => { openRef.current = !!sel; }, [sel]);
+  useEffect(() => {
+    const down = (e) => {
+      const k = e.key.toLowerCase();
+      if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d", "e"].includes(k)) e.preventDefault();
+      if (openRef.current) return;
+      if (k === "e" || k === " ") {
+        const n = nearRef.current;
+        if (n) { const nd = nodesRef.current.find((x) => x.id === n); if (nd) setSel(nd); }
+        return;
+      }
+      keys.current[k] = true;
+    };
+    const up = (e) => { keys.current[e.key.toLowerCase()] = false; };
+    window.addEventListener("keydown", down); window.addEventListener("keyup", up);
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
+  }, []);
+
+  useEffect(() => {
+    let raf;
+    const loop = () => {
+      if (!openRef.current) {
+        const k = keys.current; let { x, y } = posRef.current; let dx = 0, dy = 0;
+        if (k["arrowleft"] || k["a"]) dx -= 1;
+        if (k["arrowright"] || k["d"]) dx += 1;
+        if (k["arrowup"] || k["w"]) dy -= 1;
+        if (k["arrowdown"] || k["s"]) dy += 1;
+        if (dx || dy) {
+          const len = Math.hypot(dx, dy) || 1;
+          x = Math.max(24, Math.min(MAP_W - 24, x + (dx / len) * 4));
+          y = Math.max(70, Math.min(MAP_H - 20, y + (dy / len) * 4));
+          posRef.current = { x, y }; setPos({ x, y }); setMoving(true);
+          if (dx) setFacing(dx > 0 ? 1 : -1);
+        } else setMoving(false);
+        let f = null;
+        for (const nd of nodesRef.current) if (Math.hypot(nd.x - posRef.current.x, nd.y - posRef.current.y) < 55) { f = nd.id; break; }
+        if (f !== nearRef.current) { nearRef.current = f; setNear(f); }
+        setCam(Math.max(0, Math.min(MAP_W - VIEW_W, posRef.current.x - VIEW_W / 2)));
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [MAP_W]);
+
+  const switchMap = (i) => { setMapIdx(i); posRef.current = { x: 90, y: 250 }; setPos({ x: 90, y: 250 }); setCam(0); setSel(null); };
+  const totalQ = nodes.length;
+  const doneQ = nodes.filter((n) => done[n.id]).length;
+
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="🗺" title="보스맵 도전기" sub="스테이지를 따라 보스를 격파하라" onBack={onBack} bg="#2f2440" fg={C.white} />
-      <div style={{ padding: 12, background: "#efe6d2" }}>
-        <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-          <PxButton tone={tab === "easy" ? "good" : "wood"} onClick={() => setTab("easy")} style={{ flex: 1, padding: 8, fontSize: 13 }}>🟢 EASY</PxButton>
-          <PxButton tone={tab === "hard" ? "danger" : "wood"} onClick={() => setTab("hard")} style={{ flex: 1, padding: 8, fontSize: 13 }}>🔥 HARD</PxButton>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-          <div style={{ flex: 1, height: 12, background: "#e2d3ab", border: `2px solid ${C.ink}` }}>
-            <div style={{ height: "100%", width: `${(doneCount / stages.length) * 100}%`, background: accent, transition: "width .3s" }} />
+      <TitleBar icon="🗺" title="보스맵 도전기" sub="WASD 이동 · 퀘스트 앞에서 E · 스테이지는 순서대로" onBack={onBack} bg="#2f2440" fg={C.white} />
+      <div style={{ padding: 12, background: C.parch }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <span style={{ fontSize: 18 }}>{map.icon}</span>
+          <b style={{ fontSize: 14, flex: 1 }}>{map.name}</b>
+          <div style={{ width: 110, height: 12, background: "#e2d3ab", border: `2px solid ${C.ink}` }}>
+            <div style={{ height: "100%", width: `${(doneQ / totalQ) * 100}%`, background: map.color, transition: "width .3s" }} />
           </div>
-          <b style={{ fontSize: 12 }}>{doneCount}/{stages.length}</b>
+          <b style={{ fontSize: 11 }}>{doneQ}/{totalQ}</b>
         </div>
 
-        <div style={{ position: "relative", width: "100%", paddingBottom: "78%", background: "#2b2140", border: `4px solid ${C.ink}`, overflow: "hidden" }}>
-          <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 26px), repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 26px)" }} />
-          <div style={{ position: "absolute", left: "6%", top: "6%", fontSize: 24, opacity: 0.5 }}>🏰</div>
-          <div style={{ position: "absolute", right: "8%", bottom: "8%", fontSize: 22, opacity: 0.45 }}>🌲</div>
-          <div style={{ position: "absolute", left: "60%", bottom: "20%", fontSize: 20, opacity: 0.4 }}>⛰️</div>
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
-            {pts.slice(0, -1).map((p, i) => {
-              const q = pts[i + 1];
-              const done = cleared[stages[i].id];
-              return <line key={i} x1={p.x} y1={p.y} x2={q.x} y2={q.y} stroke={done ? accent : "#6b6280"} strokeWidth="1.2" strokeDasharray="3 2" vectorEffect="non-scaling-stroke" />;
+        <div style={{ position: "relative", width: "100%", maxWidth: VIEW_W, height: MAP_H, margin: "0 auto", border: `4px solid ${C.ink}`, overflow: "hidden", background: map.grass }}>
+          <div style={{ position: "absolute", left: -cam, top: 0, width: MAP_W, height: MAP_H, transition: "left .08s linear" }}>
+            {map.stages.map((st, si) => {
+              const open = stageOpen(st.n);
+              return (
+                <div key={st.n} style={{ position: "absolute", left: 60 + si * STAGE_W, top: 0, width: STAGE_W, height: "100%", background: si % 2 ? "rgba(0,0,0,0.05)" : "transparent", borderRight: `3px dashed rgba(0,0,0,0.25)`, filter: open ? "none" : "grayscale(0.7)" }}>
+                  <div style={{ position: "absolute", left: 8, top: 8, fontSize: 11, background: open ? map.color : "#8a8a8a", color: C.white, border: `2px solid ${C.ink}`, padding: "2px 8px", whiteSpace: "nowrap" }}>
+                    {open ? "" : "🔒 "}{st.n} 스테이지 · {st.name}
+                  </div>
+                </div>
+              );
             })}
-          </svg>
-          {stages.map((s, i) => {
-            const p = pts[i];
-            const done = !!cleared[s.id];
-            const locked = i > 0 && !cleared[stages[i - 1].id];
-            const current = !done && !locked;
-            return (
-              <button key={s.id} onClick={() => !locked && setSel(s)} disabled={locked}
-                style={{ position: "absolute", left: `${p.x}%`, top: `${p.y}%`, transform: "translate(-50%,-50%)", width: 54, height: 54, borderRadius: "50%",
-                  background: done ? accent : locked ? "#544c6b" : "#ffe680", border: `3px solid ${C.ink}`,
-                  boxShadow: current ? "0 0 0 4px rgba(255,230,128,0.35)" : "0 3px 0 rgba(0,0,0,0.4)",
-                  cursor: locked ? "not-allowed" : "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0, fontFamily: "'DotGothic16', monospace", padding: 0 }}>
-                <span style={{ fontSize: 20, lineHeight: 1 }}>{locked ? "🔒" : done ? "✓" : s.icon}</span>
-                <span style={{ fontSize: 9, fontWeight: "bold", color: C.ink }}>{i + 1}</span>
-              </button>
-            );
-          })}
-          {stages.map((s, i) => {
-            const p = pts[i];
-            const locked = i > 0 && !cleared[stages[i - 1].id];
-            return (
-              <div key={"lb" + s.id} style={{ position: "absolute", left: `${p.x}%`, top: `calc(${p.y}% + 32px)`, transform: "translateX(-50%)", fontSize: 9, whiteSpace: "nowrap", color: "#fff", background: "rgba(0,0,0,0.55)", border: `1px solid ${C.ink}`, padding: "1px 5px" }}>{locked ? "???" : s.boss}</div>
-            );
-          })}
+            <div style={{ position: "absolute", left: map.stages.length * STAGE_W + 60, top: 0, width: 260, height: "100%", background: "rgba(120,40,40,0.12)" }}>
+              <div style={{ position: "absolute", left: 8, top: 8, fontSize: 11, background: "#c0563a", color: C.white, border: `2px solid ${C.ink}`, padding: "2px 8px" }}>👑 보스 구역</div>
+            </div>
+            <div style={{ position: "absolute", left: 0, top: 300, width: MAP_W, height: 8, background: "rgba(0,0,0,0.12)" }} />
+
+            {nodes.map((nd) => {
+              const isDone = !!done[nd.id];
+              const locked = !!lockReason(nd);
+              const active = near === nd.id;
+              return (
+                <div key={nd.id} style={{ position: "absolute", left: nd.x, top: nd.y, transform: "translate(-50%,-50%)", textAlign: "center", zIndex: 3 }}>
+                  <div style={{ width: nd.isBoss ? 64 : 48, height: nd.isBoss ? 64 : 48, borderRadius: "50%", background: isDone ? map.color : locked ? "#8d8698" : "#ffe680", border: `3px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: nd.isBoss ? 30 : 22, boxShadow: active ? `0 0 0 4px ${C.gem}` : "0 3px 0 rgba(0,0,0,0.35)" }}>
+                    {isDone ? "✅" : locked ? "🔒" : nd.icon}
+                  </div>
+                  <div style={{ fontSize: 10, marginTop: 2, background: C.white, border: `2px solid ${C.ink}`, padding: "0 5px", whiteSpace: "nowrap" }}>{nd.title}</div>
+                </div>
+              );
+            })}
+
+            <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-100%)", zIndex: 6 }}>
+              <Hero facing={facing} moving={moving} size={34} />
+            </div>
+          </div>
+
+          {near && <div className="enter-prompt" style={{ position: "absolute", left: "50%", bottom: 8, transform: "translateX(-50%)", background: C.ink, color: C.white, border: `2px solid ${C.gem}`, padding: "4px 12px", fontSize: 12, zIndex: 8 }}>E · 퀘스트 열기</div>}
+          {warn && <div style={{ position: "absolute", left: "50%", top: 10, transform: "translateX(-50%)", background: C.danger, color: C.white, border: `2px solid ${C.ink}`, padding: "5px 12px", fontSize: 12, zIndex: 9 }}>🔒 {warn}</div>}
         </div>
-        <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 8, textAlign: "center" }}>길을 따라 다음 스테이지로! 앞 보스를 잡아야 열려요</div>
+
+        <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+          {BOSS_MAPS.map((m, i) => (
+            <PxButton key={m.id} tone={i === mapIdx ? "good" : "wood"} onClick={() => switchMap(i)} style={{ flex: 1, minWidth: 90, fontSize: 11, padding: "7px 6px" }}>{m.icon} {m.name}</PxButton>
+          ))}
+        </div>
       </div>
+
       {sel && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 14 }} onClick={() => setSel(null)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 360 }}>
             <Panel style={{ padding: 16 }}>
-              <div style={{ textAlign: "center", fontSize: 46 }}>{sel.icon}</div>
-              <div style={{ textAlign: "center", fontFamily: "'Press Start 2P', monospace", fontSize: 13, margin: "6px 0" }}>{sel.boss}</div>
-              <div style={{ textAlign: "center", fontSize: 11, color: "#a86e13", marginBottom: 8 }}>{"★".repeat(sel.star)} · 보상 ⭐{sel.gem}</div>
+              <div style={{ textAlign: "center", fontSize: 42 }}>{sel.icon}</div>
+              <div style={{ textAlign: "center", fontSize: 10, color: C.inkSoft }}>{sel.isBoss ? "👑 보스" : `${sel.stage} 스테이지 · ${sel.stageName}`}</div>
+              <div style={{ textAlign: "center", fontFamily: "'Press Start 2P', monospace", fontSize: 13, margin: "8px 0" }}>{sel.title}</div>
               <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>{sel.desc}</div>
               <div style={{ background: C.white, border: `3px solid ${C.ink}`, padding: 10, fontSize: 13 }}>🎯 {sel.task}</div>
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <div style={{ fontSize: 12, textAlign: "center", margin: "8px 0", color: "#a86e13" }}>보상 ⭐{sel.gem}</div>
+              {lockReason(sel) && <div style={{ background: "#f7dede", border: `2px solid ${C.danger}`, color: C.danger, padding: 8, fontSize: 12, marginBottom: 8 }}>🔒 {lockReason(sel)}</div>}
+              <div style={{ display: "flex", gap: 8 }}>
                 <PxButton tone="ink" onClick={() => setSel(null)} style={{ flex: 1, padding: 9, fontSize: 13 }}>닫기</PxButton>
-                <PxButton tone="gold" disabled={!!cleared[sel.id]} onClick={() => { clear(sel); setSel(null); }} style={{ flex: 1, padding: 9, fontSize: 13 }}>{cleared[sel.id] ? "격파됨" : "⚔ 격파!"}</PxButton>
+                <PxButton tone="gold" disabled={!!done[sel.id] || !!lockReason(sel)} onClick={() => clear(sel)} style={{ flex: 1, padding: 9, fontSize: 13 }}>{done[sel.id] ? "완료됨 ✓" : sel.isBoss ? "⚔ 격파!" : "✅ 완료"}</PxButton>
               </div>
             </Panel>
           </div>
