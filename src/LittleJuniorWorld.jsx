@@ -1,4 +1,6 @@
-import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback, createContext, useContext } from "react";
+
+const NetContext = createContext({ others: {}, view: "world", roomPosRef: null });
 
 /* =============================================================================
    작은 주니어 네이버 : 오픈월드 에디션 (프로토타입)
@@ -371,7 +373,9 @@ function TitleBar({ icon, title, sub, onBack, right, bg = C.parch, fg = C.ink })
 /* ======================= 이동 가능한 룸(내부) ======================= */
 /* furniture: {id,x,y,w,h,label,emoji,color?,onInteract?,toast?} 좌표는 룸 px 기준 */
 function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, start, onBack, paused = false, children, headerBg = C.parch, banner = null, bubble = null, outfit = null }) {
+  const net = useContext(NetContext);
   const [pos, setPos] = useState(start || { x: roomW / 2, y: roomH - 60 });
+  useEffect(() => { if (net && net.roomPosRef) net.roomPosRef.current = pos; }, [pos, net]);
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
@@ -475,6 +479,17 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
               </div>
             );
           })}
+          {/* 같은 방의 다른 접속자 */}
+          {net && net.others && Object.values(net.others).filter((o) => o.v && o.v === net.view).map((o) => (
+            <div key={o.id} style={{ position: "absolute", left: o.rx || 0, top: o.ry || 0, transform: "translate(-50%,-70%)", zIndex: 5, opacity: 0.95, transition: "left .18s linear, top .18s linear", pointerEvents: "none" }}>
+              {o.bubble && (
+                <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px" }}>{o.bubble}</div>
+              )}
+              <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
+              <Hero facing={o.f || 1} moving={false} size={30} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
+            </div>
+          ))}
+
           {/* 플레이어 */}
           <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-70%)", zIndex: 6, pointerEvents: "none" }}>
             {bubble && (
@@ -678,7 +693,7 @@ const SUPA_URL = "https://fbemzeslbvweojmgvohv.supabase.co";
 const SUPA_KEY = "sb_publishable_dErg2UZWZQjifyAgO5-ejg_5AH563FV";
 const MY_ID = Math.random().toString(36).slice(2, 10);
 
-function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef) {
+function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef, roomPosRef) {
   const [others, setOthers] = useState({});
   const [count, setCount] = useState(1);
   const [status, setStatus] = useState("연결 중…");
@@ -726,7 +741,9 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef) {
               const p = posRef.current || { x: 0, y: 0 };
               ch.send({ type: "broadcast", event: "pos", payload: (() => {
                 const of = (outfitRef && outfitRef.current) || {};
+                const rp = (roomPosRef && roomPosRef.current) || { x: 0, y: 0 };
                 return { id: MY_ID, name: myName, x: Math.round(p.x), y: Math.round(p.y), f: facingRef.current || 1,
+                  v: (viewRef && viewRef.current) || "world", rx: Math.round(rp.x), ry: Math.round(rp.y),
                   oc: [of.top ? of.top.color : null, of.bottom ? of.bottom.color : null, of.shoes ? of.shoes.color : null] };
               })() });
             }, 160);
@@ -766,7 +783,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef) {
   return { others, count, status, sendChat };
 }
 
-function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null }) {
+function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null }) {
   const [songOpen, setSongOpen] = useState(false);
   const vehicleRef = useRef(vehicle);
   vehicleRef.current = vehicle;
@@ -919,6 +936,8 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
             )}
           </div>
           <PxButton tone="gold" onClick={onToggleBgm} style={{ fontSize: 11, padding: "3px 8px" }}>{bgm.playing ? "⏸" : "▶"}</PxButton>
+          <span style={{ fontSize: 12 }}>🔊</span>
+          <input type="range" min="0" max="100" value={Math.round(bgmVol * 100)} onChange={(e) => onBgmVol && onBgmVol(Number(e.target.value) / 100)} title="배경음 볼륨" style={{ width: 70, accentColor: "#ffe680", cursor: "pointer" }} />
           <PxButton tone="blue" onClick={() => setReqOpen(true)} style={{ fontSize: 11, padding: "3px 8px" }}>🎵 신청곡(5젬)</PxButton>
         </div>
       </div>
@@ -969,7 +988,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
           {cmRain && <div className="rain-layer" style={{ position: "absolute", left: RIVER_X, top: 0, width: WORLD.w - RIVER_X, height: WORLD.h, pointerEvents: "none", zIndex: 15 }} />}
 
           {/* 다른 접속자 */}
-          {Object.values(others).map((o) => (
+          {Object.values(others).filter((o) => (o.v || "world") === "world").map((o) => (
             <div key={o.id} style={{ position: "absolute", left: o.x, top: o.y, transform: "translate(-50%,-100%)", zIndex: 17, opacity: 0.95, transition: "left .18s linear, top .18s linear" }}>
               {o.bubble && (
                 <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>{o.bubble}</div>
@@ -1507,6 +1526,12 @@ function parseYouTubeId(url) {
   return m ? m[1] : null;
 }
 function ListeningView({ onBack, gems, onSpend, bubble }) {
+  const ytRef = useRef(null);
+  const [ytVol, setYtVol] = useState(60);
+  const applyVol = (v) => {
+    setYtVol(v);
+    try { if (ytRef.current && ytRef.current.contentWindow) ytRef.current.contentWindow.postMessage(JSON.stringify({ event: "command", func: "setVolume", args: [v] }), "*"); } catch (e) {}
+  };
   const inp = { padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white };
   const [songs, setSongs] = useState([
     { id: 1, title: "Bazzi - Mine", desc: "요즘 제가 즐겨듣는 노래에요", videoId: null, q: "Bazzi Mine" },
@@ -1599,7 +1624,7 @@ function ListeningView({ onBack, gems, onSpend, bubble }) {
               <PxButton tone="ink" onClick={() => setSel(null)} style={{ fontSize: 12, padding: "6px 10px", marginBottom: 10 }}>← 목록</PxButton>
               <div style={{ background: "#000", border: `3px solid ${C.ink}`, aspectRatio: "16/9", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                 {sel.videoId ? (
-                  <iframe title={sel.title} width="100%" height="100%" src={`https://www.youtube.com/embed/${sel.videoId}?autoplay=1`} allow="autoplay; encrypted-media" allowFullScreen style={{ border: 0 }} />
+                  <iframe ref={ytRef} title={sel.title} width="100%" height="100%" src={`https://www.youtube.com/embed/${sel.videoId}?autoplay=1&enablejsapi=1`} allow="autoplay; encrypted-media" allowFullScreen style={{ border: 0 }} onLoad={() => applyVol(ytVol)} />
                 ) : (
                   <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(sel.q)}`} target="_blank" rel="noreferrer" style={{ color: "#ffe680", textDecoration: "none", textAlign: "center", fontFamily: "'DotGothic16', monospace" }}>
                     <div style={{ fontSize: 46 }}>▶</div>
@@ -1607,6 +1632,11 @@ function ListeningView({ onBack, gems, onSpend, bubble }) {
                     <div style={{ fontSize: 10, color: "#b9a7d6", marginTop: 4 }}>('노래 추가'로 링크를 넣으면 여기서 바로 재생돼요)</div>
                   </a>
                 )}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, background: C.parch, border: `2px solid ${C.ink}`, padding: "5px 9px" }}>
+                <span style={{ fontSize: 14 }}>🔊</span>
+                <input type="range" min="0" max="100" value={ytVol} onChange={(e) => applyVol(Number(e.target.value))} style={{ flex: 1, accentColor: "#8e5a9e", cursor: "pointer" }} />
+                <span style={{ fontSize: 11, width: 28, textAlign: "right" }}>{ytVol}</span>
               </div>
               <div style={{ marginTop: 8, fontSize: 13 }}><b>{sel.title}</b></div>
               <div style={{ fontSize: 12, color: C.inkSoft }}>💬 {sel.desc}</div>
@@ -4264,9 +4294,12 @@ export default function App() {
   const netPosRef = useRef({ x: 1300, y: 950 });
   const netFacingRef = useRef(1);
   useEffect(() => { netPosRef.current = worldPos; }, [worldPos]);
+  useEffect(() => { netViewRef.current = view; }, [view]);
   const onChatRef = useRef(null);
   const netOutfitRef = useRef(null);
-  const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef, netOutfitRef);
+  const netViewRef = useRef("world");
+  const netRoomPosRef = useRef({ x: 0, y: 0 });
+  const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef, netOutfitRef, netViewRef, netRoomPosRef);
   const [nameOpen, setNameOpen] = useState(true);
   const [nameInput, setNameInput] = useState("");
   const [couponOpen, setCouponOpen] = useState(false);
@@ -4319,10 +4352,12 @@ export default function App() {
   const [worldBgm, setWorldBgm] = useState({ title: WORLD_TRACKS[0].title, file: WORLD_TRACKS[0].file, playing: false });
   const selectTrack = (t) => setWorldBgm((b) => ({ ...b, title: t.title, file: t.file, playing: true }));
   const audioRef = useRef(null);
+  const [bgmVol, setBgmVol] = useState(0.6);
   useEffect(() => {
     const a = audioRef.current; if (!a) return;
+    a.volume = bgmVol;
     if (worldBgm.playing) a.play().catch(() => {}); else a.pause();
-  }, [worldBgm.playing, worldBgm.file]);
+  }, [worldBgm.playing, worldBgm.file, bgmVol]);
   const [chat, setChat] = useState([]);
   const [shout, setShout] = useState(false);
   const [bubble, setBubble] = useState(null);
@@ -4430,6 +4465,7 @@ export default function App() {
   const backToWorld = () => setView("world");
 
   return (
+    <NetContext.Provider value={{ others: netOthers, view, roomPosRef: netRoomPosRef }}>
     <div style={{ fontFamily: "'DotGothic16', monospace", minHeight: "100vh", background: `repeating-linear-gradient(45deg, ${C.grass} 0 24px, ${C.grassDark} 24px 48px)`, color: C.ink, padding: 14, boxSizing: "border-box" }}>
       <StyleBlock />
       <audio ref={audioRef} src={import.meta.env.BASE_URL + encodeURIComponent(worldBgm.file)} loop preload="auto" />
@@ -4480,7 +4516,7 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} />}
         {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && <HomeView house={houseMeta} skin={houseMeta && isMyHouse(houseMeta.name) ? houseSkin : null} extras={houseMeta && isMyHouse(houseMeta.name) ? myFurni : []} extras={myFurni} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
@@ -4557,6 +4593,7 @@ export default function App() {
       <FeedbackButton />
       {menuOpen && <ProfileMenu onClose={() => setMenuOpen(false)} />}
     </div>
+    </NetContext.Provider>
   );
 }
 
