@@ -752,6 +752,13 @@ async function dbLoadBoss() {
 async function dbClearBoss(mapId, questId, by) {
   try { const s = await getSupa(); await s.from("boss_progress").upsert({ map_id: mapId, quest_id: questId, cleared_by: by || null }); } catch (e) {}
 }
+async function dbAllPlayers() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("saves").select("name,updated_at").order("updated_at", { ascending: false }).limit(60);
+    return ((r && r.data) || []).map((x) => x.name).filter(Boolean);
+  } catch (e) { return []; }
+}
 async function dbNotices() {
   try {
     const s = await getSupa();
@@ -1460,7 +1467,7 @@ function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble
 }
 
 /* ======================= 회의실(별도 화면, 통화 목업) ======================= */
-function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite }) {
+function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, people = [] }) {
   const [invOpen, setInvOpen] = useState(false);
   const [iDate, setIDate] = useState("");
   const [iTime, setITime] = useState("");
@@ -1509,7 +1516,7 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite }) 
               </div>
               <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 5 }}>👥 초대원</div>
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap", maxHeight: 110, overflow: "auto", marginBottom: 10 }}>
-                {PROFILES.map((p) => (
+                {(people.length ? people : PROFILES).map((p) => (
                   <button key={p.name} onClick={() => toggleWho(p.name)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: iWho.includes(p.name) ? C.gem : C.white }}>
                     {p.avatar} {p.name}
                   </button>
@@ -2140,7 +2147,7 @@ const LIAR_LINES = [
 ];
 const LIAR_CHAT = ["ㅋㅋㅋㅋ", "아 뭔가 수상한데", "지금 눈 굴렸어 방금", "나 진짜 아님", "얘 말투 이상해", "빨리빨리~", "표정 관리 좀", "오 방금 티났다", "음~ 글쎄요", "저 사람 각인데?"];
 
-function LiarGame({ onClose, onReward, myName = "" }) {
+function LiarGame({ onClose, onReward, myName = "", people = [] }) {
   const [phase, setPhase] = useState("lobby");
   const [cat, setCat] = useState("랜덤");
   const [size, setSize] = useState(5);
@@ -2327,7 +2334,7 @@ function LiarGame({ onClose, onReward, myName = "" }) {
                     <PxButton tone="ink" onClick={() => setInviteOpen(false)} style={{ fontSize: 11, padding: "4px 8px" }}>✕</PxButton>
                   </div>
                   <div style={{ maxHeight: 260, overflow: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
-                    {PROFILES.map((p) => {
+                    {(people.length ? people.filter((p) => !p.me) : PROFILES).map((p) => {
                       const st = invited[p.name];
                       return (
                         <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `2px solid ${C.ink}`, padding: "6px 8px" }}>
@@ -2428,7 +2435,7 @@ function LiarGame({ onClose, onReward, myName = "" }) {
     </RoomModal>
   );
 }
-function MiniGameRoom({ onBack, onReward, bubble, myName = "" }) {
+function MiniGameRoom({ onBack, onReward, bubble, myName = "", people = [] }) {
   const [game, setGame] = useState(null); // 'reaction' | 'rps' | 'sequence'
   const [contest, setContest] = useState(false);
   const furniture = [
@@ -2443,7 +2450,7 @@ function MiniGameRoom({ onBack, onReward, bubble, myName = "" }) {
       {game === "reaction" && <ReactionGame onClose={() => setGame(null)} onReward={onReward} />}
       {game === "rps" && <RpsGame onClose={() => setGame(null)} onReward={onReward} />}
       {game === "sequence" && <SequenceGame onClose={() => setGame(null)} onReward={onReward} />}
-      {game === "liar" && <LiarGame onClose={() => setGame(null)} onReward={onReward} myName={myName} />}
+      {game === "liar" && <LiarGame onClose={() => setGame(null)} onReward={onReward} myName={myName} people={people} />}
       {contest && <ContestModal onClose={() => setContest(false)} onPlay={(g) => { setContest(false); setGame(g); }} />}
     </RoomView>
   );
@@ -3474,6 +3481,8 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
   const [mode, setMode] = useState("easy");
   const [mapIdx, setMapIdx] = useState(0);
   const [collOpen, setCollOpen] = useState(false);
+  const [dexOpen, setDexOpen] = useState(false);
+  const [dexMode, setDexMode] = useState("easy");
   const [addOpen, setAddOpen] = useState(false);
   const [addTab, setAddTab] = useState("quest");
   const [fQ, setFQ] = useState({ stage: 1, title: "", icon: "🎯", gem: 5, desc: "", task: "", level: "초보자", field: "naverschool" });
@@ -3625,7 +3634,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
     const nq = { id, title: fQ.title.trim(), icon: fQ.icon || "🎯", gem: Number(fQ.gem) || 5, desc: fQ.desc.trim() || "새로 추가된 퀘스트", task: fQ.task.trim() || fQ.title.trim(), level: fQ.level, field: fQ.level === "초보자" ? fQ.field : null, owner: myName || "익명" };
     setMaps((ms) => ms.map((m, i) => {
       if (i !== mapIdx) return m;
-      const stages = m.stages.map((st) => (st.n !== Number(fQ.stage) ? st : { ...st, quests: [...st.quests, nq] }));
+      const stages = m.stages.map((st) => (st.n !== Number(fQ.stage) ? st : { ...st, quests: [nq, ...st.quests] }));
       return { ...m, stages };
     }));
     setFQ({ ...fQ, title: "", desc: "", task: "" });
@@ -3653,6 +3662,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
       <div style={{ padding: 14, background: "linear-gradient(180deg,#f6f2e8,#eae3d4)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: "8px 12px", boxShadow: "0 2px 0 rgba(0,0,0,0.15)" }}>
           <button onClick={() => setCollOpen(true)} title="보스 도감" style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 8, background: "linear-gradient(180deg,#6b4f8f,#3f2c5c)", color: C.white, fontSize: 16, padding: "4px 8px" }}>👾</button>
+          <button onClick={() => { setDexMode(map.mode || "easy"); setDexOpen(true); }} title="퀘스트 도감" style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 8, background: "linear-gradient(180deg,#4b8f6b,#2c5c3f)", color: C.white, fontSize: 16, padding: "4px 8px" }}>📚</button>
           <span style={{ fontSize: 20 }}>{map.icon}</span>
           <b style={{ fontSize: 14, flex: 1 }}>{map.name}</b>
           <button onClick={() => setAddOpen(true)} title="퀘스트/보스맵 추가" style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 8, background: "linear-gradient(180deg,#e0a13d,#a86e13)", color: C.white, fontSize: 14, padding: "4px 9px", fontWeight: "bold" }}>＋</button>
@@ -3764,6 +3774,58 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
           })}
         </div>
       </div>
+
+      {dexOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 95, padding: 14 }} onClick={() => setDexOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440 }}>
+            <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16, boxShadow: "0 10px 26px rgba(0,0,0,0.45)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 22 }}>{dexMode === "hard" ? "🧠" : "📚"}</span>
+                <b style={{ flex: 1, fontSize: 15 }}>{dexMode === "hard" ? "사고 도감" : "퀘스트 도감"}</b>
+                <PxButton tone="ink" onClick={() => setDexOpen(false)} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+              </div>
+              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                <PxButton tone={dexMode === "easy" ? "good" : "wood"} onClick={() => setDexMode("easy")} style={{ flex: 1, fontSize: 12, padding: 8 }}>🌱 이지 도감</PxButton>
+                <PxButton tone={dexMode === "hard" ? "danger" : "wood"} onClick={() => setDexMode("hard")} style={{ flex: 1, fontSize: 12, padding: 8 }}>🧠 사고 도감</PxButton>
+              </div>
+              <div style={{ maxHeight: 340, overflow: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+                {maps.filter((m) => (m.mode || "easy") === dexMode).map((m) => {
+                  const qs = m.stages.reduce((a, st) => a.concat(st.quests.map((q) => ({ ...q, stage: st.n, stageName: st.name }))), []);
+                  const dn = cleared[m.id] || {};
+                  const cnt = qs.filter((q) => dn[q.id]).length;
+                  const bossDone = !!dn[m.boss.id];
+                  return (
+                    <div key={m.id}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                        <span style={{ fontSize: 16 }}>{m.icon}</span>
+                        <b style={{ flex: 1, fontSize: 13 }}>{m.name}</b>
+                        <span style={{ fontSize: 11, color: C.inkSoft }}>{cnt}/{qs.length}{bossDone ? " · 👑 격파" : ""}</span>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>
+                        {qs.map((q) => {
+                          const got = !!dn[q.id];
+                          return (
+                            <div key={q.id} title={got ? q.task : "미완료"} style={{ background: got ? C.white : "#ddd8cc", border: `2px ${got ? "solid" : "dashed"} ${C.ink}`, borderRadius: 8, padding: "9px 4px", textAlign: "center" }}>
+                              <div style={{ fontSize: 22, filter: got ? "none" : "brightness(0)", opacity: got ? 1 : 0.3 }}>{got ? q.icon : "❔"}</div>
+                              <div style={{ fontSize: 9.5, marginTop: 3, fontWeight: "bold", color: got ? C.ink : C.inkSoft, lineHeight: 1.3, wordBreak: "keep-all" }}>{got ? q.title : "???"}</div>
+                              {got && typeof dn[q.id] === "string" && <div style={{ fontSize: 8, color: C.good, marginTop: 2 }}>{dn[q.id]}</div>}
+                            </div>
+                          );
+                        })}
+                        <div style={{ background: bossDone ? "#fff1d6" : "#ddd8cc", border: `2px ${bossDone ? "solid" : "dashed"} ${C.ink}`, borderRadius: 8, padding: "9px 4px", textAlign: "center" }}>
+                          <div style={{ fontSize: 22, filter: bossDone ? "none" : "brightness(0)", opacity: bossDone ? 1 : 0.3 }}>{bossDone ? m.boss.icon : "👑"}</div>
+                          <div style={{ fontSize: 9.5, marginTop: 3, fontWeight: "bold", color: bossDone ? C.ink : C.inkSoft }}>{bossDone ? m.boss.title : "???"}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 10, textAlign: "center" }}>완료한 퀘스트만 이름이 보여요 · 아래 작은 글씨는 완료한 사람</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {collOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 95, padding: 14 }} onClick={() => setCollOpen(false)}>
@@ -4170,6 +4232,10 @@ function SmokeView({ onBack, bubble }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260723j", type: "업데이트", date: "2026-07-23", title: "📚 퀘스트 도감 · 🧠 사고 도감 오픈",
+    body: "· 보스맵 상단 📚 버튼으로 완료한 퀘스트를 모아볼 수 있어요\n· 🌱 이지 도감 / 🧠 사고 도감(하드) 탭으로 구분\n· 완료한 퀘스트만 아이콘·이름이 공개되고 미완료는 ??? 로 표시\n· 누가 완료했는지도 함께 표시돼요\n· 새 퀘스트는 기존 퀘스트보다 위쪽(보스 방향)에 생성돼요" },
+  { id: "u20260723i", type: "업데이트", date: "2026-07-23", title: "👥 주민 목록 = 실제 접속자 기반",
+    body: "· 마을주민들 · 회의 초대원 · 라이어 게임 초대 목록이 실제로 이름을 등록한 사람들로 바뀌었어요\n· 🟢 접속 중 / ⚪ 오프라인 상태가 표시돼요\n· 새로 이름을 등록하면 자동으로 목록에 추가돼요 (1분마다 갱신)\n· 퀘스트를 새로 만들면 기존 퀘스트보다 위쪽(보스 방향)에 배치돼요" },
   { id: "u20260723f", type: "업데이트", date: "2026-07-23", title: "🧠 하드모드 = 광장 형식으로 변경",
     body: "· 스테이지 구분 없이 하나의 넓은 광장에 퀘스트가 흩어져 배치돼요\n· 순서 상관없이 아무 퀘스트나 자유롭게 도전 가능\n· 광장 한가운데 보스 — 모든 퀘스트를 완료해야 도전할 수 있어요\n· 이지모드(어플·속옷·양말)는 기존 스테이지 방식 유지" },
   { id: "u20260723g", type: "업데이트", date: "2026-07-23", title: "👥 파티 기능 강화",
@@ -4979,7 +5045,7 @@ function FaceTalkModal({ person, onClose }) {
     </div>
   );
 }
-function ProfileMenu({ onClose }) {
+function ProfileMenu({ onClose, people = [] }) {
   const [tab, setTab] = useState(null); // null | 'me' | 'villagers'
   const [sel, setSel] = useState(null);
   const [dm, setDm] = useState(null);
@@ -5015,7 +5081,7 @@ function ProfileMenu({ onClose }) {
                   <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 10, background: C.white, border: `3px solid ${C.ink}`, padding: 10 }}>
                     <button onClick={() => setSel(p)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, flex: 1, textAlign: "left", padding: 0 }}>
                       <span style={{ fontSize: 32 }}>{p.avatar}</span>
-                      <span><b style={{ fontSize: 14 }}>{p.name}</b><br /><span style={{ fontSize: 11, color: C.inkSoft }}>💼 {p.job}</span></span>
+                      <span><b style={{ fontSize: 14 }}>{p.name}</b>{p.me ? <span style={{ fontSize: 10, color: C.good }}> (나)</span> : null}<br /><span style={{ fontSize: 11, color: C.inkSoft }}>{p.online === undefined ? "💼 " + p.job : p.job}</span></span>
                     </button>
                     <PxButton tone="blue" onClick={() => setDm(p)} style={{ fontSize: 11, padding: "6px 8px" }}>DM</PxButton>
                     <PxButton tone="good" onClick={() => setCall(p)} style={{ fontSize: 11, padding: "6px 8px" }}>📞 페이스톡</PxButton>
@@ -5260,6 +5326,12 @@ export default function App() {
   const [invOpen, setInvOpen] = useState(false);
   const [badgeOpen, setBadgeOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [dbPlayers, setDbPlayers] = useState([]);
+  useEffect(() => {
+    dbAllPlayers().then(setDbPlayers);
+    const iv = setInterval(() => dbAllPlayers().then(setDbPlayers), 60000);
+    return () => clearInterval(iv);
+  }, []);
   const [qAccept, setQAccept] = useState({});
   const [qNotes, setQNotes] = useState({});
   const [qThreads, setQThreads] = useState({});
@@ -5412,6 +5484,21 @@ export default function App() {
     return () => clearTimeout(saveTimer.current);
   }, [myName, gems, lifetime, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept]);
 
+  const AVATARS = ["🧑", "👩", "🧑‍💻", "👨‍💼", "👩‍🎨", "🧑‍🍳", "👩‍🔬", "🧑‍🎤", "👨‍🌾", "👩‍🏫"];
+  const people = useMemo(() => {
+    const online = Object.values(netOthers).map((o) => o.name).filter(Boolean);
+    const names = Array.from(new Set([...(myName ? [myName] : []), ...online, ...dbPlayers])).filter(Boolean);
+    return names.map((n, i) => ({
+      avatar: AVATARS[(n.charCodeAt(0) + n.length) % AVATARS.length],
+      name: n,
+      me: n === myName,
+      online: n === myName || online.includes(n),
+      job: n === myName ? "나" : (online.includes(n) ? "🟢 접속 중" : "⚪ 오프라인"),
+      stats: { 체력: 70, 마나: 70, 집중: 70, 친화: 70 },
+      equipment: ["🎒 인벤토리"], achievements: ["🌱 에코타운 주민"], quests: ["마을 생활"], affiliation: "ECHO TOWN",
+    }));
+  }, [netOthers, dbPlayers, myName]);
+
   const requestWorldSong = (title) => {
     if (gems < 5) return;
     setGems((g) => g - 5);
@@ -5528,7 +5615,7 @@ export default function App() {
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
         {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} onGift={(n) => setGiftTarget(n)} />}
         {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
-        {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} myName={myName}
+        {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} myName={myName} people={people}
           onInvite={(p) => {
             const body = `📨 회의 초대장\n${p.when} 회의 / 초대원 : ${p.to}\n예상 회의시간 : ${p.dur}\n장소 : ${p.room} · 주최 ${myName || "나"}`;
             if (netSendEvent) netSendEvent("invite", { to: p.to, from: myName || "나", when: p.when, dur: p.dur, room: p.room });
@@ -5557,7 +5644,7 @@ export default function App() {
         {view === "heart" && <HeartView gems={gems} worries={worries} onPost={(text, cost, kind) => { setGems((g) => g - cost); setWorries((w) => [{ id: Date.now(), text, kind }, ...w]); }} onBack={backToWorld} bubble={bubble} />}
         {view === "listening" && <ListeningView onBack={backToWorld} gems={gems} onSpend={(n) => setGems((g) => g - n)} bubble={bubble} />}
         {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} />}
-        {view === "minigame" && <MiniGameRoom myName={myName} onBack={backToWorld} onReward={(n) => award(n)} bubble={bubble} />}
+        {view === "minigame" && <MiniGameRoom myName={myName} people={people} onBack={backToWorld} onReward={(n) => award(n)} bubble={bubble} />}
         {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} scores={swimScores} onRecord={(nick, time) => { setSwimScores((s) => [...s, { nick, time }]); bump("swim"); dbAddRank("swim", nick, time, null).then(reloadRanks); }} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => { award(4); bump("gym"); }} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
@@ -5712,7 +5799,7 @@ export default function App() {
       {invOpen && <InventoryModal onClose={() => setInvOpen(false)} gems={gems} outfit={outfit} ownedClothes={owned} ikeaOwned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} thanksInv={thanksInv} onEquipCloth={tryOnClothing} onToggleIkea={buyIkea} />}
       <MenuButton onClick={() => setMenuOpen(true)} />
       <FeedbackButton />
-      {menuOpen && <ProfileMenu onClose={() => setMenuOpen(false)} />}
+      {menuOpen && <ProfileMenu people={people} onClose={() => setMenuOpen(false)} />}
     </div>
     </NetContext.Provider>
   );
