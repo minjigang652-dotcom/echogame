@@ -615,7 +615,7 @@ const MAP_ZONES = [
   { label: "운동", color: "#4bb4d8", x1: 1080, y1: 1170, x2: 1560, y2: 1340 },
   { label: "치앙마이", color: "#8e6bb0", x1: 2260, y1: 560, x2: 2600, y2: 1120 },
 ];
-function BigMap({ pos, onClose }) {
+function BigMap({ pos, onClose, onGo }) {
   const pct = (v, t) => `${(v / t) * 100}%`;
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={onClose}>
@@ -634,21 +634,21 @@ function BigMap({ pos, onClose }) {
                 </div>
               ))}
               {WORLD_OBJS.filter((o) => o.r).map((o) => (
-                <div key={o.id} style={{ position: "absolute", left: pct(o.x, WORLD.w), top: pct(o.y, WORLD.h), transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", zIndex: 2 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.ink, border: "1px solid #fff" }} />
-                  <span style={{ fontSize: 12, whiteSpace: "nowrap", background: "rgba(255,255,255,0.92)", border: `1px solid ${C.ink}`, padding: "1px 5px", marginTop: 2, fontWeight: "bold" }}>{o.label}</span>
-                </div>
+                <button key={o.id} onClick={() => onGo && onGo(o.x, o.y + 70, o.label)} title={`${o.label}로 이동`} style={{ position: "absolute", left: pct(o.x, WORLD.w), top: pct(o.y, WORLD.h), transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", zIndex: 2, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "'DotGothic16', monospace" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: C.danger, border: "2px solid #fff", boxShadow: "0 1px 2px rgba(0,0,0,0.4)" }} />
+                  <span style={{ fontSize: 12, whiteSpace: "nowrap", background: "rgba(255,255,255,0.95)", border: `1px solid ${C.ink}`, borderRadius: 6, padding: "1px 6px", marginTop: 2, fontWeight: "bold" }}>{o.label}</span>
+                </button>
               ))}
               <div style={{ position: "absolute", left: pct(pos.x, WORLD.w), top: pct(pos.y, WORLD.h), transform: "translate(-50%,-50%)", width: 12, height: 12, borderRadius: "50%", background: "#fff", border: `3px solid ${C.danger}`, boxShadow: "0 0 6px #fff", zIndex: 5 }} />
             </div>
           </div>
-          <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center" }}>흰 점 = 내 위치 · 점선 = 구역</div>
+          <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center" }}>흰 점 = 내 위치 · 건물 이름을 누르면 그곳으로 바로 이동해요 🚀</div>
         </Panel>
       </div>
     </div>
   );
 }
-function MiniMap({ pos }) {
+function MiniMap({ pos, onGo }) {
   const [open, setOpen] = useState(false);
   const W = 168, H = Math.round((W * WORLD.h) / WORLD.w);
   const sx = W / WORLD.w, sy = H / WORLD.h;
@@ -657,14 +657,14 @@ function MiniMap({ pos }) {
       <div onClick={() => setOpen(true)} title="클릭하면 전체 지도" style={{ position: "absolute", right: 10, bottom: 10, width: W, height: H, background: "rgba(20,28,18,0.85)", border: `2px solid ${C.ink}`, zIndex: 16, overflow: "hidden", cursor: "pointer" }}>
         <div style={{ position: "absolute", left: RIVER_X * sx, top: 0, width: Math.max(2, RIVER_W * sx), height: "100%", background: "#3a6ea5" }} />
         {MAP_ZONES.map((z) => (
-          <div key={z.label} style={{ position: "absolute", left: z.x1 * sx, top: z.y1 * sy, width: (z.x2 - z.x1) * sx, height: (z.y2 - z.y1) * sy, background: z.color + "cc", border: "1px solid rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: 8, color: "#fff", fontWeight: "bold", textShadow: "0 1px 1px rgba(0,0,0,0.6)", whiteSpace: "nowrap" }}>{z.label}</span>
-          </div>
+          <button key={z.label} onClick={(e) => { e.stopPropagation(); onGo && onGo((z.x1 + z.x2) / 2, (z.y1 + z.y2) / 2, z.label); }} title={`${z.label} 구역으로 이동`} style={{ position: "absolute", left: z.x1 * sx, top: z.y1 * sy, width: (z.x2 - z.x1) * sx, height: (z.y2 - z.y1) * sy, background: z.color + "cc", border: "1px solid rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
+            <span style={{ fontSize: 8, color: "#fff", fontWeight: "bold", textShadow: "0 1px 1px rgba(0,0,0,0.6)", whiteSpace: "nowrap", fontFamily: "'DotGothic16', monospace" }}>{z.label}</span>
+          </button>
         ))}
         <div style={{ position: "absolute", left: pos.x * sx - 3, top: pos.y * sy - 3, width: 6, height: 6, borderRadius: "50%", background: "#fff", border: `2px solid ${C.danger}`, boxShadow: "0 0 4px #fff", zIndex: 2 }} />
         <div style={{ position: "absolute", right: 2, top: 1, fontSize: 9, color: "#fff", background: "rgba(0,0,0,0.4)", padding: "0 3px" }}>🔍</div>
       </div>
-      {open && <BigMap pos={pos} onClose={() => setOpen(false)} />}
+      {open && <BigMap pos={pos} onClose={() => setOpen(false)} onGo={(x, y, label) => { setOpen(false); onGo && onGo(x, y, label); }} />}
     </>
   );
 }
@@ -880,6 +880,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
 
 function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null, onGift = null }) {
   const [songOpen, setSongOpen] = useState(false);
+  const [teleport, setTeleport] = useState(null);
   const vehicleRef = useRef(vehicle);
   vehicleRef.current = vehicle;
   const [facing, setFacing] = useState(1);
@@ -1150,7 +1151,17 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
           </div>
         </div>
 
-        <MiniMap pos={pos} />
+        <MiniMap pos={pos} onGo={(x, y, label) => {
+          const nx = Math.max(30, Math.min(WORLD.w - 30, x));
+          const ny = Math.max(30, Math.min(WORLD.h - 30, y));
+          posRef.current = { x: nx, y: ny };
+          setPos({ x: nx, y: ny });
+          setTeleport(label || "");
+          setTimeout(() => setTeleport(null), 1600);
+        }} />
+        {teleport !== null && (
+          <div style={{ position: "absolute", left: "50%", top: 60, transform: "translateX(-50%)", background: C.ink, color: C.white, border: `2px solid ${C.gem}`, borderRadius: 20, padding: "6px 16px", fontSize: 12, zIndex: 20 }}>🚀 {teleport} 도착!</div>
+        )}
 
         {guardOpen && <GuardGate onPass={() => { passRef.current = true; }} onClose={() => setGuardOpen(false)} />}
 
@@ -4362,7 +4373,7 @@ const HELP_DATA = {
     { icon: "💃", title: "춤", body: "우상단 💃 버튼으로 동작 선택. 다른 사람에게도 춤추는 모습이 보여요." },
     { icon: "🎁", title: "선물 주기", body: "마을에서 다른 사람 캐릭터를 클릭하면 선물과 한마디를 바로 보낼 수 있어요." },
     { icon: "📞", title: "DM · 페이스톡", body: "메뉴(☰) → 마을주민들에서 1:1 채팅과 영상통화를 할 수 있어요." },
-    { icon: "🛂", title: "치앙마이 가는 법", body: "강 건너 다리 앞 🛂 검문소에서 통행코드를 입력해야 건널 수 있어요. 통행코드는 📋 게시판 공지나 마을 주민에게 물어보면 알 수 있어요. (확성기로 물어보는 것도 방법!)", go: "board", goLabel: "게시판 가기" },
+    { icon: "🛂", title: "치앙마이 가는 법", body: "강 건너 다리 앞 🛂 검문소에서 통행코드를 입력해야 건널 수 있어요. 통행코드가 궁금하면 500젬 💰 (…농담이고, 📋 게시판 공지를 확인하거나 마을 주민에게 물어보세요. 확성기로 외쳐보는 것도 방법!)", go: "board", goLabel: "게시판 가기" },
   ],
   "⭐ 젬·뱃지": [
     { icon: "⭐", title: "젬 얻는 법", body: "퀘스트·보스 클리어, 미니게임 승리, 헬스장 운동, 점심술사 인증샷, 웰컴 쿠폰." },
