@@ -370,7 +370,7 @@ function TitleBar({ icon, title, sub, onBack, right, bg = C.parch, fg = C.ink })
 
 /* ======================= 이동 가능한 룸(내부) ======================= */
 /* furniture: {id,x,y,w,h,label,emoji,color?,onInteract?,toast?} 좌표는 룸 px 기준 */
-function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, start, onBack, paused = false, children, headerBg = C.parch, banner = null, bubble = null }) {
+function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, start, onBack, paused = false, children, headerBg = C.parch, banner = null, bubble = null, outfit = null }) {
   const [pos, setPos] = useState(start || { x: roomW / 2, y: roomH - 60 });
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
@@ -487,7 +487,7 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
                 Space · {nearFur.label}
               </div>
             )}
-            <Hero facing={facing} moving={moving} size={30} />
+            <Hero facing={facing} moving={moving} size={30} outfit={outfit} />
           </div>
           {/* 토스트 */}
           {toast && (
@@ -524,7 +524,7 @@ function buildWorld() {
   const list = [];
   // 중심 주민센터
   list.push({ id: "center", kind: "center", x: 1300, y: 760, r: 90, label: "🏛 주민센터", sub: "마을 중심 · 회의/모임" });
-  list.push({ id: "project", kind: "small", x: 1120, y: 970, r: 60, label: "📊 프로젝트 게시판" });
+  list.push({ id: "project", kind: "small", x: 1120, y: 970, r: 60, label: "🗺 보스맵 도전기" });
   list.push({ id: "naverschool", kind: "small", x: 1800, y: 300, r: 70, label: "📗 네이버스쿨" });
   list.push({ id: "videoschool", kind: "small", x: 2030, y: 300, r: 70, label: "🎬 영상스쿨" });
   list.push({ id: "sandbag", kind: "small", x: 800, y: 360, r: 55, label: "🥊 샌드백", tint: "#c0563a" });
@@ -2053,7 +2053,7 @@ function MusinsaView({ gems, outfit, owned, onTryOn, onBuy, onBack, bubble }) {
   ];
   const worn = cat ? outfit[cat] : null;
   return (
-    <RoomView title="무신사" icon="🛍️" sub="직원 2명 · 옷을 눌러 입어보고(무료), 맘에 들면 구매" bg="#e7e2da" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!cat} headerBg="#2b2b2b" bubble={bubble}>
+    <RoomView outfit={outfit} title="무신사" icon="🛍️" sub="직원 2명 · 옷을 눌러 입어보고(무료), 맘에 들면 구매" bg="#e7e2da" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!cat} headerBg="#2b2b2b" bubble={bubble}>
       {cat && (
         <RoomModal title={`🛒 무신사 · ${CAT_LABEL[cat]}`} onClose={() => setCat(null)} maxW={440}>
           <div style={{ display: "flex", gap: 12 }}>
@@ -2251,41 +2251,87 @@ function SchoolView({ school, onBack }) {
     </Panel>
   );
 }
-/* ======================= 보스맵 사냥 ======================= */
-const PROJECTS = [
-  { name: "에코타운 오픈 준비", owner: "창민", progress: 82 },
-  { name: "치앙마이 렌트 시스템", owner: "정인", progress: 65 },
-  { name: "무신사 입점 협업", owner: "지혜", progress: 40 },
-  { name: "여름 워크샵 기획", owner: "도희", progress: 95 },
-  { name: "신규 알바 온보딩", owner: "민서", progress: 25 },
-  { name: "릴스 콘텐츠 30개 제작", owner: "유리", progress: 55 },
-  { name: "월말 정산 마감", owner: "호중", progress: 100 },
-];
-function ProjectView({ onBack }) {
+/* ======================= 보스맵 도전기 ======================= */
+const BOSS_STAGES = {
+  easy: [
+    { id: "e1", boss: "슬라임 신입", icon: "🟢", star: 1, gem: 5, desc: "에코타운 오픈 준비 · 마을 정비와 체크리스트를 끝내라.", task: "오픈 전 점검 항목 10개를 정리한다." },
+    { id: "e2", boss: "서류 골렘", icon: "📄", star: 2, gem: 8, desc: "치앙마이 렌트 시스템 · 서류 더미를 뚫어라.", task: "렌트 신청 흐름을 5단계로 정리한다." },
+    { id: "e3", boss: "협업 히드라", icon: "🐍", star: 3, gem: 12, desc: "무신사 입점 협업 · 머리 셋 달린 협업을 조율하라.", task: "담당자 3명의 요구사항을 하나의 안으로 합친다." },
+    { id: "e4", boss: "마감의 군주", icon: "⏰", star: 4, gem: 20, desc: "월말 정산 마감 · 시간을 지배하는 보스.", task: "마감 하루 전까지 정산을 끝낸다." },
+    { id: "e5", boss: "릴스 드래곤", icon: "🐉", star: 5, gem: 30, desc: "릴스 콘텐츠 30개 제작 · 최종 보스.", task: "30개 콘텐츠를 기획→촬영→편집까지 완주한다." },
+  ],
+  hard: [
+    { id: "h1", boss: "왜?의 파수꾼", icon: "❓", star: 2, gem: 15, desc: "모든 답에 '왜?'를 다섯 번 되묻는 파수꾼.", task: "최근 결정 하나를 골라 '왜'를 5번 파고들어 근본 원인을 찾아라." },
+    { id: "h2", boss: "거울 마왕", icon: "🪞", star: 3, gem: 20, desc: "네 주장을 그대로 반사해 되돌려주는 마왕.", task: "내 의견의 반대 입장을 3줄로 설득력 있게 써라." },
+    { id: "h3", boss: "숫자의 마술사", icon: "🔢", star: 4, gem: 25, desc: "그럴듯한 숫자로 속이는 마술사.", task: "숫자 없이 설명한 주장에 근거 지표 2개를 붙여라." },
+    { id: "h4", boss: "무한 회의 데몬", icon: "🌀", star: 4, gem: 28, desc: "끝나지 않는 회의로 시간을 삼키는 악마.", task: "1시간 회의를 15분으로 줄일 안건 구조를 설계하라." },
+    { id: "h5", boss: "공허의 기획자", icon: "🕳", star: 5, gem: 40, desc: "아무 제약 없는 백지를 던지는 최종 보스.", task: "제약 0인 상태에서 새 기획 1개를 목표·타깃·성공지표까지 세워라." },
+  ],
+};
+function BossMapView({ onBack, onReward }) {
+  const [tab, setTab] = useState("easy");
+  const [cleared, setCleared] = useState({});
+  const [sel, setSel] = useState(null);
+  const stages = BOSS_STAGES[tab];
+  const doneCount = stages.filter((s) => cleared[s.id]).length;
+  const accent = tab === "easy" ? "#3fa07a" : "#c0563a";
+  const clear = (s) => { if (cleared[s.id]) return; setCleared((c) => ({ ...c, [s.id]: true })); onReward && onReward(s.gem); };
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="📊" title="보스맵 사냥" sub="목표물 보스맵" onBack={onBack} bg="#4b7bd8" fg={C.white} />
-      <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
-        {PROJECTS.map((p, i) => {
-          const color = p.progress >= 100 ? "#3fa07a" : p.progress >= 80 ? "#3fa07a" : p.progress >= 50 ? "#d9a441" : "#c0563a";
-          const stat = p.progress >= 100 ? "✅ 완료" : p.progress >= 80 ? "🔥 마무리 단계" : p.progress >= 50 ? "🚧 진행 중" : "🌱 초기 단계";
-          return (
-            <div key={i} style={{ background: C.white, border: `3px solid ${C.ink}`, padding: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 6 }}>
-                <b style={{ fontSize: 14 }}>{p.name}</b>
-                <span style={{ fontSize: 11, color: C.inkSoft }}>담당 {p.owner}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ flex: 1, height: 16, background: "#e2d3ab", border: `2px solid ${C.ink}` }}>
-                  <div style={{ height: "100%", width: `${p.progress}%`, background: color, transition: "width .3s" }} />
+      <TitleBar icon="🗺" title="보스맵 도전기" sub="단계별 보스를 격파하라" onBack={onBack} bg="#2f2440" fg={C.white} />
+      <div style={{ padding: 14, background: "#efe6d2" }}>
+        <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+          <PxButton tone={tab === "easy" ? "good" : "wood"} onClick={() => setTab("easy")} style={{ flex: 1, padding: 9, fontSize: 13 }}>🟢 EASY</PxButton>
+          <PxButton tone={tab === "hard" ? "danger" : "wood"} onClick={() => setTab("hard")} style={{ flex: 1, padding: 9, fontSize: 13 }}>🔥 HARD</PxButton>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <div style={{ flex: 1, height: 14, background: "#e2d3ab", border: `2px solid ${C.ink}` }}>
+            <div style={{ height: "100%", width: `${(doneCount / stages.length) * 100}%`, background: accent, transition: "width .3s" }} />
+          </div>
+          <b style={{ fontSize: 12 }}>{doneCount}/{stages.length} 격파</b>
+        </div>
+        <div style={{ position: "relative", background: "#3b3050", border: `4px solid ${C.ink}`, padding: "16px 12px", backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0 8px, transparent 8px 16px)" }}>
+          {stages.map((s, i) => {
+            const done = !!cleared[s.id];
+            const locked = i > 0 && !cleared[stages[i - 1].id];
+            return (
+              <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: i === stages.length - 1 ? 0 : 4 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 30 }}>
+                  <div style={{ width: 26, height: 26, borderRadius: "50%", background: done ? accent : locked ? "#6b6280" : "#ffe680", border: `2px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: "bold", color: C.ink }}>{done ? "✓" : i + 1}</div>
+                  {i < stages.length - 1 && <div style={{ width: 4, height: 26, background: done ? accent : "#6b6280" }} />}
                 </div>
-                <b style={{ fontSize: 13, width: 42, textAlign: "right" }}>{p.progress}%</b>
+                <button onClick={() => !locked && setSel(s)} disabled={locked} style={{ flex: 1, textAlign: "left", cursor: locked ? "not-allowed" : "pointer", background: locked ? "#5a5270" : C.parch, border: `3px solid ${C.ink}`, padding: "8px 10px", fontFamily: "'DotGothic16', monospace", opacity: locked ? 0.7 : 1, marginBottom: i < stages.length - 1 ? 26 : 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 20 }}>{locked ? "🔒" : s.icon}</span>
+                    <b style={{ flex: 1, fontSize: 13, color: locked ? "#ddd" : C.ink, minWidth: 80 }}>{locked ? "???" : s.boss}</b>
+                    <span style={{ fontSize: 10, color: locked ? "#ddd" : "#a86e13" }}>{"★".repeat(s.star)}</span>
+                    <span style={{ fontSize: 11, color: locked ? "#ddd" : C.ink, background: locked ? "transparent" : C.gem, border: locked ? "none" : `2px solid ${C.ink}`, padding: "0 5px" }}>⭐{s.gem}</span>
+                  </div>
+                  {done && <div style={{ fontSize: 10, color: accent, fontWeight: "bold", marginTop: 3 }}>격파 완료!</div>}
+                </button>
               </div>
-              <div style={{ fontSize: 11, color: color, marginTop: 4, fontWeight: "bold" }}>{stat}</div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+        <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 8, textAlign: "center" }}>앞 보스를 격파해야 다음 스테이지가 열려요</div>
       </div>
+      {sel && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 14 }} onClick={() => setSel(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 360 }}>
+            <Panel style={{ padding: 16 }}>
+              <div style={{ textAlign: "center", fontSize: 46 }}>{sel.icon}</div>
+              <div style={{ textAlign: "center", fontFamily: "'Press Start 2P', monospace", fontSize: 13, margin: "6px 0" }}>{sel.boss}</div>
+              <div style={{ textAlign: "center", fontSize: 11, color: "#a86e13", marginBottom: 8 }}>{"★".repeat(sel.star)} · 보상 ⭐{sel.gem}</div>
+              <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>{sel.desc}</div>
+              <div style={{ background: C.white, border: `3px solid ${C.ink}`, padding: 10, fontSize: 13 }}>🎯 {sel.task}</div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <PxButton tone="ink" onClick={() => setSel(null)} style={{ flex: 1, padding: 9, fontSize: 13 }}>닫기</PxButton>
+                <PxButton tone="gold" disabled={!!cleared[sel.id]} onClick={() => { clear(sel); setSel(null); }} style={{ flex: 1, padding: 9, fontSize: 13 }}>{cleared[sel.id] ? "격파됨" : "⚔ 격파!"}</PxButton>
+              </div>
+            </Panel>
+          </div>
+        </div>
+      )}
     </Panel>
   );
 }
@@ -3140,7 +3186,7 @@ export default function App() {
         {view === "pool" && <PoolView onBack={backToWorld} onReward={(n) => award(n)} scores={swimScores} onRecord={(nick, time) => setSwimScores((s) => [...s, { nick, time }])} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => award(4)} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
-        {view === "project" && <ProjectView onBack={backToWorld} />}
+        {view === "project" && <BossMapView onBack={backToWorld} onReward={(n) => award(n)} />}
         {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
         {view === "sandbag" && <SandbagView onBack={backToWorld} scores={boxScores} onEnd={(nick, count) => setBoxScores((s) => [...s, { nick, count }])} />}
         {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
