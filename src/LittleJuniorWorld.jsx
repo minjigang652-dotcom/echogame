@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v11 · 2026-07-24";
+const APP_VERSION = "v13 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -776,7 +776,9 @@ const SPRITE_CUT_KEY = "echotown_spritecut_v1";
 /* 파일 이름이 건물 id와 다를 때 여기에 { 건물id: "파일이름" } 로 적어주세요.
    (id와 파일명이 같으면 아무것도 안 적어도 자동 인식됩니다) */
 const SPRITE_FILES = {
-  thanks: "giftshop.png",   // 🙏 감사의 방
+  thanks: "giftshop.png",     // 🙏 감사의 방
+  airportIC: "airport.png",   // ✈️ 인천공항   — 파일 하나로 두 공항 모두 적용
+  airportCM: "airport.png",   // ✈️ 치앙마이공항
 };
 function spriteFileUrl(id) {
   let base = "/";
@@ -1272,6 +1274,9 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
         });
         ch.on("broadcast", { event: "dictres" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("dictres", payload);
+        });
+        ch.on("broadcast", { event: "bmap" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("bmap", payload);
         });
         ch.on("broadcast", { event: "gal" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("gal", payload);
@@ -4049,7 +4054,21 @@ function toLocalDT(ms) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree, onLeave }) {
+/* ===== 보스맵 저장·공유 =====
+   기본 맵(BOSS_MAPS_INIT)은 코드에서 오고, 사용자가 추가/수정/삭제한 내용을 그 위에 덮어씁니다. */
+const BOSSMAP_KEY = "echotown_bossmaps_v1";
+function mergeMaps(base, saved) {
+  if (!Array.isArray(saved) || !saved.length) return base;
+  const byId = {};
+  base.forEach((m) => { byId[m.id] = m; });
+  saved.forEach((m) => { if (m && m.id) byId[m.id] = m; });
+  // 기본 맵 순서를 먼저, 새로 만든 맵을 뒤에
+  const out = base.map((m) => byId[m.id]);
+  saved.forEach((m) => { if (m && m.id && !base.some((b) => b.id === m.id)) out.push(byId[m.id]); });
+  return out;
+}
+
+function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree, onLeave, maps = [], onAddQuest, onEditQuest, onDelQuest, onAddMap }) {
   const net = useContext(NetContext);
   const [tMsg, setTMsg] = useState("");
   const threadRef = useAutoScroll(JSON.stringify(threads || {}).length);
@@ -4068,14 +4087,13 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
   const canEdit = (nd) => !!nd && !nd.isBoss && (!nd.owner || nd.owner === myName);
   const saveEdit = () => {
     if (!editing || !editing.title.trim()) return;
-    setMaps((ms) => ms.map((m) => (m.id !== map.id ? m : ({ ...m, stages: m.stages.map((st) => ({ ...st, quests: st.quests.map((q) => (q.id !== editing.id ? q : { ...q, title: editing.title.trim(), icon: editing.icon || q.icon, gem: Number(editing.gem) || q.gem, desc: editing.desc, task: editing.task })) })) }))));
+    onEditQuest(map.id, { id: editing.id, title: editing.title.trim(), icon: editing.icon, gem: Number(editing.gem) || 0, desc: editing.desc, task: editing.task, due: editing.due });
     setEditing(null); setSel(null);
   };
   const delQuest = (qid) => {
-    setMaps((ms) => ms.map((m) => (m.id !== map.id ? m : ({ ...m, stages: m.stages.map((st) => ({ ...st, quests: st.quests.filter((q) => q.id !== qid) })) }))));
+    onDelQuest(map.id, qid);
     setSel(null); setEditing(null);
   };
-  const [maps, setMaps] = useState(BOSS_MAPS_INIT);
   const [mode, setMode] = useState("easy");
   const [mapIdx, setMapIdx] = useState(0);
   const [collOpen, setCollOpen] = useState(false);
@@ -4230,23 +4248,18 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
     if (!fQ.title.trim()) return;
     const id = "cq" + Date.now();
     const nq = { id, title: fQ.title.trim(), icon: fQ.icon || "🎯", gem: Number(fQ.gem) || 5, desc: fQ.desc.trim() || "새로 추가된 퀘스트", task: fQ.task.trim() || fQ.title.trim(), level: fQ.level, field: fQ.level === "초보자" ? fQ.field : null, owner: myName || "익명", due: fQ.due || null };
-    setMaps((ms) => ms.map((m, i) => {
-      if (i !== mapIdx) return m;
-      const targetStage = isPlaza ? m.stages[0].n : Number(fQ.stage);
-      const stages = m.stages.map((st) => (st.n !== targetStage ? st : { ...st, quests: [nq, ...st.quests] }));
-      return { ...m, stages };
-    }));
+    onAddQuest(map.id, isPlaza ? map.stages[0].n : Number(fQ.stage), nq);
     setFQ({ ...fQ, title: "", desc: "", task: "" });
     setAddOpen(false);
   };
   const addMap = () => {
     if (!fM.name.trim()) return;
     const id = "cm" + Date.now();
-    setMaps((ms) => [...ms, {
-      id, mode, name: fM.name.trim(), icon: fM.icon || "🗺", color: "#c07a2f", soft: "#f7ecdc", deep: "#8c5418",
+    onAddMap({
+      id, mode, name: fM.name.trim(), icon: fM.icon || "🗺", color: "#c07a2f", soft: "#f7ecdc", deep: "#8c5418", owner: myName || "익명",
       boss: { id: id + "_b", title: fM.boss.trim() || "이름 없는 보스", icon: fM.bossIcon || "👹", gem: 30, desc: "새로 등장한 보스.", task: "모든 스테이지를 클리어하고 격파" },
       stages: [{ n: 1, name: "1 스테이지", deco: "✨", quests: [] }],
-    }]);
+    });
     setFM({ name: "", icon: "🗺", boss: "", bossIcon: "👹" });
     setAddOpen(false);
     setMapIdx(maps.length);
@@ -5163,6 +5176,10 @@ function SmokeView({ onBack, bubble }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724j", type: "업데이트", date: "2026-07-24", title: "✈️ airport.png 인식 추가",
+    body: "· public/sprites/airport.png 파일 하나로 인천공항·치앙마이공항이 모두 바뀌어요\n· 따로 쓰고 싶으면 airportIC.png · airportCM.png 로 나눠 넣고 코드의 SPRITE_FILES 를 수정하면 됩니다" },
+  { id: "u20260724i", type: "업데이트", date: "2026-07-24", title: "🗺 보스맵 퀘스트 저장·공유",
+    body: "· 추가 · 수정 · 삭제한 퀘스트가 새로고침해도 사라지지 않아요\n· 접속 중인 모두에게 실시간으로 반영돼요\n· 새로 접속하면 다른 사람의 퀘스트를 자동으로 받아와요\n· 📖 코어사전의 🔄 동기화 버튼을 누르면 보스맵도 같이 동기화돼요\n· 새로 만든 보스맵도 함께 공유됩니다" },
   { id: "u20260724h", type: "업데이트", date: "2026-07-24", title: "🌴 야자수·나무도 이미지 교체 가능",
     body: "· 건물뿐 아니라 지도 장식물도 내 이미지로 바꿀 수 있어요\n· public/sprites/palm.png → 🌴 야자수 4그루 전부 교체\n· public/sprites/tree.png → 🌳 마을 나무 6그루 전부 교체\n· ☰ 메뉴 → 🎨 건물 이미지 목록에도 추가됐어요 (누끼 강도 조절 가능)" },
   { id: "u20260724g", type: "업데이트", date: "2026-07-24", title: "✈️ 공항 정리 · 🌴 야자수 위치 수정",
@@ -7059,6 +7076,32 @@ function EchoTown() {
   const [giftTarget, setGiftTarget] = useState(null);
   const [giftAlert, setGiftAlert] = useState(null);
 
+  /* 🗺 보스맵 퀘스트 — 저장 + 접속자 모두와 공유 */
+  const [bossMaps, setBossMaps] = useState(() => mergeMaps(BOSS_MAPS_INIT, loadJSON(BOSSMAP_KEY, null)));
+  const bossMapsRef = useRef(bossMaps); bossMapsRef.current = bossMaps;
+  useEffect(() => { saveJSON(BOSSMAP_KEY, bossMaps); }, [bossMaps]);
+
+  const applyBossOp = useCallback((op) => {
+    setBossMaps((ms) => {
+      if (op.addMap) return ms.some((m) => m.id === op.addMap.id) ? ms : [...ms, op.addMap];
+      return ms.map((m) => {
+        if (m.id !== op.mapId) return m;
+        if (op.addQuest) {
+          if (m.stages.some((st) => st.quests.some((q) => q.id === op.addQuest.id))) return m;
+          return { ...m, stages: m.stages.map((st) => (st.n !== op.stageN ? st : { ...st, quests: [op.addQuest, ...st.quests] })) };
+        }
+        if (op.editQuest) {
+          return { ...m, stages: m.stages.map((st) => ({ ...st, quests: st.quests.map((q) => (q.id !== op.editQuest.id ? q : { ...q, ...op.editQuest, gem: op.editQuest.gem || q.gem, icon: op.editQuest.icon || q.icon })) })) };
+        }
+        if (op.delQuest) {
+          return { ...m, stages: m.stages.map((st) => ({ ...st, quests: st.quests.filter((q) => q.id !== op.delQuest) })) };
+        }
+        return m;
+      });
+    });
+  }, []);
+  const sendBoss = (op) => { applyBossOp(op); if (netSendEvent) netSendEvent("bmap", op); };
+
   /* 📖 코어사전 · 🖼 갤러리 — 접속자 모두와 공유 */
   const [dict, setDict] = useState(() => { const v = loadJSON(DICT_KEY, []); return Array.isArray(v) ? v : []; });
   const [gallery, setGallery] = useState(() => { const v = loadJSON(GALLERY_KEY, []); return Array.isArray(v) ? v : []; });
@@ -7206,7 +7249,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qlock" || kind === "qleave" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qlock" || kind === "qleave" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "inviteack") {
@@ -7227,15 +7270,17 @@ function EchoTown() {
       if (kind === "dictreq") {
         if (p.from === (myName || "")) return;
         const mine = dictRef.current || [];
-        if (mine.length && netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine });
+        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current });
         const gs = galRef.current || [];
         gs.slice(0, 12).forEach((ph, i) => setTimeout(() => { if (netSendEvent) netSendEvent("gal", { photo: ph }); }, 350 * (i + 1)));
         return;
       }
       if (kind === "dictres") {
         if (p.dict) setDict((v) => mergeDict(p.dict, v));
+        if (p.maps) setBossMaps((v) => mergeMaps(BOSS_MAPS_INIT, mergeMaps(v, p.maps)));
         return;
       }
+      if (kind === "bmap") { applyBossOp(p); return; }
       if (kind === "mchat") { if (p.who !== (myName || "나")) pushMeetingChat(p.room, { who: p.who, text: p.text, me: false }); return; }
       if (kind === "dm") { pushDm(p.from, { me: false, text: p.text }); pushMsg("dm", { from: p.from, text: p.text }); showNotice(`💬 ${p.from}님: ${String(p.text).slice(0, 20)}`); }
       if (kind === "call") {
@@ -7510,6 +7555,11 @@ function EchoTown() {
         {view === "questdone" && <QuestDoneView myName={myName} onBack={backToWorld} bubble={bubble} />}
         {view === "ikea" && <IkeaView gems={gold} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
         {view === "project" && <BossMapView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss) => bump(isBoss ? "boss" : "quest")}
+          maps={bossMaps}
+          onAddQuest={(mapId, stageN, quest) => { sendBoss({ mapId, stageN, addQuest: quest }); showNotice("🎯 퀘스트를 추가했어요 (모두에게 공유)"); }}
+          onEditQuest={(mapId, quest) => { sendBoss({ mapId, editQuest: quest }); showNotice("✏️ 퀘스트를 수정했어요"); }}
+          onDelQuest={(mapId, qid) => { sendBoss({ mapId, delQuest: qid }); showNotice("🗑 퀘스트를 삭제했어요"); }}
+          onAddMap={(m) => { sendBoss({ addMap: m }); showNotice("👹 새 보스맵을 만들었어요"); }}
           accepted={qAccept} notes={qNotes} threads={qThreads}
           onAccept={(qid, title) => { setQAccept((a) => (a[qid] && a[qid].locked ? a : { ...a, [qid]: a[qid] ? { ...a[qid], party: Array.from(new Set([...(a[qid].party || []), myName || "나"])) } : { party: [myName || "나"], agree: [], locked: false, started: false, title } })); if (netSendEvent) netSendEvent("qparty", { qid, who: myName || "나" }); showNotice("🤝 퀘스트를 수락했어요"); }}
           onAgree={(qid) => {
