@@ -475,6 +475,14 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
               </div>
             );
           })}
+          {/* 다른 접속자 */}
+          {Object.values(others).map((o) => (
+            <div key={o.id} style={{ position: "absolute", left: o.x, top: o.y, transform: "translate(-50%,-100%)", zIndex: 17, opacity: 0.95 }}>
+              <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
+              <Hero facing={o.f || 1} moving={false} size={34} />
+            </div>
+          ))}
+
           {/* 플레이어 */}
           <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-70%)", zIndex: 6, pointerEvents: "none" }}>
             {bubble && (
@@ -673,7 +681,82 @@ function GuardGate({ onPass, onClose }) {
     </div>
   );
 }
-function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false }) {
+/* ======================= 멀티플레이 (Supabase Realtime) ======================= */
+const SUPA_URL = "https://fbemzeslbvweojmgvohv.supabase.co";
+const SUPA_KEY = "sb_publishable_dErg2UZWZQjifyAgO5-ejg_5AH563FV";
+const MY_ID = Math.random().toString(36).slice(2, 10);
+
+function useMultiplayer(myName, posRef, facingRef) {
+  const [others, setOthers] = useState({});
+  const [count, setCount] = useState(1);
+  const [status, setStatus] = useState("연결 중…");
+  const chRef = useRef(null);
+
+  useEffect(() => {
+    if (!myName) return;
+    let alive = true;
+    let sendIv = null, pruneIv = null;
+    (async () => {
+      try {
+        const mod = await import(/* @vite-ignore */ "https://esm.sh/@supabase/supabase-js@2");
+        if (!alive) return;
+        const client = mod.createClient(SUPA_URL, SUPA_KEY, { realtime: { params: { eventsPerSecond: 12 } } });
+        const ch = client.channel("echo-town", { config: { presence: { key: MY_ID } } });
+        chRef.current = ch;
+
+        ch.on("presence", { event: "sync" }, () => {
+          const st = ch.presenceState();
+          setCount(Object.keys(st).length || 1);
+        });
+        ch.on("broadcast", { event: "pos" }, ({ payload }) => {
+          if (!payload || payload.id === MY_ID) return;
+          setOthers((o) => ({ ...o, [payload.id]: { ...payload, ts: Date.now() } }));
+        });
+        ch.on("broadcast", { event: "bye" }, ({ payload }) => {
+          if (!payload) return;
+          setOthers((o) => { const n = { ...o }; delete n[payload.id]; return n; });
+        });
+
+        await ch.subscribe(async (st) => {
+          if (!alive) return;
+          if (st === "SUBSCRIBED") {
+            setStatus("접속됨");
+            await ch.track({ name: myName });
+            sendIv = setInterval(() => {
+              const p = posRef.current || { x: 0, y: 0 };
+              ch.send({ type: "broadcast", event: "pos", payload: { id: MY_ID, name: myName, x: Math.round(p.x), y: Math.round(p.y), f: facingRef.current || 1 } });
+            }, 160);
+          } else if (st === "CHANNEL_ERROR" || st === "TIMED_OUT") {
+            setStatus("연결 실패");
+          }
+        });
+
+        pruneIv = setInterval(() => {
+          const now = Date.now();
+          setOthers((o) => {
+            const n = {}; let changed = false;
+            Object.entries(o).forEach(([k, v]) => { if (now - v.ts < 8000) n[k] = v; else changed = true; });
+            return changed ? n : o;
+          });
+        }, 3000);
+      } catch (e) {
+        setStatus("연결 실패");
+      }
+    })();
+
+    return () => {
+      alive = false;
+      if (sendIv) clearInterval(sendIv);
+      if (pruneIv) clearInterval(pruneIv);
+      const ch = chRef.current;
+      if (ch) { try { ch.send({ type: "broadcast", event: "bye", payload: { id: MY_ID } }); ch.unsubscribe(); } catch (e) {} }
+    };
+  }, [myName]);
+
+  return { others, count, status };
+}
+
+function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null }) {
   const [songOpen, setSongOpen] = useState(false);
   const vehicleRef = useRef(vehicle);
   vehicleRef.current = vehicle;
@@ -903,6 +986,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 
         {/* HUD 오버레이: 날짜 */}
         <div style={{ position: "absolute", right: 10, top: 10, display: "flex", gap: 8, alignItems: "center" }}>
+          <span style={{ background: netStatus === "접속됨" ? "#2f9e6e" : C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}` }} title={netStatus}>👥 {netCount}</span>
           <span style={{ background: C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}` }}>📅 DAY {day}</span>
           <PxButton tone="blue" onClick={onNextDay} style={{ fontSize: 11, padding: "6px 9px" }}>🌙 다음 날</PxButton>
           <div style={{ position: "relative" }}>
@@ -2754,7 +2838,7 @@ function SchoolView({ school, onBack }) {
           posRef.current = { x, y };
           setPos({ x, y });
           setMoving(true);
-          if (dx) setFacing(dx > 0 ? 1 : -1);
+          if (dx) { setFacing(dx > 0 ? 1 : -1); if (facingRef) facingRef.current = dx > 0 ? 1 : -1; }
         } else setMoving(false);
         let found = null;
         for (const h of housesRef.current) {
@@ -4156,6 +4240,10 @@ export default function App() {
   const [worries, setWorries] = useState([]);
   const [rented, setRented] = useState({});
   const [myName, setMyName] = useState("");
+  const netPosRef = useRef({ x: 1300, y: 950 });
+  const netFacingRef = useRef(1);
+  useEffect(() => { netPosRef.current = worldPos; }, [worldPos]);
+  const { others: netOthers, count: netCount, status: netStatus } = useMultiplayer(myName, netPosRef, netFacingRef);
   const [nameOpen, setNameOpen] = useState(true);
   const [nameInput, setNameInput] = useState("");
   const isMyHouse = (n) => !!(n && myName && n.replace(/이네$|네$/, "") === myName);
@@ -4354,7 +4442,7 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} />}
         {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && <HomeView house={houseMeta} skin={houseMeta && isMyHouse(houseMeta.name) ? houseSkin : null} extras={houseMeta && isMyHouse(houseMeta.name) ? myFurni : []} extras={myFurni} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
