@@ -2829,56 +2829,73 @@ function SchoolView({ school, onBack }) {
 /* ======================= 보스맵 도전기 ======================= */
 const BOSS_MAPS = [
   {
-    id: "bm1", name: "에코타운 오픈", icon: "🏘", color: "#3fa07a", grass: "#cfe3c0",
+    id: "bm1", name: "에코타운 오픈", icon: "🏘", color: "#2f9e6e", soft: "#e6f4ec", deep: "#1d6b4a",
     boss: { id: "b1", title: "오픈일의 군주", icon: "👑", gem: 30, desc: "정해진 날짜는 절대 물러서지 않는다.", task: "오픈 체크리스트 전 항목 완료 후 최종 점검" },
     stages: [
-      { n: 1, name: "준비의 숲", quests: [
+      { n: 1, name: "준비의 숲", deco: "🌲", quests: [
         { id: "q11", title: "목표 정의", icon: "🎯", gem: 4, desc: "무엇을 여는지 한 줄로 정한다.", task: "오픈의 목표를 한 문장으로 적기" },
         { id: "q12", title: "할 일 쪼개기", icon: "🧩", gem: 5, desc: "큰 덩어리를 잘게 나눈다.", task: "해야 할 일 10개로 분해", need: "q11" },
         { id: "q13", title: "담당 정하기", icon: "🧑‍🤝‍🧑", gem: 4, desc: "누가 무엇을 할지 정한다.", task: "항목별 담당자 배정" },
+        { id: "q14", title: "일정 잡기", icon: "📅", gem: 5, desc: "언제까지 할지 정한다.", task: "주차별 마일스톤 설정", need: "q12" },
       ] },
-      { n: 2, name: "제작의 언덕", quests: [
+      { n: 2, name: "제작의 언덕", deco: "⛰️", quests: [
         { id: "q21", title: "화면 만들기", icon: "🖥", gem: 6, desc: "보이는 것부터 완성한다.", task: "핵심 화면 3개 제작" },
         { id: "q22", title: "콘텐츠 채우기", icon: "📝", gem: 6, desc: "빈칸을 채운다.", task: "문구·이미지 채워넣기", need: "q21" },
+        { id: "q23", title: "디자인 정리", icon: "🎨", gem: 6, desc: "톤을 맞춘다.", task: "색·폰트 통일" },
       ] },
-      { n: 3, name: "점검의 고원", quests: [
+      { n: 3, name: "점검의 고원", deco: "🏔", quests: [
         { id: "q31", title: "테스트", icon: "🔍", gem: 7, desc: "직접 눌러본다.", task: "전 기능 클릭 테스트" },
         { id: "q32", title: "버그 수정", icon: "🛠", gem: 8, desc: "발견한 걸 고친다.", task: "발견 버그 전부 수정", need: "q31" },
+        { id: "q33", title: "성능 확인", icon: "⚡", gem: 6, desc: "느린 곳을 찾는다.", task: "로딩 속도 점검" },
+      ] },
+      { n: 4, name: "출항의 항구", deco: "⚓", quests: [
+        { id: "q41", title: "안내문 작성", icon: "📢", gem: 6, desc: "알린다.", task: "오픈 공지 문구 작성" },
+        { id: "q42", title: "리허설", icon: "🎬", gem: 8, desc: "한 번 돌려본다.", task: "전 과정 시연", need: "q41" },
       ] },
     ],
   },
   {
-    id: "bm2", name: "치앙마이 렌트", icon: "🌴", color: "#4bb4d8", grass: "#cdeaf4",
+    id: "bm2", name: "치앙마이 렌트", icon: "🌴", color: "#2e9bc4", soft: "#e4f3fa", deep: "#1d6c8c",
     boss: { id: "b2", title: "서류 골렘", icon: "📄", gem: 28, desc: "서류 더미로 만들어진 거대한 벽.", task: "계약·정산 서류 전부 정리해 제출" },
     stages: [
-      { n: 1, name: "조사의 해변", quests: [
+      { n: 1, name: "조사의 해변", deco: "🏖", quests: [
         { id: "r11", title: "수요 조사", icon: "📊", gem: 5, desc: "누가 원하는지 확인.", task: "신청 의향 10명 조사" },
         { id: "r12", title: "가격 정하기", icon: "💰", gem: 5, desc: "얼마에 빌려줄까?", task: "젬 기준 렌트비 책정", need: "r11" },
+        { id: "r13", title: "경쟁 조사", icon: "🔭", gem: 5, desc: "다른 곳은 어떨까.", task: "유사 서비스 3곳 비교" },
       ] },
-      { n: 2, name: "설계의 정글", quests: [
+      { n: 2, name: "설계의 정글", deco: "🌿", quests: [
         { id: "r21", title: "신청 흐름", icon: "🔁", gem: 6, desc: "5단계로 정리.", task: "신청→심사→계약→입금→입주 정의" },
         { id: "r22", title: "예외 처리", icon: "⚠️", gem: 7, desc: "안 될 때는?", task: "취소·환불 규칙 만들기", need: "r21" },
+        { id: "r23", title: "서류 양식", icon: "🗂", gem: 6, desc: "쓸 종이를 만든다.", task: "계약서 초안 작성" },
       ] },
-      { n: 3, name: "운영의 사원", quests: [
+      { n: 3, name: "운영의 사원", deco: "🛕", quests: [
         { id: "r31", title: "시범 운영", icon: "🚦", gem: 8, desc: "한 명만 먼저.", task: "테스트 입주 1건 진행" },
+        { id: "r32", title: "피드백 수집", icon: "💬", gem: 7, desc: "어땠는지 묻는다.", task: "입주자 인터뷰", need: "r31" },
       ] },
     ],
   },
   {
-    id: "bm3", name: "릴스 30편", icon: "🎬", color: "#8e5a9e", grass: "#e0d3ee",
+    id: "bm3", name: "릴스 30편", icon: "🎬", color: "#8a5cc4", soft: "#efe7f8", deep: "#5e3a8c",
     boss: { id: "b3", title: "릴스 드래곤", icon: "🐉", gem: 40, desc: "30편을 다 삼켜야 잠드는 용.", task: "30편 업로드 완주" },
     stages: [
-      { n: 1, name: "소재의 동굴", quests: [
+      { n: 1, name: "소재의 동굴", deco: "🕯", quests: [
         { id: "s11", title: "소재 30개", icon: "💡", gem: 6, desc: "재료부터 모은다.", task: "아이디어 30줄 적기" },
         { id: "s12", title: "후크 만들기", icon: "🪝", gem: 7, desc: "첫 3초가 전부.", task: "후크 10개 작성", need: "s11" },
+        { id: "s13", title: "레퍼런스", icon: "🔍", gem: 5, desc: "좋은 걸 본다.", task: "참고 영상 10개 분석" },
       ] },
-      { n: 2, name: "촬영의 계곡", quests: [
+      { n: 2, name: "촬영의 계곡", deco: "🏕", quests: [
         { id: "s21", title: "촬영 세팅", icon: "🎥", gem: 6, desc: "매번 같은 조건.", task: "앵글·조명·오디오 고정" },
         { id: "s22", title: "10편 촬영", icon: "📹", gem: 9, desc: "일단 찍는다.", task: "영상 10편 촬영", need: "s21" },
+        { id: "s23", title: "소품 준비", icon: "🎒", gem: 5, desc: "필요한 걸 챙긴다.", task: "촬영 소품 리스트" },
       ] },
-      { n: 3, name: "편집의 탑", quests: [
+      { n: 3, name: "편집의 탑", deco: "🗼", quests: [
         { id: "s31", title: "편집 템플릿", icon: "✂️", gem: 7, desc: "반복을 줄인다.", task: "자막·전환 템플릿 제작" },
-        { id: "s32", title: "10편 업로드", icon: "⬆️", gem: 10, desc: "세상에 내보낸다.", task: "10편 업로드", need: "s31" },
+        { id: "s32", title: "10편 편집", icon: "🎞", gem: 9, desc: "다듬는다.", task: "영상 10편 편집", need: "s31" },
+        { id: "s33", title: "썸네일", icon: "🖼", gem: 6, desc: "첫인상.", task: "썸네일 10개 제작" },
+      ] },
+      { n: 4, name: "공개의 광장", deco: "🎪", quests: [
+        { id: "s41", title: "업로드 일정", icon: "📆", gem: 6, desc: "언제 올릴까.", task: "30일 업로드 캘린더" },
+        { id: "s42", title: "10편 업로드", icon: "⬆️", gem: 10, desc: "세상에 내보낸다.", task: "10편 업로드", need: "s41" },
       ] },
     ],
   },
@@ -2889,30 +2906,31 @@ function BossMapView({ onBack, onReward }) {
   const [cleared, setCleared] = useState({});
   const [sel, setSel] = useState(null);
   const [warn, setWarn] = useState(null);
-  const [pos, setPos] = useState({ x: 90, y: 250 });
+  const [pos, setPos] = useState({ x: 300, y: 90 });
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
   const [cam, setCam] = useState(0);
   const keys = useRef({});
-  const posRef = useRef({ x: 90, y: 250 });
+  const posRef = useRef({ x: 300, y: 90 });
   const nearRef = useRef(null);
   const openRef = useRef(false);
   const nodesRef = useRef([]);
-  const VIEW_W = 620, MAP_H = 360, STAGE_W = 460;
+  const VIEW_H = 440, MAP_W = 600, STAGE_H = 330, BOSS_H = 300;
 
   const map = BOSS_MAPS[mapIdx];
-  const MAP_W = map.stages.length * STAGE_W + 320;
+  const MAP_H = map.stages.length * STAGE_H + BOSS_H;
   const done = cleared[map.id] || {};
 
   const nodes = [];
   map.stages.forEach((st, si) => {
-    const baseX = 60 + si * STAGE_W;
+    const baseY = si * STAGE_H;
     st.quests.forEach((q, qi) => {
-      nodes.push({ ...q, stage: st.n, stageName: st.name, x: baseX + 70 + qi * 130, y: qi % 2 === 0 ? 150 : 250 });
+      const col = qi % 3, row = Math.floor(qi / 3);
+      nodes.push({ ...q, stage: st.n, stageName: st.name, x: 110 + col * 190, y: baseY + 130 + row * 120 });
     });
   });
-  nodes.push({ ...map.boss, stage: map.stages.length, stageName: "보스", isBoss: true, x: map.stages.length * STAGE_W + 150, y: 200 });
+  nodes.push({ ...map.boss, stage: map.stages.length, stageName: "보스", isBoss: true, x: MAP_W / 2, y: map.stages.length * STAGE_H + 150 });
   nodesRef.current = nodes;
 
   const stageDone = (n) => map.stages.filter((s) => s.n <= n).every((s) => s.quests.every((q) => done[q.id]));
@@ -2964,102 +2982,129 @@ function BossMapView({ onBack, onReward }) {
         if (k["arrowdown"] || k["s"]) dy += 1;
         if (dx || dy) {
           const len = Math.hypot(dx, dy) || 1;
-          x = Math.max(24, Math.min(MAP_W - 24, x + (dx / len) * 4));
-          y = Math.max(70, Math.min(MAP_H - 20, y + (dy / len) * 4));
+          x = Math.max(30, Math.min(MAP_W - 30, x + (dx / len) * 4.2));
+          y = Math.max(40, Math.min(MAP_H - 30, y + (dy / len) * 4.2));
           posRef.current = { x, y }; setPos({ x, y }); setMoving(true);
           if (dx) setFacing(dx > 0 ? 1 : -1);
         } else setMoving(false);
         let f = null;
-        for (const nd of nodesRef.current) if (Math.hypot(nd.x - posRef.current.x, nd.y - posRef.current.y) < 55) { f = nd.id; break; }
+        for (const nd of nodesRef.current) if (Math.hypot(nd.x - posRef.current.x, nd.y - posRef.current.y) < 52) { f = nd.id; break; }
         if (f !== nearRef.current) { nearRef.current = f; setNear(f); }
-        setCam(Math.max(0, Math.min(MAP_W - VIEW_W, posRef.current.x - VIEW_W / 2)));
+        setCam(Math.max(0, Math.min(MAP_H - VIEW_H, posRef.current.y - VIEW_H / 2)));
       }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [MAP_W]);
+  }, [MAP_H]);
 
-  const switchMap = (i) => { setMapIdx(i); posRef.current = { x: 90, y: 250 }; setPos({ x: 90, y: 250 }); setCam(0); setSel(null); };
+  const switchMap = (i) => { setMapIdx(i); posRef.current = { x: 300, y: 90 }; setPos({ x: 300, y: 90 }); setCam(0); setSel(null); };
   const totalQ = nodes.length;
   const doneQ = nodes.filter((n) => done[n.id]).length;
 
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="🗺" title="보스맵 도전기" sub="WASD 이동 · 퀘스트 앞에서 E · 스테이지는 순서대로" onBack={onBack} bg="#2f2440" fg={C.white} />
-      <div style={{ padding: 12, background: C.parch }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-          <span style={{ fontSize: 18 }}>{map.icon}</span>
+      <TitleBar icon="🗺" title="보스맵 도전기" sub="WASD로 이동 · 퀘스트 앞에서 E · 스테이지는 순서대로" onBack={onBack} bg="#241c33" fg={C.white} />
+      <div style={{ padding: 14, background: "linear-gradient(180deg,#f6f2e8,#eae3d4)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: "8px 12px", boxShadow: "0 2px 0 rgba(0,0,0,0.15)" }}>
+          <span style={{ fontSize: 20 }}>{map.icon}</span>
           <b style={{ fontSize: 14, flex: 1 }}>{map.name}</b>
-          <div style={{ width: 110, height: 12, background: "#e2d3ab", border: `2px solid ${C.ink}` }}>
-            <div style={{ height: "100%", width: `${(doneQ / totalQ) * 100}%`, background: map.color, transition: "width .3s" }} />
+          <div style={{ width: 120, height: 10, background: "#e7e2d6", borderRadius: 6, overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${(doneQ / totalQ) * 100}%`, background: `linear-gradient(90deg,${map.color},${map.deep})`, transition: "width .35s" }} />
           </div>
-          <b style={{ fontSize: 11 }}>{doneQ}/{totalQ}</b>
+          <b style={{ fontSize: 12, color: map.deep }}>{doneQ}/{totalQ}</b>
         </div>
 
-        <div style={{ position: "relative", width: "100%", maxWidth: VIEW_W, height: MAP_H, margin: "0 auto", border: `4px solid ${C.ink}`, overflow: "hidden", background: map.grass }}>
-          <div style={{ position: "absolute", left: -cam, top: 0, width: MAP_W, height: MAP_H, transition: "left .08s linear" }}>
+        <div style={{ position: "relative", width: "100%", maxWidth: MAP_W, height: VIEW_H, margin: "0 auto", border: `3px solid ${C.ink}`, borderRadius: 12, overflow: "hidden", boxShadow: "inset 0 0 40px rgba(0,0,0,0.12)" }}>
+          <div style={{ position: "absolute", left: 0, top: -cam, width: MAP_W, height: MAP_H, transition: "top .1s linear" }}>
             {map.stages.map((st, si) => {
               const open = stageOpen(st.n);
+              const cleared_ = stageDone(st.n);
               return (
-                <div key={st.n} style={{ position: "absolute", left: 60 + si * STAGE_W, top: 0, width: STAGE_W, height: "100%", background: si % 2 ? "rgba(0,0,0,0.05)" : "transparent", borderRight: `3px dashed rgba(0,0,0,0.25)`, filter: open ? "none" : "grayscale(0.7)" }}>
-                  <div style={{ position: "absolute", left: 8, top: 8, fontSize: 11, background: open ? map.color : "#8a8a8a", color: C.white, border: `2px solid ${C.ink}`, padding: "2px 8px", whiteSpace: "nowrap" }}>
-                    {open ? "" : "🔒 "}{st.n} 스테이지 · {st.name}
+                <div key={st.n} style={{ position: "absolute", left: 0, top: si * STAGE_H, width: "100%", height: STAGE_H,
+                  background: `linear-gradient(180deg, ${si % 2 ? map.soft : "#ffffff"}, ${map.soft})`,
+                  borderBottom: "2px dashed rgba(0,0,0,0.15)", filter: open ? "none" : "grayscale(0.75) brightness(0.95)" }}>
+                  <div style={{ position: "absolute", left: 14, top: 12, display: "flex", alignItems: "center", gap: 6, background: open ? `linear-gradient(90deg,${map.color},${map.deep})` : "#9a9a9a", color: C.white, borderRadius: 20, padding: "5px 14px", fontSize: 12, fontWeight: "bold", boxShadow: "0 2px 4px rgba(0,0,0,0.25)" }}>
+                    {!open && "🔒 "}{st.n} STAGE · {st.name}{cleared_ && " ✓"}
                   </div>
+                  <div style={{ position: "absolute", right: 18, top: 60, fontSize: 40, opacity: 0.18 }}>{st.deco}</div>
+                  <div style={{ position: "absolute", left: 24, bottom: 30, fontSize: 30, opacity: 0.14 }}>{st.deco}</div>
                 </div>
               );
             })}
-            <div style={{ position: "absolute", left: map.stages.length * STAGE_W + 60, top: 0, width: 260, height: "100%", background: "rgba(120,40,40,0.12)" }}>
-              <div style={{ position: "absolute", left: 8, top: 8, fontSize: 11, background: "#c0563a", color: C.white, border: `2px solid ${C.ink}`, padding: "2px 8px" }}>👑 보스 구역</div>
+            <div style={{ position: "absolute", left: 0, top: map.stages.length * STAGE_H, width: "100%", height: BOSS_H, background: "radial-gradient(circle at 50% 45%, #4a2f4f, #241c33)" }}>
+              <div style={{ position: "absolute", left: 14, top: 12, background: "linear-gradient(90deg,#c0563a,#8c2f21)", color: C.white, borderRadius: 20, padding: "5px 14px", fontSize: 12, fontWeight: "bold", boxShadow: "0 2px 4px rgba(0,0,0,0.4)" }}>👑 BOSS</div>
             </div>
-            <div style={{ position: "absolute", left: 0, top: 300, width: MAP_W, height: 8, background: "rgba(0,0,0,0.12)" }} />
+
+            <svg width={MAP_W} height={MAP_H} style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }}>
+              {nodes.map((nd, i) => {
+                if (i === 0) return null;
+                const p = nodes[i - 1];
+                const on = done[p.id] && done[nd.id];
+                return <line key={nd.id} x1={p.x} y1={p.y} x2={nd.x} y2={nd.y} stroke={on ? map.color : "rgba(0,0,0,0.18)"} strokeWidth="5" strokeLinecap="round" strokeDasharray="1 14" />;
+              })}
+            </svg>
 
             {nodes.map((nd) => {
               const isDone = !!done[nd.id];
               const locked = !!lockReason(nd);
               const active = near === nd.id;
+              const size = nd.isBoss ? 92 : 62;
               return (
                 <div key={nd.id} style={{ position: "absolute", left: nd.x, top: nd.y, transform: "translate(-50%,-50%)", textAlign: "center", zIndex: 3 }}>
-                  <div style={{ width: nd.isBoss ? 64 : 48, height: nd.isBoss ? 64 : 48, borderRadius: "50%", background: isDone ? map.color : locked ? "#8d8698" : "#ffe680", border: `3px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: nd.isBoss ? 30 : 22, boxShadow: active ? `0 0 0 4px ${C.gem}` : "0 3px 0 rgba(0,0,0,0.35)" }}>
+                  <div style={{ width: size, height: size, borderRadius: "50%",
+                    background: isDone ? `radial-gradient(circle at 35% 30%, #ffffff55, ${map.color})` : locked ? "radial-gradient(circle at 35% 30%, #ffffff33, #9a94a6)" : "radial-gradient(circle at 35% 30%, #fffbe8, #ffd75e)",
+                    border: `3px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: nd.isBoss ? 44 : 28,
+                    boxShadow: active ? `0 0 0 5px rgba(255,215,94,0.55), 0 6px 10px rgba(0,0,0,0.3)` : "0 5px 8px rgba(0,0,0,0.28)",
+                    transition: "box-shadow .2s, transform .2s", transform: active ? "scale(1.08)" : "scale(1)" }}>
                     {isDone ? "✅" : locked ? "🔒" : nd.icon}
                   </div>
-                  <div style={{ fontSize: 10, marginTop: 2, background: C.white, border: `2px solid ${C.ink}`, padding: "0 5px", whiteSpace: "nowrap" }}>{nd.title}</div>
+                  <div style={{ marginTop: 5, fontSize: 11, fontWeight: "bold", color: nd.isBoss ? C.white : C.ink, background: nd.isBoss ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.92)", borderRadius: 12, padding: "2px 9px", whiteSpace: "nowrap", boxShadow: "0 2px 3px rgba(0,0,0,0.18)" }}>{nd.title}</div>
                 </div>
               );
             })}
 
-            <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-100%)", zIndex: 6 }}>
-              <Hero facing={facing} moving={moving} size={34} />
+            <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-100%)", zIndex: 6, filter: "drop-shadow(0 4px 3px rgba(0,0,0,0.35))" }}>
+              <Hero facing={facing} moving={moving} size={38} />
             </div>
           </div>
 
-          {near && <div className="enter-prompt" style={{ position: "absolute", left: "50%", bottom: 8, transform: "translateX(-50%)", background: C.ink, color: C.white, border: `2px solid ${C.gem}`, padding: "4px 12px", fontSize: 12, zIndex: 8 }}>E · 퀘스트 열기</div>}
-          {warn && <div style={{ position: "absolute", left: "50%", top: 10, transform: "translateX(-50%)", background: C.danger, color: C.white, border: `2px solid ${C.ink}`, padding: "5px 12px", fontSize: 12, zIndex: 9 }}>🔒 {warn}</div>}
+          {near && <div className="enter-prompt" style={{ position: "absolute", left: "50%", bottom: 12, transform: "translateX(-50%)", background: "rgba(20,16,28,0.9)", color: C.white, border: `2px solid ${C.gem}`, borderRadius: 20, padding: "6px 16px", fontSize: 12, zIndex: 8 }}>E · 퀘스트 열기</div>}
+          {warn && <div style={{ position: "absolute", left: "50%", top: 12, transform: "translateX(-50%)", background: "rgba(192,86,58,0.95)", color: C.white, borderRadius: 20, padding: "6px 16px", fontSize: 12, zIndex: 9, boxShadow: "0 3px 8px rgba(0,0,0,0.3)" }}>🔒 {warn}</div>}
+          <div style={{ position: "absolute", right: 8, top: 8, background: "rgba(0,0,0,0.4)", color: C.white, borderRadius: 12, padding: "3px 9px", fontSize: 10, zIndex: 8 }}>↕ W/S로 위아래 이동</div>
         </div>
 
-        <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-          {BOSS_MAPS.map((m, i) => (
-            <PxButton key={m.id} tone={i === mapIdx ? "good" : "wood"} onClick={() => switchMap(i)} style={{ flex: 1, minWidth: 90, fontSize: 11, padding: "7px 6px" }}>{m.icon} {m.name}</PxButton>
-          ))}
+        <div style={{ display: "flex", gap: 7, marginTop: 12, flexWrap: "wrap" }}>
+          {BOSS_MAPS.map((m, i) => {
+            const on = i === mapIdx;
+            return (
+              <button key={m.id} onClick={() => switchMap(i)} style={{ flex: 1, minWidth: 100, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, padding: "9px 6px", borderRadius: 10,
+                border: `2px solid ${C.ink}`, background: on ? `linear-gradient(180deg,${m.color},${m.deep})` : C.white, color: on ? C.white : C.ink, boxShadow: on ? "0 3px 0 rgba(0,0,0,0.3)" : "0 2px 0 rgba(0,0,0,0.15)" }}>
+                {m.icon} {m.name}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {sel && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 14 }} onClick={() => setSel(null)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 360 }}>
-            <Panel style={{ padding: 16 }}>
-              <div style={{ textAlign: "center", fontSize: 42 }}>{sel.icon}</div>
-              <div style={{ textAlign: "center", fontSize: 10, color: C.inkSoft }}>{sel.isBoss ? "👑 보스" : `${sel.stage} 스테이지 · ${sel.stageName}`}</div>
-              <div style={{ textAlign: "center", fontFamily: "'Press Start 2P', monospace", fontSize: 13, margin: "8px 0" }}>{sel.title}</div>
-              <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>{sel.desc}</div>
-              <div style={{ background: C.white, border: `3px solid ${C.ink}`, padding: 10, fontSize: 13 }}>🎯 {sel.task}</div>
-              <div style={{ fontSize: 12, textAlign: "center", margin: "8px 0", color: "#a86e13" }}>보상 ⭐{sel.gem}</div>
-              {lockReason(sel) && <div style={{ background: "#f7dede", border: `2px solid ${C.danger}`, color: C.danger, padding: 8, fontSize: 12, marginBottom: 8 }}>🔒 {lockReason(sel)}</div>}
-              <div style={{ display: "flex", gap: 8 }}>
-                <PxButton tone="ink" onClick={() => setSel(null)} style={{ flex: 1, padding: 9, fontSize: 13 }}>닫기</PxButton>
-                <PxButton tone="gold" disabled={!!done[sel.id] || !!lockReason(sel)} onClick={() => clear(sel)} style={{ flex: 1, padding: 9, fontSize: 13 }}>{done[sel.id] ? "완료됨 ✓" : sel.isBoss ? "⚔ 격파!" : "✅ 완료"}</PxButton>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 14 }} onClick={() => setSel(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 370 }}>
+            <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 18, boxShadow: "0 10px 26px rgba(0,0,0,0.45)" }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ width: 78, height: 78, margin: "0 auto", borderRadius: "50%", background: sel.isBoss ? "radial-gradient(circle at 35% 30%, #ffffff44, #8c2f21)" : `radial-gradient(circle at 35% 30%, #fffbe8, ${map.color})`, border: `3px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 38, boxShadow: "0 5px 10px rgba(0,0,0,0.3)" }}>{sel.icon}</div>
+                <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 8 }}>{sel.isBoss ? "👑 BOSS" : `${sel.stage} STAGE · ${sel.stageName}`}</div>
+                <div style={{ fontSize: 17, fontWeight: "bold", margin: "4px 0 8px" }}>{sel.title}</div>
               </div>
-            </Panel>
+              <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10, textAlign: "center", lineHeight: 1.6 }}>{sel.desc}</div>
+              <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: 12, fontSize: 13, lineHeight: 1.6 }}>🎯 {sel.task}</div>
+              <div style={{ fontSize: 12, textAlign: "center", margin: "10px 0", color: "#a86e13", fontWeight: "bold" }}>보상 ⭐ {sel.gem}</div>
+              {lockReason(sel) && <div style={{ background: "#fbe4e0", border: `2px solid ${C.danger}`, borderRadius: 8, color: C.danger, padding: 9, fontSize: 12, marginBottom: 10, textAlign: "center" }}>🔒 {lockReason(sel)}</div>}
+              <div style={{ display: "flex", gap: 8 }}>
+                <PxButton tone="ink" onClick={() => setSel(null)} style={{ flex: 1, padding: 10, fontSize: 13 }}>닫기</PxButton>
+                <PxButton tone="gold" disabled={!!done[sel.id] || !!lockReason(sel)} onClick={() => clear(sel)} style={{ flex: 1, padding: 10, fontSize: 13 }}>{done[sel.id] ? "완료됨 ✓" : sel.isBoss ? "⚔ 격파!" : "✅ 완료"}</PxButton>
+              </div>
+            </div>
           </div>
         </div>
       )}
