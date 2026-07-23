@@ -475,14 +475,6 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
               </div>
             );
           })}
-          {/* 다른 접속자 */}
-          {Object.values(others).map((o) => (
-            <div key={o.id} style={{ position: "absolute", left: o.x, top: o.y, transform: "translate(-50%,-100%)", zIndex: 17, opacity: 0.95 }}>
-              <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
-              <Hero facing={o.f || 1} moving={false} size={34} />
-            </div>
-          ))}
-
           {/* 플레이어 */}
           <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-70%)", zIndex: 6, pointerEvents: "none" }}>
             {bubble && (
@@ -957,6 +949,14 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
           {/* 비 효과 (마을 / 치앙마이 각각) */}
           {townRain && <div className="rain-layer" style={{ position: "absolute", left: 0, top: 0, width: RIVER_X, height: WORLD.h, pointerEvents: "none", zIndex: 15 }} />}
           {cmRain && <div className="rain-layer" style={{ position: "absolute", left: RIVER_X, top: 0, width: WORLD.w - RIVER_X, height: WORLD.h, pointerEvents: "none", zIndex: 15 }} />}
+
+          {/* 다른 접속자 */}
+          {Object.values(others).map((o) => (
+            <div key={o.id} style={{ position: "absolute", left: o.x, top: o.y, transform: "translate(-50%,-100%)", zIndex: 17, opacity: 0.95 }}>
+              <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
+              <Hero facing={o.f || 1} moving={false} size={34} />
+            </div>
+          ))}
 
           {/* 플레이어 */}
           <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-70%)", zIndex: 20, pointerEvents: "none" }}>
