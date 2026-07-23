@@ -3076,7 +3076,7 @@ const BOSS_MAPS_INIT = [
   },
 ];
 
-function BossMapView({ onBack, onReward, onGoSchool }) {
+function BossMapView({ onBack, onReward, onGoSchool, onClearQuest }) {
   const [maps, setMaps] = useState(BOSS_MAPS_INIT);
   const [mapIdx, setMapIdx] = useState(0);
   const [collOpen, setCollOpen] = useState(false);
@@ -3131,6 +3131,7 @@ function BossMapView({ onBack, onReward, onGoSchool }) {
     if (done[nd.id]) return;
     setCleared((c) => ({ ...c, [map.id]: { ...(c[map.id] || {}), [nd.id]: true } }));
     onReward && onReward(nd.gem);
+    onClearQuest && onClearQuest(!!nd.isBoss);
     setSel(null);
   };
 
@@ -3865,6 +3866,110 @@ function ChatDock({ messages, shout, onToggleShout, onSend, gems = 0 }) {
   );
 }
 
+/* ======================= 뱃지 ======================= */
+const BADGES = [
+  { id: "v1", cat: "방문", stat: "visit", need: 1, icon: "🌱", name: "웰컴", desc: "에코타운에 처음 방문했어요" },
+  { id: "v2", cat: "방문", stat: "visit", need: 5, icon: "🚪", name: "시작이 좋아", desc: "5번 방문" },
+  { id: "v3", cat: "방문", stat: "visit", need: 10, icon: "📅", name: "꾸준함이 곧 답", desc: "10번 방문" },
+  { id: "v4", cat: "방문", stat: "visit", need: 30, icon: "🛋", name: "하루쯤은 쉬어도 좋아", desc: "30번 방문" },
+  { id: "v5", cat: "방문", stat: "visit", need: 100, icon: "🏅", name: "에코타운 터줏대감", desc: "100번 방문" },
+
+  { id: "c1", cat: "소통", stat: "chat", need: 1, icon: "💬", name: "첫 인사", desc: "채팅 1회" },
+  { id: "c2", cat: "소통", stat: "chat", need: 10, icon: "🗣", name: "수다쟁이", desc: "채팅 10회" },
+  { id: "c3", cat: "소통", stat: "chat", need: 50, icon: "📣", name: "마을의 입", desc: "채팅 50회" },
+  { id: "c4", cat: "소통", stat: "shout", need: 3, icon: "📢", name: "확성기 주인", desc: "확성기 3회 사용" },
+
+  { id: "g1", cat: "운동", stat: "gym", need: 1, icon: "💪", name: "운동 시작", desc: "헬스장 첫 운동" },
+  { id: "g2", cat: "운동", stat: "gym", need: 5, icon: "🏋️", name: "땀 흘리는 중", desc: "운동 5회" },
+  { id: "g3", cat: "운동", stat: "gym", need: 20, icon: "🦾", name: "근육 요정", desc: "운동 20회" },
+  { id: "g4", cat: "운동", stat: "swim", need: 3, icon: "🏊", name: "물 만난 물고기", desc: "수영 대결 3회" },
+
+  { id: "s1", cat: "흡연", stat: "smoke", need: 1, icon: "🚬", name: "잠깐의 여유", desc: "흡연의 방 첫 방문" },
+  { id: "s2", cat: "흡연", stat: "smoke", need: 5, icon: "💨", name: "재떨이 단골", desc: "흡연의 방 5회" },
+  { id: "s3", cat: "흡연", stat: "smoke", need: 20, icon: "🌬", name: "끊는 중 (3일째)", desc: "흡연의 방 20회" },
+
+  { id: "b1", cat: "샌드백", stat: "punch", need: 100, icon: "🥊", name: "주먹왕 시작", desc: "누적 100회 타격" },
+  { id: "b2", cat: "샌드백", stat: "punch", need: 1000, icon: "👊", name: "스트레스 해방", desc: "누적 1,000회 타격" },
+  { id: "b3", cat: "샌드백", stat: "punch", need: 10000, icon: "🔥", name: "철권", desc: "누적 10,000회 타격" },
+
+  { id: "m1", cat: "보스맵", stat: "quest", need: 1, icon: "🎯", name: "첫 퀘스트", desc: "퀘스트 1개 완료" },
+  { id: "m2", cat: "보스맵", stat: "quest", need: 10, icon: "🗺", name: "성실한 모험가", desc: "퀘스트 10개 완료" },
+  { id: "m3", cat: "보스맵", stat: "boss", need: 1, icon: "👑", name: "보스 슬레이어", desc: "보스 1마리 격파" },
+  { id: "m4", cat: "보스맵", stat: "boss", need: 3, icon: "⚔️", name: "전설의 사냥꾼", desc: "보스 3마리 격파" },
+
+  { id: "n1", cat: "노래", stat: "song", need: 1, icon: "🎵", name: "첫 선곡", desc: "노래 1곡 재생" },
+  { id: "n2", cat: "노래", stat: "song", need: 10, icon: "🎧", name: "마을 디제이", desc: "노래 10곡 재생" },
+  { id: "n3", cat: "노래", stat: "song", need: 30, icon: "🎤", name: "음악 없인 못 살아", desc: "노래 30곡 재생" },
+];
+const BADGE_CATS = ["방문", "소통", "운동", "흡연", "샌드백", "보스맵", "노래"];
+
+function loadStats() {
+  try {
+    const raw = window.localStorage.getItem("echotown_stats");
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) { return {}; }
+}
+function saveStats(v) {
+  try { window.localStorage.setItem("echotown_stats", JSON.stringify(v)); } catch (e) {}
+}
+
+function BadgeButton({ onClick, count }) {
+  return (
+    <button onClick={onClick} title="뱃지" style={{ position: "fixed", right: 14, bottom: 190, zIndex: 60, width: 46, height: 46, background: "linear-gradient(180deg,#e0a13d,#a86e13)", border: `3px solid ${C.ink}`, boxShadow: `0 3px 0 ${C.ink}`, cursor: "pointer", fontSize: 20, color: C.white }}>
+      🏅
+      {count > 0 && <span style={{ position: "absolute", right: -4, top: -4, background: C.good, color: C.white, border: `2px solid ${C.ink}`, fontSize: 9, padding: "0 4px" }}>{count}</span>}
+    </button>
+  );
+}
+
+function BadgeModal({ onClose, stats }) {
+  const [cat, setCat] = useState("방문");
+  const list = BADGES.filter((b) => b.cat === cat);
+  const have = (b) => (stats[b.stat] || 0) >= b.need;
+  const total = BADGES.filter(have).length;
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430 }}>
+        <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 22 }}>🏅</span>
+            <b style={{ flex: 1, fontSize: 15 }}>뱃지</b>
+            <span style={{ fontSize: 12, color: C.inkSoft }}>{total}/{BADGES.length}</span>
+            <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+          </div>
+          <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
+            {BADGE_CATS.map((c) => (
+              <PxButton key={c} tone={cat === c ? "good" : "wood"} onClick={() => setCat(c)} style={{ flex: 1, minWidth: 58, fontSize: 11, padding: "6px 4px" }}>{c}</PxButton>
+            ))}
+          </div>
+          <div style={{ maxHeight: 320, overflow: "auto", display: "flex", flexDirection: "column", gap: 7 }}>
+            {list.map((b) => {
+              const cur = stats[b.stat] || 0;
+              const got = cur >= b.need;
+              const pct = Math.min(100, Math.round((cur / b.need) * 100));
+              return (
+                <div key={b.id} style={{ display: "flex", alignItems: "center", gap: 10, background: got ? C.white : "#e9e3d6", border: `2px solid ${C.ink}`, borderRadius: 10, padding: "9px 11px", opacity: got ? 1 : 0.85 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, background: got ? "radial-gradient(circle at 35% 30%,#fffbe8,#ffd75e)" : "#c9c3b6", border: `2px solid ${C.ink}`, filter: got ? "none" : "grayscale(1)" }}>{got ? b.icon : "🔒"}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: "bold" }}>{got ? b.name : "???"}</div>
+                    <div style={{ fontSize: 11, color: C.inkSoft }}>{b.desc}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                      <div style={{ flex: 1, height: 7, background: "#ddd6c6", borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${pct}%`, background: got ? C.good : "#b9ad94" }} />
+                      </div>
+                      <span style={{ fontSize: 10, color: C.inkSoft }}>{Math.min(cur, b.need)}/{b.need}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function InventoryButton({ onClick, count }) {
   return (
     <button onClick={onClick} title="인벤토리" style={{ position: "fixed", right: 14, bottom: 132, zIndex: 60, width: 46, height: 46, background: C.wood, border: `3px solid ${C.ink}`, boxShadow: `0 3px 0 ${C.ink}`, cursor: "pointer", fontSize: 20, color: C.white }}>
@@ -4368,7 +4473,7 @@ export default function App() {
 
   // 신규: 배경음악 / 채팅 / 말풍선 / 피드백 / 메뉴
   const [worldBgm, setWorldBgm] = useState({ title: WORLD_TRACKS[0].title, file: WORLD_TRACKS[0].file, playing: false });
-  const selectTrack = (t) => setWorldBgm((b) => ({ ...b, title: t.title, file: t.file, playing: true }));
+  const selectTrack = (t) => { setWorldBgm((b) => ({ ...b, title: t.title, file: t.file, playing: true })); bump("song"); };
   const audioRef = useRef(null);
   const [bgmVol, setBgmVol] = useState(0.6);
   useEffect(() => {
@@ -4382,6 +4487,29 @@ export default function App() {
   const bubbleTimer = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [invOpen, setInvOpen] = useState(false);
+  const [badgeOpen, setBadgeOpen] = useState(false);
+  const [stats, setStats] = useState(() => loadStats());
+  const [newBadge, setNewBadge] = useState(null);
+  const statsRef = useRef(stats);
+  statsRef.current = stats;
+  const bump = useCallback((k, n = 1) => {
+    setStats((prev) => {
+      const before = prev[k] || 0;
+      const next = { ...prev, [k]: before + n };
+      saveStats(next);
+      const got = BADGES.find((b) => b.stat === k && before < b.need && next[k] >= b.need);
+      if (got) setTimeout(() => setNewBadge(got), 300);
+      return next;
+    });
+  }, []);
+  useEffect(() => {
+    const cur = loadStats();
+    const next = { ...cur, visit: (cur.visit || 0) + 1 };
+    saveStats(next);
+    setStats(next);
+    const got = [...BADGES].reverse().find((b) => b.stat === "visit" && (cur.visit || 0) < b.need && next.visit >= b.need);
+    if (got) setTimeout(() => setNewBadge(got), 1200);
+  }, []);
 
   const timers = useRef({});
   useEffect(() => () => Object.values(timers.current).forEach(clearInterval), []);
@@ -4412,8 +4540,10 @@ export default function App() {
     setChat((c) => [...c, { id: Date.now(), nick: myName || "나", text: t, shout: isShout, me: true }].slice(-5));
     sayBubble(t);
     if (netSendChat) netSendChat(t, isShout);
+    bump("chat");
+    if (isShout) bump("shout");
     if (isShout) setShout(false);
-  }, [sayBubble, myName, netSendChat]);
+  }, [sayBubble, myName, netSendChat, bump]);
   useEffect(() => {
     onChatRef.current = (m) => {
       if (!m || m.id === MY_ID) return;
@@ -4467,7 +4597,7 @@ export default function App() {
       case "board": setView("board"); break;
       case "big": setBigId(o.id); setView("big"); break;
       case "house": setHouseId(o.id); setView("house"); break;
-      case "small": setView(o.id); break; // thanks/heart/listening/reels/smoke
+      case "small": if (o.id === "smoke") bump("smoke"); setView(o.id); break; // thanks/heart/listening/reels/smoke
       case "facility": setView(o.id); break; // pool/gym
       case "rent": setRentId(o.id); setView("rent"); break;
       default: break;
@@ -4543,13 +4673,13 @@ export default function App() {
         {view === "listening" && <ListeningView onBack={backToWorld} gems={gems} onSpend={(n) => setGems((g) => g - n)} bubble={bubble} />}
         {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} />}
         {view === "minigame" && <MiniGameRoom myName={myName} onBack={backToWorld} onReward={(n) => award(n)} bubble={bubble} />}
-        {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} scores={swimScores} onRecord={(nick, time) => setSwimScores((s) => [...s, { nick, time }])} bubble={bubble} />}
-        {view === "gym" && <GymView onBack={backToWorld} onWork={() => award(4)} bubble={bubble} />}
+        {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} scores={swimScores} onRecord={(nick, time) => { setSwimScores((s) => [...s, { nick, time }]); bump("swim"); }} bubble={bubble} />}
+        {view === "gym" && <GymView onBack={backToWorld} onWork={() => { award(4); bump("gym"); }} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
         {view === "ikea" && <IkeaView gems={gems} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
-        {view === "project" && <BossMapView onBack={backToWorld} onReward={(n) => award(n)} onGoSchool={(id) => setView(id)} />}
+        {view === "project" && <BossMapView onBack={backToWorld} onReward={(n) => award(n)} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss) => bump(isBoss ? "boss" : "quest")} />}
         {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
-        {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count, target) => setBoxScores((s) => [...s, { nick, count, target }])} />}
+        {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count, target) => { setBoxScores((s) => [...s, { nick, count, target }]); bump("punch", count); }} />}
         {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
         {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} onReward={(n) => award(n)} />}
         {view === "board" && <BoardView onBack={backToWorld} />}
@@ -4605,6 +4735,21 @@ export default function App() {
           setGems((g) => g - 1);
           setShout(true);
         }} />
+      <BadgeButton onClick={() => setBadgeOpen(true)} count={BADGES.filter((b) => (stats[b.stat] || 0) >= b.need).length} />
+      {badgeOpen && <BadgeModal onClose={() => setBadgeOpen(false)} stats={stats} />}
+      {newBadge && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 140, padding: 14 }} onClick={() => setNewBadge(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 300 }}>
+            <div style={{ background: "linear-gradient(180deg,#fff8e1,#ffe9a8)", border: `4px solid ${C.ink}`, borderRadius: 14, padding: 20, textAlign: "center", boxShadow: "0 12px 30px rgba(0,0,0,0.5)" }}>
+              <div style={{ fontSize: 12, color: "#a86e13", fontWeight: "bold" }}>🏅 새 뱃지 획득!</div>
+              <div style={{ width: 84, height: 84, margin: "12px auto", borderRadius: "50%", background: "radial-gradient(circle at 35% 30%,#fffbe8,#ffd75e)", border: `3px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42 }}>{newBadge.icon}</div>
+              <div style={{ fontSize: 17, fontWeight: "bold" }}>{newBadge.name}</div>
+              <div style={{ fontSize: 12, color: C.inkSoft, margin: "6px 0 14px" }}>{newBadge.desc}</div>
+              <PxButton tone="gold" onClick={() => setNewBadge(null)} style={{ width: "100%", padding: 11, fontSize: 13 }}>확인</PxButton>
+            </div>
+          </div>
+        </div>
+      )}
       <InventoryButton onClick={() => setInvOpen(true)} count={Object.keys(owned).length + Object.keys(ikeaOwned).length + thanksInv.length} />
       {invOpen && <InventoryModal onClose={() => setInvOpen(false)} gems={gems} outfit={outfit} ownedClothes={owned} ikeaOwned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} thanksInv={thanksInv} onEquipCloth={tryOnClothing} onToggleIkea={buyIkea} />}
       <MenuButton onClick={() => setMenuOpen(true)} />
