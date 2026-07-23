@@ -1,4 +1,14 @@
-import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback, createContext, useContext } from "react";
+
+const NetContext = createContext({ others: {}, view: "world", roomPosRef: null });
+
+/* 입력창(input/textarea/select)에 타이핑 중이면 게임 키 조작을 무시 */
+function isTyping(e) {
+  const t = e && e.target;
+  if (!t) return false;
+  const tag = (t.tagName || "").toUpperCase();
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable === true;
+}
 
 /* =============================================================================
    작은 주니어 네이버 : 오픈월드 에디션 (프로토타입)
@@ -255,6 +265,88 @@ function Statue({ size = 90 }) {
   );
 }
 
+/* 🏆 퀘스트 완료의 제단 — 성공 + 신비로운 느낌의 상징물 */
+function QuestShrine({ size = 150 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 120 120" style={{ overflow: "visible", display: "block" }}>
+      <defs>
+        <radialGradient id="qsAura" cx="50%" cy="52%" r="50%">
+          <stop offset="0%" stopColor="#fff3bf" stopOpacity="0.95" />
+          <stop offset="45%" stopColor="#ffd75e" stopOpacity="0.42" />
+          <stop offset="100%" stopColor="#ffd75e" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id="qsStone" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#9a86d8" />
+          <stop offset="55%" stopColor="#5c4a9e" />
+          <stop offset="100%" stopColor="#2e2455" />
+        </linearGradient>
+        <linearGradient id="qsGold" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#fff6cf" />
+          <stop offset="45%" stopColor="#ffd75e" />
+          <stop offset="100%" stopColor="#c98a1a" />
+        </linearGradient>
+        <linearGradient id="qsPortal" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#eafcff" stopOpacity="0.95" />
+          <stop offset="50%" stopColor="#7fe3ff" stopOpacity="0.65" />
+          <stop offset="100%" stopColor="#4a63d8" stopOpacity="0.85" />
+        </linearGradient>
+      </defs>
+
+      {/* 신비로운 오라 */}
+      <circle className="qs-aura" cx="60" cy="62" r="52" fill="url(#qsAura)" />
+
+      {/* 회전하는 룬 링 */}
+      <g className="qs-ring" style={{ transformOrigin: "60px 74px" }}>
+        <ellipse cx="60" cy="74" rx="44" ry="14" fill="none" stroke="#ffd75e" strokeWidth="2" opacity="0.8" />
+        {[0, 60, 120, 180, 240, 300].map((a) => {
+          const r = (a * Math.PI) / 180;
+          return <circle key={a} cx={60 + 44 * Math.cos(r)} cy={74 + 14 * Math.sin(r)} r="3" fill="#fff3bf" stroke={C.ink} strokeWidth="0.8" />;
+        })}
+      </g>
+
+      {/* 계단형 기단 */}
+      <rect x="18" y="92" width="84" height="10" fill="#3b2f66" stroke={C.ink} strokeWidth="2" />
+      <rect x="26" y="83" width="68" height="10" fill="#4b3c85" stroke={C.ink} strokeWidth="2" />
+      <rect x="34" y="74" width="52" height="10" fill="url(#qsStone)" stroke={C.ink} strokeWidth="2" />
+
+      {/* 좌우 오벨리스크 기둥 */}
+      <g>
+        <polygon points="24,74 34,74 32,34 26,34" fill="url(#qsStone)" stroke={C.ink} strokeWidth="2" />
+        <polygon points="26,34 32,34 29,24" fill="url(#qsGold)" stroke={C.ink} strokeWidth="1.6" />
+        <rect x="27" y="44" width="4" height="4" fill="#ffe9a8" opacity="0.9" />
+        <rect x="27" y="54" width="4" height="4" fill="#7fe3ff" opacity="0.9" />
+        <rect x="27" y="64" width="4" height="4" fill="#ffe9a8" opacity="0.9" />
+      </g>
+      <g>
+        <polygon points="86,74 96,74 94,34 88,34" fill="url(#qsStone)" stroke={C.ink} strokeWidth="2" />
+        <polygon points="88,34 94,34 91,24" fill="url(#qsGold)" stroke={C.ink} strokeWidth="1.6" />
+        <rect x="89" y="44" width="4" height="4" fill="#7fe3ff" opacity="0.9" />
+        <rect x="89" y="54" width="4" height="4" fill="#ffe9a8" opacity="0.9" />
+        <rect x="89" y="64" width="4" height="4" fill="#7fe3ff" opacity="0.9" />
+      </g>
+
+      {/* 가운데 차원문 */}
+      <path d="M42 74 L42 50 Q60 30 78 50 L78 74 Z" fill="url(#qsPortal)" stroke={C.ink} strokeWidth="2" />
+      <path d="M48 74 L48 53 Q60 39 72 53 L72 74 Z" fill="#1d2a63" opacity="0.55" />
+
+      {/* 떠 있는 승리의 별 */}
+      <g className="qs-float" style={{ transformOrigin: "60px 52px" }}>
+        <polygon points="60,34 64.5,46 77,46 67,53.5 70.5,66 60,58.5 49.5,66 53,53.5 43,46 55.5,46"
+          fill="url(#qsGold)" stroke={C.ink} strokeWidth="2" strokeLinejoin="round" />
+        <circle cx="60" cy="50" r="3.2" fill="#fffbe8" />
+      </g>
+
+      {/* 반짝임 */}
+      <g className="qs-spark">
+        <circle cx="20" cy="40" r="2.4" fill="#fff3bf" />
+        <circle cx="100" cy="52" r="2" fill="#7fe3ff" />
+        <circle cx="34" cy="20" r="1.8" fill="#fff3bf" />
+        <circle cx="88" cy="16" r="2.2" fill="#ffd75e" />
+      </g>
+    </svg>
+  );
+}
+
 /* NPC: 봉준호 (수트 + 긴머리 + 안경) */
 function ManBong({ size = 40 }) {
   return (
@@ -371,7 +463,9 @@ function TitleBar({ icon, title, sub, onBack, right, bg = C.parch, fg = C.ink })
 /* ======================= 이동 가능한 룸(내부) ======================= */
 /* furniture: {id,x,y,w,h,label,emoji,color?,onInteract?,toast?} 좌표는 룸 px 기준 */
 function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, start, onBack, paused = false, children, headerBg = C.parch, banner = null, bubble = null, outfit = null }) {
+  const net = useContext(NetContext);
   const [pos, setPos] = useState(start || { x: roomW / 2, y: roomH - 60 });
+  useEffect(() => { if (net && net.roomPosRef) net.roomPosRef.current = pos; }, [pos, net]);
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
@@ -389,6 +483,7 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
   useEffect(() => {
     const norm = (k) => (k.length === 1 ? k.toLowerCase() : k);
     const down = (e) => {
+      if (isTyping(e)) return;
       const raw = e.key.toLowerCase();
       if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d"].includes(raw)) e.preventDefault();
       if (pausedRef.current) return;
@@ -475,10 +570,23 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
               </div>
             );
           })}
+          {/* 같은 방의 다른 접속자 */}
+          {net && net.others && Object.values(net.others).filter((o) => o.v && o.v === net.view).map((o) => (
+            <div key={o.id} style={{ position: "absolute", left: o.rx || 0, top: o.ry || 0, transform: "translate(-50%,-70%)", zIndex: 5, opacity: 0.95, transition: "left .18s linear, top .18s linear", pointerEvents: "none" }}>
+              {o.bubble && (
+                <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 190, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px" }}>{o.bubble}</div>
+              )}
+              <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
+              <div className={o.dm ? "dance-" + o.dm : ""} style={{ transformOrigin: "bottom center" }}>
+                <Hero facing={o.f || 1} moving={false} size={30} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
+              </div>
+            </div>
+          ))}
+
           {/* 플레이어 */}
           <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-70%)", zIndex: 6, pointerEvents: "none" }}>
             {bubble && (
-              <div className="chat-bubble" style={{ position: "absolute", bottom: "112%", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", maxWidth: 220, background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>
+              <div className="chat-bubble" style={{ position: "absolute", bottom: "112%", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 200, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>
                 {bubble}
               </div>
             )}
@@ -525,7 +633,9 @@ function buildWorld() {
   // 중심 주민센터
   list.push({ id: "center", kind: "center", x: 1300, y: 760, r: 90, label: "🏛 주민센터", sub: "마을 중심 · 회의/모임" });
   list.push({ id: "ikea", kind: "small", x: 1470, y: 1000, r: 60, label: "🛒 이케아", tint: "#0051ba" });
+  list.push({ id: "coredict", kind: "small", x: 1180, y: 640, r: 58, label: "📖 코어사전", tint: "#8a5a3b" });
   list.push({ id: "project", kind: "small", x: 1120, y: 970, r: 60, label: "🗺 보스맵 도전기" });
+  list.push({ id: "questdone", kind: "shrine", x: 1300, y: 1080, r: 68, label: "🏆 퀘스트 완료의 제단" });
   list.push({ id: "naverschool", kind: "small", x: 1800, y: 300, r: 70, label: "📗 네이버스쿨" });
   list.push({ id: "videoschool", kind: "small", x: 2030, y: 300, r: 70, label: "🎬 영상스쿨" });
   list.push({ id: "sandbag", kind: "small", x: 800, y: 360, r: 55, label: "🥊 샌드백", tint: "#c0563a" });
@@ -589,7 +699,7 @@ const MAP_ZONES = [
   { label: "운동", color: "#4bb4d8", x1: 1080, y1: 1170, x2: 1560, y2: 1340 },
   { label: "치앙마이", color: "#8e6bb0", x1: 2260, y1: 560, x2: 2600, y2: 1120 },
 ];
-function BigMap({ pos, onClose }) {
+function BigMap({ pos, onClose, onGo }) {
   const pct = (v, t) => `${(v / t) * 100}%`;
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={onClose}>
@@ -608,21 +718,21 @@ function BigMap({ pos, onClose }) {
                 </div>
               ))}
               {WORLD_OBJS.filter((o) => o.r).map((o) => (
-                <div key={o.id} style={{ position: "absolute", left: pct(o.x, WORLD.w), top: pct(o.y, WORLD.h), transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", zIndex: 2 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.ink, border: "1px solid #fff" }} />
-                  <span style={{ fontSize: 12, whiteSpace: "nowrap", background: "rgba(255,255,255,0.92)", border: `1px solid ${C.ink}`, padding: "1px 5px", marginTop: 2, fontWeight: "bold" }}>{o.label}</span>
-                </div>
+                <button key={o.id} onClick={() => onGo && onGo(o.x, o.y + 70, o.label)} title={`${o.label}로 이동`} style={{ position: "absolute", left: pct(o.x, WORLD.w), top: pct(o.y, WORLD.h), transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", zIndex: 2, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "'DotGothic16', monospace" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: C.danger, border: "2px solid #fff", boxShadow: "0 1px 2px rgba(0,0,0,0.4)" }} />
+                  <span style={{ fontSize: 12, whiteSpace: "nowrap", background: "rgba(255,255,255,0.95)", border: `1px solid ${C.ink}`, borderRadius: 6, padding: "1px 6px", marginTop: 2, fontWeight: "bold" }}>{o.label}</span>
+                </button>
               ))}
               <div style={{ position: "absolute", left: pct(pos.x, WORLD.w), top: pct(pos.y, WORLD.h), transform: "translate(-50%,-50%)", width: 12, height: 12, borderRadius: "50%", background: "#fff", border: `3px solid ${C.danger}`, boxShadow: "0 0 6px #fff", zIndex: 5 }} />
             </div>
           </div>
-          <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center" }}>흰 점 = 내 위치 · 점선 = 구역</div>
+          <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center" }}>흰 점 = 내 위치 · 건물 이름을 누르면 그곳으로 바로 이동해요 🚀</div>
         </Panel>
       </div>
     </div>
   );
 }
-function MiniMap({ pos }) {
+function MiniMap({ pos, onGo }) {
   const [open, setOpen] = useState(false);
   const W = 168, H = Math.round((W * WORLD.h) / WORLD.w);
   const sx = W / WORLD.w, sy = H / WORLD.h;
@@ -631,14 +741,14 @@ function MiniMap({ pos }) {
       <div onClick={() => setOpen(true)} title="클릭하면 전체 지도" style={{ position: "absolute", right: 10, bottom: 10, width: W, height: H, background: "rgba(20,28,18,0.85)", border: `2px solid ${C.ink}`, zIndex: 16, overflow: "hidden", cursor: "pointer" }}>
         <div style={{ position: "absolute", left: RIVER_X * sx, top: 0, width: Math.max(2, RIVER_W * sx), height: "100%", background: "#3a6ea5" }} />
         {MAP_ZONES.map((z) => (
-          <div key={z.label} style={{ position: "absolute", left: z.x1 * sx, top: z.y1 * sy, width: (z.x2 - z.x1) * sx, height: (z.y2 - z.y1) * sy, background: z.color + "cc", border: "1px solid rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: 8, color: "#fff", fontWeight: "bold", textShadow: "0 1px 1px rgba(0,0,0,0.6)", whiteSpace: "nowrap" }}>{z.label}</span>
-          </div>
+          <button key={z.label} onClick={(e) => { e.stopPropagation(); onGo && onGo((z.x1 + z.x2) / 2, (z.y1 + z.y2) / 2, z.label); }} title={`${z.label} 구역으로 이동`} style={{ position: "absolute", left: z.x1 * sx, top: z.y1 * sy, width: (z.x2 - z.x1) * sx, height: (z.y2 - z.y1) * sy, background: z.color + "cc", border: "1px solid rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
+            <span style={{ fontSize: 8, color: "#fff", fontWeight: "bold", textShadow: "0 1px 1px rgba(0,0,0,0.6)", whiteSpace: "nowrap", fontFamily: "'DotGothic16', monospace" }}>{z.label}</span>
+          </button>
         ))}
         <div style={{ position: "absolute", left: pos.x * sx - 3, top: pos.y * sy - 3, width: 6, height: 6, borderRadius: "50%", background: "#fff", border: `2px solid ${C.danger}`, boxShadow: "0 0 4px #fff", zIndex: 2 }} />
         <div style={{ position: "absolute", right: 2, top: 1, fontSize: 9, color: "#fff", background: "rgba(0,0,0,0.4)", padding: "0 3px" }}>🔍</div>
       </div>
-      {open && <BigMap pos={pos} onClose={() => setOpen(false)} />}
+      {open && <BigMap pos={pos} onClose={() => setOpen(false)} onGo={(x, y, label) => { setOpen(false); onGo && onGo(x, y, label); }} />}
     </>
   );
 }
@@ -673,8 +783,223 @@ function GuardGate({ onPass, onClose }) {
     </div>
   );
 }
-function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false }) {
+/* ======================= 멀티플레이 (Supabase Realtime) ======================= */
+const SUPA_URL = "https://fbemzeslbvweojmgvohv.supabase.co";
+const SUPA_KEY = "sb_publishable_dErg2UZWZQjifyAgO5-ejg_5AH563FV";
+const MY_ID = Math.random().toString(36).slice(2, 10);
+
+/* ======================= DB (Supabase 저장) ======================= */
+let _supa = null;
+async function getSupa() {
+  if (_supa) return _supa;
+  const mod = await import(/* @vite-ignore */ "https://esm.sh/@supabase/supabase-js@2");
+  _supa = mod.createClient(SUPA_URL, SUPA_KEY);
+  return _supa;
+}
+async function dbSaveProfile(name, data) {
+  if (!name) return;
+  try { const s = await getSupa(); await s.from("saves").upsert({ name, data, updated_at: new Date().toISOString() }); } catch (e) {}
+}
+async function dbLoadProfile(name) {
+  if (!name) return null;
+  try { const s = await getSupa(); const r = await s.from("saves").select("data").eq("name", name).maybeSingle(); return r && r.data ? r.data.data : null; } catch (e) { return null; }
+}
+async function dbAddRank(game, nick, score, target) {
+  try { const s = await getSupa(); await s.from("rankings").insert({ game, nick, score, target: target || null }); } catch (e) {}
+}
+async function dbTopRanks(game, desc) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("rankings").select("nick,score,target").eq("game", game).order("score", { ascending: !desc }).limit(20);
+    return (r && r.data) || [];
+  } catch (e) { return []; }
+}
+async function dbSendMail(to, from, body, item) {
+  try { const s = await getSupa(); await s.from("mail").insert({ to_name: to, from_name: from, body: body || null, item: item || null }); } catch (e) {}
+}
+async function dbLoadMail(to) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("mail").select("from_name,body,item,created_at").eq("to_name", to).order("created_at", { ascending: true }).limit(100);
+    return ((r && r.data) || []).map((m) => ({ from: m.from_name, text: m.body, item: m.item, at: new Date(m.created_at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) }));
+  } catch (e) { return []; }
+}
+async function dbLoadBoss() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("boss_progress").select("map_id,quest_id,cleared_by");
+    const out = {};
+    ((r && r.data) || []).forEach((x) => { out[x.map_id] = { ...(out[x.map_id] || {}), [x.quest_id]: x.cleared_by || true }; });
+    return out;
+  } catch (e) { return {}; }
+}
+async function dbClearBoss(mapId, questId, by) {
+  try { const s = await getSupa(); await s.from("boss_progress").upsert({ map_id: mapId, quest_id: questId, cleared_by: by || null }); } catch (e) {}
+}
+async function dbDictList() {
+  try { const s = await getSupa(); const r = await s.from("dictionary").select("word,meaning,updated_by,updated_at").order("word"); return (r && r.data) || []; } catch (e) { return []; }
+}
+async function dbDictSave(word, meaning, by) {
+  try { const s = await getSupa(); await s.from("dictionary").upsert({ word, meaning, updated_by: by || null, updated_at: new Date().toISOString() }); return true; } catch (e) { return false; }
+}
+async function dbDictDelete(word) {
+  try { const s = await getSupa(); await s.from("dictionary").delete().eq("word", word); } catch (e) {}
+}
+async function dbAllPlayers() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("saves").select("name,updated_at").order("updated_at", { ascending: false }).limit(60);
+    return ((r && r.data) || []).map((x) => x.name).filter(Boolean);
+  } catch (e) { return []; }
+}
+async function dbNotices() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("id,type,title,body,created_at").order("created_at", { ascending: false }).limit(50);
+    return ((r && r.data) || []).map((n) => ({ id: "db" + n.id, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
+  } catch (e) { return []; }
+}
+async function dbAddNotice(type, title, body) {
+  try { const s = await getSupa(); await s.from("notices").insert({ type, title, body: body || null }); } catch (e) {}
+}
+
+function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef, roomPosRef, danceRef, houseRef) {
+  const [others, setOthers] = useState({});
+  const [count, setCount] = useState(1);
+  const [status, setStatus] = useState("연결 중…");
+  const chRef = useRef(null);
+
+  useEffect(() => {
+    if (!myName) return;
+    let alive = true;
+    let sendIv = null, pruneIv = null;
+    (async () => {
+      try {
+        const mod = await import(/* @vite-ignore */ "https://esm.sh/@supabase/supabase-js@2");
+        if (!alive) return;
+        const client = mod.createClient(SUPA_URL, SUPA_KEY, { realtime: { params: { eventsPerSecond: 12 } } });
+        const ch = client.channel("echo-town", { config: { presence: { key: MY_ID } } });
+        chRef.current = ch;
+
+        ch.on("presence", { event: "sync" }, () => {
+          const st = ch.presenceState();
+          setCount(Object.keys(st).length || 1);
+        });
+        ch.on("broadcast", { event: "pos" }, ({ payload }) => {
+          if (!payload || payload.id === MY_ID) return;
+          setOthers((o) => ({ ...o, [payload.id]: { ...(o[payload.id] || {}), ...payload, ts: Date.now() } }));
+        });
+        ch.on("broadcast", { event: "chat" }, ({ payload }) => {
+          if (!payload) return;
+          if (onChatRef && onChatRef.current) onChatRef.current(payload);
+          if (payload.id === MY_ID) return;
+          const bid = Date.now() + Math.random();
+          setOthers((o) => ({ ...o, [payload.id]: { ...(o[payload.id] || { id: payload.id, name: payload.name, x: 0, y: 0 }), bubble: String(payload.text || "").slice(0, 50), bubbleId: bid, ts: Date.now() } }));
+          setTimeout(() => setOthers((o) => (o[payload.id] && o[payload.id].bubbleId === bid ? { ...o, [payload.id]: { ...o[payload.id], bubble: null } } : o)), 3600);
+        });
+        ch.on("broadcast", { event: "mail" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("mail", payload);
+        });
+        ch.on("broadcast", { event: "bell" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("bell", payload);
+        });
+        ch.on("broadcast", { event: "qchat" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("qchat", payload);
+        });
+        ch.on("broadcast", { event: "qparty" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("qparty", payload);
+        });
+        ch.on("broadcast", { event: "qlock" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("qlock", payload);
+        });
+        ch.on("broadcast", { event: "qleave" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
+        });
+        ch.on("broadcast", { event: "pwtry" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("pwtry", payload);
+        });
+        ch.on("broadcast", { event: "invite" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("invite", payload);
+        });
+        ch.on("broadcast", { event: "inviteack" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("inviteack", payload);
+        });
+        ch.on("broadcast", { event: "dm" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("dm", payload);
+        });
+        ch.on("broadcast", { event: "call" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("call", payload);
+        });
+        ch.on("broadcast", { event: "door" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("door", payload);
+        });
+        ch.on("broadcast", { event: "bye" }, ({ payload }) => {
+          if (!payload) return;
+          setOthers((o) => { const n = { ...o }; delete n[payload.id]; return n; });
+        });
+
+        await ch.subscribe(async (st) => {
+          if (!alive) return;
+          if (st === "SUBSCRIBED") {
+            setStatus("접속됨");
+            await ch.track({ name: myName });
+            sendIv = setInterval(() => {
+              const p = posRef.current || { x: 0, y: 0 };
+              ch.send({ type: "broadcast", event: "pos", payload: (() => {
+                const of = (outfitRef && outfitRef.current) || {};
+                const rp = (roomPosRef && roomPosRef.current) || { x: 0, y: 0 };
+                return { id: MY_ID, name: myName, x: Math.round(p.x), y: Math.round(p.y), f: facingRef.current || 1,
+                  v: (viewRef && viewRef.current) || "world", rx: Math.round(rp.x), ry: Math.round(rp.y),
+                  dm: (danceRef && danceRef.current) || null,
+                  hs: (houseRef && houseRef.current) ? { r: houseRef.current.roof, w: houseRef.current.wall } : null,
+                  oc: [of.top ? of.top.color : null, of.bottom ? of.bottom.color : null, of.shoes ? of.shoes.color : null] };
+              })() });
+            }, 160);
+          } else if (st === "CHANNEL_ERROR" || st === "TIMED_OUT") {
+            setStatus("연결 실패");
+          }
+        });
+
+        pruneIv = setInterval(() => {
+          const now = Date.now();
+          setOthers((o) => {
+            const n = {}; let changed = false;
+            Object.entries(o).forEach(([k, v]) => { if (now - v.ts < 8000) n[k] = v; else changed = true; });
+            return changed ? n : o;
+          });
+        }, 3000);
+      } catch (e) {
+        setStatus("연결 실패");
+      }
+    })();
+
+    return () => {
+      alive = false;
+      if (sendIv) clearInterval(sendIv);
+      if (pruneIv) clearInterval(pruneIv);
+      const ch = chRef.current;
+      if (ch) { try { ch.send({ type: "broadcast", event: "bye", payload: { id: MY_ID } }); ch.unsubscribe(); } catch (e) {} }
+    };
+  }, [myName]);
+
+  const sendEvent = useCallback((kind, payload) => {
+    const ch = chRef.current;
+    if (!ch) return;
+    try { ch.send({ type: "broadcast", event: kind, payload }); } catch (e) {}
+  }, []);
+  const sendChat = useCallback((text, shout) => {
+    const ch = chRef.current;
+    if (!ch || !text) return;
+    try { ch.send({ type: "broadcast", event: "chat", payload: { id: MY_ID, name: myName, text, shout: !!shout } }); } catch (e) {}
+  }, [myName]);
+
+  return { others, count, status, sendChat, sendEvent };
+}
+
+function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null, onGift = null, myNick = "" }) {
   const [songOpen, setSongOpen] = useState(false);
+  const [teleport, setTeleport] = useState(null);
+  const [whoOpen, setWhoOpen] = useState(false);
   const vehicleRef = useRef(vehicle);
   vehicleRef.current = vehicle;
   const [facing, setFacing] = useState(1);
@@ -685,6 +1010,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
   const passRef = useRef(false);  // NPC 대화 {label,lines,shown}
   const [hint, setHint] = useState(true);        // "클릭하면 이동" 안내
   const [danceMove, setDanceMove] = useState(null);
+  useEffect(() => { if (danceRef) danceRef.current = danceMove; }, [danceMove, danceRef]);
   const [danceMenu, setDanceMenu] = useState(false);
   const DANCE_MOVES = [
     { key: "sway", label: "🕺 좌우 흔들기" },
@@ -726,6 +1052,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
   useEffect(() => {
     const norm = (k) => (k.length === 1 ? k.toLowerCase() : k);
     const down = (e) => {
+      if (isTyping(e)) return;
       const raw = e.key.toLowerCase();
       if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d"].includes(raw)) e.preventDefault();
       if (hintRef.current) { hintRef.current = false; setHint(false); }
@@ -791,6 +1118,8 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 
   const spriteFor = (o) => {
     if (o.id === "project") return <Board size={110} />;
+    if (o.kind === "shrine") return <QuestShrine size={160} />;
+    if (o.id === "coredict") return <BookIcon size={104} />;
     if (o.id === "sandbag") return <Sandbag size={92} />;
     if (o.id === "naverschool") return <School wall="#bfe3c8" roof="#2db400" size={140} />;
     if (o.id === "videoschool") return <School wall="#e7cfe9" roof="#8e5a9e" size={140} />;
@@ -799,7 +1128,16 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
       case "bank": return <PixelBank size={150} />;
       case "board": return <Board size={120} />;
       case "big": return <BigBuilding color={o.meta.color} colorDk={o.meta.colorDk} size={150} />;
-      case "house": { const mine = isMyHouse(o.meta.name); const sk = mine && houseSkin; return <PixelHouse roof={sk ? sk.roof : o.meta.roof} roofDk={sk ? sk.roof : o.meta.roofDk} wall={sk ? sk.wall : o.meta.wall} size={110} />; }
+      case "house": {
+        const owner = (o.meta.name || "").replace(/이네$|네$/, "");
+        const mine = isMyHouse(o.meta.name);
+        let sk = mine && houseSkin ? { roof: houseSkin.roof, wall: houseSkin.wall } : null;
+        if (!sk) {
+          const op = Object.values(others).find((p) => p.hs && p.name === owner);
+          if (op) sk = { roof: op.hs.r, wall: op.hs.w };
+        }
+        return <PixelHouse roof={sk ? sk.roof : o.meta.roof} roofDk={sk ? sk.roof : o.meta.roofDk} wall={sk ? sk.wall : o.meta.wall} size={110} />;
+      }
       case "small": return <SmallHut tint={o.tint} size={100} />;
       case "facility": return <Facility color={o.color} colorDk={o.colorDk} icon={o.icon} size={160} />;
       case "sign": return <Signpost size={100} />;
@@ -826,6 +1164,8 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
             )}
           </div>
           <PxButton tone="gold" onClick={onToggleBgm} style={{ fontSize: 11, padding: "3px 8px" }}>{bgm.playing ? "⏸" : "▶"}</PxButton>
+          <span style={{ fontSize: 12 }}>🔊</span>
+          <input type="range" min="0" max="100" value={Math.round(bgmVol * 100)} onChange={(e) => onBgmVol && onBgmVol(Number(e.target.value) / 100)} title="배경음 볼륨" style={{ width: 70, accentColor: "#ffe680", cursor: "pointer" }} />
           <PxButton tone="blue" onClick={() => setReqOpen(true)} style={{ fontSize: 11, padding: "3px 8px" }}>🎵 신청곡(5젬)</PxButton>
         </div>
       </div>
@@ -875,10 +1215,23 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
           {townRain && <div className="rain-layer" style={{ position: "absolute", left: 0, top: 0, width: RIVER_X, height: WORLD.h, pointerEvents: "none", zIndex: 15 }} />}
           {cmRain && <div className="rain-layer" style={{ position: "absolute", left: RIVER_X, top: 0, width: WORLD.w - RIVER_X, height: WORLD.h, pointerEvents: "none", zIndex: 15 }} />}
 
+          {/* 다른 접속자 */}
+          {Object.values(others).filter((o) => (o.v || "world") === "world").map((o) => (
+            <div key={o.id} onClick={() => onGift && onGift(o.name)} title={`${o.name}님에게 선물하기`} style={{ position: "absolute", left: o.x, top: o.y, transform: "translate(-50%,-100%)", zIndex: 17, opacity: 0.95, transition: "left .18s linear, top .18s linear", cursor: "pointer" }}>
+              {o.bubble && (
+                <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 190, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>{o.bubble}</div>
+              )}
+              <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
+              <div className={o.dm ? "dance-" + o.dm : ""} style={{ transformOrigin: "bottom center" }}>
+                <Hero facing={o.f || 1} moving={false} size={34} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
+              </div>
+            </div>
+          ))}
+
           {/* 플레이어 */}
           <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-70%)", zIndex: 20, pointerEvents: "none" }}>
             {bubble && (
-              <div className="chat-bubble" style={{ position: "absolute", bottom: "112%", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", maxWidth: 220, background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>
+              <div className="chat-bubble" style={{ position: "absolute", bottom: "112%", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 200, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>
                 {bubble}
               </div>
             )}
@@ -903,6 +1256,18 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 
         {/* HUD 오버레이: 날짜 */}
         <div style={{ position: "absolute", right: 10, top: 10, display: "flex", gap: 8, alignItems: "center" }}>
+          <button onClick={() => setWhoOpen((v) => !v)} title="접속자 보기" style={{ position: "relative", cursor: "pointer", background: netStatus === "접속됨" ? "#2f9e6e" : C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}`, fontFamily: "'DotGothic16', monospace" }}>
+            👥 {netCount}
+            {whoOpen && (
+              <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", right: 0, top: "120%", background: C.parch, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 8, minWidth: 130, zIndex: 40, textAlign: "left", boxShadow: `0 3px 0 ${C.parchEdge}` }}>
+                <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 4 }}>접속 중</div>
+                <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 2 }}>🟢 {myNick || "나"} (나)</div>
+                {Object.values(others).map((o) => (
+                  <div key={o.id} style={{ fontSize: 12, marginBottom: 2 }}>🟢 {o.name}</div>
+                ))}
+              </div>
+            )}
+          </button>
           <span style={{ background: C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}` }}>📅 DAY {day}</span>
           <PxButton tone="blue" onClick={onNextDay} style={{ fontSize: 11, padding: "6px 9px" }}>🌙 다음 날</PxButton>
           <div style={{ position: "relative" }}>
@@ -918,7 +1283,17 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
           </div>
         </div>
 
-        <MiniMap pos={pos} />
+        <MiniMap pos={pos} onGo={(x, y, label) => {
+          const nx = Math.max(30, Math.min(WORLD.w - 30, x));
+          const ny = Math.max(30, Math.min(WORLD.h - 30, y));
+          posRef.current = { x: nx, y: ny };
+          setPos({ x: nx, y: ny });
+          setTeleport(label || "");
+          setTimeout(() => setTeleport(null), 1600);
+        }} />
+        {teleport !== null && (
+          <div style={{ position: "absolute", left: "50%", top: 60, transform: "translateX(-50%)", background: C.ink, color: C.white, border: `2px solid ${C.gem}`, borderRadius: 20, padding: "6px 16px", fontSize: 12, zIndex: 20 }}>🚀 {teleport} 도착!</div>
+        )}
 
         {guardOpen && <GuardGate onPass={() => { passRef.current = true; }} onClose={() => setGuardOpen(false)} />}
 
@@ -1163,7 +1538,9 @@ function DrinkStation({ name, color, onClose, onDrink }) {
   );
 }
 
-function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble, onDrink }) {
+function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble, onDrink, meetings = [] }) {
+  const net = useContext(NetContext);
+  const here = net && net.others ? Object.values(net.others).filter((o) => o.v === "center") : [];
   const [showChat, setShowChat] = useState(false);
   const [station, setStation] = useState(null); // {name,color}
   const [text, setText] = useState("");
@@ -1181,10 +1558,21 @@ function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble
     { id: "water", x: 540, y: 300, w: 56, h: 66, color: "#6fc3e0", emoji: "🚰", label: "정수기", onInteract: () => setStation({ name: "🚰 정수기", color: "#3aa0e0" }) },
   ];
   return (
-    <RoomView title="주민센터" icon="🏛" sub="테이블에서 대화 · 회의실 3곳 · 커피/자판기/정수기로 HP·MP 충전" bg="#f0e4cf" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={showChat || !!station} headerBg={C.villa} bubble={bubble}>
+    <RoomView title="주민센터" icon="🏛" sub="테이블에서 대화 · 회의실 3곳(📨 초대장 보내기) · 커피/자판기/정수기로 HP·MP 충전" bg="#f0e4cf" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={showChat || !!station} headerBg={C.villa} bubble={bubble}
+      banner={meetings.length > 0 ? (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 12, fontWeight: "bold" }}>📅 내 회의 일정</span>
+          {meetings.map((m, i2) => (
+            <span key={i2} style={{ fontSize: 11, background: C.gem, border: `2px solid ${C.ink}`, borderRadius: 12, padding: "2px 9px" }}>🎥 {m.room} · {m.when} 방문 ({m.dur})</span>
+          ))}
+        </div>
+      ) : null}>
       {station && <DrinkStation name={station.name} color={station.color} onClose={() => setStation(null)} onDrink={onDrink} />}
       {showChat && (
         <RoomModal title="🪑 라운지 테이블 채팅" onClose={() => setShowChat(false)}>
+          <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "5px 8px" }}>
+            🪑 지금 테이블에 앉은 사람: <b>나</b>{here.length ? ", " + here.map((o) => o.name).join(", ") : " (혼자예요)"}
+          </div>
           <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>* 데모용 로컬 채팅입니다.</div>
           <div style={{ height: 200, overflow: "auto", background: C.white, border: `3px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
             {chat.map((m, i) => (
@@ -1205,25 +1593,94 @@ function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble
 }
 
 /* ======================= 회의실(별도 화면, 통화 목업) ======================= */
-function MeetingView({ roomId, room, onUpdate, onBack }) {
+function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, people = [] }) {
+  const net = useContext(NetContext);
+  const here = net && net.others ? Object.values(net.others).filter((o) => o.v === "meeting") : [];
+  const [invOpen, setInvOpen] = useState(false);
+  const [iDate, setIDate] = useState("");
+  const [iTime, setITime] = useState("");
+  const [iDur, setIDur] = useState("1시간");
+  const [iWho, setIWho] = useState([]);
+  const [iSent, setISent] = useState(false);
+  const toggleWho = (n) => setIWho((v) => (v.includes(n) ? v.filter((x) => x !== n) : [...v, n]));
+  const sendInvite = () => {
+    if (!iDate || !iTime || iWho.length === 0) return;
+    iWho.forEach((n) => onInvite && onInvite({ to: n, when: `${iDate} ${iTime}`, dur: iDur, room: `회의실 ${roomId.replace("m", "")}` }));
+    setISent(true);
+    setTimeout(() => { setISent(false); setInvOpen(false); setIWho([]); }, 1500);
+  };
   const [mic, setMic] = useState(true);
   const [cam, setCam] = useState(true);
   const [share, setShare] = useState(false);
   const [resName, setResName] = useState("");
   const [time, setTime] = useState("");
   const num = roomId.replace("m", "");
-  const participants = [{ name: "나", me: true }, { name: "도희", me: false }, { name: "창민", me: false }];
+  const participants = [{ name: myName || "나", me: true }, ...here.map((o) => ({ name: o.name, me: false }))];
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
       <TitleBar icon="🎥" title={`회의실 ${num}`} sub={room.locked ? "🔒 잠긴 회의실" : "화상 회의 (데모)"} onBack={onBack} bg={C.bankRoof} fg={C.white}
-        right={<span style={{ fontSize: 11, background: room.reserved ? C.gem : "rgba(255,255,255,0.25)", color: room.reserved ? C.ink : C.white, padding: "4px 8px", border: `2px solid ${C.ink}` }}>{room.reserved ? `📌 ${room.by} · ${room.time}` : "예약 없음"}</span>} />
+        right={<div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <PxButton tone="gold" onClick={() => setInvOpen(true)} style={{ fontSize: 11, padding: "5px 9px" }}>📨 초대장</PxButton>
+          <span style={{ fontSize: 11, background: room.reserved ? C.gem : "rgba(255,255,255,0.25)", color: room.reserved ? C.ink : C.white, padding: "4px 8px", border: `2px solid ${C.ink}` }}>{room.reserved ? `📌 ${room.by} · ${room.time}` : "예약 없음"}</span>
+        </div>} />
+      {invOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={() => setInvOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
+            <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: 22 }}>📨</span>
+                <b style={{ flex: 1, fontSize: 14 }}>회의 초대장 보내기</b>
+                <PxButton tone="ink" onClick={() => setInvOpen(false)} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+              </div>
+              <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                <input value={iDate} onChange={(e) => setIDate(e.target.value)} placeholder="7월 23일" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                <input value={iTime} onChange={(e) => setITime(e.target.value)} placeholder="오후 6시" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+              </div>
+              <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 5 }}>⏱ 예상 회의시간</div>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 10 }}>
+                {["30분", "1시간", "2시간", "4시간"].map((d) => (
+                  <PxButton key={d} tone={iDur === d ? "good" : "wood"} onClick={() => setIDur(d)} style={{ fontSize: 11, padding: "6px 10px" }}>{d}</PxButton>
+                ))}
+              </div>
+              <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 5 }}>👥 초대원</div>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap", maxHeight: 110, overflow: "auto", marginBottom: 10 }}>
+                {(people.length ? people : PROFILES).map((p) => (
+                  <button key={p.name} onClick={() => toggleWho(p.name)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: iWho.includes(p.name) ? C.gem : C.white }}>
+                    {p.avatar} {p.name}
+                  </button>
+                ))}
+              </div>
+              <div style={{ background: C.white, border: `2px dashed ${C.ink}`, borderRadius: 8, padding: 11, fontSize: 12.5, lineHeight: 1.7 }}>
+                <b>📨 회의 초대장</b><br />
+                {iDate || "?월 ?일"} {iTime || "??시"} 회의 / 초대원 : {iWho.join(", ") || "미선택"}<br />
+                예상 회의시간 : {iDur}<br />
+                <span style={{ color: C.inkSoft }}>장소 : 회의실 {roomId.replace("m", "")} · 주최 {myName || "나"}</span>
+              </div>
+              <PxButton tone="gold" disabled={!iDate || !iTime || iWho.length === 0} onClick={sendInvite} style={{ width: "100%", marginTop: 12, padding: 11, fontSize: 13 }}>{iSent ? "보냈어요! ✓" : "📨 초대장 보내기"}</PxButton>
+            </div>
+          </div>
+        </div>
+      )}
       <div style={{ padding: 16, background: "#20303a" }}>
+        {/* 📨 초대장 — 눈에 잘 띄는 큰 배너 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "linear-gradient(180deg,#ffe9a8,#ffd75e)", border: `3px solid ${C.ink}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, boxShadow: `0 3px 0 ${C.ink}` }}>
+          <span style={{ fontSize: 26 }}>📨</span>
+          <div style={{ flex: "1 1 150px", minWidth: 0, color: C.ink }}>
+            <div style={{ fontSize: 13.5, fontWeight: "bold" }}>회의 초대장 보내기</div>
+            <div style={{ fontSize: 11, color: C.inkSoft }}>날짜·시간·예상 시간을 정해 마을주민에게 초대장을 보내요</div>
+          </div>
+          <PxButton tone="ink" onClick={() => setInvOpen(true)} style={{ fontSize: 13, padding: "10px 16px" }}>📨 초대장 작성</PxButton>
+        </div>
+
         {/* 화면 공유 영역 */}
         {share && (
           <div style={{ height: 120, background: "#0e171d", border: `3px solid ${C.gem}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gem, marginBottom: 12, fontSize: 13 }}>
             🖥 화면 공유 중… (데모)
           </div>
         )}
+        <div style={{ background: "rgba(255,255,255,0.12)", border: `2px solid ${C.gem}`, borderRadius: 8, padding: "7px 10px", marginBottom: 10, color: C.white, fontSize: 12 }}>
+          🪑 대형 테이블 착석: <b>{participants.map((p) => p.name).join(", ")}</b>{participants.length === 1 ? " (혼자예요)" : ` · 총 ${participants.length}명`}
+        </div>
         {/* 참가자 타일 */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
           {participants.map((p) => (
@@ -1263,6 +1720,186 @@ function MeetingView({ roomId, room, onUpdate, onBack }) {
 }
 
 /* ======================= 집(가구 + 메모장) ======================= */
+/* ======================= 집 · 초인종 · 우체통 ======================= */
+function playBell() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    const ctx = playBell._c || (playBell._c = new AC());
+    if (ctx.state === "suspended") ctx.resume();
+    const t = ctx.currentTime;
+    [[880, 0], [660, 0.32]].forEach(([hz, off]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "sine"; o.frequency.setValueAtTime(hz, t + off);
+      g.gain.setValueAtTime(0.001, t + off);
+      g.gain.exponentialRampToValueAtTime(0.35, t + off + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t + off + 0.9);
+      o.connect(g).connect(ctx.destination); o.start(t + off); o.stop(t + off + 1);
+    });
+  } catch (e) {}
+}
+function loadJSON(k, d) { try { const r = window.localStorage.getItem(k); return r ? JSON.parse(r) : d; } catch (e) { return d; } }
+function saveJSON(k, v) { try { window.localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+function HouseGate({ house, isMine, myName, hasPw, onSetPw, onEnter, onBell, onMail, onBack }) {
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [msg, setMsg] = useState(null);
+  const owner = (house.name || "").replace(/이네$|네$/, "");
+  const say = (m) => { setMsg(m); setTimeout(() => setMsg(null), 1800); };
+
+  if (isMine && !hasPw) {
+    return (
+      <Panel style={{ padding: 0, overflow: "hidden" }}>
+        <TitleBar icon="🏠" title={house.name} sub="첫 방문 · 비밀번호 설정" onBack={onBack} bg={house.roof} fg={C.white} />
+        <div style={{ padding: 22, textAlign: "center" }}>
+          <div style={{ fontSize: 44 }}>🎉</div>
+          <div style={{ fontSize: 16, fontWeight: "bold", margin: "10px 0 6px" }}>환영합니다 {myName}님!</div>
+          <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 14 }}>우리 집 비밀번호를 설정해주세요.<br />다음부터는 이 창이 뜨지 않아요.</div>
+          <input value={pw2} onChange={(e) => setPw2(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && pw2.trim()) onSetPw(pw2.trim()); }} maxLength={12} autoFocus placeholder="비밀번호 (예: 1234)" style={{ width: "100%", maxWidth: 260, boxSizing: "border-box", padding: 11, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, textAlign: "center", background: C.white }} />
+          <PxButton tone="good" disabled={!pw2.trim()} onClick={() => onSetPw(pw2.trim())} style={{ display: "block", width: "100%", maxWidth: 260, margin: "12px auto 0", padding: 12, fontSize: 14 }}>설정하고 들어가기</PxButton>
+        </div>
+      </Panel>
+    );
+  }
+
+  return (
+    <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <TitleBar icon="🏠" title={house.name} sub={isMine ? "우리 집 · 비밀번호를 입력하세요" : `${owner}님의 집 · 비밀번호를 알면 입장 가능`} onBack={onBack} bg={house.roof} fg={C.white} />
+      <div style={{ padding: 18, background: C.parch }}>
+        <div style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 14, marginBottom: 14 }}>
+          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8, textAlign: "center" }}>🔒 현관 비밀번호</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { const r = onEnter(pw); if (r === true) return; say(r === "wait" ? "확인 중… 잠시만요" : "비밀번호가 틀렸어요"); setPw(""); } }} maxLength={12} type="password" placeholder="비밀번호" style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, textAlign: "center" }} />
+            <PxButton tone="good" onClick={() => { const r = onEnter(pw); if (r === true) return; say(r === "wait" ? "확인 중… 잠시만요" : "비밀번호가 틀렸어요"); setPw(""); }} style={{ padding: "10px 14px", fontSize: 13 }}>입장</PxButton>
+          </div>
+          {msg && <div style={{ marginTop: 8, fontSize: 12, color: C.danger, textAlign: "center" }}>{msg}</div>}
+        </div>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={() => { playBell(); onBell(owner); say("딩동! 초인종을 눌렀어요 🔔"); }} style={{ flex: 1, cursor: "pointer", background: "linear-gradient(180deg,#ffe680,#d9a441)", border: `3px solid ${C.ink}`, borderRadius: 12, padding: "18px 8px", fontFamily: "'DotGothic16', monospace", boxShadow: `0 4px 0 ${C.ink}` }}>
+            <div style={{ fontSize: 34 }}>🔔</div>
+            <div style={{ fontSize: 13, fontWeight: "bold", marginTop: 4 }}>초인종</div>
+          </button>
+          <button onClick={() => onMail(owner)} style={{ flex: 1, cursor: "pointer", background: "linear-gradient(180deg,#a8d5f2,#5b8def)", color: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: "18px 8px", fontFamily: "'DotGothic16', monospace", boxShadow: `0 4px 0 ${C.ink}` }}>
+            <div style={{ fontSize: 34 }}>📮</div>
+            <div style={{ fontSize: 13, fontWeight: "bold", marginTop: 4 }}>우체통</div>
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: C.inkSoft, textAlign: "center", marginTop: 12 }}>비밀번호를 알면 누구나 입장할 수 있어요 · 우체통 택배비 ⭐0.3</div>
+      </div>
+    </Panel>
+  );
+}
+
+function MailboxModal({ owner, isMine, myName, gems, inventory, mail, onSend, onClose }) {
+  const [tab, setTab] = useState(isMine ? "in" : "write");
+  const [text, setText] = useState("");
+  const [pick, setPick] = useState(null);
+  const [done, setDone] = useState(false);
+  const cost = 0.3;
+  const send = () => {
+    if (!text.trim() && !pick) return;
+    if (gems < cost) return;
+    onSend({ to: owner, from: myName || "익명", text: text.trim(), item: pick });
+    setText(""); setPick(null); setDone(true);
+    setTimeout(() => setDone(false), 2000);
+  };
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 400 }}>
+        <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 22 }}>📮</span>
+            <b style={{ flex: 1, fontSize: 14 }}>{owner}님의 우체통</b>
+            <GemBadge amount={gems} />
+            <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+          </div>
+          {isMine && (
+            <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
+              <PxButton tone={tab === "in" ? "good" : "wood"} onClick={() => setTab("in")} style={{ flex: 1, fontSize: 12, padding: 8 }}>📬 받은 편지 {mail.length > 0 ? `(${mail.length})` : ""}</PxButton>
+              <PxButton tone={tab === "write" ? "good" : "wood"} onClick={() => setTab("write")} style={{ flex: 1, fontSize: 12, padding: 8 }}>✍️ 남기기</PxButton>
+            </div>
+          )}
+
+          {tab === "in" ? (
+            mail.length === 0 ? (
+              <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 24 }}>아직 도착한 편지가 없어요 📭</div>
+            ) : (
+              <div style={{ maxHeight: 300, overflow: "auto", display: "flex", flexDirection: "column", gap: 7 }}>
+                {[...mail].reverse().map((m, i) => (
+                  <div key={i} style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                      <b style={{ fontSize: 12, color: "#5b8def" }}>{m.from}</b>
+                      <span style={{ fontSize: 10, color: C.inkSoft }}>{m.at}</span>
+                      {m.item && <span style={{ marginLeft: "auto", fontSize: 18 }}>{m.item.emoji}</span>}
+                    </div>
+                    {m.text && <div style={{ fontSize: 13, lineHeight: 1.6 }}>{m.text}</div>}
+                    {m.item && <div style={{ fontSize: 11, color: "#a86e13", marginTop: 4 }}>🎁 {m.item.name} 를 받았어요!</div>}
+                  </div>
+                ))}
+              </div>
+            )
+          ) : (
+            <div>
+              <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 6 }}>방명록·편지를 남기고, 선물도 같이 보낼 수 있어요</div>
+              <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="예: 집 예쁘다! 놀러왔어요 :)" style={{ width: "100%", boxSizing: "border-box", height: 80, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 8, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "none", background: C.white }} />
+              <div style={{ fontSize: 12, fontWeight: "bold", margin: "10px 0 6px" }}>🎁 함께 보낼 선물 (선택)</div>
+              {inventory.length === 0 ? (
+                <div style={{ fontSize: 11, color: C.inkSoft }}>감사의 방에서 선물을 사면 여기에 나와요</div>
+              ) : (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {inventory.map((it, i) => (
+                    <button key={i} onClick={() => setPick(pick && pick._i === i ? null : { ...it, _i: i })} style={{ cursor: "pointer", background: pick && pick._i === i ? C.gem : C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "6px 9px", fontFamily: "'DotGothic16', monospace", fontSize: 12 }}>
+                      {it.emoji} {it.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
+                <span style={{ fontSize: 11, color: C.inkSoft, flex: 1 }}>택배비 ⭐{cost}</span>
+                <PxButton tone="gold" disabled={(!text.trim() && !pick) || gems < cost} onClick={send} style={{ padding: "10px 18px", fontSize: 13 }}>{gems < cost ? "젬 부족" : "📮 보내기"}</PxButton>
+              </div>
+              {done && <div style={{ fontSize: 12, color: C.good, textAlign: "center", marginTop: 8, fontWeight: "bold" }}>보냈어요! 📨</div>}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GiftModal({ target, inventory, myName, onSend, onClose }) {
+  const [text, setText] = useState("");
+  const [pick, setPick] = useState(null);
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 105, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340 }}>
+        <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16 }}>
+          <div style={{ textAlign: "center", fontSize: 36 }}>🎁</div>
+          <div style={{ textAlign: "center", fontSize: 15, fontWeight: "bold", margin: "6px 0 12px" }}>{target}님에게 선물하기</div>
+          <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="한마디 (선택)" style={{ width: "100%", boxSizing: "border-box", height: 60, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 8, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "none", background: C.white }} />
+          <div style={{ fontSize: 12, fontWeight: "bold", margin: "10px 0 6px" }}>보낼 선물</div>
+          {inventory.length === 0 ? (
+            <div style={{ fontSize: 11, color: C.inkSoft }}>감사의 방에서 선물을 사보세요 🎁</div>
+          ) : (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {inventory.map((it, i) => (
+                <button key={i} onClick={() => setPick(pick && pick._i === i ? null : { ...it, _i: i })} style={{ cursor: "pointer", background: pick && pick._i === i ? C.gem : C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "6px 9px", fontFamily: "'DotGothic16', monospace", fontSize: 12 }}>
+                  {it.emoji} {it.name}
+                </button>
+              ))}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <PxButton tone="ink" onClick={onClose} style={{ flex: 1, padding: 10, fontSize: 13 }}>닫기</PxButton>
+            <PxButton tone="gold" disabled={!pick && !text.trim()} onClick={() => { onSend({ to: target, from: myName || "익명", text: text.trim(), item: pick }); onClose(); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>보내기</PxButton>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras = [] }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(memo || "");
@@ -1402,6 +2039,12 @@ function parseYouTubeId(url) {
   return m ? m[1] : null;
 }
 function ListeningView({ onBack, gems, onSpend, bubble }) {
+  const ytRef = useRef(null);
+  const [ytVol, setYtVol] = useState(60);
+  const applyVol = (v) => {
+    setYtVol(v);
+    try { if (ytRef.current && ytRef.current.contentWindow) ytRef.current.contentWindow.postMessage(JSON.stringify({ event: "command", func: "setVolume", args: [v] }), "*"); } catch (e) {}
+  };
   const inp = { padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white };
   const [songs, setSongs] = useState([
     { id: 1, title: "Bazzi - Mine", desc: "요즘 제가 즐겨듣는 노래에요", videoId: null, q: "Bazzi Mine" },
@@ -1494,7 +2137,7 @@ function ListeningView({ onBack, gems, onSpend, bubble }) {
               <PxButton tone="ink" onClick={() => setSel(null)} style={{ fontSize: 12, padding: "6px 10px", marginBottom: 10 }}>← 목록</PxButton>
               <div style={{ background: "#000", border: `3px solid ${C.ink}`, aspectRatio: "16/9", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                 {sel.videoId ? (
-                  <iframe title={sel.title} width="100%" height="100%" src={`https://www.youtube.com/embed/${sel.videoId}?autoplay=1`} allow="autoplay; encrypted-media" allowFullScreen style={{ border: 0 }} />
+                  <iframe ref={ytRef} title={sel.title} width="100%" height="100%" src={`https://www.youtube.com/embed/${sel.videoId}?autoplay=1&enablejsapi=1`} allow="autoplay; encrypted-media" allowFullScreen style={{ border: 0 }} onLoad={() => applyVol(ytVol)} />
                 ) : (
                   <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(sel.q)}`} target="_blank" rel="noreferrer" style={{ color: "#ffe680", textDecoration: "none", textAlign: "center", fontFamily: "'DotGothic16', monospace" }}>
                     <div style={{ fontSize: 46 }}>▶</div>
@@ -1502,6 +2145,11 @@ function ListeningView({ onBack, gems, onSpend, bubble }) {
                     <div style={{ fontSize: 10, color: "#b9a7d6", marginTop: 4 }}>('노래 추가'로 링크를 넣으면 여기서 바로 재생돼요)</div>
                   </a>
                 )}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, background: C.parch, border: `2px solid ${C.ink}`, padding: "5px 9px" }}>
+                <span style={{ fontSize: 14 }}>🔊</span>
+                <input type="range" min="0" max="100" value={ytVol} onChange={(e) => applyVol(Number(e.target.value))} style={{ flex: 1, accentColor: "#8e5a9e", cursor: "pointer" }} />
+                <span style={{ fontSize: 11, width: 28, textAlign: "right" }}>{ytVol}</span>
               </div>
               <div style={{ marginTop: 8, fontSize: 13 }}><b>{sel.title}</b></div>
               <div style={{ fontSize: 12, color: C.inkSoft }}>💬 {sel.desc}</div>
@@ -1640,7 +2288,7 @@ const LIAR_LINES = [
 ];
 const LIAR_CHAT = ["ㅋㅋㅋㅋ", "아 뭔가 수상한데", "지금 눈 굴렸어 방금", "나 진짜 아님", "얘 말투 이상해", "빨리빨리~", "표정 관리 좀", "오 방금 티났다", "음~ 글쎄요", "저 사람 각인데?"];
 
-function LiarGame({ onClose, onReward, myName = "" }) {
+function LiarGame({ onClose, onReward, myName = "", people = [] }) {
   const [phase, setPhase] = useState("lobby");
   const [cat, setCat] = useState("랜덤");
   const [size, setSize] = useState(5);
@@ -1774,7 +2422,7 @@ function LiarGame({ onClose, onReward, myName = "" }) {
         return (
           <div key={i} style={{ position: "absolute", ...pos, transform: "translate(-50%,-50%)", textAlign: "center", zIndex: b ? 5 : 2 }}>
             {b && (
-              <div className="chat-bubble" style={{ position: "absolute", bottom: "108%", left: "50%", transform: "translateX(-50%)", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "3px 7px", fontSize: 11, whiteSpace: "nowrap", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis" }}>{b.text}</div>
+              <div className="chat-bubble" style={{ position: "absolute", bottom: "108%", left: "50%", transform: "translateX(-50%)", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "3px 7px", fontSize: 11, whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 150, lineHeight: 1.35, textAlign: "center" }}>{b.text}</div>
             )}
             <div style={{ fontSize: 26, filter: active ? "drop-shadow(0 0 6px #ffe680)" : "none" }}>{p.avatar}</div>
             <div style={{ fontSize: 9, color: C.white, background: active ? "#a86e13" : "rgba(0,0,0,0.55)", border: `1px solid ${C.ink}`, padding: "0 4px", whiteSpace: "nowrap" }}>{p.name}</div>
@@ -1827,7 +2475,7 @@ function LiarGame({ onClose, onReward, myName = "" }) {
                     <PxButton tone="ink" onClick={() => setInviteOpen(false)} style={{ fontSize: 11, padding: "4px 8px" }}>✕</PxButton>
                   </div>
                   <div style={{ maxHeight: 260, overflow: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
-                    {PROFILES.map((p) => {
+                    {(people.length ? people.filter((p) => !p.me) : PROFILES).map((p) => {
                       const st = invited[p.name];
                       return (
                         <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `2px solid ${C.ink}`, padding: "6px 8px" }}>
@@ -1928,7 +2576,7 @@ function LiarGame({ onClose, onReward, myName = "" }) {
     </RoomModal>
   );
 }
-function MiniGameRoom({ onBack, onReward, bubble, myName = "" }) {
+function MiniGameRoom({ onBack, onReward, bubble, myName = "", people = [] }) {
   const [game, setGame] = useState(null); // 'reaction' | 'rps' | 'sequence'
   const [contest, setContest] = useState(false);
   const furniture = [
@@ -1943,7 +2591,7 @@ function MiniGameRoom({ onBack, onReward, bubble, myName = "" }) {
       {game === "reaction" && <ReactionGame onClose={() => setGame(null)} onReward={onReward} />}
       {game === "rps" && <RpsGame onClose={() => setGame(null)} onReward={onReward} />}
       {game === "sequence" && <SequenceGame onClose={() => setGame(null)} onReward={onReward} />}
-      {game === "liar" && <LiarGame onClose={() => setGame(null)} onReward={onReward} myName={myName} />}
+      {game === "liar" && <LiarGame onClose={() => setGame(null)} onReward={onReward} myName={myName} people={people} />}
       {contest && <ContestModal onClose={() => setContest(false)} onPlay={(g) => { setContest(false); setGame(g); }} />}
     </RoomView>
   );
@@ -2078,6 +2726,7 @@ function SwimRace({ onClose, onReward, scores, onRecord, myName = "" }) {
   };
   useEffect(() => {
     const onKey = (e) => {
+      if (isTyping(e)) return;
       if (e.code === "Space" || e.key === " ") {
         e.preventDefault();
         if (phase === "ready" || phase === "done") { startRace(); return; }
@@ -2475,25 +3124,29 @@ function playPunch() {
     n.buffer = b; n.connect(ng).connect(ctx.destination); n.start(t);
   } catch (e) {}
 }
+
 function SandbagView({ onBack, scores, onEnd, myName = "" }) {
-  const [nick, setNick] = useState(myName);
   const [count, setCount] = useState(0);
   const [mode, setMode] = useState("mouse");
   const [fx, setFx] = useState(0);
   const [ending, setEnding] = useState(false);
+  const [nick, setNick] = useState(myName);
+  const [target, setTarget] = useState(null);
+  const [setupOpen, setSetupOpen] = useState(true);
+  const [targetInput, setTargetInput] = useState("");
   const hit = () => { setCount((c) => c + 1); setFx(Date.now()); playPunch(); };
   const finish = () => { if (count <= 0) { onBack(); return; } setEnding(true); };
-  const submit = () => { onEnd(nick.trim() || myName || "익명", count); setCount(0); setNick(myName); setEnding(false); };
+  const submit = () => { onEnd(nick.trim() || myName || "익명", count, target); setCount(0); setNick(myName); setEnding(false); };
   useEffect(() => {
     if (mode !== "keyboard") return;
-    const onKey = (e) => { if ((e.code === "Space" || e.key === " ") && !ending) { e.preventDefault(); hit(); } };
+    const onKey = (e) => { if (isTyping(e)) return; if ((e.code === "Space" || e.key === " ") && !ending) { e.preventDefault(); hit(); } };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [mode, ending]);
   const ranked = [...scores].sort((a, b) => b.count - a.count).slice(0, 8);
   return (
     <Panel style={{ padding: 0, overflow: "hidden", position: "relative" }}>
-      <TitleBar icon="🥊" title="샌드백 치기" sub="샌드백을 마구 클릭! · 끝을 누르면 랭킹 집계" onBack={onBack} bg="#c0563a" fg={C.white} />
+      <TitleBar icon="🥊" title="샌드백 치기" sub={target ? `🎯 ${target} 샌드백 · 끝을 누르면 랭킹 집계` : "샌드백을 마구 클릭! · 끝을 누르면 랭킹 집계"} onBack={onBack} bg="#c0563a" fg={C.white} />
       <div style={{ display: "flex", flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 320px", position: "relative", height: 420, background: "#2a2233", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: mode === "mouse" ? GLOVE_CURSOR : "default" }} onClick={mode === "mouse" ? hit : undefined}>
           <div style={{ position: "absolute", top: 12, right: 14, textAlign: "center" }}>
@@ -2501,7 +3154,8 @@ function SandbagView({ onBack, scores, onEnd, myName = "" }) {
             <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 26, color: C.gem }}>{count}</div>
             <PxButton tone="danger" onClick={(e) => { e.stopPropagation(); finish(); }} style={{ marginTop: 6, fontSize: 12, padding: "6px 14px" }}>끝</PxButton>
           </div>
-          <div key={fx} className={fx ? "bag-hit" : ""} style={{ pointerEvents: "none" }}>
+          <div key={fx} className={fx ? "bag-hit" : ""} style={{ pointerEvents: "none", position: "relative" }}>
+            {target && <div style={{ position: "absolute", left: "50%", top: 26, transform: "translateX(-50%)", background: "#fffbe8", color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "1px 8px", fontSize: 12, fontWeight: "bold", whiteSpace: "nowrap", zIndex: 2 }}>{target}</div>}
             <Sandbag size={160} />
           </div>
           <div style={{ position: "absolute", bottom: 12, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, pointerEvents: "none" }}>
@@ -2521,7 +3175,7 @@ function SandbagView({ onBack, scores, onEnd, myName = "" }) {
               {ranked.map((s, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `2px solid ${C.ink}`, padding: "5px 8px", fontSize: 13 }}>
                   <span style={{ width: 20, fontWeight: "bold", color: i === 0 ? "#a86e13" : C.inkSoft }}>{i + 1}</span>
-                  <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.nick}</span>
+                  <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.nick}{s.target ? <span style={{ color: C.danger, fontSize: 10 }}> → {s.target}</span> : ""}</span>
                   <b>{s.count}</b>
                 </div>
               ))}
@@ -2529,11 +3183,29 @@ function SandbagView({ onBack, scores, onEnd, myName = "" }) {
           )}
         </div>
       </div>
+      {setupOpen && (
+        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 25, padding: 14 }}>
+          <div style={{ width: "100%", maxWidth: 320 }}>
+            <Panel style={{ padding: 18 }}>
+              <div style={{ textAlign: "center", fontSize: 34 }}>🥊</div>
+              <div style={{ textAlign: "center", fontSize: 14, fontWeight: "bold", margin: "8px 0 12px" }}>어떤 샌드백을 칠까요?</div>
+              <PxButton tone="wood" onClick={() => { setTarget(null); setSetupOpen(false); }} style={{ width: "100%", padding: 12, fontSize: 13, marginBottom: 8 }}>🥊 그냥 때리기</PxButton>
+              <div style={{ background: C.white, border: `3px solid ${C.ink}`, padding: 10 }}>
+                <div style={{ fontSize: 12, marginBottom: 6 }}>🎯 누구 샌드백을 원하시나요?</div>
+                <input value={targetInput} onChange={(e) => setTargetInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && targetInput.trim()) { setTarget(targetInput.trim()); setSetupOpen(false); } }} maxLength={8} placeholder="이름 입력" style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.parch }} />
+                <PxButton tone="danger" disabled={!targetInput.trim()} onClick={() => { setTarget(targetInput.trim()); setSetupOpen(false); }} style={{ width: "100%", marginTop: 8, padding: 10, fontSize: 13 }}>이 사람 샌드백 만들기</PxButton>
+              </div>
+              <PxButton tone="ink" onClick={onBack} style={{ width: "100%", marginTop: 10, padding: 9, fontSize: 12 }}>나가기</PxButton>
+            </Panel>
+          </div>
+        </div>
+      )}
+
       {ending && (
         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, padding: 14 }} onClick={() => setEnding(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 320 }}>
             <Panel style={{ padding: 16 }}>
-              <div style={{ textAlign: "center", marginBottom: 10 }}>총 <b style={{ fontSize: 20, color: C.danger }}>{count}</b>번 쳤어요! 💥</div>
+              <div style={{ textAlign: "center", marginBottom: 10 }}>{target ? <span style={{ fontSize: 12, color: C.danger }}>🎯 {target} 샌드백<br /></span> : null}총 <b style={{ fontSize: 20, color: C.danger }}>{count}</b>번 쳤어요! 💥</div>
               <input value={nick} onChange={(e) => setNick(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} maxLength={10} placeholder="닉네임 (랭킹 등록)" autoFocus style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: C.white }} />
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <PxButton tone="ink" onClick={() => setEnding(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>더 치기</PxButton>
@@ -2690,6 +3362,7 @@ function SchoolView({ school, onBack }) {
 
   useEffect(() => {
     const down = (e) => {
+      if (isTyping(e)) return;
       const raw = e.key.toLowerCase();
       if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d", "e"].includes(raw)) e.preventDefault();
       if (openRef.current) return;
@@ -2731,7 +3404,7 @@ function SchoolView({ school, onBack }) {
           posRef.current = { x, y };
           setPos({ x, y });
           setMoving(true);
-          if (dx) setFacing(dx > 0 ? 1 : -1);
+          if (dx) { setFacing(dx > 0 ? 1 : -1); if (facingRef) facingRef.current = dx > 0 ? 1 : -1; }
         } else setMoving(false);
         let found = null;
         for (const h of housesRef.current) {
@@ -2827,83 +3500,147 @@ function SchoolView({ school, onBack }) {
   );
 }
 /* ======================= 보스맵 도전기 ======================= */
-const BOSS_MAPS = [
+const PAST_BOSSES = [
+  { id: "p1", name: "그린레이", icon: "🌿" },
+  { id: "p2", name: "고음확장기", icon: "🎤" },
+];
+const FUTURE_BOSSES = 3;
+const BOSS_MAPS_INIT = [
   {
-    id: "bm1", name: "에코타운 오픈", icon: "🏘", color: "#2f9e6e", soft: "#e6f4ec", deep: "#1d6b4a",
-    boss: { id: "b1", title: "오픈일의 군주", icon: "👑", gem: 30, desc: "정해진 날짜는 절대 물러서지 않는다.", task: "오픈 체크리스트 전 항목 완료 후 최종 점검" },
+    id: "bm1", mode: "easy", name: "어플", icon: "📱", color: "#2f9e6e", soft: "#e6f4ec", deep: "#1d6b4a",
+    boss: { id: "b1", title: "버그 로드", icon: "🐛", gem: 30, desc: "잡아도 잡아도 다시 기어나오는 벌레들의 왕.", task: "발견된 버그 전부 처리하고 최종 점검" },
     stages: [
-      { n: 1, name: "준비의 숲", deco: "🌲", quests: [
-        { id: "q11", title: "목표 정의", icon: "🎯", gem: 4, desc: "무엇을 여는지 한 줄로 정한다.", task: "오픈의 목표를 한 문장으로 적기" },
-        { id: "q12", title: "할 일 쪼개기", icon: "🧩", gem: 5, desc: "큰 덩어리를 잘게 나눈다.", task: "해야 할 일 10개로 분해", need: "q11" },
-        { id: "q13", title: "담당 정하기", icon: "🧑‍🤝‍🧑", gem: 4, desc: "누가 무엇을 할지 정한다.", task: "항목별 담당자 배정" },
+      { n: 1, name: "기획의 숲", deco: "🌲", quests: [
+        { id: "q11", title: "목표 정의", icon: "🎯", gem: 4, desc: "무엇을 만드는지 한 줄로 정한다.", task: "앱의 목표를 한 문장으로 적기" },
+        { id: "q12", title: "기능 쪼개기", icon: "🧩", gem: 5, desc: "큰 덩어리를 잘게 나눈다.", task: "필요한 기능 10개로 분해", need: "q11" },
+        { id: "q13", title: "담당 정하기", icon: "🧑‍🤝‍🧑", gem: 4, desc: "누가 무엇을 할지 정한다.", task: "기능별 담당자 배정" },
         { id: "q14", title: "일정 잡기", icon: "📅", gem: 5, desc: "언제까지 할지 정한다.", task: "주차별 마일스톤 설정", need: "q12" },
       ] },
-      { n: 2, name: "제작의 언덕", deco: "⛰️", quests: [
+      { n: 2, name: "개발의 언덕", deco: "⛰️", quests: [
         { id: "q21", title: "화면 만들기", icon: "🖥", gem: 6, desc: "보이는 것부터 완성한다.", task: "핵심 화면 3개 제작" },
-        { id: "q22", title: "콘텐츠 채우기", icon: "📝", gem: 6, desc: "빈칸을 채운다.", task: "문구·이미지 채워넣기", need: "q21" },
+        { id: "q22", title: "기능 연결", icon: "🔌", gem: 6, desc: "동작하게 만든다.", task: "버튼·입력 동작 연결", need: "q21" },
         { id: "q23", title: "디자인 정리", icon: "🎨", gem: 6, desc: "톤을 맞춘다.", task: "색·폰트 통일" },
       ] },
-      { n: 3, name: "점검의 고원", deco: "🏔", quests: [
+      { n: 3, name: "QA의 고원", deco: "🏔", quests: [
         { id: "q31", title: "테스트", icon: "🔍", gem: 7, desc: "직접 눌러본다.", task: "전 기능 클릭 테스트" },
         { id: "q32", title: "버그 수정", icon: "🛠", gem: 8, desc: "발견한 걸 고친다.", task: "발견 버그 전부 수정", need: "q31" },
         { id: "q33", title: "성능 확인", icon: "⚡", gem: 6, desc: "느린 곳을 찾는다.", task: "로딩 속도 점검" },
       ] },
-      { n: 4, name: "출항의 항구", deco: "⚓", quests: [
-        { id: "q41", title: "안내문 작성", icon: "📢", gem: 6, desc: "알린다.", task: "오픈 공지 문구 작성" },
+      { n: 4, name: "출시의 항구", deco: "⚓", quests: [
+        { id: "q41", title: "스토어 등록", icon: "🏪", gem: 6, desc: "세상에 내놓는다.", task: "스토어 정보·스크린샷 준비" },
         { id: "q42", title: "리허설", icon: "🎬", gem: 8, desc: "한 번 돌려본다.", task: "전 과정 시연", need: "q41" },
       ] },
     ],
   },
   {
-    id: "bm2", name: "치앙마이 렌트", icon: "🌴", color: "#2e9bc4", soft: "#e4f3fa", deep: "#1d6c8c",
-    boss: { id: "b2", title: "서류 골렘", icon: "📄", gem: 28, desc: "서류 더미로 만들어진 거대한 벽.", task: "계약·정산 서류 전부 정리해 제출" },
+    id: "bm2", mode: "easy", name: "속옷", icon: "🩲", color: "#2e9bc4", soft: "#e4f3fa", deep: "#1d6c8c",
+    boss: { id: "b2", title: "사이즈 마왕", icon: "📏", gem: 28, desc: "누구에게도 딱 맞지 않게 만드는 마왕.", task: "전 사이즈 착용 테스트 통과" },
     stages: [
-      { n: 1, name: "조사의 해변", deco: "🏖", quests: [
-        { id: "r11", title: "수요 조사", icon: "📊", gem: 5, desc: "누가 원하는지 확인.", task: "신청 의향 10명 조사" },
-        { id: "r12", title: "가격 정하기", icon: "💰", gem: 5, desc: "얼마에 빌려줄까?", task: "젬 기준 렌트비 책정", need: "r11" },
-        { id: "r13", title: "경쟁 조사", icon: "🔭", gem: 5, desc: "다른 곳은 어떨까.", task: "유사 서비스 3곳 비교" },
+      { n: 1, name: "원단의 해변", deco: "🏖", quests: [
+        { id: "r11", title: "원단 조사", icon: "🧵", gem: 5, desc: "무엇으로 만들까.", task: "후보 원단 5종 비교" },
+        { id: "r12", title: "가격 정하기", icon: "💰", gem: 5, desc: "얼마에 팔까?", task: "원가·판매가 책정", need: "r11" },
+        { id: "r13", title: "경쟁 조사", icon: "🔭", gem: 5, desc: "다른 곳은 어떨까.", task: "경쟁 제품 3종 분석" },
       ] },
-      { n: 2, name: "설계의 정글", deco: "🌿", quests: [
-        { id: "r21", title: "신청 흐름", icon: "🔁", gem: 6, desc: "5단계로 정리.", task: "신청→심사→계약→입금→입주 정의" },
-        { id: "r22", title: "예외 처리", icon: "⚠️", gem: 7, desc: "안 될 때는?", task: "취소·환불 규칙 만들기", need: "r21" },
-        { id: "r23", title: "서류 양식", icon: "🗂", gem: 6, desc: "쓸 종이를 만든다.", task: "계약서 초안 작성" },
+      { n: 2, name: "샘플의 공방", deco: "✂️", quests: [
+        { id: "r21", title: "패턴 설계", icon: "📐", gem: 6, desc: "형태를 정한다.", task: "사이즈별 패턴 제작" },
+        { id: "r22", title: "샘플 제작", icon: "🧷", gem: 7, desc: "실물로 만든다.", task: "샘플 3벌 제작", need: "r21" },
+        { id: "r23", title: "라벨 디자인", icon: "🏷", gem: 6, desc: "이름표를 붙인다.", task: "택·라벨 시안" },
       ] },
-      { n: 3, name: "운영의 사원", deco: "🛕", quests: [
-        { id: "r31", title: "시범 운영", icon: "🚦", gem: 8, desc: "한 명만 먼저.", task: "테스트 입주 1건 진행" },
-        { id: "r32", title: "피드백 수집", icon: "💬", gem: 7, desc: "어땠는지 묻는다.", task: "입주자 인터뷰", need: "r31" },
+      { n: 3, name: "검증의 사원", deco: "🛕", quests: [
+        { id: "r31", title: "착용 테스트", icon: "🧍", gem: 8, desc: "직접 입어본다.", task: "5인 착용 테스트" },
+        { id: "r32", title: "피드백 반영", icon: "💬", gem: 7, desc: "고칠 걸 고친다.", task: "수정 사항 반영", need: "r31" },
       ] },
     ],
   },
   {
-    id: "bm3", name: "릴스 30편", icon: "🎬", color: "#8a5cc4", soft: "#efe7f8", deep: "#5e3a8c",
-    boss: { id: "b3", title: "릴스 드래곤", icon: "🐉", gem: 40, desc: "30편을 다 삼켜야 잠드는 용.", task: "30편 업로드 완주" },
+    id: "bm3", mode: "easy", name: "양말", icon: "🧦", color: "#8a5cc4", soft: "#efe7f8", deep: "#5e3a8c",
+    boss: { id: "b3", title: "냄새 괴수", icon: "👃", gem: 40, desc: "하루만 신어도 깨어나는 고약한 괴수.", task: "항균 시험 전 항목 통과" },
     stages: [
       { n: 1, name: "소재의 동굴", deco: "🕯", quests: [
-        { id: "s11", title: "소재 30개", icon: "💡", gem: 6, desc: "재료부터 모은다.", task: "아이디어 30줄 적기" },
-        { id: "s12", title: "후크 만들기", icon: "🪝", gem: 7, desc: "첫 3초가 전부.", task: "후크 10개 작성", need: "s11" },
-        { id: "s13", title: "레퍼런스", icon: "🔍", gem: 5, desc: "좋은 걸 본다.", task: "참고 영상 10개 분석" },
+        { id: "s11", title: "항균 소재 조사", icon: "🧪", gem: 6, desc: "무엇이 균을 잡나.", task: "항균 소재 후보 정리" },
+        { id: "s12", title: "배합 정하기", icon: "⚗️", gem: 7, desc: "비율이 관건.", task: "혼방 비율 결정", need: "s11" },
+        { id: "s13", title: "레퍼런스", icon: "🔍", gem: 5, desc: "잘 만든 걸 본다.", task: "타사 제품 분석" },
       ] },
-      { n: 2, name: "촬영의 계곡", deco: "🏕", quests: [
-        { id: "s21", title: "촬영 세팅", icon: "🎥", gem: 6, desc: "매번 같은 조건.", task: "앵글·조명·오디오 고정" },
-        { id: "s22", title: "10편 촬영", icon: "📹", gem: 9, desc: "일단 찍는다.", task: "영상 10편 촬영", need: "s21" },
-        { id: "s23", title: "소품 준비", icon: "🎒", gem: 5, desc: "필요한 걸 챙긴다.", task: "촬영 소품 리스트" },
+      { n: 2, name: "편직의 계곡", deco: "🧶", quests: [
+        { id: "s21", title: "편직 세팅", icon: "⚙️", gem: 6, desc: "기계를 맞춘다.", task: "게이지·장력 세팅" },
+        { id: "s22", title: "시제품 생산", icon: "🧦", gem: 9, desc: "일단 짠다.", task: "시제품 30켤레 생산", need: "s21" },
+        { id: "s23", title: "포장 준비", icon: "📦", gem: 5, desc: "담을 걸 정한다.", task: "패키지 시안" },
       ] },
-      { n: 3, name: "편집의 탑", deco: "🗼", quests: [
-        { id: "s31", title: "편집 템플릿", icon: "✂️", gem: 7, desc: "반복을 줄인다.", task: "자막·전환 템플릿 제작" },
-        { id: "s32", title: "10편 편집", icon: "🎞", gem: 9, desc: "다듬는다.", task: "영상 10편 편집", need: "s31" },
-        { id: "s33", title: "썸네일", icon: "🖼", gem: 6, desc: "첫인상.", task: "썸네일 10개 제작" },
+      { n: 3, name: "시험의 탑", deco: "🗼", quests: [
+        { id: "s31", title: "항균 시험", icon: "🔬", gem: 7, desc: "숫자로 증명한다.", task: "시험 성적서 확보" },
+        { id: "s32", title: "내구 테스트", icon: "💪", gem: 9, desc: "얼마나 버티나.", task: "30회 세탁 테스트", need: "s31" },
+        { id: "s33", title: "상세페이지", icon: "🖼", gem: 6, desc: "첫인상.", task: "상세 이미지 제작" },
       ] },
-      { n: 4, name: "공개의 광장", deco: "🎪", quests: [
-        { id: "s41", title: "업로드 일정", icon: "📆", gem: 6, desc: "언제 올릴까.", task: "30일 업로드 캘린더" },
-        { id: "s42", title: "10편 업로드", icon: "⬆️", gem: 10, desc: "세상에 내보낸다.", task: "10편 업로드", need: "s41" },
+      { n: 4, name: "출고의 광장", deco: "🎪", quests: [
+        { id: "s41", title: "재고 계획", icon: "📆", gem: 6, desc: "얼마나 만들까.", task: "초도 물량 확정" },
+        { id: "s42", title: "판매 시작", icon: "⬆️", gem: 10, desc: "세상에 내보낸다.", task: "스토어 오픈", need: "s41" },
+      ] },
+    ],
+  },
+  {
+    id: "hm1", mode: "hard", name: "사고력 훈련", icon: "🧠", color: "#c0563a", soft: "#f7e6e0", deep: "#8c2f21",
+    boss: { id: "hb1", title: "고정관념 마왕", icon: "🗿", gem: 45, desc: "\"원래 그런 거야\"라는 말로 모든 생각을 굳혀버리는 마왕.", task: "당연하다고 믿던 것 3가지를 뒤집어 다시 정의하기" },
+    stages: [
+      { n: 1, name: "질문의 골짜기", deco: "❓", quests: [
+        { id: "t11", title: "왜 5번 묻기", icon: "🔁", gem: 8, desc: "표면이 아니라 뿌리를 본다.", task: "최근 결정 하나에 '왜'를 5번 파고들기", level: "숙련자" },
+        { id: "t12", title: "전제 뒤집기", icon: "🔄", gem: 9, desc: "당연한 걸 의심한다.", task: "지금 방식의 숨은 전제 3개 적고 하나 뒤집기", need: "t11", level: "숙련자" },
+        { id: "t13", title: "문제 재정의", icon: "🎯", gem: 8, desc: "문제를 바꾸면 답도 바뀐다.", task: "같은 문제를 다른 문장으로 3번 다시 쓰기", level: "숙련자" },
+      ] },
+      { n: 2, name: "관점의 숲", deco: "🌀", quests: [
+        { id: "t21", title: "반대편 변호", icon: "🪞", gem: 10, desc: "내 의견의 적이 되어본다.", task: "내 주장의 반대 입장을 설득력 있게 3줄로 쓰기", level: "숙련자" },
+        { id: "t22", title: "제3자 시선", icon: "👀", gem: 9, desc: "고객·동료·경쟁자의 눈.", task: "세 사람 입장에서 각각 한 줄 평 쓰기", need: "t21", level: "숙련자" },
+        { id: "t23", title: "10년 뒤 관점", icon: "🔭", gem: 9, desc: "시간 축을 늘려본다.", task: "10년 뒤에도 유효할지 판단해 적기", level: "숙련자" },
+      ] },
+      { n: 3, name: "논리의 탑", deco: "🧩", quests: [
+        { id: "t31", title: "근거 붙이기", icon: "🔢", gem: 10, desc: "느낌을 숫자로.", task: "주장 하나에 지표 2개 붙이기", level: "숙련자" },
+        { id: "t32", title: "반증 찾기", icon: "🧨", gem: 11, desc: "틀릴 조건을 먼저 안다.", task: "내 결론이 틀릴 조건 3개 적기", need: "t31", level: "숙련자" },
+        { id: "t33", title: "압축 설명", icon: "🗜", gem: 10, desc: "이해했으면 짧아진다.", task: "복잡한 내용을 3문장으로 요약", level: "숙련자" },
+      ] },
+      { n: 4, name: "실행의 관문", deco: "🚪", quests: [
+        { id: "t41", title: "가장 작은 실험", icon: "🧪", gem: 10, desc: "생각을 현실에 던진다.", task: "하루 안에 검증할 실험 1개 설계", level: "숙련자" },
+        { id: "t42", title: "회고 쓰기", icon: "📓", gem: 12, desc: "배운 걸 남긴다.", task: "실험 결과와 배운 점 기록", need: "t41", level: "숙련자" },
       ] },
     ],
   },
 ];
 
-function BossMapView({ onBack, onReward }) {
+function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree, onLeave }) {
+  const net = useContext(NetContext);
+  const [tMsg, setTMsg] = useState("");
+  const [editing, setEditing] = useState(null);
+  const [nowTs, setNowTs] = useState(Date.now());
+  useEffect(() => { const iv = setInterval(() => setNowTs(Date.now()), 1000); return () => clearInterval(iv); }, []);
+  const dueText = (due) => {
+    if (!due) return null;
+    const t = new Date(due).getTime();
+    if (isNaN(t)) return null;
+    const d = t - nowTs;
+    if (d <= 0) return { txt: "⌛ 마감됨", over: true };
+    const h = Math.floor(d / 3600000), m = Math.floor((d % 3600000) / 60000), sec = Math.floor((d % 60000) / 1000);
+    return { txt: `⏳ ${h > 0 ? h + "시간 " : ""}${m}분 ${sec}초 남음`, over: false };
+  };
+  const canEdit = (nd) => !!nd && !nd.isBoss && (!nd.owner || nd.owner === myName);
+  const saveEdit = () => {
+    if (!editing || !editing.title.trim()) return;
+    setMaps((ms) => ms.map((m) => (m.id !== map.id ? m : ({ ...m, stages: m.stages.map((st) => ({ ...st, quests: st.quests.map((q) => (q.id !== editing.id ? q : { ...q, title: editing.title.trim(), icon: editing.icon || q.icon, gem: Number(editing.gem) || q.gem, desc: editing.desc, task: editing.task })) })) }))));
+    setEditing(null); setSel(null);
+  };
+  const delQuest = (qid) => {
+    setMaps((ms) => ms.map((m) => (m.id !== map.id ? m : ({ ...m, stages: m.stages.map((st) => ({ ...st, quests: st.quests.filter((q) => q.id !== qid) })) }))));
+    setSel(null); setEditing(null);
+  };
+  const [maps, setMaps] = useState(BOSS_MAPS_INIT);
+  const [mode, setMode] = useState("easy");
   const [mapIdx, setMapIdx] = useState(0);
+  const [collOpen, setCollOpen] = useState(false);
+  const [dexOpen, setDexOpen] = useState(false);
+  const [dexMode, setDexMode] = useState("easy");
+  const [addOpen, setAddOpen] = useState(false);
+  const [addTab, setAddTab] = useState("quest");
+  const [fQ, setFQ] = useState({ stage: 1, title: "", icon: "🎯", gem: 5, desc: "", task: "", level: "초보자", field: "naverschool", due: "" });
+  const [fM, setFM] = useState({ name: "", icon: "🗺", boss: "", bossIcon: "👹" });
   const [cleared, setCleared] = useState({});
+  useEffect(() => { dbLoadBoss().then((d) => { if (d && Object.keys(d).length) setCleared((c) => ({ ...d, ...c })); }); }, []);
   const [sel, setSel] = useState(null);
   const [warn, setWarn] = useState(null);
   const [pos, setPos] = useState({ x: 300, y: 90 });
@@ -2911,6 +3648,9 @@ function BossMapView({ onBack, onReward }) {
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
   const [cam, setCam] = useState(0);
+  const mapElRef = useRef(null);
+  const heroElRef = useRef(null);
+  const camRef = useRef(0);
   const keys = useRef({});
   const posRef = useRef({ x: 300, y: 90 });
   const nearRef = useRef(null);
@@ -2918,26 +3658,41 @@ function BossMapView({ onBack, onReward }) {
   const nodesRef = useRef([]);
   const VIEW_H = 440, MAP_W = 600, STAGE_H = 330, BOSS_H = 300;
 
-  const map = BOSS_MAPS[mapIdx];
-  const MAP_H = map.stages.length * STAGE_H + BOSS_H;
+  const map = maps[mapIdx];
+  const isPlaza = (map.mode || "easy") === "hard";
+  const MAP_H = isPlaza ? 860 : map.stages.length * STAGE_H + BOSS_H;
   const done = cleared[map.id] || {};
+  const allQuests = map.stages.reduce((acc, st) => acc.concat(st.quests), []);
 
   const nodes = [];
-  map.stages.forEach((st, si) => {
-    const baseY = BOSS_H + (map.stages.length - 1 - si) * STAGE_H;
-    st.quests.forEach((q, qi) => {
-      const col = qi % 3, row = Math.floor(qi / 3);
-      nodes.push({ ...q, stage: st.n, stageName: st.name, x: 110 + col * 190, y: baseY + 130 + row * 120 });
+  if (isPlaza) {
+    const cx = MAP_W / 2, cy = 430;
+    allQuests.forEach((q, i) => {
+      const n = allQuests.length || 1;
+      const ang = (i / n) * Math.PI * 2 - Math.PI / 2;
+      const rad = i % 2 === 0 ? 250 : 330;
+      const st = map.stages.find((x) => x.quests.some((y) => y.id === q.id)) || { n: 1, name: "광장" };
+      nodes.push({ ...q, stage: st.n, stageName: st.name, x: Math.round(cx + Math.cos(ang) * rad * 0.72), y: Math.round(cy + Math.sin(ang) * rad * 0.92) });
     });
-  });
-  nodes.push({ ...map.boss, stage: map.stages.length, stageName: "보스", isBoss: true, x: MAP_W / 2, y: 150 });
+    nodes.push({ ...map.boss, stage: 99, stageName: "보스", isBoss: true, x: cx, y: cy });
+  } else {
+    map.stages.forEach((st, si) => {
+      const baseY = BOSS_H + (map.stages.length - 1 - si) * STAGE_H;
+      st.quests.forEach((q, qi) => {
+        const col = qi % 3, row = Math.floor(qi / 3);
+        nodes.push({ ...q, stage: st.n, stageName: st.name, x: 110 + col * 190, y: baseY + 130 + row * 120 });
+      });
+    });
+    nodes.push({ ...map.boss, stage: map.stages.length, stageName: "보스", isBoss: true, x: MAP_W / 2, y: 150 });
+  }
   nodesRef.current = nodes;
 
   const stageDone = (n) => map.stages.filter((s) => s.n <= n).every((s) => s.quests.every((q) => done[q.id]));
-  const stageOpen = (n) => n === 1 || stageDone(n - 1);
+  const stageOpen = (n) => isPlaza || n === 1 || stageDone(n - 1);
+  const bossReady = isPlaza ? allQuests.every((q) => done[q.id]) : stageDone(map.stages.length);
   const lockReason = (nd) => {
     if (!stageOpen(nd.stage)) return `${nd.stage - 1}스테이지를 먼저 클리어해야 합니다`;
-    if (nd.isBoss && !stageDone(map.stages.length)) return "모든 스테이지를 완료해야 보스에 도전할 수 있습니다";
+    if (nd.isBoss && !bossReady) return isPlaza ? "광장의 모든 퀘스트를 완료해야 보스에 도전할 수 있습니다" : "모든 스테이지를 완료해야 보스에 도전할 수 있습니다";
     if (nd.need && !done[nd.need]) {
       const pq = nodes.find((x) => x.id === nd.need);
       return `「${pq ? pq.title : nd.need}」 완료해야 진행할 수 있습니다`;
@@ -2948,14 +3703,17 @@ function BossMapView({ onBack, onReward }) {
     const r = lockReason(nd);
     if (r) { setWarn(r); setTimeout(() => setWarn(null), 2000); return; }
     if (done[nd.id]) return;
-    setCleared((c) => ({ ...c, [map.id]: { ...(c[map.id] || {}), [nd.id]: true } }));
+    setCleared((c) => ({ ...c, [map.id]: { ...(c[map.id] || {}), [nd.id]: myName || true } }));
+    dbClearBoss(map.id, nd.id, myName || null);
     onReward && onReward(nd.gem);
+    onClearQuest && onClearQuest(!!nd.isBoss);
     setSel(null);
   };
 
   useEffect(() => { openRef.current = !!sel; }, [sel]);
   useEffect(() => {
     const down = (e) => {
+      if (isTyping(e)) return;
       const k = e.key.toLowerCase();
       if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d", "e"].includes(k)) e.preventDefault();
       if (openRef.current) return;
@@ -2973,6 +3731,7 @@ function BossMapView({ onBack, onReward }) {
 
   useEffect(() => {
     let raf;
+    let wasMoving = false, lastFacing = 1;
     const loop = () => {
       if (!openRef.current) {
         const k = keys.current; let { x, y } = posRef.current; let dx = 0, dy = 0;
@@ -2980,17 +3739,29 @@ function BossMapView({ onBack, onReward }) {
         if (k["arrowright"] || k["d"]) dx += 1;
         if (k["arrowup"] || k["w"]) dy -= 1;
         if (k["arrowdown"] || k["s"]) dy += 1;
-        if (dx || dy) {
+        const isMoving = !!(dx || dy);
+        if (isMoving) {
           const len = Math.hypot(dx, dy) || 1;
-          x = Math.max(30, Math.min(MAP_W - 30, x + (dx / len) * 4.2));
-          y = Math.max(40, Math.min(MAP_H - 30, y + (dy / len) * 4.2));
-          posRef.current = { x, y }; setPos({ x, y }); setMoving(true);
-          if (dx) setFacing(dx > 0 ? 1 : -1);
-        } else setMoving(false);
+          x = Math.max(30, Math.min(MAP_W - 30, x + (dx / len) * 4.6));
+          y = Math.max(40, Math.min(MAP_H - 30, y + (dy / len) * 4.6));
+          posRef.current = { x, y };
+          if (dx && lastFacing !== (dx > 0 ? 1 : -1)) { lastFacing = dx > 0 ? 1 : -1; setFacing(lastFacing); }
+        }
+        if (isMoving !== wasMoving) { wasMoving = isMoving; setMoving(isMoving); }
+
+        if (heroElRef.current) {
+          heroElRef.current.style.left = posRef.current.x + "px";
+          heroElRef.current.style.top = posRef.current.y + "px";
+        }
+        if (net && net.roomPosRef) net.roomPosRef.current = posRef.current;
+        const target = Math.max(0, Math.min(MAP_H - VIEW_H, posRef.current.y - VIEW_H / 2));
+        camRef.current += (target - camRef.current) * 0.18;
+        if (Math.abs(target - camRef.current) < 0.5) camRef.current = target;
+        if (mapElRef.current) mapElRef.current.style.top = -camRef.current + "px";
+
         let f = null;
         for (const nd of nodesRef.current) if (Math.hypot(nd.x - posRef.current.x, nd.y - posRef.current.y) < 52) { f = nd.id; break; }
         if (f !== nearRef.current) { nearRef.current = f; setNear(f); }
-        setCam(Math.max(0, Math.min(MAP_H - VIEW_H, posRef.current.y - VIEW_H / 2)));
       }
       raf = requestAnimationFrame(loop);
     };
@@ -2999,12 +3770,42 @@ function BossMapView({ onBack, onReward }) {
   }, [MAP_H]);
 
   useEffect(() => {
-    const y = MAP_H - 70;
+    const y = isPlaza ? MAP_H - 90 : MAP_H - 70;
     posRef.current = { x: 300, y };
     setPos({ x: 300, y });
-    setCam(Math.max(0, MAP_H - VIEW_H));
+    const c = Math.max(0, MAP_H - VIEW_H);
+    camRef.current = c;
+    setCam(c);
+    if (heroElRef.current) { heroElRef.current.style.left = "300px"; heroElRef.current.style.top = y + "px"; }
+    if (mapElRef.current) mapElRef.current.style.top = -c + "px";
   }, [mapIdx, MAP_H]);
   const switchMap = (i) => { setMapIdx(i); setSel(null); };
+  const addQuest = () => {
+    if (!fQ.title.trim()) return;
+    const id = "cq" + Date.now();
+    const nq = { id, title: fQ.title.trim(), icon: fQ.icon || "🎯", gem: Number(fQ.gem) || 5, desc: fQ.desc.trim() || "새로 추가된 퀘스트", task: fQ.task.trim() || fQ.title.trim(), level: fQ.level, field: fQ.level === "초보자" ? fQ.field : null, owner: myName || "익명", due: fQ.due || null };
+    setMaps((ms) => ms.map((m, i) => {
+      if (i !== mapIdx) return m;
+      const targetStage = isPlaza ? m.stages[0].n : Number(fQ.stage);
+      const stages = m.stages.map((st) => (st.n !== targetStage ? st : { ...st, quests: [nq, ...st.quests] }));
+      return { ...m, stages };
+    }));
+    setFQ({ ...fQ, title: "", desc: "", task: "" });
+    setAddOpen(false);
+  };
+  const addMap = () => {
+    if (!fM.name.trim()) return;
+    const id = "cm" + Date.now();
+    setMaps((ms) => [...ms, {
+      id, mode, name: fM.name.trim(), icon: fM.icon || "🗺", color: "#c07a2f", soft: "#f7ecdc", deep: "#8c5418",
+      boss: { id: id + "_b", title: fM.boss.trim() || "이름 없는 보스", icon: fM.bossIcon || "👹", gem: 30, desc: "새로 등장한 보스.", task: "모든 스테이지를 클리어하고 격파" },
+      stages: [{ n: 1, name: "1 스테이지", deco: "✨", quests: [] }],
+    }]);
+    setFM({ name: "", icon: "🗺", boss: "", bossIcon: "👹" });
+    setAddOpen(false);
+    setMapIdx(maps.length);
+  };
+  const bossState = (m) => (cleared[m.id] && cleared[m.id][m.boss.id]) ? "done" : "now";
   const totalQ = nodes.length;
   const doneQ = nodes.filter((n) => done[n.id]).length;
 
@@ -3013,8 +3814,14 @@ function BossMapView({ onBack, onReward }) {
       <TitleBar icon="🗺" title="보스맵 도전기" sub="WASD로 이동 · 아래에서 위로 진행 · 퀘스트 앞에서 E" onBack={onBack} bg="#241c33" fg={C.white} />
       <div style={{ padding: 14, background: "linear-gradient(180deg,#f6f2e8,#eae3d4)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: "8px 12px", boxShadow: "0 2px 0 rgba(0,0,0,0.15)" }}>
+          {isPlaza ? (
+            <button onClick={() => setDexOpen(true)} title="사고 도감" style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 8, background: "linear-gradient(180deg,#8f4b4b,#5c2c2c)", color: C.white, fontSize: 16, padding: "4px 8px" }}>🧠</button>
+          ) : (
+            <button onClick={() => setCollOpen(true)} title="보스 도감" style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 8, background: "linear-gradient(180deg,#6b4f8f,#3f2c5c)", color: C.white, fontSize: 16, padding: "4px 8px" }}>👾</button>
+          )}
           <span style={{ fontSize: 20 }}>{map.icon}</span>
           <b style={{ fontSize: 14, flex: 1 }}>{map.name}</b>
+          <button onClick={() => setAddOpen(true)} title="퀘스트/보스맵 추가" style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 8, background: "linear-gradient(180deg,#e0a13d,#a86e13)", color: C.white, fontSize: 14, padding: "4px 9px", fontWeight: "bold" }}>＋</button>
           <div style={{ width: 120, height: 10, background: "#e7e2d6", borderRadius: 6, overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${(doneQ / totalQ) * 100}%`, background: `linear-gradient(90deg,${map.color},${map.deep})`, transition: "width .35s" }} />
           </div>
@@ -3022,8 +3829,18 @@ function BossMapView({ onBack, onReward }) {
         </div>
 
         <div style={{ position: "relative", width: "100%", maxWidth: MAP_W, height: VIEW_H, margin: "0 auto", border: `3px solid ${C.ink}`, borderRadius: 12, overflow: "hidden", boxShadow: "inset 0 0 40px rgba(0,0,0,0.12)" }}>
-          <div style={{ position: "absolute", left: 0, top: -cam, width: MAP_W, height: MAP_H, transition: "top .1s linear" }}>
-            {map.stages.map((st, si) => {
+          <div ref={mapElRef} style={{ position: "absolute", left: 0, top: -cam, width: MAP_W, height: MAP_H, willChange: "top" }}>
+            {isPlaza && (
+              <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at 50% 50%, ${map.soft}, #efe7f8 60%, #e2d8ee)` }}>
+                <div style={{ position: "absolute", left: "50%", top: 430, transform: "translate(-50%,-50%)", width: 520, height: 520, borderRadius: "50%", border: `3px dashed rgba(0,0,0,0.18)` }} />
+                <div style={{ position: "absolute", left: "50%", top: 430, transform: "translate(-50%,-50%)", width: 350, height: 350, borderRadius: "50%", background: "rgba(0,0,0,0.05)" }} />
+                <div style={{ position: "absolute", left: 20, top: 14, background: `linear-gradient(90deg,${map.color},${map.deep})`, color: C.white, borderRadius: 20, padding: "5px 14px", fontSize: 12, fontWeight: "bold" }}>🧠 사고의 광장 · 순서 없이 자유롭게</div>
+                <div style={{ position: "absolute", left: 40, top: 120, fontSize: 34, opacity: 0.15 }}>❓</div>
+                <div style={{ position: "absolute", right: 40, top: 700, fontSize: 34, opacity: 0.15 }}>🧩</div>
+                <div style={{ position: "absolute", right: 60, top: 160, fontSize: 30, opacity: 0.13 }}>🌀</div>
+              </div>
+            )}
+            {!isPlaza && map.stages.map((st, si) => {
               const open = stageOpen(st.n);
               const cleared_ = stageDone(st.n);
               return (
@@ -3038,9 +3855,9 @@ function BossMapView({ onBack, onReward }) {
                 </div>
               );
             })}
-            <div style={{ position: "absolute", left: 0, top: 0, width: "100%", height: BOSS_H, background: "radial-gradient(circle at 50% 55%, #4a2f4f, #241c33)" }}>
+            {!isPlaza && <div style={{ position: "absolute", left: 0, top: 0, width: "100%", height: BOSS_H, background: "radial-gradient(circle at 50% 55%, #4a2f4f, #241c33)" }}>
               <div style={{ position: "absolute", left: 14, top: 12, background: "linear-gradient(90deg,#c0563a,#8c2f21)", color: C.white, borderRadius: 20, padding: "5px 14px", fontSize: 12, fontWeight: "bold", boxShadow: "0 2px 4px rgba(0,0,0,0.4)" }}>👑 BOSS</div>
-            </div>
+            </div>}
 
             <svg width={MAP_W} height={MAP_H} style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }}>
               {nodes.map((nd, i) => {
@@ -3065,23 +3882,44 @@ function BossMapView({ onBack, onReward }) {
                     transition: "box-shadow .2s, transform .2s", transform: active ? "scale(1.08)" : "scale(1)" }}>
                     {isDone ? "✅" : locked ? "🔒" : nd.icon}
                   </div>
-                  <div style={{ marginTop: 5, fontSize: 11, fontWeight: "bold", color: nd.isBoss ? C.white : C.ink, background: nd.isBoss ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.92)", borderRadius: 12, padding: "2px 9px", whiteSpace: "nowrap", boxShadow: "0 2px 3px rgba(0,0,0,0.18)" }}>{nd.title}</div>
+                  <div style={{ marginTop: 5, fontSize: 11, fontWeight: "bold", color: nd.isBoss ? C.white : C.ink, background: nd.isBoss ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.92)", borderRadius: 12, padding: "2px 9px", whiteSpace: "nowrap", boxShadow: "0 2px 3px rgba(0,0,0,0.18)" }}>
+                    {accepted[nd.id] ? (accepted[nd.id].started ? "▶ " : "🤝 ") : ""}{nd.due && !done[nd.id] ? "⏳" : ""}{nd.level ? (nd.level === "초보자" ? "🌱" : "🔥") : ""}{nd.title}
+                  </div>
                 </div>
               );
             })}
 
-            <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-100%)", zIndex: 6, filter: "drop-shadow(0 4px 3px rgba(0,0,0,0.35))" }}>
+            {net && net.others && Object.values(net.others).filter((o) => o.v === "project").map((o) => (
+              <div key={o.id} style={{ position: "absolute", left: o.rx || 0, top: o.ry || 0, transform: "translate(-50%,-100%)", zIndex: 5, opacity: 0.95, transition: "left .18s linear, top .18s linear", pointerEvents: "none" }}>
+                {o.bubble && (
+                  <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 190, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px" }}>{o.bubble}</div>
+                )}
+                <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
+                <div className={o.dm ? "dance-" + o.dm : ""} style={{ transformOrigin: "bottom center" }}>
+                  <Hero facing={o.f || 1} moving={false} size={32} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
+                </div>
+              </div>
+            ))}
+            <div ref={heroElRef} style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-100%)", zIndex: 6, filter: "drop-shadow(0 4px 3px rgba(0,0,0,0.35))", willChange: "left, top" }}>
               <Hero facing={facing} moving={moving} size={38} />
             </div>
           </div>
 
           {near && <div className="enter-prompt" style={{ position: "absolute", left: "50%", bottom: 12, transform: "translateX(-50%)", background: "rgba(20,16,28,0.9)", color: C.white, border: `2px solid ${C.gem}`, borderRadius: 20, padding: "6px 16px", fontSize: 12, zIndex: 8 }}>E · 퀘스트 열기</div>}
           {warn && <div style={{ position: "absolute", left: "50%", top: 12, transform: "translateX(-50%)", background: "rgba(192,86,58,0.95)", color: C.white, borderRadius: 20, padding: "6px 16px", fontSize: 12, zIndex: 9, boxShadow: "0 3px 8px rgba(0,0,0,0.3)" }}>🔒 {warn}</div>}
-          <div style={{ position: "absolute", right: 8, top: 8, background: "rgba(0,0,0,0.4)", color: C.white, borderRadius: 12, padding: "3px 9px", fontSize: 10, zIndex: 8 }}>↕ 위로 올라가서 보스를 만나보세요</div>
+          <div style={{ position: "absolute", right: 8, top: 8, background: "rgba(0,0,0,0.4)", color: C.white, borderRadius: 12, padding: "3px 9px", fontSize: 10, zIndex: 8 }}>↑ 위로 올라갈수록 보스!</div>
         </div>
 
-        <div style={{ display: "flex", gap: 7, marginTop: 12, flexWrap: "wrap" }}>
-          {BOSS_MAPS.map((m, i) => {
+        <div style={{ display: "flex", gap: 7, marginTop: 12 }}>
+          {[["easy", "🌱 이지모드"], ["hard", "🔥 하드모드"]].map(([mo, label]) => (
+            <button key={mo} onClick={() => { setMode(mo); const i = maps.findIndex((m) => (m.mode || "easy") === mo); if (i >= 0) switchMap(i); }}
+              style={{ flex: 1, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 13, padding: "10px 6px", borderRadius: 10, border: `2px solid ${C.ink}`,
+                background: mode === mo ? (mo === "easy" ? "linear-gradient(180deg,#3fa07a,#1d6b4a)" : "linear-gradient(180deg,#c0563a,#8c2f21)") : C.white,
+                color: mode === mo ? C.white : C.ink, fontWeight: "bold", boxShadow: mode === mo ? "0 3px 0 rgba(0,0,0,0.3)" : "0 2px 0 rgba(0,0,0,0.15)" }}>{label}</button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 7, marginTop: 8, flexWrap: "wrap" }}>
+          {maps.map((m, i) => ({ m, i })).filter(({ m }) => (m.mode || "easy") === mode).map(({ m, i }) => {
             const on = i === mapIdx;
             return (
               <button key={m.id} onClick={() => switchMap(i)} style={{ flex: 1, minWidth: 100, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, padding: "9px 6px", borderRadius: 10,
@@ -3093,6 +3931,160 @@ function BossMapView({ onBack, onReward }) {
         </div>
       </div>
 
+      {dexOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 95, padding: 14 }} onClick={() => setDexOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440 }}>
+            <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16, boxShadow: "0 10px 26px rgba(0,0,0,0.45)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 22 }}>🧠</span>
+                <b style={{ flex: 1, fontSize: 15 }}>사고 도감</b>
+                <PxButton tone="ink" onClick={() => setDexOpen(false)} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+              </div>
+              <div style={{ maxHeight: 340, overflow: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+                {maps.filter((m) => (m.mode || "easy") === "hard").map((m) => {
+                  const qs = m.stages.reduce((a, st) => a.concat(st.quests.map((q) => ({ ...q, stage: st.n, stageName: st.name }))), []);
+                  const dn = cleared[m.id] || {};
+                  const cnt = qs.filter((q) => dn[q.id]).length;
+                  const bossDone = !!dn[m.boss.id];
+                  return (
+                    <div key={m.id}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                        <span style={{ fontSize: 16 }}>{m.icon}</span>
+                        <b style={{ flex: 1, fontSize: 13 }}>{m.name}</b>
+                        <span style={{ fontSize: 11, color: C.inkSoft }}>{cnt}/{qs.length}{bossDone ? " · 👑 격파" : ""}</span>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>
+                        {qs.map((q) => {
+                          const got = !!dn[q.id];
+                          return (
+                            <div key={q.id} title={got ? q.task : "미완료"} style={{ background: got ? C.white : "#ddd8cc", border: `2px ${got ? "solid" : "dashed"} ${C.ink}`, borderRadius: 8, padding: "9px 4px", textAlign: "center" }}>
+                              <div style={{ fontSize: 22, filter: got ? "none" : "brightness(0)", opacity: got ? 1 : 0.3 }}>{got ? q.icon : "❔"}</div>
+                              <div style={{ fontSize: 9.5, marginTop: 3, fontWeight: "bold", color: got ? C.ink : C.inkSoft, lineHeight: 1.3, wordBreak: "keep-all" }}>{got ? q.title : "???"}</div>
+                              {got && typeof dn[q.id] === "string" && <div style={{ fontSize: 8, color: C.good, marginTop: 2 }}>{dn[q.id]}</div>}
+                            </div>
+                          );
+                        })}
+                        <div style={{ background: bossDone ? "#fff1d6" : "#ddd8cc", border: `2px ${bossDone ? "solid" : "dashed"} ${C.ink}`, borderRadius: 8, padding: "9px 4px", textAlign: "center" }}>
+                          <div style={{ fontSize: 22, filter: bossDone ? "none" : "brightness(0)", opacity: bossDone ? 1 : 0.3 }}>{bossDone ? m.boss.icon : "👑"}</div>
+                          <div style={{ fontSize: 9.5, marginTop: 3, fontWeight: "bold", color: bossDone ? C.ink : C.inkSoft }}>{bossDone ? m.boss.title : "???"}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 10, textAlign: "center" }}>완료한 퀘스트만 이름이 보여요 · 아래 작은 글씨는 완료한 사람</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {collOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 95, padding: 14 }} onClick={() => setCollOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440 }}>
+            <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16, boxShadow: "0 10px 26px rgba(0,0,0,0.45)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: 22 }}>👾</span>
+                <b style={{ flex: 1, fontSize: 15 }}>보스 도감</b>
+                <PxButton tone="ink" onClick={() => setCollOpen(false)} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, maxHeight: 340, overflow: "auto" }}>
+                {PAST_BOSSES.map((b) => (
+                  <div key={b.id} style={{ position: "relative", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: "12px 6px", textAlign: "center" }}>
+                    <div style={{ fontSize: 34, opacity: 0.85 }}>{b.icon}</div>
+                    <div style={{ fontSize: 11, fontWeight: "bold", marginTop: 4 }}>{b.name}</div>
+                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(200,40,40,0.75)", fontSize: 56, fontWeight: "bold", lineHeight: 1 }}>✕</div>
+                  </div>
+                ))}
+                {maps.map((m) => {
+                  const st = bossState(m);
+                  return (
+                    <div key={m.id} style={{ position: "relative", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: "12px 6px", textAlign: "center" }}>
+                      <div style={{ fontSize: 34 }}>{m.boss.icon}</div>
+                      <div style={{ fontSize: 11, fontWeight: "bold", marginTop: 4 }}>{m.boss.title}</div>
+                      <div style={{ fontSize: 9, color: C.inkSoft }}>{m.icon} {m.name}</div>
+                      {st === "done" && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(200,40,40,0.75)", fontSize: 56, fontWeight: "bold", lineHeight: 1 }}>✕</div>}
+                    </div>
+                  );
+                })}
+                {Array.from({ length: FUTURE_BOSSES }).map((_, i) => (
+                  <div key={"f" + i} style={{ background: "#ddd8cc", border: `2px dashed ${C.ink}`, borderRadius: 10, padding: "12px 6px", textAlign: "center" }}>
+                    <div style={{ fontSize: 34, filter: "brightness(0)", opacity: 0.35 }}>👹</div>
+                    <div style={{ fontSize: 11, fontWeight: "bold", marginTop: 4, color: C.inkSoft }}>???</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 10, textAlign: "center" }}>✕ = 처치 완료 · 그림자 = 아직 만나지 못한 보스</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {addOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 95, padding: 14 }} onClick={() => setAddOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
+            <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16 }}>
+              <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                <PxButton tone={addTab === "quest" ? "good" : "wood"} onClick={() => setAddTab("quest")} style={{ flex: 1, fontSize: 12, padding: 8 }}>🎯 퀘스트 추가</PxButton>
+                <PxButton tone={addTab === "map" ? "good" : "wood"} onClick={() => setAddTab("map")} style={{ flex: 1, fontSize: 12, padding: 8 }}>👹 보스맵 추가</PxButton>
+              </div>
+              {addTab === "quest" ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                  <div style={{ fontSize: 11, color: C.inkSoft }}>「{map.icon} {map.name}」{isPlaza ? " 광장" : " 맵"}에 퀘스트를 추가해요</div>
+                  {!isPlaza && (
+                    <select value={fQ.stage} onChange={(e) => setFQ({ ...fQ, stage: e.target.value })} style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }}>
+                      {map.stages.map((st) => <option key={st.n} value={st.n}>{st.n} 스테이지 · {st.name}</option>)}
+                    </select>
+                  )}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input value={fQ.icon} onChange={(e) => setFQ({ ...fQ, icon: e.target.value })} maxLength={2} placeholder="🎯" style={{ width: 52, textAlign: "center", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 16 }} />
+                    <input value={fQ.title} onChange={(e) => setFQ({ ...fQ, title: e.target.value })} placeholder="퀘스트 이름" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                    <input value={fQ.gem} onChange={(e) => setFQ({ ...fQ, gem: e.target.value })} type="number" style={{ width: 60, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 13 }} />
+                  </div>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    {["초보자", "숙련자"].map((lv) => (
+                      <PxButton key={lv} tone={fQ.level === lv ? (lv === "초보자" ? "good" : "danger") : "wood"} onClick={() => setFQ({ ...fQ, level: lv })} style={{ flex: 1, fontSize: 12, padding: 8 }}>{lv === "초보자" ? "🌱 초보자" : "🔥 숙련자"}</PxButton>
+                    ))}
+                  </div>
+                  {fQ.level === "초보자" && (
+                    <div style={{ display: "flex", gap: 5 }}>
+                      <PxButton tone={fQ.field === "naverschool" ? "good" : "wood"} onClick={() => setFQ({ ...fQ, field: "naverschool" })} style={{ flex: 1, fontSize: 12, padding: 8 }}>📗 네이버</PxButton>
+                      <PxButton tone={fQ.field === "videoschool" ? "good" : "wood"} onClick={() => setFQ({ ...fQ, field: "videoschool" })} style={{ flex: 1, fontSize: 12, padding: 8 }}>🎬 영상</PxButton>
+                    </div>
+                  )}
+                  <input value={fQ.desc} onChange={(e) => setFQ({ ...fQ, desc: e.target.value })} placeholder="한 줄 설명 (선택)" style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                  <input value={fQ.task} onChange={(e) => setFQ({ ...fQ, task: e.target.value })} placeholder="목표 · 무엇을 하면 완료인가요?" style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                  <div style={{ fontSize: 11, fontWeight: "bold" }}>⏳ 제한시간 (선택)</div>
+                  <input type="datetime-local" value={fQ.due || ""} onChange={(e) => setFQ({ ...fQ, due: e.target.value })} style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                  <div style={{ fontSize: 10, color: C.inkSoft }}>보상은 위 ⭐ 칸에서 정해요 (기본 5젬)</div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                    <PxButton tone="ink" onClick={() => setAddOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>
+                    <PxButton tone="gold" disabled={!fQ.title.trim()} onClick={addQuest} style={{ flex: 1, padding: 10, fontSize: 13 }}>추가하기</PxButton>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                  <div style={{ fontSize: 11, color: C.inkSoft }}>새 보스맵(프로젝트)을 만들어요</div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input value={fM.icon} onChange={(e) => setFM({ ...fM, icon: e.target.value })} maxLength={2} placeholder="🗺" style={{ width: 52, textAlign: "center", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 16 }} />
+                    <input value={fM.name} onChange={(e) => setFM({ ...fM, name: e.target.value })} placeholder="맵 이름 (예: 신발)" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input value={fM.bossIcon} onChange={(e) => setFM({ ...fM, bossIcon: e.target.value })} maxLength={2} placeholder="👹" style={{ width: 52, textAlign: "center", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 16 }} />
+                    <input value={fM.boss} onChange={(e) => setFM({ ...fM, boss: e.target.value })} placeholder="보스 이름" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                  </div>
+                  <div style={{ fontSize: 10, color: C.inkSoft }}>만들면 1 스테이지가 생겨요. 그 뒤 퀘스트 추가로 채우면 됩니다.</div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                    <PxButton tone="ink" onClick={() => setAddOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>
+                    <PxButton tone="gold" disabled={!fM.name.trim()} onClick={addMap} style={{ flex: 1, padding: 10, fontSize: 13 }}>만들기</PxButton>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {sel && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 14 }} onClick={() => setSel(null)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 370 }}>
@@ -3100,14 +4092,111 @@ function BossMapView({ onBack, onReward }) {
               <div style={{ textAlign: "center" }}>
                 <div style={{ width: 78, height: 78, margin: "0 auto", borderRadius: "50%", background: sel.isBoss ? "radial-gradient(circle at 35% 30%, #ffffff44, #8c2f21)" : `radial-gradient(circle at 35% 30%, #fffbe8, ${map.color})`, border: `3px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 38, boxShadow: "0 5px 10px rgba(0,0,0,0.3)" }}>{sel.icon}</div>
                 <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 8 }}>{sel.isBoss ? "👑 BOSS" : `${sel.stage} STAGE · ${sel.stageName}`}</div>
+                {accepted[sel.id] && (
+                  <div style={{ display: "flex", gap: 4, justifyContent: "center", flexWrap: "wrap", marginTop: 8 }}>
+                    <span style={{ fontSize: 10, color: C.inkSoft, alignSelf: "center" }}>👥 파티</span>
+                    {(accepted[sel.id].party || []).map((p) => (
+                      <span key={p} style={{ fontSize: 10, fontWeight: "bold", color: C.white, background: (accepted[sel.id].agree || []).includes(p) ? "#2f9e6e" : "#5b8def", borderRadius: 10, padding: "2px 9px" }}>
+                        {p}{(accepted[sel.id].agree || []).includes(p) ? " ✓" : ""}
+                      </span>
+                    ))}
+                    {accepted[sel.id].locked && <span style={{ fontSize: 10, fontWeight: "bold", color: C.ink, background: "#ffd75e", borderRadius: 10, padding: "2px 9px" }}>🔒 확정</span>}
+                  </div>
+                )}
+                {sel.level && (
+                  <div style={{ display: "flex", gap: 5, justifyContent: "center", marginTop: 6 }}>
+                    <span style={{ fontSize: 10, fontWeight: "bold", color: C.white, background: sel.level === "초보자" ? "#2f9e6e" : "#c0563a", borderRadius: 10, padding: "2px 9px" }}>{sel.level === "초보자" ? "🌱 초보자" : "🔥 숙련자"}</span>
+                    {sel.field && <span style={{ fontSize: 10, fontWeight: "bold", color: C.white, background: sel.field === "naverschool" ? "#2db400" : "#8e5a9e", borderRadius: 10, padding: "2px 9px" }}>{sel.field === "naverschool" ? "📗 네이버" : "🎬 영상"}</span>}
+                  </div>
+                )}
                 <div style={{ fontSize: 17, fontWeight: "bold", margin: "4px 0 8px" }}>{sel.title}</div>
               </div>
               <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10, textAlign: "center", lineHeight: 1.6 }}>{sel.desc}</div>
               <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: 12, fontSize: 13, lineHeight: 1.6 }}>🎯 {sel.task}</div>
               <div style={{ fontSize: 12, textAlign: "center", margin: "10px 0", color: "#a86e13", fontWeight: "bold" }}>보상 ⭐ {sel.gem}</div>
-              {lockReason(sel) && <div style={{ background: "#fbe4e0", border: `2px solid ${C.danger}`, borderRadius: 8, color: C.danger, padding: 9, fontSize: 12, marginBottom: 10, textAlign: "center" }}>🔒 {lockReason(sel)}</div>}
+              {sel.due && dueText(sel.due) && (
+                <div style={{ fontSize: 13, textAlign: "center", marginBottom: 10, fontWeight: "bold", color: dueText(sel.due).over ? C.danger : "#2f9e6e", background: dueText(sel.due).over ? "#fbe4e0" : "#e6f4ec", border: `2px solid ${dueText(sel.due).over ? C.danger : "#2f9e6e"}`, borderRadius: 8, padding: 8 }}>
+                  {dueText(sel.due).txt}<div style={{ fontSize: 10, color: C.inkSoft, fontWeight: "normal", marginTop: 2 }}>마감 {new Date(sel.due).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+                </div>
+              )}
+              {done[sel.id] && typeof done[sel.id] === "string" && <div style={{ fontSize: 11, textAlign: "center", color: C.good, marginBottom: 8 }}>✅ {done[sel.id]}님이 완료했어요</div>}
+              {lockReason(sel) && <div style={{ background: "#fbe4e0", border: `2px solid ${C.danger}`, borderRadius: 8, color: C.danger, padding: 9, fontSize: 12, margin: "10px 0", textAlign: "center", fontWeight: "bold" }}>🔒 {lockReason(sel)}</div>}
+              {map.mode === "hard" && !done[sel.id] && !sel.isBoss && !lockReason(sel) && (
+                <div style={{ background: "#fff6e8", border: `2px solid ${C.ink}`, borderRadius: 10, padding: 11, marginBottom: 10 }}>
+                  {!accepted[sel.id] ? (
+                    <PxButton tone="gold" onClick={() => onAccept && onAccept(sel.id, sel.title)} style={{ width: "100%", padding: 11, fontSize: 13 }}>🤝 퀘스트 수락하기</PxButton>
+                  ) : (accepted[sel.id].locked && !(accepted[sel.id].party || []).includes(myName)) ? (
+                    <div style={{ fontSize: 12, color: C.danger, textAlign: "center", padding: 8, fontWeight: "bold" }}>🔒 파티가 확정된 퀘스트예요. 참여할 수 없어요.</div>
+                  ) : (
+                    <div>
+                      {!accepted[sel.id].started ? (
+                        <div>
+                          <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 6 }}>파티원을 모집한 뒤 시작하세요</div>
+                          <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                            <PxButton tone="wood" onClick={() => onShout && onShout(`📢 「${sel.title}」 퀘스트 같이 하실 분!`)} style={{ flex: 1, fontSize: 11, padding: 8 }}>📢 확성기 모집</PxButton>
+                            <PxButton tone="wood" onClick={() => onBoard && onBoard(sel.title)} style={{ flex: 1, fontSize: 11, padding: 8 }}>📋 게시판 모집</PxButton>
+                          </div>
+                          {!accepted[sel.id].locked ? (
+                            <PxButton tone={(accepted[sel.id].agree || []).includes(myName) ? "ink" : "danger"} onClick={() => onAgree && onAgree(sel.id)} style={{ width: "100%", padding: 9, fontSize: 12, marginBottom: 6 }}>
+                              🔒 퀘스트 잠금 동의 ({(accepted[sel.id].agree || []).length}/{(accepted[sel.id].party || []).length})
+                            </PxButton>
+                          ) : (
+                            <div style={{ fontSize: 11, color: C.good, textAlign: "center", marginBottom: 6, fontWeight: "bold" }}>🔒 파티 확정 — 더 이상 참여할 수 없어요</div>
+                          )}
+                          <PxButton tone="good" onClick={() => onStart && onStart(sel.id)} style={{ width: "100%", padding: 10, fontSize: 13 }}>▶ 퀘스트 시작</PxButton>
+                          <PxButton tone="danger" onClick={() => onLeave && onLeave(sel.id)} style={{ width: "100%", padding: 9, fontSize: 12, marginTop: 6 }}>🚪 퀘스트에서 나가기</PxButton>
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: "bold", margin: "4px 0 5px" }}>💬 퀘스트 대화방</div>
+                          <div style={{ height: 110, overflow: "auto", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: 7, display: "flex", flexDirection: "column", gap: 4 }}>
+                            {(threads[sel.id] || []).length === 0 && <div style={{ fontSize: 11, color: C.inkSoft }}>대화를 시작해보세요</div>}
+                            {(threads[sel.id] || []).map((m, i) => (
+                              <div key={i} style={{ fontSize: 12 }}><b style={{ color: "#5b8def" }}>{m.who}</b> {m.text}</div>
+                            ))}
+                          </div>
+                          <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
+                            <input value={tMsg} onChange={(e) => setTMsg(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} placeholder="메시지" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
+                            <PxButton tone="blue" onClick={() => { if (tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} style={{ fontSize: 11, padding: "7px 10px" }}>➤</PxButton>
+                          </div>
+                          <PxButton tone="danger" onClick={() => onLeave && onLeave(sel.id)} style={{ width: "100%", padding: 9, fontSize: 12, marginTop: 8 }}>🚪 퀘스트에서 나가기</PxButton>
+                          <div style={{ fontSize: 12, fontWeight: "bold", margin: "10px 0 5px" }}>📓 퀘스트 일지</div>
+                          <textarea value={notes[sel.id] || ""} onChange={(e) => onNote && onNote(sel.id, e.target.value)} placeholder="진행 상황·메모를 남겨두세요" style={{ width: "100%", boxSizing: "border-box", height: 70, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, resize: "none", background: C.white }} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+              {sel.level === "초보자" && sel.field && onGoSchool && !lockReason(sel) && (
+                <PxButton tone="blue" onClick={() => onGoSchool(sel.field)} style={{ width: "100%", padding: 10, fontSize: 13, marginBottom: 10 }}>
+                  {sel.field === "naverschool" ? "📗 네이버스쿨로 가서 배우기 →" : "🎬 영상스쿨로 가서 배우기 →"}
+                </PxButton>
+              )}
+              {editing && editing.id === sel.id ? (
+                <div style={{ background: "#fff", border: `2px solid ${C.ink}`, borderRadius: 10, padding: 11, marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 7 }}>✏️ 퀘스트 수정</div>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                    <input value={editing.icon} onChange={(e) => setEditing({ ...editing, icon: e.target.value })} maxLength={2} style={{ width: 46, textAlign: "center", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 15 }} />
+                    <input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} placeholder="이름" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                    <input value={editing.gem} onChange={(e) => setEditing({ ...editing, gem: e.target.value })} type="number" style={{ width: 56, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 13 }} />
+                  </div>
+                  <input value={editing.desc} onChange={(e) => setEditing({ ...editing, desc: e.target.value })} placeholder="한 줄 설명" style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, marginBottom: 6 }} />
+                  <input value={editing.task} onChange={(e) => setEditing({ ...editing, task: e.target.value })} placeholder="목표" style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                  <div style={{ display: "flex", gap: 7, marginTop: 9 }}>
+                    <PxButton tone="ink" onClick={() => setEditing(null)} style={{ flex: 1, padding: 9, fontSize: 12 }}>취소</PxButton>
+                    <PxButton tone="good" disabled={!editing.title.trim()} onClick={saveEdit} style={{ flex: 1, padding: 9, fontSize: 12 }}>저장</PxButton>
+                  </div>
+                </div>
+              ) : canEdit(sel) && (
+                <div style={{ display: "flex", gap: 7, marginBottom: 10 }}>
+                  <PxButton tone="wood" onClick={() => setEditing({ id: sel.id, title: sel.title, icon: sel.icon, gem: sel.gem, desc: sel.desc || "", task: sel.task || "" })} style={{ flex: 1, padding: 9, fontSize: 12 }}>✏️ 수정</PxButton>
+                  <PxButton tone="danger" onClick={() => { if (window.confirm(`「${sel.title}」 퀘스트를 삭제할까요?`)) delQuest(sel.id); }} style={{ flex: 1, padding: 9, fontSize: 12 }}>🗑 삭제</PxButton>
+                </div>
+              )}
+              {sel.owner && <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginBottom: 8 }}>✍️ 작성자 {sel.owner}</div>}
               <div style={{ display: "flex", gap: 8 }}>
-                <PxButton tone="ink" onClick={() => setSel(null)} style={{ flex: 1, padding: 10, fontSize: 13 }}>닫기</PxButton>
+                <PxButton tone="ink" onClick={() => { setSel(null); setEditing(null); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>닫기</PxButton>
                 <PxButton tone="gold" disabled={!!done[sel.id] || !!lockReason(sel)} onClick={() => clear(sel)} style={{ flex: 1, padding: 10, fontSize: 13 }}>{done[sel.id] ? "완료됨 ✓" : sel.isBoss ? "⚔ 격파!" : "✅ 완료"}</PxButton>
               </div>
             </div>
@@ -3117,6 +4206,7 @@ function BossMapView({ onBack, onReward }) {
     </Panel>
   );
 }
+
 /* ======================= 이케아(집꾸미기 · 교통수단) ======================= */
 const IKEA_ITEMS = {
   house: [
@@ -3198,6 +4288,80 @@ function IkeaView({ gems, owned, houseSkin, vehicle, myFurni, onBuy, onBack, bub
     </RoomView>
   );
 }
+/* ======================= 코어사전 ======================= */
+function BookIcon({ size = 96 }) {
+  return (
+    <svg width={size} height={size * 0.9} viewBox="0 0 22 20" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <rect x="1" y="3" width="20" height="15" fill="#8a5a3b" stroke="#2b1f14" strokeWidth="0.6" />
+      <rect x="2" y="4" width="8.5" height="13" fill="#fdf6e3" stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="11.5" y="4" width="8.5" height="13" fill="#f7efdc" stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="10.5" y="3" width="1" height="15" fill="#5e3a22" />
+      <rect x="3.5" y="6" width="6" height="0.8" fill="#c9bfa5" /><rect x="3.5" y="8" width="6" height="0.8" fill="#c9bfa5" /><rect x="3.5" y="10" width="4" height="0.8" fill="#c9bfa5" />
+      <rect x="12.5" y="6" width="6" height="0.8" fill="#c9bfa5" /><rect x="12.5" y="8" width="6" height="0.8" fill="#c9bfa5" /><rect x="12.5" y="10" width="5" height="0.8" fill="#c9bfa5" />
+      <rect x="9" y="0" width="4" height="4" fill="#d9a441" stroke="#2b1f14" strokeWidth="0.4" />
+    </svg>
+  );
+}
+
+function CoreDictView({ onBack, myName = "" }) {
+  const [list, setList] = useState([]);
+  const [q, setQ] = useState("");
+  const [word, setWord] = useState("");
+  const [mean, setMean] = useState("");
+  const [editing, setEditing] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const say = (m) => { setMsg(m); setTimeout(() => setMsg(null), 1800); };
+  const reload = () => dbDictList().then((r) => setList(r || []));
+  useEffect(() => { reload(); }, []);
+  const save = () => {
+    const w = word.trim(), m = mean.trim();
+    if (!w || !m) return;
+    dbDictSave(w, m, myName || "익명").then((ok) => {
+      if (ok) { say(editing ? "수정했어요 ✏️" : "등록했어요 📖"); setWord(""); setMean(""); setEditing(null); reload(); }
+      else say("저장 실패 — 사전 테이블을 만들어주세요");
+    });
+  };
+  const startEdit = (it) => { setEditing(it.word); setWord(it.word); setMean(it.meaning); };
+  const shown = list.filter((it) => !q.trim() || it.word.includes(q.trim()) || (it.meaning || "").includes(q.trim()));
+  return (
+    <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <TitleBar icon="📖" title="코어사전" sub="누구나 우리만의 단어와 뜻을 등록·수정할 수 있어요" onBack={onBack} bg="#8a5a3b" fg={C.white} />
+      <div style={{ padding: 14, background: "#f7efdc" }}>
+        <div style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 7 }}>{editing ? `✏️ 「${editing}」 수정 중` : "✍️ 새 단어 등록"}</div>
+          <input value={word} onChange={(e) => setWord(e.target.value)} placeholder="단어 (예: 쩝쩝박사)" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, marginBottom: 7 }} />
+          <textarea value={mean} onChange={(e) => setMean(e.target.value)} placeholder="뜻 · 설명을 자유롭게 적어주세요" style={{ width: "100%", boxSizing: "border-box", height: 80, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "none" }} />
+          <div style={{ display: "flex", gap: 7, marginTop: 8 }}>
+            {editing && <PxButton tone="ink" onClick={() => { setEditing(null); setWord(""); setMean(""); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>}
+            <PxButton tone="gold" disabled={!word.trim() || !mean.trim()} onClick={save} style={{ flex: 2, padding: 10, fontSize: 13 }}>{editing ? "수정 저장" : "📖 사전에 등록"}</PxButton>
+          </div>
+          {msg && <div style={{ fontSize: 12, color: C.good, textAlign: "center", marginTop: 7, fontWeight: "bold" }}>{msg}</div>}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 단어 검색" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+          <span style={{ fontSize: 11, color: C.inkSoft }}>{shown.length}개</span>
+        </div>
+        <div style={{ maxHeight: 300, overflow: "auto", display: "flex", flexDirection: "column", gap: 7 }}>
+          {shown.length === 0 ? (
+            <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 24 }}>아직 등록된 단어가 없어요 📖<br />첫 단어를 등록해보세요!</div>
+          ) : shown.map((it) => (
+            <div key={it.word} style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 11 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <b style={{ flex: 1, fontSize: 14 }}>📗 {it.word}</b>
+                <PxButton tone="wood" onClick={() => startEdit(it)} style={{ fontSize: 10, padding: "4px 8px" }}>✏️ 수정</PxButton>
+                <PxButton tone="danger" onClick={() => { if (window.confirm(`「${it.word}」를 삭제할까요?`)) dbDictDelete(it.word).then(reload); }} style={{ fontSize: 10, padding: "4px 8px" }}>🗑</PxButton>
+              </div>
+              <div style={{ fontSize: 13, lineHeight: 1.7, marginTop: 5, whiteSpace: "pre-wrap" }}>{it.meaning}</div>
+              {it.updated_by && <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 5 }}>✍️ 최근 수정 {it.updated_by}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
 /* ======================= 흡연의 방(플레이버) ======================= */
 const SMOKE_PEOPLE = ["정인", "호중", "희정", "유리", "의준"];
 const SMOKE_LINES = ["오늘 왜이렇게 춥냐 ㅋㅋ", "커피 한잔 하실분~", "아 마감 언제끝나ㅠ", "날씨 좋다 그치", "점심 뭐먹지", "주말에 뭐함?", "일 너무 많아 진짜", "ㅋㅋㅋㅋㅋㅋ", "맞아맞아", "와 대박", "나 이제 끊을거야 (3일째)", "치앙마이 가고싶다", "한 대 피우고 가자", "오늘도 화이팅~"];
@@ -3303,7 +4467,51 @@ function SmokeView({ onBack, bubble }) {
 }
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
-function BoardView({ onBack }) {
+const UPDATE_NOTES = [
+  { id: "u20260723n", type: "업데이트", date: "2026-07-23", title: "🏆 퀘스트 완료의 제단 오픈",
+    body: "· 주민센터 남쪽에 신비로운 상징물 「퀘스트 완료의 제단」이 세워졌어요\n· 안에서 [퀘스트 신청 파편] · [퀘스트 수락 파편] 을 봉헌할 수 있어요\n· 항목마다 🛡 GM 검수 완료 / ⭐ 보상 완료 체크 가능\n· 둘 다 체크되면 ✦ 봉인 완료로 바뀌고 상단 봉인도 게이지가 올라가요\n· 신청/수락/미완/완료 필터와 검색 지원" },
+  { id: "u20260723m", type: "업데이트", date: "2026-07-23", title: "🧭 우측 하단 버튼 4개로 정리 · ✉️ 메세지함 신설",
+    body: "· 세로로 쌓여 잘리던 버튼들을 가로 4개 아이콘으로 정리했어요\n· ☰ 메뉴 : 마을주민들 · 피드백 보내기\n· 🧑 내 프로필 : 프로필 · 인벤토리 · 뱃지\n· 📖 안내책자 : 에코타운 사용설명서 · 코어사전\n· ✉️ 메세지 : 공지 · 초대장 · 선물/우편 · 메세지/DM · 부재중 통화\n· 안 읽은 항목이 있으면 빨간 숫자로 표시돼요\n· 📨 회의실 초대장 버튼을 회의실 안 큰 배너로 옮겨 잘 보이게 했어요" },
+  { id: "u20260723l", type: "업데이트", date: "2026-07-23", title: "📖 코어사전 오픈 · ⏳ 퀘스트 제한시간",
+    body: "· 주민센터 근처에 📖 코어사전이 생겼어요\n· 누구나 우리만의 단어와 뜻을 등록·수정·삭제할 수 있어요 (나무위키처럼)\n· 단어 검색과 최근 수정자 표시 지원\n· 퀘스트 추가 시 ⏳ 제한시간(마감 일시)을 정할 수 있어요 — 실시간 카운트다운 표시\n· 하드모드(광장)에서는 스테이지 선택 없이 바로 광장에 퀘스트가 추가돼요" },
+  { id: "u20260723k", type: "업데이트", date: "2026-07-23", title: "🔧 편의 개선 모음",
+    body: "· 🏅 이미 받은 뱃지가 반복해서 뜨던 문제 수정\n· 👥 상단 접속자수를 누르면 누가 접속 중인지 목록이 나와요\n· 마을주민들 목록에 🟢 접속 중 / ⚪ 오프라인 표시\n· 📅 회의 초대를 수락하면 주민센터 상단에 내 회의 일정이 떠요\n· 🪑 회의실 대형 테이블·라운지 테이블에 앉은 사람 이름이 보여요\n· 📜 게시판 업데이트 탭 아래에 확인한 업데이트 기록 보관\n· 보스맵 도감 버튼이 모드별 1개로 정리 (이지=보스도감, 하드=사고도감)" },
+  { id: "u20260723j", type: "업데이트", date: "2026-07-23", title: "📚 퀘스트 도감 · 🧠 사고 도감 오픈",
+    body: "· 보스맵 상단 📚 버튼으로 완료한 퀘스트를 모아볼 수 있어요\n· 🌱 이지 도감 / 🧠 사고 도감(하드) 탭으로 구분\n· 완료한 퀘스트만 아이콘·이름이 공개되고 미완료는 ??? 로 표시\n· 누가 완료했는지도 함께 표시돼요\n· 새 퀘스트는 기존 퀘스트보다 위쪽(보스 방향)에 생성돼요" },
+  { id: "u20260723i", type: "업데이트", date: "2026-07-23", title: "👥 주민 목록 = 실제 접속자 기반",
+    body: "· 마을주민들 · 회의 초대원 · 라이어 게임 초대 목록이 실제로 이름을 등록한 사람들로 바뀌었어요\n· 🟢 접속 중 / ⚪ 오프라인 상태가 표시돼요\n· 새로 이름을 등록하면 자동으로 목록에 추가돼요 (1분마다 갱신)\n· 퀘스트를 새로 만들면 기존 퀘스트보다 위쪽(보스 방향)에 배치돼요" },
+  { id: "u20260723f", type: "업데이트", date: "2026-07-23", title: "🧠 하드모드 = 광장 형식으로 변경",
+    body: "· 스테이지 구분 없이 하나의 넓은 광장에 퀘스트가 흩어져 배치돼요\n· 순서 상관없이 아무 퀘스트나 자유롭게 도전 가능\n· 광장 한가운데 보스 — 모든 퀘스트를 완료해야 도전할 수 있어요\n· 이지모드(어플·속옷·양말)는 기존 스테이지 방식 유지" },
+  { id: "u20260723g", type: "업데이트", date: "2026-07-23", title: "👥 파티 기능 강화",
+    body: "· 퀘스트 상단에 파티원 이름이 칩으로 표시돼요 (동의한 사람은 초록 ✓)\n· 🔒 파티 전원이 동의하면 퀘스트를 잠글 수 있어요 — 이후 다른 사람은 참여 불가\n· 🚪 진행 중인 퀘스트에서 나가기 버튼 추가\n· 보스맵 안에서도 다른 접속자가 보여요 (이름표·말풍선·춤·옷)" },
+  { id: "u20260723h", type: "업데이트", date: "2026-07-23", title: "✏️ 퀘스트 수정·삭제 · 📨 회의 초대장",
+    body: "· 퀘스트를 만든 사람이 직접 수정·삭제할 수 있어요 (작성자 표시)\n· 기존 기본 퀘스트는 누구나 수정·삭제 가능\n· 회의실에서 📨 초대장 보내기 추가 — 날짜·시간·예상 회의시간·초대원 선택\n· 받은 사람은 참석/불참으로 답할 수 있고, 초대장은 우체통에도 저장돼요\n· 게시판 🤝 모집 탭에 파티모집 글이 따로 모여요" },
+  { id: "u20260723a", type: "업데이트", date: "2026-07-23", title: "🏠 집 시스템 오픈",
+    body: "· 내 집 첫 방문 시 비밀번호 설정 (최초 1회)\n· 현관에서 비밀번호 입력 후 입장 — 비밀번호를 알면 누구나 입장 가능\n· 🔔 초인종: 집주인에게 알림 → 문 열어주기 / 거절하기 선택\n· 📮 우체통: 방명록·편지·선물 전송 (택배비 ⭐0.3), 받은 편지함 확인\n· 🎁 마을에서 다른 사람 캐릭터를 클릭하면 바로 선물 주기" },
+  { id: "u20260723b", type: "업데이트", date: "2026-07-23", title: "🗺 보스맵 도전기 개편",
+    body: "· 🌱 이지모드(어플·속옷·양말) / 🔥 하드모드(사고력 훈련) 분리\n· 아래→위로 올라가는 세로 맵, 스테이지 구역 표시\n· 캐릭터 이동이 부드러워졌어요\n· 👾 보스 도감 추가 (처치 / 진행중 / ??? )\n· ＋ 버튼으로 퀘스트·보스맵 직접 추가 (초보자/숙련자, 네이버/영상 선택)\n· 하드모드 퀘스트: 🤝 수락 → 파티원 모집 → ▶ 시작 → 💬 대화방 · 📓 퀘스트 일지\n· [수정] 잠긴 퀘스트에서 진행되던 문제 해결" },
+  { id: "u20260723c", type: "업데이트", date: "2026-07-23", title: "💾 서버 저장 시작",
+    body: "· 이름으로 접속하면 젬·옷·가구·탈것·뱃지·메모가 서버에 저장돼요\n· 새로고침하거나 다른 기기에서도 이어서 플레이 가능\n· 🏆 샌드백·수영 랭킹이 모두에게 공유돼요\n· 📮 편지·선물은 상대가 접속 중이 아니어도 도착해요\n· 🗺 보스맵 진행도는 팀 전체가 함께 봐요" },
+  { id: "u20260723d", type: "업데이트", date: "2026-07-23", title: "📋 게시판 · 🗺 지도 개선",
+    body: "· 게시판에 🤝 모집 / 🆕 업데이트 탭 추가\n· ✍️ 글쓰기로 공지·이벤트·모집·업데이트 직접 등록 (코드 수정 불필요)\n· 업데이트 글은 [확인했어요]를 누르면 사라져요\n· 미니맵 구역과 전체지도 건물 이름을 누르면 그곳으로 순간이동 🚀" },
+  { id: "u20260723e", type: "업데이트", date: "2026-07-23", title: "👥 멀티플레이 · 편의 기능",
+    body: "· 같은 방 안에서도 서로 보여요\n· 채팅·말풍선·춤·옷·집 외관이 실시간으로 공유돼요\n· 말풍선이 50자까지 줄바꿈돼요\n· 🔊 배경음악·리스닝방 볼륨 조절\n· 🏅 뱃지 시스템 (방문·소통·운동·흡연·샌드백·보스맵·노래)\n· 📖 게임 내 사용설명서 추가 (장소 바로가기 포함)\n· 입력창에서 방향키·스페이스가 막히던 문제 해결" },
+];
+
+function BoardView({ onBack, myName = "" }) {
+  const [dbList, setDbList] = useState([]);
+  const [wOpen, setWOpen] = useState(false);
+  const [wType, setWType] = useState("공지");
+  const [wTitle, setWTitle] = useState("");
+  const [wBody, setWBody] = useState("");
+  const [seen, setSeen] = useState(() => loadJSON("echotown_seen_updates", {}));
+  const markSeen = (id) => setSeen((v) => { const n = { ...v, [id]: true }; saveJSON("echotown_seen_updates", n); return n; });
+  const reload = () => dbNotices().then((r) => setDbList(r || []));
+  useEffect(() => { reload(); }, []);
+  const post = () => {
+    if (!wTitle.trim()) return;
+    dbAddNotice(wType, wTitle.trim(), wBody.trim()).then(() => { setWTitle(""); setWBody(""); setWOpen(false); reload(); });
+  };
   const [tab, setTab] = useState("notice");
   const [openDoc, setOpenDoc] = useState(null);
   const [day, setDay] = useState(null);
@@ -3315,16 +4523,92 @@ function BoardView({ onBack }) {
   const key = (d) => `2026-07-${String(d).padStart(2, "0")}`;
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="📋" title="게시판" sub="공지사항 · 2026년 7월 캘린더" onBack={onBack} bg={C.wood} fg={C.white} />
+      <TitleBar icon="📋" title="게시판" sub="공지사항 · 2026년 7월 캘린더" onBack={onBack} bg={C.wood} fg={C.white}
+        right={<PxButton tone="gold" onClick={() => setWOpen(true)} style={{ fontSize: 11, padding: "5px 10px" }}>✍️ 글쓰기</PxButton>} />
+      {wOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={() => setWOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 360 }}>
+            <Panel style={{ padding: 16 }}>
+              <b style={{ fontSize: 14 }}>✍️ 새 글 쓰기</b>
+              <div style={{ display: "flex", gap: 6, margin: "10px 0" }}>
+                {["공지", "이벤트", "모집", "업데이트"].map((t) => (
+                  <PxButton key={t} tone={wType === t ? "good" : "wood"} onClick={() => setWType(t)} style={{ flex: 1, fontSize: 11, padding: 8 }}>{t}</PxButton>
+                ))}
+              </div>
+              <input value={wTitle} onChange={(e) => setWTitle(e.target.value)} placeholder="제목" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, marginBottom: 6 }} />
+              <textarea value={wBody} onChange={(e) => setWBody(e.target.value)} placeholder="내용" style={{ width: "100%", boxSizing: "border-box", height: 90, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "none" }} />
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <PxButton tone="ink" onClick={() => setWOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>
+                <PxButton tone="gold" disabled={!wTitle.trim()} onClick={post} style={{ flex: 1, padding: 10, fontSize: 13 }}>등록</PxButton>
+              </div>
+            </Panel>
+          </div>
+        </div>
+      )}
       <div style={{ display: "flex", gap: 6, padding: 10, background: C.parchLine, borderBottom: `3px solid ${C.parchEdge}` }}>
         <PxButton tone={tab === "notice" ? "gold" : "wood"} onClick={() => setTab("notice")} style={{ fontSize: 12, padding: "8px 12px" }}>📢 공지사항</PxButton>
         <PxButton tone={tab === "cal" ? "gold" : "wood"} onClick={() => setTab("cal")} style={{ fontSize: 12, padding: "8px 12px" }}>📅 캘린더</PxButton>
+        <PxButton tone={tab === "party" ? "gold" : "wood"} onClick={() => setTab("party")} style={{ fontSize: 12, padding: "8px 12px" }}>🤝 모집</PxButton>
+        <PxButton tone={tab === "update" ? "gold" : "wood"} onClick={() => setTab("update")} style={{ fontSize: 12, padding: "8px 12px" }}>
+          🆕 업데이트{[...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => !seen[n.id]).length > 0 ? ` (${[...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => !seen[n.id]).length})` : ""}
+        </PxButton>
       </div>
 
       <div style={{ padding: 16, background: `repeating-linear-gradient(0deg, ${C.parch} 0 40px, ${C.parchLine} 40px 80px)` }}>
+        {tab === "party" && (
+          <div style={{ display: "grid", gap: 8 }}>
+            {dbList.filter((n) => n.type === "모집" || String(n.title || "").startsWith("[파티모집]")).length === 0 ? (
+              <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 24 }}>아직 모집 중인 파티가 없어요 🤝<br />보스맵 하드모드에서 퀘스트를 수락하고 모집해보세요!</div>
+            ) : dbList.filter((n) => n.type === "모집" || String(n.title || "").startsWith("[파티모집]")).map((a) => (
+              <div key={a.id} style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 8, padding: "10px 12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 10, color: "#fff", background: "#8e5a9e", borderRadius: 10, padding: "2px 8px", whiteSpace: "nowrap" }}>🤝 모집</span>
+                  <b style={{ fontSize: 14 }}>{a.title}</b>
+                </div>
+                <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 5, lineHeight: 1.6 }}>{a.body}</div>
+                <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 4 }}>{a.date}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === "update" && (
+          <div style={{ display: "grid", gap: 8 }}>
+            {[...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => !seen[n.id]).length === 0 ? (
+              <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 24 }}>확인하지 않은 업데이트가 없어요 ✅</div>
+            ) : [...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => !seen[n.id]).map((a) => (
+              <div key={a.id} style={{ background: "#fffbe8", border: `3px solid ${C.ink}`, borderRadius: 8, padding: "10px 12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 10, color: C.ink, background: "#ffd75e", borderRadius: 10, padding: "2px 8px", whiteSpace: "nowrap" }}>🆕 업데이트</span>
+                  <b style={{ flex: 1, fontSize: 14 }}>{a.title}</b>
+                </div>
+                <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 5, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{a.body}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                  <span style={{ fontSize: 10, color: C.inkSoft, flex: 1 }}>{a.date}</span>
+                  <PxButton tone="good" onClick={() => markSeen(a.id)} style={{ fontSize: 11, padding: "6px 12px" }}>확인했어요 ✓</PxButton>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === "update" && [...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => seen[n.id]).length > 0 && (
+          <div style={{ marginTop: 14, borderTop: `3px dashed ${C.parchEdge}`, paddingTop: 12 }}>
+            <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 8, color: C.inkSoft }}>📜 확인한 업데이트 기록</div>
+            <div style={{ display: "grid", gap: 6 }}>
+              {[...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => seen[n.id]).map((a) => (
+                <details key={a.id} style={{ background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "7px 10px" }}>
+                  <summary style={{ cursor: "pointer", fontSize: 12, fontWeight: "bold", color: C.inkSoft }}>✓ {a.title} <span style={{ fontSize: 10, fontWeight: "normal" }}>({a.date})</span></summary>
+                  <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 6, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{a.body}</div>
+                </details>
+              ))}
+            </div>
+          </div>
+        )}
+
         {tab === "notice" && (
           <div style={{ display: "grid", gap: 8 }}>
-            {ANNOUNCEMENTS.map((a) => (
+            {[...dbList.filter((n) => n.type !== "모집" && n.type !== "업데이트" && !String(n.title || "").startsWith("[파티모집]")), ...ANNOUNCEMENTS].map((a) => (
               <button key={a.id} onClick={() => setOpenDoc(a)} className="px-btn" style={{ textAlign: "left", background: C.white, border: `3px solid ${C.ink}`, padding: "10px 12px", cursor: "pointer", fontFamily: "'DotGothic16', monospace" }}>
                 <div style={{ fontSize: 14, fontWeight: "bold", display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 10, color: "#fff", background: a.type === "이벤트" ? "#d76b96" : "#5b8def", padding: "2px 6px", whiteSpace: "nowrap" }}>{a.type || "공지"}</span>
@@ -3517,7 +4801,7 @@ function ChatDock({ messages, shout, onToggleShout, onSend, gems = 0 }) {
   const [warn, setWarn] = useState(false);
   const send = () => { if (!text.trim()) return; onSend(text, shout); setText(""); };
   return (
-    <div style={{ position: "fixed", left: 12, bottom: 12, width: 250, zIndex: 60, fontFamily: "'DotGothic16', monospace" }}>
+    <div className="chat-dock" style={{ position: "fixed", left: 12, bottom: 12, width: 250, zIndex: 60, fontFamily: "'DotGothic16', monospace" }}>
       {messages.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 6 }}>
           {messages.map((m) => (
@@ -3540,16 +4824,198 @@ function ChatDock({ messages, shout, onToggleShout, onSend, gems = 0 }) {
     </div>
   );
 }
-function InventoryButton({ onClick, count }) {
+
+/* ======================= 뱃지 ======================= */
+const BADGES = [
+  { id: "v1", cat: "방문", stat: "visit", need: 1, icon: "🌱", name: "웰컴", desc: "에코타운에 처음 방문했어요" },
+  { id: "v2", cat: "방문", stat: "visit", need: 5, icon: "🚪", name: "시작이 좋아", desc: "5번 방문" },
+  { id: "v3", cat: "방문", stat: "visit", need: 10, icon: "📅", name: "꾸준함이 곧 답", desc: "10번 방문" },
+  { id: "v4", cat: "방문", stat: "visit", need: 30, icon: "🛋", name: "하루쯤은 쉬어도 좋아", desc: "30번 방문" },
+  { id: "v5", cat: "방문", stat: "visit", need: 100, icon: "🏅", name: "에코타운 터줏대감", desc: "100번 방문" },
+
+  { id: "c1", cat: "소통", stat: "chat", need: 1, icon: "💬", name: "첫 인사", desc: "채팅 1회" },
+  { id: "c2", cat: "소통", stat: "chat", need: 10, icon: "🗣", name: "수다쟁이", desc: "채팅 10회" },
+  { id: "c3", cat: "소통", stat: "chat", need: 50, icon: "📣", name: "마을의 입", desc: "채팅 50회" },
+  { id: "c4", cat: "소통", stat: "shout", need: 3, icon: "📢", name: "확성기 주인", desc: "확성기 3회 사용" },
+
+  { id: "g1", cat: "운동", stat: "gym", need: 1, icon: "💪", name: "운동 시작", desc: "헬스장 첫 운동" },
+  { id: "g2", cat: "운동", stat: "gym", need: 5, icon: "🏋️", name: "땀 흘리는 중", desc: "운동 5회" },
+  { id: "g3", cat: "운동", stat: "gym", need: 20, icon: "🦾", name: "근육 요정", desc: "운동 20회" },
+  { id: "g4", cat: "운동", stat: "swim", need: 3, icon: "🏊", name: "물 만난 물고기", desc: "수영 대결 3회" },
+
+  { id: "s1", cat: "흡연", stat: "smoke", need: 1, icon: "🚬", name: "잠깐의 여유", desc: "흡연의 방 첫 방문" },
+  { id: "s2", cat: "흡연", stat: "smoke", need: 5, icon: "💨", name: "재떨이 단골", desc: "흡연의 방 5회" },
+  { id: "s3", cat: "흡연", stat: "smoke", need: 20, icon: "🌬", name: "끊는 중 (3일째)", desc: "흡연의 방 20회" },
+
+  { id: "b1", cat: "샌드백", stat: "punch", need: 100, icon: "🥊", name: "주먹왕 시작", desc: "누적 100회 타격" },
+  { id: "b2", cat: "샌드백", stat: "punch", need: 1000, icon: "👊", name: "스트레스 해방", desc: "누적 1,000회 타격" },
+  { id: "b3", cat: "샌드백", stat: "punch", need: 10000, icon: "🔥", name: "철권", desc: "누적 10,000회 타격" },
+
+  { id: "m1", cat: "보스맵", stat: "quest", need: 1, icon: "🎯", name: "첫 퀘스트", desc: "퀘스트 1개 완료" },
+  { id: "m2", cat: "보스맵", stat: "quest", need: 10, icon: "🗺", name: "성실한 모험가", desc: "퀘스트 10개 완료" },
+  { id: "m3", cat: "보스맵", stat: "boss", need: 1, icon: "👑", name: "보스 슬레이어", desc: "보스 1마리 격파" },
+  { id: "m4", cat: "보스맵", stat: "boss", need: 3, icon: "⚔️", name: "전설의 사냥꾼", desc: "보스 3마리 격파" },
+
+  { id: "n1", cat: "노래", stat: "song", need: 1, icon: "🎵", name: "첫 선곡", desc: "노래 1곡 재생" },
+  { id: "n2", cat: "노래", stat: "song", need: 10, icon: "🎧", name: "마을 디제이", desc: "노래 10곡 재생" },
+  { id: "n3", cat: "노래", stat: "song", need: 30, icon: "🎤", name: "음악 없인 못 살아", desc: "노래 30곡 재생" },
+];
+const BADGE_CATS = ["방문", "소통", "운동", "흡연", "샌드백", "보스맵", "노래"];
+
+function loadStats() {
+  try {
+    const raw = window.localStorage.getItem("echotown_stats");
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) { return {}; }
+}
+function saveStats(v) {
+  try { window.localStorage.setItem("echotown_stats", JSON.stringify(v)); } catch (e) {}
+}
+
+/* ======================= 도움말 (사용설명서) ======================= */
+const HELP_CATS = ["🌱 시작", "🏢 퀘스트", "🏛 생활", "🎮 놀이", "🏠 집", "👥 소통", "⭐ 젬·뱃지", "❓ FAQ"];
+const HELP_DATA = {
+  "🌱 시작": [
+    { icon: "🧑", title: "이름 정하기", body: "처음 들어오면 이름을 정해요. 이름이 정인·창민·도희·유리·민지·희정·의준·호종 중 하나면 그 집이 내 집이 됩니다. 상단 🧑 버튼으로 언제든 변경 가능해요." },
+    { icon: "🎟️", title: "웰컴 쿠폰", body: "사전예약자 혜택으로 처음 한 번 ⭐100 젬을 드려요." },
+    { icon: "🎮", title: "조작법", body: "W A S D 또는 방향키로 이동 · Space로 상호작용 · 스쿨/보스맵에서는 E로 퀘스트 열기 · 다른 사람 캐릭터를 클릭하면 선물 주기." },
+    { icon: "🗺", title: "길 찾기", body: "우하단 미니맵을 클릭하면 전체 지도가 열려요. 구역과 건물 이름이 모두 표시됩니다." },
+  ],
+  "🏢 퀘스트": [
+    { icon: "🏆", title: "퀘스트 완료의 제단", body: "주민센터 남쪽의 신비한 상징물. 끝낸 퀘스트를 [퀘스트 신청 파편]과 [퀘스트 수락 파편]으로 봉헌하고, 항목마다 🛡 GM 검수 완료 / ⭐ 보상 완료를 체크해요. 둘 다 체크되면 '봉인 완료'로 바뀝니다.", go: "questdone", goLabel: "제단 가기" },
+    { icon: "🗺", title: "보스맵 도전기 (숙련자용)", body: "프로젝트를 게임처럼. 이지모드(어플·속옷·양말)와 하드모드(사고력 훈련). 아래에서 위로 올라가며 스테이지를 클리어하고 꼭대기 보스를 잡아요. 상단 👾 보스도감 / 🧠 사고도감 버튼도 여기 있어요.", go: "project", goLabel: "보스맵 가기" },
+    { icon: "📗", title: "네이버스쿨 (초보자용)", body: "개념정리 → 블로그 → 카페 → 지식인 순서로 배우는 학습 맵. 집(퀘스트) 앞에서 E.", go: "naverschool", goLabel: "네이버스쿨 가기" },
+    { icon: "🎬", title: "영상스쿨 (초보자용)", body: "코어개념 → 레퍼런스 → 원고작성 → 영상제작. 프롬프트 복사 버튼과 어시스턴트가 있어요.", go: "videoschool", goLabel: "영상스쿨 가기" },
+  ],
+  "🏛 생활": [
+    { icon: "🏛", title: "주민센터", body: "회의실 예약, 음료 코너(HP·MP +20), 공지사항과 캘린더.", go: "center", goLabel: "주민센터 가기" },
+    { icon: "🛍️", title: "무신사", body: "상의·하의·신발을 무료로 입어보고 마음에 들면 구매. 착용한 옷은 다른 접속자에게도 보여요.", go: "musinsa", goLabel: "무신사 가기" },
+    { icon: "🛒", title: "이케아", body: "집 외관 · 가구 · 교통수단 구매. 탈것을 타면 마을에서 더 빨리 이동해요.", go: "ikea", goLabel: "이케아 가기" },
+    { icon: "🍴", title: "쩝쩝박사", body: "원형 테이블에서 오늘의 메뉴 뽑기, 메뉴 추천 게시판, 점심술사(인증샷 제출 시 ⭐5).", go: "jjeop", goLabel: "쩝쩝박사 가기" },
+    { icon: "🏦", title: "중앙은행", body: "모은 젬을 원화로 환전하고 내역을 확인해요.", go: "bank", goLabel: "은행 가기" },
+    { icon: "📋", title: "게시판", body: "공지·이벤트 라벨로 구분된 마을 소식과 캘린더.", go: "board", goLabel: "게시판 가기" },
+  ],
+  "🎮 놀이": [
+    { icon: "🥊", title: "샌드백", body: "마우스/키보드로 타격. 상대 이름을 붙인 샌드백도 만들 수 있고 랭킹에 집계돼요.", go: "sandbag", goLabel: "샌드백 가기" },
+    { icon: "🎮", title: "미니게임 방", body: "반응속도 · 가위바위보 · 숫자순서 · 라이어게임 · 대회 코너. 라이어는 방을 만들고 주민을 초대해요.", go: "minigame", goLabel: "미니게임 가기" },
+    { icon: "🏊", title: "수영장", body: "스페이스바 연타로 레인 경주. 1등이면 젬을 받고 기록이 랭킹에 남아요.", go: "pool", goLabel: "수영장 가기" },
+    { icon: "🏋️", title: "헬스장", body: "운동하고 젬 획득. 스트레칭 안내도 있어요.", go: "gym", goLabel: "헬스장 가기" },
+    { icon: "🚬", title: "흡연의 방", body: "재떨이 수다방(티키타카), 담배·전자담배, 창문 환기.", go: "smoke", goLabel: "흡연의 방 가기" },
+    { icon: "🎧", title: "리스닝 방", body: "음악 감상과 신청곡. 🔊 슬라이더로 볼륨 조절.", go: "listening", goLabel: "리스닝 방 가기" },
+    { icon: "🎬", title: "릴스 방", body: "카테고리별 짧은 영상 모음. 카테고리 추가도 가능해요.", go: "reels", goLabel: "릴스 방 가기" },
+    { icon: "🙏", title: "감사의 방", body: "선물을 사고 감사 포스트잇을 붙여요. 산 선물은 우체통·직접 선물로 보낼 수 있어요.", go: "thanks", goLabel: "감사의 방 가기" },
+    { icon: "💌", title: "마음의 방", body: "고해성사함과 서운함 우체통. 익명으로 마음을 남겨요.", go: "heart", goLabel: "마음의 방 가기" },
+  ],
+  "🏠 집": [
+    { icon: "🔒", title: "비밀번호", body: "내 집 첫 방문 때 비밀번호를 설정해요(최초 1회). 이후에는 방문할 때마다 현관에서 비밀번호를 입력해 들어갑니다. 비밀번호를 아는 사람은 누구나 들어올 수 있어요." },
+    { icon: "🔔", title: "초인종", body: "누르면 딩동 소리와 함께 집주인에게 알림이 갑니다. 주인은 문 열어주기 / 거절하기를 선택할 수 있어요." },
+    { icon: "📮", title: "우체통", body: "방명록·편지를 남기고 선물도 함께 보내요(택배비 ⭐0.3). 보낼 선물은 🙏 감사의 방에서 미리 구매해두면 목록에 나와요. 내 집 우체통에서는 받은 편지함을 확인할 수 있어요.", go: "thanks", goLabel: "감사의 방 가기" },
+    { icon: "🛋", title: "집 꾸미기", body: "이케아에서 산 외관과 가구가 내 집에 반영되고, 마을에서도 그 집이 바뀌어 보여요." },
+  ],
+  "👥 소통": [
+    { icon: "💬", title: "채팅", body: "좌측 하단에서 입력하면 머리 위 말풍선으로 뜨고 모든 접속자에게 보여요(50자까지)." },
+    { icon: "📢", title: "확성기", body: "⭐1을 내면 크게 외칠 수 있어요. 한 번 외치면 자동으로 꺼집니다." },
+    { icon: "💃", title: "춤", body: "우상단 💃 버튼으로 동작 선택. 다른 사람에게도 춤추는 모습이 보여요." },
+    { icon: "🎁", title: "선물 주기", body: "마을에서 다른 사람 캐릭터를 클릭하면 선물과 한마디를 바로 보낼 수 있어요." },
+    { icon: "📞", title: "DM · 페이스톡", body: "메뉴(☰) → 마을주민들에서 1:1 채팅과 영상통화를 할 수 있어요." },
+    { icon: "🛂", title: "치앙마이 가는 법", body: "강 건너 다리 앞 🛂 검문소에서 통행코드를 입력해야 건널 수 있어요. 통행코드가 궁금하면 500젬 💰 (…농담이고, 📋 게시판 공지를 확인하거나 마을 주민에게 물어보세요. 확성기로 외쳐보는 것도 방법!)", go: "board", goLabel: "게시판 가기" },
+  ],
+  "⭐ 젬·뱃지": [
+    { icon: "⭐", title: "젬 얻는 법", body: "퀘스트·보스 클리어, 미니게임 승리, 헬스장 운동, 점심술사 인증샷, 웰컴 쿠폰." },
+    { icon: "🛒", title: "젬 쓰는 법", body: "옷·가구·집외관·탈것 구매, 선물 구매, 확성기(1젬), 우체통 택배(0.3젬), 치앙마이 렌트, 환전." },
+    { icon: "🏅", title: "뱃지", body: "방문·소통·운동·흡연·샌드백·보스맵·노래 7개 카테고리. 조건을 채우면 축하 팝업이 뜨고 기록은 저장돼요." },
+  ],
+  "❓ FAQ": [
+    { icon: "👥", title: "다른 사람이 안 보여요", body: "우상단 👥 표시가 초록색인지 확인하세요. 회색이면 연결 중이거나 실패입니다. Ctrl+Shift+R로 새로고침해보세요." },
+    { icon: "🔊", title: "소리가 안 나요", body: "브라우저 정책상 한 번 클릭한 뒤에야 소리가 재생돼요. 상단 ♬ 바의 ▶를 눌러주세요." },
+    { icon: "💾", title: "진행이 초기화돼요", body: "방문 횟수·뱃지·집 비밀번호·받은 편지를 빼면 대부분은 새로고침 시 초기화됩니다(데모 단계)." },
+    { icon: "⌨️", title: "글자가 안 쳐져요", body: "입력창을 클릭한 뒤 입력하세요. 입력 중에는 이동키가 작동하지 않습니다." },
+  ],
+};
+
+function HelpBody({ onGo }) {
+  const [cat, setCat] = useState(HELP_CATS[0]);
+  const list = HELP_DATA[cat] || [];
   return (
-    <button onClick={onClick} title="인벤토리" style={{ position: "fixed", right: 14, bottom: 132, zIndex: 60, width: 46, height: 46, background: C.wood, border: `3px solid ${C.ink}`, boxShadow: `0 3px 0 ${C.ink}`, cursor: "pointer", fontSize: 20, color: C.white }}>
-      🎒
-      {count > 0 && <span style={{ position: "absolute", right: -4, top: -4, background: C.danger, color: C.white, border: `2px solid ${C.ink}`, fontSize: 9, padding: "0 4px" }}>{count}</span>}
-    </button>
+    <div>
+      <div>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 22 }}>📖</span>
+            <b style={{ flex: 1, fontSize: 15 }}>에코타운 사용설명서</b>
+          </div>
+          <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
+            {HELP_CATS.map((c) => (
+              <button key={c} onClick={() => setCat(c)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "6px 9px", borderRadius: 16, border: `2px solid ${C.ink}`, background: cat === c ? "linear-gradient(180deg,#3fa07a,#1d6b4a)" : C.white, color: cat === c ? C.white : C.ink, fontWeight: "bold" }}>{c}</button>
+            ))}
+          </div>
+          <div style={{ maxHeight: 330, overflow: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+            {list.map((it, i) => (
+              <div key={i} style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                  <span style={{ fontSize: 20 }}>{it.icon}</span>
+                  <b style={{ flex: 1, fontSize: 14 }}>{it.title}</b>
+                  {it.go && <PxButton tone="blue" onClick={() => onGo(it.go)} style={{ fontSize: 10, padding: "5px 9px" }}>▶ {it.goLabel || "이동하기"}</PxButton>}
+                </div>
+                <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.7 }}>{it.body}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginTop: 10 }}>▶ 버튼을 누르면 해당 장소로 바로 이동해요</div>
+        </div>
+      </div>
+    </div>
   );
 }
 
-function InventoryModal({ onClose, gems, outfit, ownedClothes, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, onEquipCloth, onToggleIkea }) {
+function BadgeBody({ stats }) {
+  const [cat, setCat] = useState("방문");
+  const list = BADGES.filter((b) => b.cat === cat);
+  const have = (b) => (stats[b.stat] || 0) >= b.need;
+  const total = BADGES.filter(have).length;
+  return (
+    <div>
+      <div>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 22 }}>🏅</span>
+            <b style={{ flex: 1, fontSize: 15 }}>뱃지</b>
+            <span style={{ fontSize: 12, color: C.inkSoft }}>{total}/{BADGES.length}</span>
+          </div>
+          <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
+            {BADGE_CATS.map((c) => (
+              <PxButton key={c} tone={cat === c ? "good" : "wood"} onClick={() => setCat(c)} style={{ flex: 1, minWidth: 58, fontSize: 11, padding: "6px 4px" }}>{c}</PxButton>
+            ))}
+          </div>
+          <div style={{ maxHeight: 320, overflow: "auto", display: "flex", flexDirection: "column", gap: 7 }}>
+            {list.map((b) => {
+              const cur = stats[b.stat] || 0;
+              const got = cur >= b.need;
+              const pct = Math.min(100, Math.round((cur / b.need) * 100));
+              return (
+                <div key={b.id} style={{ display: "flex", alignItems: "center", gap: 10, background: got ? C.white : "#e9e3d6", border: `2px solid ${C.ink}`, borderRadius: 10, padding: "9px 11px", opacity: got ? 1 : 0.85 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, background: got ? "radial-gradient(circle at 35% 30%,#fffbe8,#ffd75e)" : "#c9c3b6", border: `2px solid ${C.ink}`, filter: got ? "none" : "grayscale(1)" }}>{got ? b.icon : "🔒"}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: "bold" }}>{got ? b.name : "???"}</div>
+                    <div style={{ fontSize: 11, color: C.inkSoft }}>{b.desc}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                      <div style={{ flex: 1, height: 7, background: "#ddd6c6", borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${pct}%`, background: got ? C.good : "#b9ad94" }} />
+                      </div>
+                      <span style={{ fontSize: 10, color: C.inkSoft }}>{Math.min(cur, b.need)}/{b.need}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InventoryBody({ gems, outfit, ownedClothes, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, onEquipCloth, onToggleIkea }) {
   const [tab, setTab] = useState("vehicle");
   const TABS = { vehicle: "🚲 탈것", cloth: "👕 의류", furni: "🛋 가구", house: "🏠 외관", etc: "🎁 소지품" };
   const clothList = [];
@@ -3560,14 +5026,13 @@ function InventoryModal({ onClose, gems, outfit, ownedClothes, ikeaOwned, houseS
   const empty = (t) => <div style={{ fontSize: 12, color: C.inkSoft, padding: 16, textAlign: "center" }}>{t}</div>;
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420 }}>
-        <Panel style={{ padding: 14 }}>
+    <div>
+      <div>
+        <div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
             <span style={{ fontSize: 22 }}>🎒</span>
             <b style={{ flex: 1, fontSize: 14 }}>인벤토리</b>
             <GemBadge amount={gems} />
-            <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
           </div>
           <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
             {Object.keys(TABS).map((k) => (
@@ -3649,49 +5114,29 @@ function InventoryModal({ onClose, gems, outfit, ownedClothes, ikeaOwned, houseS
               </div>
             ))}
           </div>
-        </Panel>
+        </div>
       </div>
     </div>
   );
 }
-function MenuButton({ onClick }) {
-  return (
-    <button onClick={onClick} title="메뉴" style={{ position: "fixed", right: 14, bottom: 74, zIndex: 60, width: 46, height: 46, background: C.gem, border: `3px solid ${C.ink}`, boxShadow: `0 3px 0 ${C.ink}`, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
-      {[0, 1, 2].map((i) => <span key={i} style={{ width: 22, height: 3, background: C.ink, display: "block" }} />)}
-    </button>
-  );
-}
 
-function FeedbackButton() {
-  const [open, setOpen] = useState(false);
+function FeedbackBody({ onDone }) {
   const [text, setText] = useState("");
   const [sent, setSent] = useState(false);
-  const submit = () => { if (!text.trim()) return; setSent(true); setText(""); setTimeout(() => { setSent(false); setOpen(false); }, 1400); };
+  const submit = () => { if (!text.trim()) return; setSent(true); setText(""); setTimeout(() => { setSent(false); onDone && onDone(); }, 1400); };
   return (
-    <>
-      <button onClick={() => setOpen(true)} title="피드백" style={{ position: "fixed", right: 14, bottom: 16, zIndex: 60, width: 46, height: 46, background: C.wood, color: C.white, border: `3px solid ${C.ink}`, boxShadow: `0 3px 0 ${C.ink}`, cursor: "pointer", fontSize: 22 }}>⚙️</button>
-      {open && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 80, padding: 14 }} onClick={() => setOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
-            <Panel style={{ padding: 16 }}>
-              <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 10 }}>⚙️ 피드백 보내기</div>
-              {sent ? (
-                <div style={{ background: C.good, color: C.white, border: `3px solid ${C.ink}`, padding: 14, textAlign: "center", fontSize: 14 }}>소중한 의견 감사합니다! ✨</div>
-              ) : (
-                <>
-                  <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="개선 아이디어나 버그를 알려주세요!" rows={4}
-                    style={{ width: "100%", boxSizing: "border-box", border: `3px solid ${C.ink}`, padding: 9, fontSize: 13, background: C.white, fontFamily: "'DotGothic16', monospace", resize: "vertical" }} />
-                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                    <PxButton tone="ink" onClick={() => setOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>닫기</PxButton>
-                    <PxButton tone="good" disabled={!text.trim()} onClick={submit} style={{ flex: 1, padding: 10, fontSize: 13 }}>제출</PxButton>
-                  </div>
-                </>
-              )}
-            </Panel>
-          </div>
-        </div>
+    <div>
+      <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>개선 아이디어나 버그를 알려주세요! 개발팀이 확인해요.</div>
+      {sent ? (
+        <div style={{ background: C.good, color: C.white, border: `3px solid ${C.ink}`, padding: 14, textAlign: "center", fontSize: 14 }}>소중한 의견 감사합니다! ✨</div>
+      ) : (
+        <>
+          <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="예: 회의실 초대장이 안 보여요" rows={5}
+            style={{ width: "100%", boxSizing: "border-box", border: `3px solid ${C.ink}`, padding: 9, fontSize: 13, background: C.white, fontFamily: "'DotGothic16', monospace", resize: "vertical" }} />
+          <PxButton tone="good" disabled={!text.trim()} onClick={submit} style={{ width: "100%", marginTop: 10, padding: 11, fontSize: 13 }}>제출하기</PxButton>
+        </>
       )}
-    </>
+    </div>
   );
 }
 
@@ -3713,6 +5158,7 @@ const PROFILES = [
 ];
 
 function ProfileDetail({ p, onBack }) {
+  const st = p.online === undefined ? null : (p.online ? "🟢 접속 중" : "⚪ 오프라인");
   const Row = ({ label, children }) => (
     <div style={{ marginTop: 10 }}>
       <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 4 }}>{label}</div>
@@ -3726,7 +5172,7 @@ function ProfileDetail({ p, onBack }) {
         <div style={{ fontSize: 44 }}>{p.avatar}</div>
         <div>
           <div style={{ fontSize: 17, fontWeight: "bold" }}>{p.name}</div>
-          <div style={{ fontSize: 12, color: C.inkSoft }}>💼 {p.job}</div>
+          <div style={{ fontSize: 12, color: C.inkSoft }}>💼 {p.job}{st ? ` · ${st}` : ""}</div>
           <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 2 }}>🏷️ {p.affiliation}</div>
         </div>
       </div>
@@ -3746,7 +5192,7 @@ function ProfileDetail({ p, onBack }) {
     </div>
   );
 }
-function DMChatModal({ person, onClose }) {
+function DMChatModal({ person, onClose, onNetSend }) {
   const [msgs, setMsgs] = useState([{ me: false, text: `안녕하세요! ${person.name}이에요 👋 무슨 일이에요?` }]);
   const [text, setText] = useState("");
   const replies = ["오 좋아요!", "ㅋㅋㅋ 그러게요", "저도 그렇게 생각해요 👍", "언제 커피 한잔 해요 ☕", "지금 좀 바빠서요, 이따 봬요!", "헐 대박", "알겠어요, 확인해볼게요 📝"];
@@ -3754,6 +5200,7 @@ function DMChatModal({ person, onClose }) {
   const send = () => {
     const t = text.trim(); if (!t) return;
     setMsgs((m) => [...m, { me: true, text: t }]); setText("");
+    if (onNetSend) onNetSend(t);
     setTimeout(() => setMsgs((m) => [...m, { me: false, text: replies[Math.floor(Math.random() * replies.length)] }]), 700 + Math.random() * 600);
   };
   useEffect(() => { if (endRef.current) endRef.current.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
@@ -3811,61 +5258,230 @@ function FaceTalkModal({ person, onClose }) {
     </div>
   );
 }
-function ProfileMenu({ onClose }) {
-  const [tab, setTab] = useState(null); // null | 'me' | 'villagers'
+/* 마을주민들 목록 (메뉴 안에 들어감) */
+function VillagersBody({ people = [], onDm, onCall }) {
   const [sel, setSel] = useState(null);
-  const [dm, setDm] = useState(null);
-  const [call, setCall] = useState(null);
+  const [q, setQ] = useState("");
+  const list = (people.length ? people : PROFILES).filter((p) => !q.trim() || (p.name || "").includes(q.trim()));
+  if (sel) return <ProfileDetail p={sel} onBack={() => setSel(null)} />;
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 80, padding: 14 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "88%", overflow: "auto" }}>
+    <div>
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 주민 이름 검색"
+        style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white, marginBottom: 8 }} />
+      <div style={{ display: "grid", gap: 8, maxHeight: 330, overflow: "auto" }}>
+        {list.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 20 }}>주민을 찾지 못했어요 🤔</div>}
+        {list.map((p) => (
+          <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `3px solid ${C.ink}`, padding: 9 }}>
+            <button onClick={() => setSel(p)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 9, flex: 1, minWidth: 0, textAlign: "left", padding: 0 }}>
+              <span style={{ fontSize: 28 }}>{p.avatar}</span>
+              <span style={{ minWidth: 0 }}><b style={{ fontSize: 13 }}>{p.name}</b>{p.me ? <span style={{ fontSize: 10, color: C.good }}> (나)</span> : null}<br /><span style={{ fontSize: 11, color: C.inkSoft }}>{p.online === undefined ? "💼 " + p.job : p.job}</span></span>
+            </button>
+            {!p.me && <PxButton tone="blue" onClick={() => onDm && onDm(p)} style={{ fontSize: 11, padding: "6px 8px" }}>💬 DM</PxButton>}
+            {!p.me && <PxButton tone="good" onClick={() => onCall && onCall(p)} style={{ fontSize: 11, padding: "6px 8px" }}>📞</PxButton>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+/* ============ 우측 하단 도크 (메뉴 · 내 프로필 · 안내책자 · 메세지) ============ */
+function Sheet({ icon, title, onClose, tabs, tab, setTab, maxW = 470, children }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 95, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: maxW, maxHeight: "90%", overflow: "auto" }}>
         <Panel style={{ padding: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11 }}>☰ 메뉴</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 22 }}>{icon}</span>
+            <b style={{ flex: 1, fontSize: 15 }}>{title}</b>
             <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
           </div>
-
-          {!tab && (
-            <div style={{ display: "grid", gap: 10 }}>
-              <PxButton tone="blue" onClick={() => setTab("me")} style={{ padding: 16, fontSize: 15 }}>🧑‍💻 내 프로필</PxButton>
-              <PxButton tone="good" onClick={() => { setTab("villagers"); setSel(null); }} style={{ padding: 16, fontSize: 15 }}>🏘️ 마을주민들</PxButton>
+          {tabs && (
+            <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
+              {tabs.map((t) => (
+                <button key={t.k} onClick={() => setTab(t.k)} style={{ position: "relative", cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "7px 10px", borderRadius: 16, border: `2px solid ${C.ink}`, background: tab === t.k ? "linear-gradient(180deg,#3fa07a,#1d6b4a)" : C.white, color: tab === t.k ? C.white : C.ink, fontWeight: "bold" }}>
+                  {t.label}
+                  {t.n > 0 && <span style={{ marginLeft: 4, background: C.danger, color: C.white, border: `1px solid ${C.ink}`, borderRadius: 8, fontSize: 9, padding: "0 4px" }}>{t.n}</span>}
+                </button>
+              ))}
             </div>
           )}
-
-          {tab === "me" && (
-            <div>
-              <PxButton tone="ink" onClick={() => setTab(null)} style={{ fontSize: 11, padding: "5px 9px", marginBottom: 10 }}>← 뒤로</PxButton>
-              <ProfileDetail p={MY_PROFILE} />
-            </div>
-          )}
-
-          {tab === "villagers" && !sel && (
-            <div>
-              <PxButton tone="ink" onClick={() => setTab(null)} style={{ fontSize: 11, padding: "5px 9px", marginBottom: 10 }}>← 뒤로</PxButton>
-              <div style={{ display: "grid", gap: 8 }}>
-                {PROFILES.map((p) => (
-                  <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 10, background: C.white, border: `3px solid ${C.ink}`, padding: 10 }}>
-                    <button onClick={() => setSel(p)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, flex: 1, textAlign: "left", padding: 0 }}>
-                      <span style={{ fontSize: 32 }}>{p.avatar}</span>
-                      <span><b style={{ fontSize: 14 }}>{p.name}</b><br /><span style={{ fontSize: 11, color: C.inkSoft }}>💼 {p.job}</span></span>
-                    </button>
-                    <PxButton tone="blue" onClick={() => setDm(p)} style={{ fontSize: 11, padding: "6px 8px" }}>DM</PxButton>
-                    <PxButton tone="good" onClick={() => setCall(p)} style={{ fontSize: 11, padding: "6px 8px" }}>📞 페이스톡</PxButton>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {tab === "villagers" && sel && <ProfileDetail p={sel} onBack={() => setSel(null)} />}
-
-          {dm && <DMChatModal person={dm} onClose={() => setDm(null)} />}
-          {call && <FaceTalkModal person={call} onClose={() => setCall(null)} />}
+          {children}
         </Panel>
       </div>
     </div>
   );
 }
+
+/* 🧑 내 프로필 (프로필 + 인벤토리 + 뱃지) */
+function MyPanel({ onClose, myName, gems, lifetime, hp, mp, stats, outfit, ownedClothes, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, onEquipCloth, onToggleIkea, day }) {
+  const [tab, setTab] = useState("me");
+  const badgeCount = BADGES.filter((b) => (stats[b.stat] || 0) >= b.need).length;
+  const invCount = Object.keys(ownedClothes).length + Object.keys(ikeaOwned).length + thanksInv.length;
+  const me = {
+    avatar: "🧑‍💻", name: myName || "나 (플레이어)", job: "에코타운 주민",
+    stats: { 체력: Math.round(hp), 마나: Math.round(mp), 집중: Math.min(99, 50 + (stats.quest || 0) * 3), 친화: Math.min(99, 50 + (stats.chat || 0)) },
+    equipment: [outfit.top ? `👕 ${outfit.top.name}` : "👕 기본 상의", outfit.bottom ? `👖 ${outfit.bottom.name}` : "👖 기본 하의", outfit.shoes ? `👟 ${outfit.shoes.name}` : "👟 기본 신발", vehicle ? `${vehicle.emoji} ${vehicle.name}` : "🚶 도보"],
+    achievements: BADGES.filter((b) => (stats[b.stat] || 0) >= b.need).slice(-6).map((b) => `${b.icon} ${b.name}`).concat(badgeCount === 0 ? ["아직 뱃지가 없어요"] : []),
+    quests: [`📅 DAY ${day} 진행 중`, `🗺 클리어한 퀘스트 ${stats.quest || 0}개`, `👹 잡은 보스 ${stats.boss || 0}마리`],
+    affiliation: "ECHO TOWN",
+  };
+  return (
+    <Sheet icon="🧑" title="내 프로필" onClose={onClose} tab={tab} setTab={setTab}
+      tabs={[{ k: "me", label: "🧑 프로필" }, { k: "inv", label: "🎒 인벤토리" }, { k: "badge", label: "🏅 뱃지" }]}>
+      {tab === "me" && (
+        <div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+            <div style={{ flex: 1, background: C.white, border: `2px solid ${C.ink}`, padding: "7px 9px", textAlign: "center" }}>
+              <div style={{ fontSize: 10, color: C.inkSoft }}>보유 젬</div><div style={{ fontSize: 15, fontWeight: "bold" }}>⭐ {fmt(gems)}</div>
+            </div>
+            <div style={{ flex: 1, background: C.white, border: `2px solid ${C.ink}`, padding: "7px 9px", textAlign: "center" }}>
+              <div style={{ fontSize: 10, color: C.inkSoft }}>누적 젬</div><div style={{ fontSize: 15, fontWeight: "bold" }}>📈 {fmt(lifetime)}</div>
+            </div>
+            <div style={{ flex: 1, background: C.white, border: `2px solid ${C.ink}`, padding: "7px 9px", textAlign: "center" }}>
+              <div style={{ fontSize: 10, color: C.inkSoft }}>뱃지</div><div style={{ fontSize: 15, fontWeight: "bold" }}>🏅 {badgeCount}</div>
+            </div>
+            <div style={{ flex: 1, background: C.white, border: `2px solid ${C.ink}`, padding: "7px 9px", textAlign: "center" }}>
+              <div style={{ fontSize: 10, color: C.inkSoft }}>소지품</div><div style={{ fontSize: 15, fontWeight: "bold" }}>🎒 {invCount}</div>
+            </div>
+          </div>
+          <ProfileDetail p={me} />
+        </div>
+      )}
+      {tab === "inv" && <InventoryBody gems={gems} outfit={outfit} ownedClothes={ownedClothes} ikeaOwned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} thanksInv={thanksInv} onEquipCloth={onEquipCloth} onToggleIkea={onToggleIkea} />}
+      {tab === "badge" && <BadgeBody stats={stats} />}
+    </Sheet>
+  );
+}
+
+/* 📖 안내책자 (사용설명서 + 코어사전) */
+function GuideSheet({ onClose, onGo }) {
+  const [tab, setTab] = useState("help");
+  return (
+    <Sheet icon="📖" title="안내책자" onClose={onClose} tab={tab} setTab={setTab}
+      tabs={[{ k: "help", label: "📘 사용설명서" }, { k: "dict", label: "📚 코어사전" }]}>
+      {tab === "help" && <HelpBody onGo={onGo} />}
+      {tab === "dict" && (
+        <div>
+          <div style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 14 }}>
+            <div style={{ textAlign: "center", fontSize: 40 }}>📚</div>
+            <div style={{ textAlign: "center", fontSize: 15, fontWeight: "bold", margin: "8px 0 6px" }}>코어사전</div>
+            <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.8 }}>
+              에코타운에서 쓰는 우리만의 단어를 모아둔 사전이에요.<br />
+              · 누구나 단어를 <b>등록 · 수정 · 삭제</b>할 수 있어요 (나무위키처럼)<br />
+              · 단어 검색과 최근 수정자가 표시돼요<br />
+              · 마을 지도에서는 주민센터 왼쪽 위 📖 책 모양 건물이에요
+            </div>
+            <PxButton tone="good" onClick={() => onGo("coredict")} style={{ width: "100%", marginTop: 12, padding: 12, fontSize: 14 }}>📚 코어사전 열기</PxButton>
+          </div>
+        </div>
+      )}
+    </Sheet>
+  );
+}
+
+/* ☰ 메뉴 (마을주민들 + 피드백) */
+function MenuSheet({ onClose, people, onDm, onCall }) {
+  const [tab, setTab] = useState("villagers");
+  return (
+    <Sheet icon="☰" title="메뉴" onClose={onClose} tab={tab} setTab={setTab}
+      tabs={[{ k: "villagers", label: "🏘️ 마을주민들" }, { k: "fb", label: "⚙️ 피드백 보내기" }]}>
+      {tab === "villagers" && <VillagersBody people={people} onDm={onDm} onCall={onCall} />}
+      {tab === "fb" && <FeedbackBody onDone={onClose} />}
+    </Sheet>
+  );
+}
+
+/* ✉️ 메세지함 */
+function MsgRow({ icon, title, body, at, unread, right, onClick }) {
+  return (
+    <div onClick={onClick} style={{ display: "flex", gap: 9, alignItems: "flex-start", background: unread ? "#fffbe8" : C.white, border: `2px solid ${C.ink}`, borderLeft: `6px solid ${unread ? C.danger : C.parchEdge}`, borderRadius: 8, padding: 10, cursor: onClick ? "pointer" : "default" }}>
+      <span style={{ fontSize: 22, lineHeight: 1 }}>{icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: "bold", wordBreak: "break-word" }}>{title}{unread && <span style={{ marginLeft: 5, color: C.danger, fontSize: 10 }}>● NEW</span>}</div>
+        {body && <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word", marginTop: 2 }}>{body}</div>}
+        {at && <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 4 }}>🕐 {at}</div>}
+      </div>
+      {right}
+    </div>
+  );
+}
+
+function MessageCenter({ onClose, myName, box, notices, onReadAll, onAnswerInvite, onOpenDm, onCallBack }) {
+  const [tab, setTab] = useState("notice");
+  const empty = (t) => <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 26, lineHeight: 1.8 }}>{t}</div>;
+  const unread = (k) => (box[k] || []).filter((m) => !m.read).length;
+  const nUnreadNotice = notices.filter((n) => !n.read).length;
+  useEffect(() => { onReadAll && onReadAll(tab); }, [tab]);
+  return (
+    <Sheet icon="✉️" title="메세지함" onClose={onClose} tab={tab} setTab={setTab}
+      tabs={[
+        { k: "notice", label: "📢 공지", n: nUnreadNotice },
+        { k: "invite", label: "📨 초대장", n: unread("invite") },
+        { k: "gift", label: "🎁 선물·우편", n: unread("gift") },
+        { k: "dm", label: "💬 메세지·DM", n: unread("dm") },
+        { k: "call", label: "📵 부재중", n: unread("call") },
+      ]}>
+      <div style={{ maxHeight: 350, overflow: "auto", display: "flex", flexDirection: "column", gap: 7 }}>
+        {tab === "notice" && (notices.length === 0 ? empty("새로운 공지사항이 없어요 📭") : notices.map((n) => (
+          <MsgRow key={n.id} icon={n.type === "공지" ? "📢" : n.type === "모집" ? "🤝" : "🛠"} title={`[${n.type}] ${n.title}`} body={n.body} at={n.date} unread={!n.read} />
+        )))}
+
+        {tab === "invite" && ((box.invite || []).length === 0 ? empty("받은 초대장이 없어요 📭\n주민센터 회의실에서 초대장을 주고받을 수 있어요!") : (box.invite || []).map((m) => (
+          <MsgRow key={m.id} icon="📨" unread={!m.read}
+            title={`${m.from}님의 회의 초대장`}
+            body={`🗓 ${m.when}\n📍 ${m.room}\n⏱ 예상 ${m.dur}`}
+            at={m.at}
+            right={m.answered ? <span style={{ fontSize: 11, color: m.answered === "ok" ? C.good : C.inkSoft, whiteSpace: "nowrap" }}>{m.answered === "ok" ? "참석 ✓" : "불참"}</span> : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <PxButton tone="good" onClick={() => onAnswerInvite(m, true)} style={{ fontSize: 10, padding: "5px 7px" }}>참석</PxButton>
+                <PxButton tone="ink" onClick={() => onAnswerInvite(m, false)} style={{ fontSize: 10, padding: "5px 7px" }}>불참</PxButton>
+              </div>
+            )} />
+        )))}
+
+        {tab === "gift" && ((box.gift || []).length === 0 ? empty("받은 선물이나 편지가 없어요 📭") : (box.gift || []).map((m) => (
+          <MsgRow key={m.id} icon={m.item ? "🎁" : "💌"} unread={!m.read}
+            title={`${m.from}님이 ${m.item ? "선물을 보냈어요" : "편지를 남겼어요"}`}
+            body={(m.item ? `${m.item.emoji || "🎁"} ${m.item.name}\n` : "") + (m.text || "")} at={m.at} />
+        )))}
+
+        {tab === "dm" && ((box.dm || []).length === 0 ? empty("받은 메세지가 없어요 📭\n메뉴 → 마을주민들에서 DM을 보낼 수 있어요!") : (box.dm || []).map((m) => (
+          <MsgRow key={m.id} icon="💬" unread={!m.read} title={`${m.from}님의 메세지`} body={m.text} at={m.at}
+            right={<PxButton tone="blue" onClick={() => onOpenDm(m.from)} style={{ fontSize: 10, padding: "5px 7px" }}>답장</PxButton>} />
+        )))}
+
+        {tab === "call" && ((box.call || []).length === 0 ? empty("부재중 통화가 없어요 📞") : (box.call || []).map((m) => (
+          <MsgRow key={m.id} icon="📵" unread={!m.read} title={`${m.from}님의 부재중 통화`} body={m.reason || "받지 못한 통화예요"} at={m.at}
+            right={<PxButton tone="good" onClick={() => onCallBack(m.from)} style={{ fontSize: 10, padding: "5px 7px" }}>📞 콜백</PxButton>} />
+        )))}
+      </div>
+    </Sheet>
+  );
+}
+
+function DockBtn({ icon, label, onClick, bg, badge, pixel }) {
+  return (
+    <button onClick={onClick} title={label} className="dock-btn" style={{ position: "relative", width: 52, height: 52, background: bg, border: `3px solid ${C.ink}`, borderRadius: 10, boxShadow: `0 3px 0 ${C.ink}`, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1, color: C.white, fontFamily: "'DotGothic16', monospace", padding: 0 }}>
+      {pixel ? (
+        <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>{[0, 1, 2].map((i) => <span key={i} style={{ width: 20, height: 3, background: C.ink, display: "block" }} />)}</span>
+      ) : <span style={{ fontSize: 20, lineHeight: 1 }}>{icon}</span>}
+      <span style={{ fontSize: 8.5, color: pixel ? C.ink : C.white, fontWeight: "bold" }}>{label}</span>
+      {badge > 0 && <span style={{ position: "absolute", right: -5, top: -5, background: C.danger, color: C.white, border: `2px solid ${C.ink}`, borderRadius: 9, fontSize: 9, padding: "0 4px", fontWeight: "bold" }}>{badge > 99 ? "99+" : badge}</span>}
+    </button>
+  );
+}
+
+function CornerDock({ onMenu, onProfile, onGuide, onMsg, msgCount, badgeCount }) {
+  return (
+    <div className="corner-dock" style={{ position: "fixed", right: 12, bottom: 12, zIndex: 62, display: "flex", gap: 7, background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 7, boxShadow: `0 4px 0 ${C.parchEdge}, 0 8px 18px rgba(0,0,0,0.28)` }}>
+      <DockBtn pixel label="메뉴" bg={C.gem} onClick={onMenu} />
+      <DockBtn icon="🧑" label="내 프로필" bg="linear-gradient(180deg,#6fa8e8,#3a6fb5)" onClick={onProfile} badge={badgeCount} />
+      <DockBtn icon="📖" label="안내책자" bg="linear-gradient(180deg,#7bbf8f,#2f7d5e)" onClick={onGuide} />
+      <DockBtn icon="✉️" label="메세지" bg="linear-gradient(180deg,#e0a13d,#a86e13)" onClick={onMsg} badge={msgCount} />
+    </div>
+  );
+}
+
 function VitalBar({ label, val, color }) {
   const v = Math.max(0, Math.min(100, val));
   return (
@@ -3939,9 +5555,174 @@ const WORLD_TRACKS = [
   { title: "Automatic", file: "song (15).mp3" },
   { title: "Another One Bites the Dust", file: "song (16).mp3" },
 ];
+/* ============ 🏆 퀘스트 완료의 제단 (내부) ============ */
+const QD_KEY = "echotown_questdone_v1";
+function QuestFragmentInput({ tone, icon, title, hint, placeholder, value, onChange, detail, onDetail, onAdd }) {
+  const bg = tone === "req" ? "linear-gradient(180deg,#2b2455,#170f38)" : "linear-gradient(180deg,#5c3d13,#2e1d06)";
+  const line = tone === "req" ? "#7fe3ff" : "#ffd75e";
+  return (
+    <div style={{ flex: "1 1 260px", minWidth: 0, background: bg, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 13, boxShadow: `0 0 0 2px ${line}33, 0 6px 16px rgba(0,0,0,0.35)` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
+        <span style={{ fontSize: 20 }}>{icon}</span>
+        <b style={{ color: line, fontSize: 14, letterSpacing: 0.5 }}>{title}</b>
+      </div>
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.62)", lineHeight: 1.6, marginBottom: 8 }}>{hint}</div>
+      <input value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") onAdd(); }} placeholder={placeholder}
+        style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${line}`, borderRadius: 7, background: "rgba(255,255,255,0.94)", fontFamily: "'DotGothic16', monospace", fontSize: 13.5 }} />
+      <textarea value={detail} onChange={(e) => onDetail(e.target.value)} rows={2} placeholder="세부 내용 · 결과물 링크 · 메모 (선택)"
+        style={{ width: "100%", boxSizing: "border-box", marginTop: 7, padding: 9, border: `2px solid ${line}66`, borderRadius: 7, background: "rgba(255,255,255,0.9)", fontFamily: "'DotGothic16', monospace", fontSize: 12.5, resize: "vertical" }} />
+      <PxButton tone={tone === "req" ? "blue" : "gold"} disabled={!value.trim()} onClick={onAdd} style={{ width: "100%", marginTop: 8, padding: 11, fontSize: 13 }}>✦ 파편 봉헌하기</PxButton>
+    </div>
+  );
+}
+
+function QuestDoneView({ myName = "", onBack, bubble }) {
+  const [items, setItems] = useState(() => loadJSON(QD_KEY, []));
+  const [reqT, setReqT] = useState(""); const [reqD, setReqD] = useState("");
+  const [accT, setAccT] = useState(""); const [accD, setAccD] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [q, setQ] = useState("");
+  const [toast, setToast] = useState(null);
+  const save = (v) => { setItems(v); saveJSON(QD_KEY, v); };
+  const ping = (t) => { setToast(t); setTimeout(() => setToast(null), 1800); };
+
+  const add = (kind) => {
+    const text = (kind === "req" ? reqT : accT).trim();
+    if (!text) return;
+    const detail = (kind === "req" ? reqD : accD).trim();
+    const it = {
+      id: Date.now() + Math.random(), kind, text, detail, who: myName || "익명",
+      at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+      gm: false, reward: false,
+    };
+    save([it, ...items]);
+    if (kind === "req") { setReqT(""); setReqD(""); } else { setAccT(""); setAccD(""); }
+    ping(kind === "req" ? "✦ 신청 파편이 제단에 봉헌됐어요" : "✦ 수락 파편이 제단에 봉헌됐어요");
+  };
+  const toggle = (id, key) => {
+    const next = items.map((it) => (it.id === id ? { ...it, [key]: !it[key], [key + "By"]: !it[key] ? (myName || "익명") : null } : it));
+    save(next);
+    const t = next.find((it) => it.id === id);
+    if (t && t[key]) ping(key === "gm" ? "🛡 GM 검수 완료로 표시했어요" : "⭐ 보상 완료로 표시했어요");
+  };
+  const remove = (id) => { if (window.confirm("이 파편을 제단에서 지울까요?")) save(items.filter((it) => it.id !== id)); };
+
+  const shown = items.filter((it) => {
+    if (filter === "req" && it.kind !== "req") return false;
+    if (filter === "acc" && it.kind !== "acc") return false;
+    if (filter === "wait" && (it.gm && it.reward)) return false;
+    if (filter === "done" && !(it.gm && it.reward)) return false;
+    if (q.trim() && !(it.text + it.detail + it.who).includes(q.trim())) return false;
+    return true;
+  });
+  const nGm = items.filter((i) => i.gm).length;
+  const nRw = items.filter((i) => i.reward).length;
+  const pct = items.length ? Math.round(((nGm + nRw) / (items.length * 2)) * 100) : 0;
+
+  const Chip = ({ k, label }) => (
+    <button onClick={() => setFilter(k)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: filter === k ? "linear-gradient(180deg,#9a86d8,#4b3c85)" : C.white, color: filter === k ? C.white : C.ink, fontWeight: "bold" }}>{label}</button>
+  );
+
+  return (
+    <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <TitleBar icon="🏆" title="퀘스트 완료의 제단" sub="신청 파편과 수락 파편을 봉헌하고, GM 검수·보상을 확인하는 곳" onBack={onBack} bg="#2e2455" fg="#ffd75e" />
+      <div style={{ padding: 16, background: "radial-gradient(circle at 50% 0%, #3a2e6b 0%, #1a1436 60%, #120e28 100%)" }}>
+
+        {/* 제단 헤더 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", justifyContent: "center", marginBottom: 14 }}>
+          <QuestShrine size={130} />
+          <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, color: "#ffd75e", marginBottom: 7 }}>QUEST COMPLETE</div>
+            <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.75)", lineHeight: 1.8 }}>
+              제단은 완료의 증거를 기억합니다.<br />
+              파편을 봉헌하면 🛡 <b style={{ color: "#7fe3ff" }}>GM 검수</b>와 ⭐ <b style={{ color: "#ffd75e" }}>보상 지급</b>이 순서대로 새겨져요.
+            </div>
+            <div style={{ marginTop: 10, background: "rgba(255,255,255,0.1)", border: `2px solid #ffd75e66`, borderRadius: 20, height: 16, overflow: "hidden", position: "relative" }}>
+              <div style={{ height: "100%", width: `${pct}%`, background: "linear-gradient(90deg,#7fe3ff,#ffd75e)", transition: "width .3s" }} />
+              <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: C.white, fontWeight: "bold" }}>제단 봉인도 {pct}%</span>
+            </div>
+            <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 11, background: "rgba(127,227,255,0.18)", border: "2px solid #7fe3ff", color: "#cdf4ff", borderRadius: 12, padding: "3px 9px" }}>총 파편 {items.length}</span>
+              <span style={{ fontSize: 11, background: "rgba(127,227,255,0.18)", border: "2px solid #7fe3ff", color: "#cdf4ff", borderRadius: 12, padding: "3px 9px" }}>🛡 검수 {nGm}</span>
+              <span style={{ fontSize: 11, background: "rgba(255,215,94,0.18)", border: "2px solid #ffd75e", color: "#ffeaa8", borderRadius: 12, padding: "3px 9px" }}>⭐ 보상 {nRw}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 두 개의 파편 입력창 */}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
+          <QuestFragmentInput tone="req" icon="🔷" title="퀘스트 신청 파편" hint="내가 올린 퀘스트 · 요청한 작업을 적어주세요."
+            placeholder="예: 릴스 썸네일 10종 제작 신청" value={reqT} onChange={setReqT} detail={reqD} onDetail={setReqD} onAdd={() => add("req")} />
+          <QuestFragmentInput tone="acc" icon="🔶" title="퀘스트 수락 파편" hint="내가 수락해서 끝낸 퀘스트를 적어주세요."
+            placeholder="예: 항균양말 상세페이지 수락 · 완료" value={accT} onChange={setAccT} detail={accD} onDetail={setAccD} onAdd={() => add("acc")} />
+        </div>
+
+        {/* 필터 */}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+          <Chip k="all" label="전체" /><Chip k="req" label="🔷 신청" /><Chip k="acc" label="🔶 수락" />
+          <Chip k="wait" label="⏳ 미완" /><Chip k="done" label="✅ 완료" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 검색"
+            style={{ flex: "1 1 110px", minWidth: 90, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, background: C.white }} />
+        </div>
+
+        {/* 파편 목록 */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 420, overflow: "auto" }}>
+          {shown.length === 0 && (
+            <div style={{ textAlign: "center", color: "rgba(255,255,255,0.55)", fontSize: 12.5, padding: 30, lineHeight: 1.9, border: "2px dashed rgba(255,255,255,0.25)", borderRadius: 12 }}>
+              아직 제단에 봉헌된 파편이 없어요 ✦<br />위 입력창에 퀘스트를 적고 봉헌해보세요.
+            </div>
+          )}
+          {shown.map((it) => {
+            const all = it.gm && it.reward;
+            const line = it.kind === "req" ? "#7fe3ff" : "#ffd75e";
+            return (
+              <div key={it.id} style={{ background: all ? "linear-gradient(180deg,#243d33,#16261f)" : "rgba(255,255,255,0.07)", border: `2px solid ${all ? "#5fd39a" : line + "77"}`, borderLeft: `7px solid ${all ? "#5fd39a" : line}`, borderRadius: 10, padding: 12 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 20 }}>{it.kind === "req" ? "🔷" : "🔶"}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 9.5, background: line, color: "#14102b", borderRadius: 10, padding: "1px 7px", fontWeight: "bold" }}>{it.kind === "req" ? "신청 파편" : "수락 파편"}</span>
+                      {all && <span style={{ fontSize: 9.5, background: "#5fd39a", color: "#0f2119", borderRadius: 10, padding: "1px 7px", fontWeight: "bold" }}>✦ 봉인 완료</span>}
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: "bold", color: C.white, marginTop: 4, wordBreak: "break-word" }}>{it.text}</div>
+                    {it.detail && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)", whiteSpace: "pre-wrap", wordBreak: "break-word", marginTop: 3, lineHeight: 1.6 }}>{it.detail}</div>}
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 5 }}>🧑 {it.who} · 🕐 {it.at}</div>
+                  </div>
+                  <button onClick={() => remove(it.id)} title="삭제" style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 15 }}>🗑</button>
+                </div>
+                <div style={{ display: "flex", gap: 7, marginTop: 10, flexWrap: "wrap" }}>
+                  <button onClick={() => toggle(it.id, "gm")} style={{ flex: "1 1 140px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, padding: "9px 11px", borderRadius: 8, border: `2px solid ${it.gm ? "#5fd39a" : "rgba(255,255,255,0.3)"}`, background: it.gm ? "rgba(95,211,154,0.2)" : "rgba(255,255,255,0.05)", color: it.gm ? "#a8f0cd" : "rgba(255,255,255,0.7)", fontWeight: "bold" }}>
+                    <span style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${it.gm ? "#5fd39a" : "rgba(255,255,255,0.4)"}`, background: it.gm ? "#5fd39a" : "transparent", color: "#10261c", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>{it.gm ? "✔" : ""}</span>
+                    🛡 GM 검수 완료
+                  </button>
+                  <button onClick={() => toggle(it.id, "reward")} style={{ flex: "1 1 140px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, padding: "9px 11px", borderRadius: 8, border: `2px solid ${it.reward ? "#ffd75e" : "rgba(255,255,255,0.3)"}`, background: it.reward ? "rgba(255,215,94,0.2)" : "rgba(255,255,255,0.05)", color: it.reward ? "#ffeaa8" : "rgba(255,255,255,0.7)", fontWeight: "bold" }}>
+                    <span style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${it.reward ? "#ffd75e" : "rgba(255,255,255,0.4)"}`, background: it.reward ? "#ffd75e" : "transparent", color: "#2e1d06", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>{it.reward ? "✔" : ""}</span>
+                    ⭐ 보상 완료
+                  </button>
+                </div>
+                {(it.gmBy || it.rewardBy) && (
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.42)", marginTop: 6 }}>
+                    {it.gm && it.gmBy ? `🛡 검수: ${it.gmBy}` : ""}{it.gm && it.gmBy && it.reward && it.rewardBy ? " · " : ""}{it.reward && it.rewardBy ? `⭐ 보상: ${it.rewardBy}` : ""}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ textAlign: "center", fontSize: 10.5, color: "rgba(255,255,255,0.4)", marginTop: 12 }}>* 제단 기록은 이 브라우저에 저장돼요.</div>
+        {toast && (
+          <div style={{ position: "fixed", left: "50%", bottom: 90, transform: "translateX(-50%)", zIndex: 120, background: "#2e2455", color: "#ffd75e", border: "3px solid #ffd75e", borderRadius: 10, padding: "10px 18px", fontSize: 13, fontFamily: "'DotGothic16', monospace", boxShadow: "0 6px 18px rgba(0,0,0,0.5)" }}>{toast}</div>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
 export default function App() {
   const [view, setView] = useState("world");
   const [houseId, setHouseId] = useState(null);
+  const houseIdRef = useRef(null);
   const [bigId, setBigId] = useState(null);
   const [meetingId, setMeetingId] = useState(null);
   const [rentId, setRentId] = useState(null);
@@ -3978,11 +5759,60 @@ export default function App() {
   const [worries, setWorries] = useState([]);
   const [rented, setRented] = useState({});
   const [myName, setMyName] = useState("");
+  const netPosRef = useRef({ x: 1300, y: 950 });
+  const netFacingRef = useRef(1);
+  useEffect(() => { netPosRef.current = worldPos; }, [worldPos]);
+  useEffect(() => { netViewRef.current = view; }, [view]);
+  const onChatRef = useRef(null);
+  const netOutfitRef = useRef(null);
+  const netViewRef = useRef("world");
+  const netDanceRef = useRef(null);
+  const netHouseRef = useRef(null);
+  const netRoomPosRef = useRef({ x: 0, y: 0 });
+  const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat, sendEvent: netSendEvent } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef, netOutfitRef, netViewRef, netRoomPosRef, netDanceRef, netHouseRef);
   const [nameOpen, setNameOpen] = useState(true);
   const [nameInput, setNameInput] = useState("");
+  const [couponOpen, setCouponOpen] = useState(false);
+  const [couponDone, setCouponDone] = useState(false);
+  const applySave = (d) => {
+    if (!d) return false;
+    if (typeof d.gems === "number") setGems(d.gems);
+    if (typeof d.lifetime === "number") setLifetime(d.lifetime);
+    if (d.outfit) setOutfit(d.outfit);
+    if (d.owned) setOwned(d.owned);
+    if (d.ikeaOwned) setIkeaOwned(d.ikeaOwned);
+    if (d.houseSkin !== undefined) setHouseSkin(d.houseSkin);
+    if (d.vehicle !== undefined) setVehicle(d.vehicle);
+    if (d.myFurni) setMyFurni(d.myFurni);
+    if (d.thanksInv) setThanksInv(d.thanksInv);
+    if (d.memos) setMemos(d.memos);
+    if (d.stats) { setStats(d.stats); saveJSON("echotown_stats", d.stats); }
+    if (d.housePw) { setHousePw(d.housePw); saveJSON("echotown_pw", d.housePw); }
+    if (d.couponDone) setCouponDone(true);
+    if (d.qNotes) setQNotes(d.qNotes);
+    if (d.qAccept) setQAccept(d.qAccept);
+    return true;
+  };
+  const confirmName = (nm) => {
+    const t = (nm || "").trim(); if (!t) return;
+    setMyName(t); setNameOpen(false);
+    dbLoadProfile(t).then((d) => {
+      if (d) { applySave(d); showNotice(`💾 ${t}님의 저장 데이터를 불러왔어요`); }
+      dbLoadMail(t).then((ms) => { if (ms && ms.length) setMail(ms); });
+    });
+    setOutfit((o) => (o.top || o.bottom || o.shoes) ? o : {
+      top: CLOTHES.top[Math.floor(Math.random() * CLOTHES.top.length)],
+      bottom: CLOTHES.bottom[Math.floor(Math.random() * CLOTHES.bottom.length)],
+      shoes: CLOTHES.shoes[Math.floor(Math.random() * CLOTHES.shoes.length)],
+    });
+    dbLoadProfile(t).then((d) => {
+      if (!d && !couponDone) { setCouponDone(true); setGems((g) => g + 100); setLifetime((l) => l + 100); setCouponOpen(true); }
+    });
+  };
   const isMyHouse = (n) => !!(n && myName && n.replace(/이네$|네$/, "") === myName);
   const [ikeaOwned, setIkeaOwned] = useState({});
   const [houseSkin, setHouseSkin] = useState(null);
+  useEffect(() => { netHouseRef.current = houseSkin; }, [houseSkin]);
   const [vehicle, setVehicle] = useState(null);
   const [myFurni, setMyFurni] = useState([]);
   const buyIkea = (kind, item) => {
@@ -3998,6 +5828,11 @@ export default function App() {
   };
   const [swimScores, setSwimScores] = useState([{ nick: "유리", time: 8.2 }, { nick: "정인", time: 9.1 }, { nick: "호중", time: 9.8 }, { nick: "의준", time: 10.4 }]);
   const [boxScores, setBoxScores] = useState([{ nick: "창민", count: 18294719 }, { nick: "정인", count: 129572 }]);
+  const reloadRanks = useCallback(() => {
+    dbTopRanks("sandbag", true).then((r) => { if (r.length) setBoxScores([{ nick: "창민", count: 18294719 }, { nick: "정인", count: 129572 }, ...r.map((x) => ({ nick: x.nick, count: Number(x.score), target: x.target }))]); });
+    dbTopRanks("swim", false).then((r) => { if (r.length) setSwimScores(r.map((x) => ({ nick: x.nick, time: Number(x.score) }))); });
+  }, []);
+  useEffect(() => { reloadRanks(); }, [reloadRanks]);
   const [townRegion, setTownRegion] = useState("서울");
   const [regionOpen, setRegionOpen] = useState(false);
   const wxPoints = useMemo(() => ({ town: REGIONS[townRegion], chiangmai: { lat: 18.7883, lon: 98.9853 } }), [townRegion]);
@@ -4008,6 +5843,7 @@ export default function App() {
   const townRain = isRain(weather.town && weather.town.code);
   const cmRain = isRain(weather.chiangmai && weather.chiangmai.code);
   const [outfit, setOutfit] = useState({ top: null, bottom: null, shoes: null });
+  useEffect(() => { netOutfitRef.current = outfit; }, [outfit]);
   const [owned, setOwned] = useState({});
   const tryOnClothing = (catKey, item) => setOutfit((o) => ({ ...o, [catKey]: item }));
   const buyClothing = (catKey, item) => {
@@ -4020,18 +5856,135 @@ export default function App() {
 
   // 신규: 배경음악 / 채팅 / 말풍선 / 피드백 / 메뉴
   const [worldBgm, setWorldBgm] = useState({ title: WORLD_TRACKS[0].title, file: WORLD_TRACKS[0].file, playing: false });
-  const selectTrack = (t) => setWorldBgm((b) => ({ ...b, title: t.title, file: t.file, playing: true }));
+  const selectTrack = (t) => { setWorldBgm((b) => ({ ...b, title: t.title, file: t.file, playing: true })); bump("song"); };
   const audioRef = useRef(null);
+  const [bgmVol, setBgmVol] = useState(0.6);
   useEffect(() => {
     const a = audioRef.current; if (!a) return;
+    a.volume = bgmVol;
     if (worldBgm.playing) a.play().catch(() => {}); else a.pause();
-  }, [worldBgm.playing, worldBgm.file]);
+  }, [worldBgm.playing, worldBgm.file, bgmVol]);
   const [chat, setChat] = useState([]);
   const [shout, setShout] = useState(false);
   const [bubble, setBubble] = useState(null);
   const bubbleTimer = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [invOpen, setInvOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [msgOpen, setMsgOpen] = useState(false);
+  const [dmWith, setDmWith] = useState(null);
+  const [callWith, setCallWith] = useState(null);
+  const [incomingCall, setIncomingCall] = useState(null);
+  const callTimer = useRef(null);
+
+  /* ===== 메세지함 ===== */
+  const MSG_KEY = "echotown_msgbox_v1";
+  const [noticeSeen, setNoticeSeen] = useState(() => loadJSON("echotown_noticeseen_ids", {}));
+  const [msgBox, setMsgBox] = useState(() => loadJSON(MSG_KEY, { invite: [], gift: [], dm: [], call: [] }));
+  const pushMsg = useCallback((kind, item) => {
+    setMsgBox((v) => {
+      const row = { id: Date.now() + Math.random(), read: false, at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }), ...item };
+      const next = { ...v, [kind]: [row, ...(v[kind] || [])].slice(0, 80) };
+      saveJSON(MSG_KEY, next);
+      return next;
+    });
+  }, []);
+  const readAll = useCallback((kind) => {
+    if (kind === "notice") {
+      setNoticeSeen((prev) => {
+        const next = { ...prev };
+        (allNoticesRef.current || []).forEach((n) => { next[n.id] = true; });
+        saveJSON("echotown_noticeseen_ids", next);
+        return next;
+      });
+      return;
+    }
+    setMsgBox((v) => {
+      if (!(v[kind] || []).some((m) => !m.read)) return v;
+      const next = { ...v, [kind]: (v[kind] || []).map((m) => ({ ...m, read: true })) };
+      saveJSON(MSG_KEY, next);
+      return next;
+    });
+  }, []);
+  const patchMsg = (kind, id, patch) => setMsgBox((v) => {
+    const next = { ...v, [kind]: (v[kind] || []).map((m) => (m.id === id ? { ...m, ...patch } : m)) };
+    saveJSON(MSG_KEY, next);
+    return next;
+  });
+  /* 팝업에서 초대에 답하면 메세지함 사본도 같이 갱신 */
+  const syncInvite = (inv, ok) => setMsgBox((v) => {
+    const next = { ...v, invite: (v.invite || []).map((m) => (m.from === inv.from && m.when === inv.when && !m.answered ? { ...m, answered: ok ? "ok" : "no", read: true } : m)) };
+    saveJSON(MSG_KEY, next);
+    return next;
+  });
+  const [dbNoticeList, setDbNoticeList] = useState([]);
+  useEffect(() => {
+    const load = () => dbNotices().then((r) => setDbNoticeList(r || []));
+    load();
+    const iv = setInterval(load, 90000);
+    return () => clearInterval(iv);
+  }, []);
+  const allNotices = useMemo(() => {
+    const base = [...ANNOUNCEMENTS.map((a) => ({ id: "a" + a.id, type: a.type || "공지", title: a.title, body: a.body || "", date: a.date }))];
+    const upd = UPDATE_NOTES.slice(0, 6).map((u) => ({ id: u.id, type: u.type || "업데이트", title: u.title, body: u.body, date: u.date }));
+    const all = [...dbNoticeList, ...upd, ...base].sort((a, b) => (a.date < b.date ? 1 : -1));
+    return all.map((n) => ({ ...n, read: !!noticeSeen[n.id] })).slice(0, 40);
+  }, [dbNoticeList, noticeSeen]);
+  const allNoticesRef = useRef([]);
+  allNoticesRef.current = allNotices;
+  const unreadMsgCount = (msgBox.invite || []).filter((m) => !m.read).length
+    + (msgBox.gift || []).filter((m) => !m.read).length
+    + (msgBox.dm || []).filter((m) => !m.read).length
+    + (msgBox.call || []).filter((m) => !m.read).length
+    + allNotices.filter((n) => !n.read).length;
+  const [dbPlayers, setDbPlayers] = useState([]);
+  useEffect(() => {
+    dbAllPlayers().then(setDbPlayers);
+    const iv = setInterval(() => dbAllPlayers().then(setDbPlayers), 60000);
+    return () => clearInterval(iv);
+  }, []);
+  const [qAccept, setQAccept] = useState({});
+  const [qNotes, setQNotes] = useState({});
+  const [qThreads, setQThreads] = useState({});
+  const [housePw, setHousePw] = useState(() => loadJSON("echotown_pw", null));
+  const [mail, setMail] = useState(() => loadJSON("echotown_mail", []));
+  const [unlocked, setUnlocked] = useState({});
+  const [mailTarget, setMailTarget] = useState(null);
+  const [giftTarget, setGiftTarget] = useState(null);
+  const [notice, setNotice] = useState(null);
+  const showNotice = (t) => { setNotice(t); setTimeout(() => setNotice(null), 3200); };
+  const [visitor, setVisitor] = useState(null);
+  const [invite, setInvite] = useState(null);
+  const [myMeetings, setMyMeetings] = useState([]);
+  const [stats, setStats] = useState(() => loadStats());
+  const [newBadge, setNewBadge] = useState(null);
+  const statsRef = useRef(stats);
+  statsRef.current = stats;
+  const gotRef = useRef(loadJSON("echotown_got", {}));
+  const awardBadge = (b) => {
+    if (!b || gotRef.current[b.id]) return;
+    gotRef.current = { ...gotRef.current, [b.id]: true };
+    saveJSON("echotown_got", gotRef.current);
+    setTimeout(() => setNewBadge(b), 300);
+  };
+  const bump = useCallback((k, n = 1) => {
+    setStats((prev) => {
+      const before = prev[k] || 0;
+      const next = { ...prev, [k]: before + n };
+      saveStats(next);
+      const got = BADGES.filter((b) => b.stat === k && next[k] >= b.need).sort((a, b2) => b2.need - a.need)[0];
+      if (got) awardBadge(got);
+      return next;
+    });
+  }, []);
+  useEffect(() => {
+    const cur = loadStats();
+    const next = { ...cur, visit: (cur.visit || 0) + 1 };
+    saveStats(next);
+    setStats(next);
+    const got = BADGES.filter((b) => b.stat === "visit" && next.visit >= b.need).sort((a, b2) => b2.need - a.need)[0];
+    if (got && !gotRef.current[got.id]) { gotRef.current = { ...gotRef.current, [got.id]: true }; saveJSON("echotown_got", gotRef.current); setTimeout(() => setNewBadge(got), 1200); }
+  }, []);
 
   const timers = useRef({});
   useEffect(() => () => Object.values(timers.current).forEach(clearInterval), []);
@@ -4052,17 +6005,133 @@ export default function App() {
   const award = useCallback((n) => { setGems((g) => g + n); setLifetime((l) => l + n); }, []);
 
   const sayBubble = useCallback((text) => {
-    setBubble(text);
+    const t = String(text || "");
+    setBubble(t.length > 50 ? t.slice(0, 50) + "…" : t);
     clearTimeout(bubbleTimer.current);
     bubbleTimer.current = setTimeout(() => setBubble(null), 3000);
   }, []);
   useEffect(() => () => clearTimeout(bubbleTimer.current), []);
   const postChat = useCallback((text, isShout) => {
     const t = text.trim(); if (!t) return;
-    setChat((c) => [...c, { id: Date.now(), nick: myName || "나", text: t, shout: isShout }].slice(-4));
+    setChat((c) => [...c, { id: Date.now(), nick: myName || "나", text: t, shout: isShout, me: true }].slice(-5));
     sayBubble(t);
+    if (netSendChat) netSendChat(t, isShout);
+    bump("chat");
+    if (isShout) bump("shout");
     if (isShout) setShout(false);
-  }, [sayBubble, myName]);
+  }, [sayBubble, myName, netSendChat, bump]);
+  useEffect(() => {
+    onChatRef.net = (kind, p) => {
+      if (!p) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qlock" || kind === "qleave") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "bell") { playBell(); setVisitor(p.from); }
+      if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room }); }
+      if (kind === "inviteack") { showNotice(`${p.from}님이 회의에 ${p.ok ? "참석" : "불참"}한다고 답했어요`); }
+      if (kind === "dm") { pushMsg("dm", { from: p.from, text: p.text }); showNotice(`💬 ${p.from}님의 메세지가 도착했어요`); }
+      if (kind === "call") {
+        playBell();
+        setIncomingCall({ from: p.from, avatar: "🧑" });
+        clearTimeout(callTimer.current);
+        callTimer.current = setTimeout(() => {
+          setIncomingCall((c) => {
+            if (c && c.from === p.from) { pushMsg("call", { from: p.from, reason: "받지 못한 통화예요" }); showNotice(`📵 ${p.from}님의 부재중 통화`); return null; }
+            return c;
+          });
+        }, 15000);
+      }
+      if (kind === "qchat") {
+        setQThreads((t) => ({ ...t, [p.qid]: [...(t[p.qid] || []), { who: p.who, text: p.text }] }));
+        return;
+      }
+      if (kind === "qparty") {
+        setQAccept((a) => (a[p.qid] ? { ...a, [p.qid]: { ...a[p.qid], party: Array.from(new Set([...(a[p.qid].party || []), p.who])) } } : a));
+        return;
+      }
+      if (kind === "qleave") {
+        setQAccept((a) => {
+          const cur = a[p.qid]; if (!cur) return a;
+          const party = (cur.party || []).filter((n) => n !== p.who);
+          const agree = (cur.agree || []).filter((n) => n !== p.who);
+          if (party.length === 0) { const n = { ...a }; delete n[p.qid]; return n; }
+          return { ...a, [p.qid]: { ...cur, party, agree, locked: party.length > 0 && party.every((n) => agree.includes(n)) } };
+        });
+        return;
+      }
+      if (kind === "qlock") {
+        setQAccept((a) => {
+          const cur = a[p.qid]; if (!cur) return a;
+          const agree = Array.from(new Set([...(cur.agree || []), p.who]));
+          const party = cur.party || [];
+          const locked = party.length > 0 && party.every((n) => agree.includes(n));
+          return { ...a, [p.qid]: { ...cur, agree, locked } };
+        });
+        return;
+      }
+      if (kind === "pwtry") {
+        const ok = !!housePw && p.pw === housePw;
+        if (netSendEvent) netSendEvent("door", { to: p.from, from: myName, ok });
+        if (ok) showNotice(`🔓 ${p.from}님이 비밀번호로 들어왔어요`);
+      }
+      if (kind === "door") {
+        if (p.ok) { setUnlocked((u) => (houseIdRef.current ? { ...u, [houseIdRef.current]: true } : u)); showNotice("🚪 문이 열렸어요! 들어가세요"); }
+        else showNotice("🚫 지금은 곤란하대요…");
+      }
+      if (kind === "mail") {
+        const item = { from: p.from, text: p.text, item: p.item, at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
+        setMail((v) => [...v, item]);
+        if (p.item) setThanksInv((v) => [...v, p.item]);
+        pushMsg("gift", { from: p.from, text: p.text, item: p.item || null });
+        showNotice(`📬 ${p.from}님이 ${p.item ? "선물을 보냈어요!" : "편지를 남겼어요!"}`);
+      }
+    };
+  }, [myName, housePw, netSendEvent]);
+  useEffect(() => {
+    onChatRef.current = (m) => {
+      if (!m || m.id === MY_ID) return;
+      setChat((c) => [...c, { id: Date.now() + Math.random(), nick: m.name || "익명", text: m.text, shout: m.shout }].slice(-5));
+    };
+  }, []);
+  const sendMail = (payload) => {
+    if (gems < 0.3) return;
+    setGems((g) => g - 0.3);
+    if (payload.item) setThanksInv((v) => v.filter((_, i) => i !== payload.item._i));
+    if (netSendEvent) netSendEvent("mail", payload);
+    dbSendMail(payload.to, payload.from, payload.text, payload.item || null);
+    showNotice("📮 우체통에 넣었어요!");
+  };
+  const sendGift = (payload) => {
+    if (payload.item) setThanksInv((v) => v.filter((_, i) => i !== payload.item._i));
+    if (netSendEvent) netSendEvent("mail", payload);
+    dbSendMail(payload.to, payload.from, payload.text, payload.item || null);
+    showNotice(`🎁 ${payload.to}님에게 보냈어요!`);
+  };
+  const ringBell = (owner) => { if (netSendEvent) netSendEvent("bell", { to: owner, from: myName || "익명" }); };
+  const saveTimer = useRef(null);
+  useEffect(() => {
+    if (!myName) return;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      dbSaveProfile(myName, { gems, lifetime, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept });
+    }, 2000);
+    return () => clearTimeout(saveTimer.current);
+  }, [myName, gems, lifetime, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept]);
+
+  const AVATARS = ["🧑", "👩", "🧑‍💻", "👨‍💼", "👩‍🎨", "🧑‍🍳", "👩‍🔬", "🧑‍🎤", "👨‍🌾", "👩‍🏫"];
+  const people = useMemo(() => {
+    const online = Object.values(netOthers).map((o) => o.name).filter(Boolean);
+    const bad = /[ㄱ-ㅎㅏ-ㅣ]/;
+    const names = Array.from(new Set([...(myName ? [myName] : []), ...online, ...dbPlayers])).filter((n) => n && !bad.test(n));
+    return names.map((n, i) => ({
+      avatar: AVATARS[(n.charCodeAt(0) + n.length) % AVATARS.length],
+      name: n,
+      me: n === myName,
+      online: n === myName || online.includes(n),
+      job: n === myName ? "나" : (online.includes(n) ? "🟢 접속 중" : "⚪ 오프라인"),
+      stats: { 체력: 70, 마나: 70, 집중: 70, 친화: 70 },
+      equipment: ["🎒 인벤토리"], achievements: ["🌱 에코타운 주민"], quests: ["마을 생활"], affiliation: "ECHO TOWN",
+    }));
+  }, [netOthers, dbPlayers, myName]);
+
   const requestWorldSong = (title) => {
     if (gems < 5) return;
     setGems((g) => g - 5);
@@ -4109,8 +6178,9 @@ export default function App() {
       case "bank": setView("bank"); break;
       case "board": setView("board"); break;
       case "big": setBigId(o.id); setView("big"); break;
-      case "house": setHouseId(o.id); setView("house"); break;
-      case "small": setView(o.id); break; // thanks/heart/listening/reels/smoke
+      case "house": setUnlocked({}); houseIdRef.current = o.id; setHouseId(o.id); setView("house"); break;
+      case "small": if (o.id === "smoke") bump("smoke"); setView(o.id); break; // thanks/heart/listening/reels/smoke
+      case "shrine": setView("questdone"); break;
       case "facility": setView(o.id); break; // pool/gym
       case "rent": setRentId(o.id); setView("rent"); break;
       default: break;
@@ -4126,6 +6196,7 @@ export default function App() {
   const backToWorld = () => setView("world");
 
   return (
+    <NetContext.Provider value={{ others: netOthers, view, roomPosRef: netRoomPosRef }}>
     <div style={{ fontFamily: "'DotGothic16', monospace", minHeight: "100vh", background: `repeating-linear-gradient(45deg, ${C.grass} 0 24px, ${C.grassDark} 24px 48px)`, color: C.ink, padding: 14, boxSizing: "border-box" }}>
       <StyleBlock />
       <audio ref={audioRef} src={import.meta.env.BASE_URL + encodeURIComponent(worldBgm.file)} loop preload="auto" />
@@ -4176,25 +6247,81 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} />}
-        {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
-        {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
-        {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && <HomeView house={houseMeta} skin={houseMeta && isMyHouse(houseMeta.name) ? houseSkin : null} extras={houseMeta && isMyHouse(houseMeta.name) ? myFurni : []} extras={myFurni} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} myNick={myName} onGift={(n) => setGiftTarget(n)} />}
+        {view === "center" && <CenterView meetings={myMeetings} meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
+        {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} myName={myName} people={people}
+          onInvite={(p) => {
+            const body = `📨 회의 초대장\n${p.when} 회의 / 초대원 : ${p.to}\n예상 회의시간 : ${p.dur}\n장소 : ${p.room} · 주최 ${myName || "나"}`;
+            if (netSendEvent) netSendEvent("invite", { to: p.to, from: myName || "나", when: p.when, dur: p.dur, room: p.room });
+            dbSendMail(p.to, myName || "나", body, null);
+            showNotice(`📨 ${p.to}님에게 초대장을 보냈어요`);
+          }}
+          onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
+        {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && (unlocked[houseId] ? (
+          <HomeView house={houseMeta} skin={isMyHouse(houseMeta.name) ? houseSkin : null} extras={isMyHouse(houseMeta.name) ? myFurni : []} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />
+        ) : (
+          <HouseGate house={houseMeta} isMine={isMyHouse(houseMeta.name)} myName={myName} hasPw={!!housePw}
+            onSetPw={(p) => { setHousePw(p); saveJSON("echotown_pw", p); }}
+            onEnter={(p) => {
+              if (!p) return false;
+              if (isMyHouse(houseMeta.name)) {
+                if (p === housePw) { setUnlocked((u) => ({ ...u, [houseId]: true })); return true; }
+                return false;
+              }
+              const ow = (houseMeta.name || "").replace(/이네$|네$/, "");
+              if (netSendEvent) { netSendEvent("pwtry", { to: ow, from: myName, pw: p }); return "wait"; }
+              return false;
+            }}
+            onBell={ringBell} onMail={(owner) => { setMailTarget(owner); if (owner === myName) dbLoadMail(owner).then((ms) => setMail(ms || [])); }} onBack={backToWorld} />
+        ))}
         {view === "thanks" && <ThanksView gems={gems} inventory={thanksInv} postits={postits} onBuy={(it) => { setGems((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={(p) => setPostits((v) => [...v, { ...p, id: Date.now() }])} onBack={backToWorld} bubble={bubble} />}
         {view === "heart" && <HeartView gems={gems} worries={worries} onPost={(text, cost, kind) => { setGems((g) => g - cost); setWorries((w) => [{ id: Date.now(), text, kind }, ...w]); }} onBack={backToWorld} bubble={bubble} />}
         {view === "listening" && <ListeningView onBack={backToWorld} gems={gems} onSpend={(n) => setGems((g) => g - n)} bubble={bubble} />}
         {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} />}
-        {view === "minigame" && <MiniGameRoom myName={myName} onBack={backToWorld} onReward={(n) => award(n)} bubble={bubble} />}
-        {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} scores={swimScores} onRecord={(nick, time) => setSwimScores((s) => [...s, { nick, time }])} bubble={bubble} />}
-        {view === "gym" && <GymView onBack={backToWorld} onWork={() => award(4)} bubble={bubble} />}
+        {view === "minigame" && <MiniGameRoom myName={myName} people={people} onBack={backToWorld} onReward={(n) => award(n)} bubble={bubble} />}
+        {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} scores={swimScores} onRecord={(nick, time) => { setSwimScores((s) => [...s, { nick, time }]); bump("swim"); dbAddRank("swim", nick, time, null).then(reloadRanks); }} bubble={bubble} />}
+        {view === "gym" && <GymView onBack={backToWorld} onWork={() => { award(4); bump("gym"); }} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
+        {view === "coredict" && <CoreDictView myName={myName} onBack={backToWorld} />}
+        {view === "questdone" && <QuestDoneView myName={myName} onBack={backToWorld} bubble={bubble} />}
         {view === "ikea" && <IkeaView gems={gems} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
-        {view === "project" && <BossMapView onBack={backToWorld} onReward={(n) => award(n)} />}
+        {view === "project" && <BossMapView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss) => bump(isBoss ? "boss" : "quest")}
+          accepted={qAccept} notes={qNotes} threads={qThreads}
+          onAccept={(qid, title) => { setQAccept((a) => (a[qid] && a[qid].locked ? a : { ...a, [qid]: a[qid] ? { ...a[qid], party: Array.from(new Set([...(a[qid].party || []), myName || "나"])) } : { party: [myName || "나"], agree: [], locked: false, started: false, title } })); if (netSendEvent) netSendEvent("qparty", { qid, who: myName || "나" }); showNotice("🤝 퀘스트를 수락했어요"); }}
+          onAgree={(qid) => {
+            const me = myName || "나";
+            setQAccept((a) => {
+              const cur = a[qid]; if (!cur) return a;
+              const agree = Array.from(new Set([...(cur.agree || []), me]));
+              const party = cur.party || [];
+              const locked = party.length > 0 && party.every((n) => agree.includes(n));
+              if (locked) showNotice("🔒 파티 전원 동의 — 퀘스트가 확정됐어요!");
+              return { ...a, [qid]: { ...cur, agree, locked } };
+            });
+            if (netSendEvent) netSendEvent("qlock", { qid, who: me });
+          }}
+          onLeave={(qid) => {
+            const me = myName || "나";
+            setQAccept((a) => {
+              const cur = a[qid]; if (!cur) return a;
+              const party = (cur.party || []).filter((n) => n !== me);
+              const agree = (cur.agree || []).filter((n) => n !== me);
+              if (party.length === 0) { const n = { ...a }; delete n[qid]; return n; }
+              return { ...a, [qid]: { ...cur, party, agree, locked: party.length > 0 && party.every((n) => agree.includes(n)) } };
+            });
+            if (netSendEvent) netSendEvent("qleave", { qid, who: me });
+            showNotice("🚪 퀘스트에서 나왔어요");
+          }}
+          onStart={(qid) => { setQAccept((a) => ({ ...a, [qid]: { ...a[qid], started: true } })); showNotice("▶ 퀘스트를 시작했어요!"); }}
+          onShout={(msg) => { postChat(msg, true); showNotice("📢 마을에 알렸어요"); }}
+          onBoard={(title) => { dbAddNotice("모집", `[파티모집] ${title}`, `${myName || "익명"}님이 「${title}」 퀘스트 파티원을 찾고 있어요!`); showNotice("📋 게시판에 모집글을 올렸어요"); }}
+          onNote={(qid, v) => setQNotes((n) => ({ ...n, [qid]: v }))}
+          onThreadSend={(qid, text) => { setQThreads((t) => ({ ...t, [qid]: [...(t[qid] || []), { who: myName || "나", text }] })); if (netSendEvent) netSendEvent("qchat", { qid, who: myName || "나", text }); }} />}
         {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
-        {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count) => setBoxScores((s) => [...s, { nick, count }])} />}
+        {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count, target) => { setBoxScores((s) => [...s, { nick, count, target }]); bump("punch", count); dbAddRank("sandbag", nick, count, target).then(reloadRanks); }} />}
         {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
         {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} onReward={(n) => award(n)} />}
-        {view === "board" && <BoardView onBack={backToWorld} />}
+        {view === "board" && <BoardView myName={myName} onBack={backToWorld} />}
         {view === "bank" && <BankView gems={gems} lifetime={lifetime} exchanged={exchanged} history={history} onExchange={doExchange} onBack={backToWorld} />}
         {view === "rent" && rentMeta && <RentView house={rentMeta} gems={gems} rented={!!rented[rentId]} onRent={() => { setGems((g) => g - rentMeta.rent); setRented((r) => ({ ...r, [rentId]: true })); }} onBack={backToWorld} />}
       </div>
@@ -4211,13 +6338,32 @@ export default function App() {
               <div style={{ textAlign: "center", fontSize: 34 }}>🌱</div>
               <div style={{ textAlign: "center", fontFamily: "'Press Start 2P', monospace", fontSize: 12, margin: "8px 0" }}>ECHO TOWN</div>
               <div style={{ fontSize: 13, textAlign: "center", marginBottom: 10 }}>마을에서 사용할 이름을 알려주세요!</div>
-              <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && nameInput.trim()) { setMyName(nameInput.trim()); setNameOpen(false); } }} maxLength={8} autoFocus placeholder="예: 정인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, background: C.white, textAlign: "center" }} />
+              <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") confirmName(nameInput); }} maxLength={8} autoFocus placeholder="예: 정인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, background: C.white, textAlign: "center" }} />
               <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center" }}>주민 이름(정인·창민·도희·유리·민지·희정·의준·호종)과 같으면 그 집이 내 집이 돼요!</div>
               <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                 {myName && <PxButton tone="ink" onClick={() => setNameOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>}
-                <PxButton tone="good" disabled={!nameInput.trim()} onClick={() => { setMyName(nameInput.trim()); setNameOpen(false); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>시작하기</PxButton>
+                <PxButton tone="good" disabled={!nameInput.trim()} onClick={() => confirmName(nameInput)} style={{ flex: 1, padding: 10, fontSize: 13 }}>시작하기</PxButton>
               </div>
             </Panel>
+          </div>
+        </div>
+      )}
+      {couponOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 130, padding: 14 }} onClick={() => setCouponOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340 }}>
+            <div style={{ background: "linear-gradient(180deg,#fff8e1,#ffe9a8)", border: `4px solid ${C.ink}`, borderRadius: 14, padding: 20, textAlign: "center", boxShadow: "0 12px 30px rgba(0,0,0,0.5)" }}>
+              <div style={{ fontSize: 46 }}>🎟️</div>
+              <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 12, margin: "10px 0 6px", color: "#a86e13" }}>WELCOME COUPON</div>
+              <div style={{ fontSize: 15, fontWeight: "bold", marginBottom: 8 }}>{myName}님, 사전예약 감사합니다!</div>
+              <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.7, marginBottom: 12 }}>
+                에코타운 사전예약자에게 드리는<br />웰컴 쿠폰이 발급되었어요.
+              </div>
+              <div style={{ background: C.white, border: `3px dashed ${C.ink}`, borderRadius: 10, padding: "14px 10px", marginBottom: 14 }}>
+                <div style={{ fontSize: 11, color: C.inkSoft }}>지급 보상</div>
+                <div style={{ fontSize: 26, fontWeight: "bold", color: "#a86e13" }}>⭐ 100 젬</div>
+              </div>
+              <PxButton tone="gold" onClick={() => setCouponOpen(false)} style={{ width: "100%", padding: 12, fontSize: 14 }}>받고 시작하기 🌱</PxButton>
+            </div>
           </div>
         </div>
       )}
@@ -4228,12 +6374,106 @@ export default function App() {
           setGems((g) => g - 1);
           setShout(true);
         }} />
-      <InventoryButton onClick={() => setInvOpen(true)} count={Object.keys(owned).length + Object.keys(ikeaOwned).length + thanksInv.length} />
-      {invOpen && <InventoryModal onClose={() => setInvOpen(false)} gems={gems} outfit={outfit} ownedClothes={owned} ikeaOwned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} thanksInv={thanksInv} onEquipCloth={tryOnClothing} onToggleIkea={buyIkea} />}
-      <MenuButton onClick={() => setMenuOpen(true)} />
-      <FeedbackButton />
-      {menuOpen && <ProfileMenu onClose={() => setMenuOpen(false)} />}
+      {mailTarget && <MailboxModal owner={mailTarget} isMine={mailTarget === myName} myName={myName} gems={gems} inventory={thanksInv} mail={mail} onSend={sendMail} onClose={() => setMailTarget(null)} />}
+      {giftTarget && <GiftModal target={giftTarget} inventory={thanksInv} myName={myName} onSend={sendGift} onClose={() => setGiftTarget(null)} />}
+      {invite && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150, padding: 14 }}>
+          <div style={{ width: "100%", maxWidth: 330 }}>
+            <div style={{ background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 20, boxShadow: "0 10px 26px rgba(0,0,0,0.5)" }}>
+              <div style={{ textAlign: "center", fontSize: 42 }}>📨</div>
+              <div style={{ textAlign: "center", fontSize: 15, fontWeight: "bold", margin: "8px 0 10px" }}>회의 초대장이 도착했어요</div>
+              <div style={{ background: C.white, border: `2px dashed ${C.ink}`, borderRadius: 8, padding: 12, fontSize: 13, lineHeight: 1.8 }}>
+                <b>{invite.when}</b> 회의<br />
+                초대원 : {myName}<br />
+                예상 회의시간 : {invite.dur}<br />
+                <span style={{ color: C.inkSoft }}>{invite.room} · 주최 {invite.from}</span>
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                <PxButton tone="ink" onClick={() => { if (netSendEvent) netSendEvent("inviteack", { to: invite.from, from: myName, ok: false }); syncInvite(invite, false); setInvite(null); }} style={{ flex: 1, padding: 11, fontSize: 13 }}>불참</PxButton>
+                <PxButton tone="good" onClick={() => { if (netSendEvent) netSendEvent("inviteack", { to: invite.from, from: myName, ok: true }); syncInvite(invite, true); setMyMeetings((m) => [...m, { when: invite.when, room: invite.room, from: invite.from, dur: invite.dur }]); showNotice(`📅 ${invite.room} ${invite.when} 일정에 추가했어요`); setInvite(null); }} style={{ flex: 1, padding: 11, fontSize: 13 }}>참석할게요</PxButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {visitor && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150, padding: 14 }}>
+          <div style={{ width: "100%", maxWidth: 320 }}>
+            <div style={{ background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 20, textAlign: "center", boxShadow: "0 10px 26px rgba(0,0,0,0.5)" }}>
+              <div style={{ fontSize: 44 }}>🔔</div>
+              <div style={{ fontSize: 16, fontWeight: "bold", margin: "10px 0 4px" }}>손님이 왔습니다!</div>
+              <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 16 }}><b style={{ color: "#5b8def" }}>{visitor}</b>님이 초인종을 눌렀어요</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <PxButton tone="ink" onClick={() => { if (netSendEvent) netSendEvent("door", { to: visitor, from: myName, ok: false }); setVisitor(null); }} style={{ flex: 1, padding: 11, fontSize: 13 }}>거절하기</PxButton>
+                <PxButton tone="good" onClick={() => { if (netSendEvent) netSendEvent("door", { to: visitor, from: myName, ok: true }); showNotice(`🚪 ${visitor}님에게 문을 열어줬어요`); setVisitor(null); }} style={{ flex: 1, padding: 11, fontSize: 13 }}>문 열어주기</PxButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {notice && (
+        <div style={{ position: "fixed", left: "50%", top: 16, transform: "translateX(-50%)", zIndex: 150, background: C.ink, color: C.white, border: `3px solid ${C.gem}`, borderRadius: 10, padding: "10px 18px", fontSize: 13, fontFamily: "'DotGothic16', monospace", boxShadow: "0 6px 16px rgba(0,0,0,0.4)" }}>{notice}</div>
+      )}
+      <CornerDock
+        msgCount={unreadMsgCount}
+        onMenu={() => setMenuOpen(true)}
+        onProfile={() => setProfileOpen(true)}
+        onGuide={() => setGuideOpen(true)}
+        onMsg={() => setMsgOpen(true)} />
+
+      {menuOpen && <MenuSheet people={people} onClose={() => setMenuOpen(false)}
+        onDm={(p) => setDmWith(p)}
+        onCall={(p) => { setCallWith(p); if (netSendEvent) netSendEvent("call", { to: p.name, from: myName || "나" }); }} />}
+
+      {profileOpen && <MyPanel onClose={() => setProfileOpen(false)} myName={myName} gems={gems} lifetime={lifetime} hp={hp} mp={mp} day={day}
+        stats={stats} outfit={outfit} ownedClothes={owned} ikeaOwned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni}
+        thanksInv={thanksInv} onEquipCloth={tryOnClothing} onToggleIkea={buyIkea} />}
+
+      {guideOpen && <GuideSheet onClose={() => setGuideOpen(false)} onGo={(v) => { setGuideOpen(false); if (v === "world") backToWorld(); else setView(v); }} />}
+
+      {msgOpen && <MessageCenter onClose={() => setMsgOpen(false)} myName={myName} box={msgBox} notices={allNotices} onReadAll={readAll}
+        onAnswerInvite={(m, ok) => {
+          if (netSendEvent) netSendEvent("inviteack", { to: m.from, from: myName, ok });
+          patchMsg("invite", m.id, { answered: ok ? "ok" : "no", read: true });
+          if (ok) { setMyMeetings((v) => [...v, { when: m.when, room: m.room, from: m.from, dur: m.dur }]); showNotice(`📅 ${m.room} ${m.when} 일정에 추가했어요`); }
+        }}
+        onOpenDm={(name) => { setMsgOpen(false); setDmWith({ name, avatar: "🧑" }); }}
+        onCallBack={(name) => { setMsgOpen(false); setCallWith({ name, avatar: "🧑" }); if (netSendEvent) netSendEvent("call", { to: name, from: myName || "나" }); }} />}
+
+      {dmWith && <DMChatModal person={dmWith} onClose={() => setDmWith(null)}
+        onNetSend={(text) => { if (netSendEvent) netSendEvent("dm", { to: dmWith.name, from: myName || "나", text }); }} />}
+      {callWith && <FaceTalkModal person={callWith} onClose={() => setCallWith(null)} />}
+
+      {incomingCall && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 155, padding: 14 }}>
+          <div style={{ width: "100%", maxWidth: 320 }}>
+            <div style={{ background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 20, textAlign: "center", boxShadow: "0 10px 26px rgba(0,0,0,0.5)" }}>
+              <div style={{ fontSize: 44 }}>📞</div>
+              <div style={{ fontSize: 16, fontWeight: "bold", margin: "10px 0 4px" }}>걸려온 전화</div>
+              <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 16 }}><b style={{ color: "#5b8def" }}>{incomingCall.from}</b>님이 페이스톡을 걸었어요</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <PxButton tone="danger" onClick={() => { clearTimeout(callTimer.current); pushMsg("call", { from: incomingCall.from, reason: "내가 거절한 통화예요" }); setIncomingCall(null); }} style={{ flex: 1, padding: 11, fontSize: 13 }}>📵 거절</PxButton>
+                <PxButton tone="good" onClick={() => { clearTimeout(callTimer.current); setCallWith({ name: incomingCall.from, avatar: "🧑" }); setIncomingCall(null); }} style={{ flex: 1, padding: 11, fontSize: 13 }}>📞 받기</PxButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {newBadge && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 140, padding: 14 }} onClick={() => setNewBadge(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 300 }}>
+            <div style={{ background: "linear-gradient(180deg,#fff8e1,#ffe9a8)", border: `4px solid ${C.ink}`, borderRadius: 14, padding: 20, textAlign: "center", boxShadow: "0 12px 30px rgba(0,0,0,0.5)" }}>
+              <div style={{ fontSize: 12, color: "#a86e13", fontWeight: "bold" }}>🏅 새 뱃지 획득!</div>
+              <div style={{ width: 84, height: 84, margin: "12px auto", borderRadius: "50%", background: "radial-gradient(circle at 35% 30%,#fffbe8,#ffd75e)", border: `3px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42 }}>{newBadge.icon}</div>
+              <div style={{ fontSize: 17, fontWeight: "bold" }}>{newBadge.name}</div>
+              <div style={{ fontSize: 12, color: C.inkSoft, margin: "6px 0 14px" }}>{newBadge.desc}</div>
+              <PxButton tone="gold" onClick={() => setNewBadge(null)} style={{ width: "100%", padding: 11, fontSize: 13 }}>확인</PxButton>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </NetContext.Provider>
   );
 }
 
@@ -4278,8 +6518,32 @@ function StyleBlock() {
       @keyframes bubblePop { 0%{ transform: translateX(-50%) scale(.6); opacity:0;} 60%{ transform: translateX(-50%) scale(1.05);} 100%{ transform: translateX(-50%) scale(1); opacity:1;} }
       .chat-bubble { animation: bubblePop .2s ease-out; }
       .game-vp:focus, .game-vp:focus-visible { outline: none; }
+
+      /* 🏆 퀘스트 완료의 제단 */
+      @keyframes qsAuraPulse { 0%,100% { opacity: .55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.08); } }
+      .qs-aura { animation: qsAuraPulse 3.2s ease-in-out infinite; transform-origin: 60px 62px; }
+      @keyframes qsRingSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      .qs-ring { animation: qsRingSpin 14s linear infinite; }
+      @keyframes qsFloat { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-6px) scale(1.04); } }
+      .qs-float { animation: qsFloat 2.6s ease-in-out infinite; }
+      @keyframes qsTwinkle { 0%,100% { opacity: .25; } 50% { opacity: 1; } }
+      .qs-spark circle { animation: qsTwinkle 1.8s ease-in-out infinite; }
+      .qs-spark circle:nth-child(2) { animation-delay: .45s; }
+      .qs-spark circle:nth-child(3) { animation-delay: .9s; }
+      .qs-spark circle:nth-child(4) { animation-delay: 1.3s; }
+
+      /* 우측 하단 도크 */
+      .dock-btn { transition: transform .06s ease, box-shadow .06s ease; }
+      .dock-btn:active { transform: translateY(3px); box-shadow: none !important; }
+      .dock-btn:focus-visible { outline: 3px solid ${C.gem}; outline-offset: 3px; }
+
+      /* 좁은 화면에서 채팅창이 도크를 가리지 않도록 */
+      @media (max-width: 700px) {
+        .chat-dock { bottom: 84px !important; width: calc(100vw - 24px) !important; }
+      }
+
       @media (prefers-reduced-motion: reduce) {
-        .gem-pop,.hero-bob,.gem-spin,.enter-prompt,.chat-bubble,.px-btn,.map-obj { animation:none !important; transition:none !important; }
+        .gem-pop,.hero-bob,.gem-spin,.enter-prompt,.chat-bubble,.px-btn,.map-obj,.qs-aura,.qs-ring,.qs-float,.qs-spark circle { animation:none !important; transition:none !important; }
       }
     `}</style>
   );
