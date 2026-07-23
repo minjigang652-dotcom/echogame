@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v10 · 2026-07-24";
+const APP_VERSION = "v11 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -886,6 +886,7 @@ function spriteSize(o) {
     case "small": return 100;
     case "facility": return 160;
     case "sign": return 100;
+    case "deco": return o.id === "palm" ? 74 : 46;
     case "airport": return 96;
     case "npc": return o.npc === "statue" ? 72 : o.npc === "never" ? 82 : 48;
     case "rent": return 104;
@@ -893,7 +894,15 @@ function spriteSize(o) {
   }
 }
 /* 교체 가능한 슬롯 목록 (지도에서 클릭할 수 있는 대상 전부) */
-const SPRITE_SLOTS = WORLD_OBJS.filter((o) => o.r).map((o) => ({ id: o.id, label: o.label, kind: o.kind }));
+/* 지도 장식물도 이미지 교체 가능 (건물 목록에 없는 항목) */
+const DECO_SLOTS = [
+  { id: "palm", label: "🌴 야자수 (치앙마이)", kind: "deco" },
+  { id: "tree", label: "🌳 나무 (마을)", kind: "deco" },
+];
+const SPRITE_SLOTS = [
+  ...WORLD_OBJS.filter((o) => o.r).map((o) => ({ id: o.id, label: o.label, kind: o.kind })),
+  ...DECO_SLOTS,
+];
 
 /* public/sprites/ 안에 실제로 존재하는 파일만 골라냅니다 (없는 건 조용히 무시) */
 function probeSpriteFiles() {
@@ -975,6 +984,14 @@ function Airport({ size = 96, tint = "#5b8def", tintDk = "#3a5fa8", label = "인
         style={{ fontFamily: "'DotGothic16', monospace", fontSize: "7.5px", fontWeight: "bold" }}>{label}</text>
     </svg>
   );
+}
+
+/* 장식물 스프라이트 : 내 이미지가 있으면 그걸로, 없으면 기본 그림 */
+function DecoSprite({ id, size, sprites, cutCfg, children }) {
+  const src = sprites && sprites[id];
+  if (!src) return children;
+  const cfg = (cutCfg && cutCfg[id]) || {};
+  return <AutoSprite src={src} cut={cfg.cut !== undefined ? cfg.cut : true} tol={cfg.tol !== undefined ? cfg.tol : 32} width={size} alt={id} />;
 }
 
 function LetterN({ size = 80 }) {
@@ -1547,12 +1564,16 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
 
           {/* 장식 나무 */}
           {[[300, 400], [340, 1250], [1150, 1300], [1700, 400], [2050, 1250], [880, 200]].map(([tx, ty], i) => (
-            <div key={i} style={{ position: "absolute", left: tx, top: ty }}><Tree /></div>
+            <div key={i} style={{ position: "absolute", left: tx, top: ty }}>
+              <DecoSprite id="tree" size={46} sprites={sprites} cutCfg={cutCfg}><Tree /></DecoSprite>
+            </div>
           ))}
 
           {/* 🌴 치앙마이 야자수 (강 건너) */}
           {[[2330, 540, 86], [2565, 650, 74], [2310, 1210, 80], [2560, 1180, 70]].map(([tx, ty, sz], i) => (
-            <div key={"palm" + i} style={{ position: "absolute", left: tx, top: ty, transform: "translate(-50%,-100%)" }}><PalmTree size={sz} /></div>
+            <div key={"palm" + i} style={{ position: "absolute", left: tx, top: ty, transform: "translate(-50%,-100%)" }}>
+              <DecoSprite id="palm" size={sz} sprites={sprites} cutCfg={cutCfg}><PalmTree size={sz} /></DecoSprite>
+            </div>
           ))}
 
           {/* 건물들 */}
@@ -5142,6 +5163,8 @@ function SmokeView({ onBack, bubble }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724h", type: "업데이트", date: "2026-07-24", title: "🌴 야자수·나무도 이미지 교체 가능",
+    body: "· 건물뿐 아니라 지도 장식물도 내 이미지로 바꿀 수 있어요\n· public/sprites/palm.png → 🌴 야자수 4그루 전부 교체\n· public/sprites/tree.png → 🌳 마을 나무 6그루 전부 교체\n· ☰ 메뉴 → 🎨 건물 이미지 목록에도 추가됐어요 (누끼 강도 조절 가능)" },
   { id: "u20260724g", type: "업데이트", date: "2026-07-24", title: "✈️ 공항 정리 · 🌴 야자수 위치 수정",
     body: "· 🌴 야자수가 강물 위에 서 있던 문제를 고쳤어요 (물 구간 x2140~2260 밖으로)\n· 16그루 → 4그루로 줄이고 육지에 듬성듬성 배치했어요\n· ✈️ 공항 아이콘을 작게 줄이고 다리 바로 앞으로 옮겼어요\n· 여권 번호 → 🔒 비밀코드로 이름을 바꿨어요\n· 코드를 맞히면 「정답입니다!」와 함께 바로 반대편으로 넘어가요\n· 한 번 맞히면 그 계정은 계속 자유롭게 왕복할 수 있어요 (공항에서 바로 이동 버튼도 생겨요)" },
   { id: "u20260724f", type: "업데이트", date: "2026-07-24", title: "🛠 흰 화면 오류 수정",
