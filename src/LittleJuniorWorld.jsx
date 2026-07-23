@@ -1988,8 +1988,27 @@ function JjeopView({ onBack, bubble }) {
                 <PxButton tone="danger" onClick={() => answer(false)} style={{ padding: "8px 20px", fontSize: 14 }}>아니요</PxButton>
               </div>
             )}
+            {step === "result" && !proofOpen && (
+              <div style={{ marginTop: 8 }}>
+                <PxButton tone="gold" onClick={() => setProofOpen(true)} style={{ padding: "8px 14px", fontSize: 13 }}>📸 인증샷 보내기</PxButton>
+              </div>
+            )}
+            {step === "result" && proofOpen && (
+              <div style={{ marginTop: 10, background: C.white, border: `3px solid ${C.ink}`, padding: 12, textAlign: "left" }}>
+                <div style={{ fontSize: 13, marginBottom: 8 }}>점심술사가 추천해준 화면 캡처랑, 실제로 먹은 인증샷을 보내봐~ 확인되면 젬을 줄게 ⭐</div>
+                <input ref={fileRef} type="file" accept="image/*" onChange={pickProof} style={{ display: "none" }} />
+                {proofImg && (
+                  <img src={proofImg} alt="인증샷" style={{ width: "100%", maxHeight: 160, objectFit: "contain", border: `2px solid ${C.ink}`, marginBottom: 8, background: "#eee" }} />
+                )}
+                <div style={{ display: "flex", gap: 6 }}>
+                  <PxButton tone="wood" onClick={() => fileRef.current && fileRef.current.click()} style={{ flex: 1, padding: 9, fontSize: 12 }}>📎 사진 업로드</PxButton>
+                  <PxButton tone="good" disabled={!proofImg || proofDone} onClick={submitProof} style={{ flex: 1, padding: 9, fontSize: 12 }}>{proofDone ? "받음 ✓" : "제출하고 젬 받기"}</PxButton>
+                </div>
+                {proofDone && <div style={{ fontSize: 12, color: C.good, marginTop: 8, fontWeight: "bold" }}>맛있게 먹었네! ⭐5 지급 완료 ♥</div>}
+              </div>
+            )}
             {(step === "bye" || step === "result") && (
-              <PxButton tone="ink" onClick={() => setModal(null)} style={{ marginTop: 6, padding: "8px 16px", fontSize: 13 }}>닫기</PxButton>
+              <PxButton tone="ink" onClick={() => setModal(null)} style={{ marginTop: 8, padding: "8px 16px", fontSize: 13 }}>닫기</PxButton>
             )}
           </div>
         </RoomModal>
@@ -2218,39 +2237,121 @@ function School({ wall = "#8fd0d6", roof = "#c95d7b", size = 140 }) {
 }
 
 const SCHOOLS = {
-  naverschool: { title: "네이버스쿨", icon: "📗", color: "#2db400", steps: [
-    { t: "개념 정리", d: "네이버 생태계(블로그·카페·지식인)의 기본 개념과 구조를 이해해요." },
-    { t: "블로그", d: "주제 선정 → 글쓰기 → 최적화까지 블로그 운영의 기본을 배워요." },
-    { t: "카페", d: "카페 개설·운영, 멤버 관리와 커뮤니티 활성화 방법을 익혀요." },
-    { t: "지식인", d: "질문·답변으로 전문성을 쌓고 신뢰도를 올리는 전략을 배워요." },
-  ] },
-  videoschool: { title: "영상스쿨", icon: "🎬", color: "#8e5a9e", steps: [
-    { t: "코어 개념", d: "영상의 기본 원리(구도·컷·리듬)와 핵심 개념을 잡아요." },
-    { t: "레퍼런스", d: "좋은 영상을 찾고 분석해 나만의 레퍼런스를 모아요." },
-    { t: "원고작성 & 소재수집", d: "기획·대본을 쓰고 촬영할 소재를 수집해요." },
-    { t: "영상제작", d: "촬영 → 편집 → 마무리까지 실제 영상을 완성해요." },
-  ] },
+  naverschool: {
+    title: "네이버스쿨", icon: "📗", color: "#2db400", grass: "#8fd98f", road: "#e8dfc0",
+    quests: [
+      { id: "n1", title: "개념 정리", roof: "#e4a04f", wall: "#fff3e0", steps: ["네이버 생태계 한눈에 보기", "블로그·카페·지식인의 차이", "무엇부터 시작할까?"] },
+      { id: "n2", title: "블로그", roof: "#e07b8a", wall: "#ffeef0", steps: ["주제 정하기", "글 구조 잡기", "노출 최적화 기본"] },
+      { id: "n3", title: "카페", roof: "#7fbfe0", wall: "#eaf6ff", steps: ["카페 개설", "게시판 설계", "멤버 모으기"] },
+      { id: "n4", title: "지식인", roof: "#b48fd9", wall: "#f3ecff", steps: ["좋은 답변의 조건", "전문성 쌓기", "신뢰도 관리"] },
+      { id: "n5", title: "종합 실습", boss: true, roof: "#d9a441", wall: "#fff6da", steps: ["배운 것 모두 활용", "나만의 채널 기획", "1주 실행 계획"] },
+    ],
+  },
+  videoschool: {
+    title: "영상스쿨", icon: "🎬", color: "#8e5a9e", grass: "#a8c8e8", road: "#e6dff2",
+    quests: [
+      { id: "v1", title: "코어 개념", roof: "#e4a04f", wall: "#fff3e0", steps: ["구도와 프레임", "컷의 리듬", "영상 문법 기본"] },
+      { id: "v2", title: "레퍼런스", roof: "#7fbfe0", wall: "#eaf6ff", steps: ["좋은 영상 찾기", "분석하는 법", "레퍼런스 정리"] },
+      { id: "v3", title: "원고작성 & 소재수집", roof: "#e07b8a", wall: "#ffeef0", steps: ["소재 발굴", "대본 구조", "촬영 리스트"] },
+      { id: "v4", title: "영상제작", roof: "#8fd0a0", wall: "#eefaf0", steps: ["촬영 세팅", "편집 흐름", "마무리 점검"] },
+      { id: "v5", title: "최종 과제", boss: true, roof: "#d9a441", wall: "#fff6da", steps: ["기획부터 완성까지", "피드백 받기", "업로드"] },
+    ],
+  },
 };
-
+const SCHOOL_HOUSE_POS = [
+  { x: 120, y: 110 }, { x: 320, y: 110 }, { x: 520, y: 110 },
+  { x: 170, y: 300 }, { x: 430, y: 300 },
+];
 function SchoolView({ school, onBack }) {
   const s = SCHOOLS[school];
+  const MAP_W = 640, MAP_H = 420;
+  const [pos, setPos] = useState({ x: MAP_W / 2, y: MAP_H - 50 });
+  const [facing, setFacing] = useState(1);
+  const [moving, setMoving] = useState(false);
+  const [near, setNear] = useState(null);
+  const [open, setOpen] = useState(null);
+  const [cleared, setCleared] = useState({});
+  const keys = useRef({});
+  const posRef = useRef(pos);
+  const nearRef = useRef(null);
+  const openRef = useRef(false);
+  openRef.current = !!open;
+  const clearedRef = useRef(cleared);
+  clearedRef.current = cleared;
+
+  const houses = s.quests.map((q, i) => ({ ...q, ...(SCHOOL_HOUSE_POS[i] || { x: 300, y: 200 }) }));
+  const housesRef = useRef(houses);
+  housesRef.current = houses;
+
+  useEffect(() => {
+    const down = (e) => {
+      const raw = e.key.toLowerCase();
+      if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d", "e"].includes(raw)) e.preventDefault();
+      if (openRef.current) return;
+      if (raw === "e" || raw === " ") {
+        const n = nearRef.current;
+        if (n) {
+          const h = housesRef.current.find((x) => x.id === n);
+          const idx = housesRef.current.findIndex((x) => x.id === n);
+          const locked = idx > 0 && !clearedRef.current[housesRef.current[idx - 1].id];
+          if (h && !locked) setOpen(h);
+        }
+        return;
+      }
+      keys.current[raw] = true;
+    };
+    const up = (e) => { keys.current[e.key.toLowerCase()] = false; };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
+  }, []);
+
+  useEffect(() => {
+    let raf;
+    const SPEED = 3.4;
+    const loop = () => {
+      if (!openRef.current) {
+        const k = keys.current;
+        let { x, y } = posRef.current;
+        let dx = 0, dy = 0;
+        if (k["arrowleft"] || k["a"]) dx -= 1;
+        if (k["arrowright"] || k["d"]) dx += 1;
+        if (k["arrowup"] || k["w"]) dy -= 1;
+        if (k["arrowdown"] || k["s"]) dy += 1;
+        if (dx || dy) {
+          const len = Math.hypot(dx, dy) || 1;
+          x += (dx / len) * SPEED; y += (dy / len) * SPEED;
+          x = Math.max(16, Math.min(MAP_W - 16, x));
+          y = Math.max(16, Math.min(MAP_H - 16, y));
+          posRef.current = { x, y };
+          setPos({ x, y });
+          setMoving(true);
+          if (dx) setFacing(dx > 0 ? 1 : -1);
+        } else setMoving(false);
+        let found = null;
+        for (const h of housesRef.current) {
+          if (Math.hypot(h.x - posRef.current.x, (h.y + 30) - posRef.current.y) < 70) { found = h.id; break; }
+        }
+        if (found !== nearRef.current) { nearRef.current = found; setNear(found); }
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const doneCount = houses.filter((h) => cleared[h.id]).length;
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon={s.icon} title={s.title} sub="1 → 4번 순서대로 따라가는 가이드" onBack={onBack} bg={s.color} fg={C.white} />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 3, background: C.ink, padding: 3 }}>
-        {s.steps.map((st, i) => (
-          <div key={i} style={{ background: C.parch, padding: 16, minHeight: 150, display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <span style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 18, color: s.color }}>{i + 1}</span>
-              <b style={{ fontSize: 15 }}>{st.t}</b>
-            </div>
-            <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.6 }}>{st.d}</div>
+      <TitleBar icon={s.icon} title={s.title} sub="WASD 이동 · 집 근처에서 E · 👑은 보스급, 🔒은 잠긴 퀘스트" onBack={onBack} bg={s.color} fg={C.white} />
+      <div style={{ padding: 12, background: C.parch }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <div style={{ flex: 1, height: 12, background: "#e2d3ab", border: `2px solid ${C.ink}` }}>
+            <div style={{ height: "100%", width: `${(doneCount / houses.length) * 100}%`, background: s.color, transition: "width .3s" }} />
           </div>
-        ))}
-      </div>
-    </Panel>
-  );
-}
+          <b style={{ fontSize: 12 }}>{doneCount}/{houses.length} 완료</b>
+        </div>
+        <div style={{ position: "relative", width: "100%", maxWidth: MAP_W, height: MAP_H, margin: "0 auto", background: s.grass, border:
 /* ======================= 보스맵 도전기 ======================= */
 const BOSS_STAGES = {
   easy: [
@@ -2268,6 +2369,10 @@ const BOSS_STAGES = {
     { id: "h5", boss: "공허의 기획자", icon: "🕳", star: 5, gem: 40, desc: "아무 제약 없는 백지를 던지는 최종 보스.", task: "제약 0인 상태에서 새 기획 1개를 목표·타깃·성공지표까지 세워라." },
   ],
 };
+const STAGE_POS = [
+  { x: 16, y: 84 }, { x: 42, y: 70 }, { x: 22, y: 52 }, { x: 52, y: 38 }, { x: 30, y: 20 },
+  { x: 62, y: 12 }, { x: 82, y: 26 }, { x: 74, y: 48 },
+];
 function BossMapView({ onBack, onReward }) {
   const [tab, setTab] = useState("easy");
   const [cleared, setCleared] = useState({});
@@ -2276,44 +2381,59 @@ function BossMapView({ onBack, onReward }) {
   const doneCount = stages.filter((s) => cleared[s.id]).length;
   const accent = tab === "easy" ? "#3fa07a" : "#c0563a";
   const clear = (s) => { if (cleared[s.id]) return; setCleared((c) => ({ ...c, [s.id]: true })); onReward && onReward(s.gem); };
+  const pts = stages.map((_, i) => STAGE_POS[i] || { x: 50, y: 50 });
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="🗺" title="보스맵 도전기" sub="단계별 보스를 격파하라" onBack={onBack} bg="#2f2440" fg={C.white} />
-      <div style={{ padding: 14, background: "#efe6d2" }}>
-        <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-          <PxButton tone={tab === "easy" ? "good" : "wood"} onClick={() => setTab("easy")} style={{ flex: 1, padding: 9, fontSize: 13 }}>🟢 EASY</PxButton>
-          <PxButton tone={tab === "hard" ? "danger" : "wood"} onClick={() => setTab("hard")} style={{ flex: 1, padding: 9, fontSize: 13 }}>🔥 HARD</PxButton>
+      <TitleBar icon="🗺" title="보스맵 도전기" sub="스테이지를 따라 보스를 격파하라" onBack={onBack} bg="#2f2440" fg={C.white} />
+      <div style={{ padding: 12, background: "#efe6d2" }}>
+        <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+          <PxButton tone={tab === "easy" ? "good" : "wood"} onClick={() => setTab("easy")} style={{ flex: 1, padding: 8, fontSize: 13 }}>🟢 EASY</PxButton>
+          <PxButton tone={tab === "hard" ? "danger" : "wood"} onClick={() => setTab("hard")} style={{ flex: 1, padding: 8, fontSize: 13 }}>🔥 HARD</PxButton>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-          <div style={{ flex: 1, height: 14, background: "#e2d3ab", border: `2px solid ${C.ink}` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <div style={{ flex: 1, height: 12, background: "#e2d3ab", border: `2px solid ${C.ink}` }}>
             <div style={{ height: "100%", width: `${(doneCount / stages.length) * 100}%`, background: accent, transition: "width .3s" }} />
           </div>
-          <b style={{ fontSize: 12 }}>{doneCount}/{stages.length} 격파</b>
+          <b style={{ fontSize: 12 }}>{doneCount}/{stages.length}</b>
         </div>
-        <div style={{ position: "relative", background: "#3b3050", border: `4px solid ${C.ink}`, padding: "16px 12px", backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0 8px, transparent 8px 16px)" }}>
+
+        <div style={{ position: "relative", width: "100%", paddingBottom: "78%", background: "#2b2140", border: `4px solid ${C.ink}`, overflow: "hidden" }}>
+          <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 26px), repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 26px)" }} />
+          <div style={{ position: "absolute", left: "6%", top: "6%", fontSize: 24, opacity: 0.5 }}>🏰</div>
+          <div style={{ position: "absolute", right: "8%", bottom: "8%", fontSize: 22, opacity: 0.45 }}>🌲</div>
+          <div style={{ position: "absolute", left: "60%", bottom: "20%", fontSize: 20, opacity: 0.4 }}>⛰️</div>
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+            {pts.slice(0, -1).map((p, i) => {
+              const q = pts[i + 1];
+              const done = cleared[stages[i].id];
+              return <line key={i} x1={p.x} y1={p.y} x2={q.x} y2={q.y} stroke={done ? accent : "#6b6280"} strokeWidth="1.2" strokeDasharray="3 2" vectorEffect="non-scaling-stroke" />;
+            })}
+          </svg>
           {stages.map((s, i) => {
+            const p = pts[i];
             const done = !!cleared[s.id];
             const locked = i > 0 && !cleared[stages[i - 1].id];
+            const current = !done && !locked;
             return (
-              <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: i === stages.length - 1 ? 0 : 4 }}>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 30 }}>
-                  <div style={{ width: 26, height: 26, borderRadius: "50%", background: done ? accent : locked ? "#6b6280" : "#ffe680", border: `2px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: "bold", color: C.ink }}>{done ? "✓" : i + 1}</div>
-                  {i < stages.length - 1 && <div style={{ width: 4, height: 26, background: done ? accent : "#6b6280" }} />}
-                </div>
-                <button onClick={() => !locked && setSel(s)} disabled={locked} style={{ flex: 1, textAlign: "left", cursor: locked ? "not-allowed" : "pointer", background: locked ? "#5a5270" : C.parch, border: `3px solid ${C.ink}`, padding: "8px 10px", fontFamily: "'DotGothic16', monospace", opacity: locked ? 0.7 : 1, marginBottom: i < stages.length - 1 ? 26 : 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 20 }}>{locked ? "🔒" : s.icon}</span>
-                    <b style={{ flex: 1, fontSize: 13, color: locked ? "#ddd" : C.ink, minWidth: 80 }}>{locked ? "???" : s.boss}</b>
-                    <span style={{ fontSize: 10, color: locked ? "#ddd" : "#a86e13" }}>{"★".repeat(s.star)}</span>
-                    <span style={{ fontSize: 11, color: locked ? "#ddd" : C.ink, background: locked ? "transparent" : C.gem, border: locked ? "none" : `2px solid ${C.ink}`, padding: "0 5px" }}>⭐{s.gem}</span>
-                  </div>
-                  {done && <div style={{ fontSize: 10, color: accent, fontWeight: "bold", marginTop: 3 }}>격파 완료!</div>}
-                </button>
-              </div>
+              <button key={s.id} onClick={() => !locked && setSel(s)} disabled={locked}
+                style={{ position: "absolute", left: `${p.x}%`, top: `${p.y}%`, transform: "translate(-50%,-50%)", width: 54, height: 54, borderRadius: "50%",
+                  background: done ? accent : locked ? "#544c6b" : "#ffe680", border: `3px solid ${C.ink}`,
+                  boxShadow: current ? "0 0 0 4px rgba(255,230,128,0.35)" : "0 3px 0 rgba(0,0,0,0.4)",
+                  cursor: locked ? "not-allowed" : "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0, fontFamily: "'DotGothic16', monospace", padding: 0 }}>
+                <span style={{ fontSize: 20, lineHeight: 1 }}>{locked ? "🔒" : done ? "✓" : s.icon}</span>
+                <span style={{ fontSize: 9, fontWeight: "bold", color: C.ink }}>{i + 1}</span>
+              </button>
+            );
+          })}
+          {stages.map((s, i) => {
+            const p = pts[i];
+            const locked = i > 0 && !cleared[stages[i - 1].id];
+            return (
+              <div key={"lb" + s.id} style={{ position: "absolute", left: `${p.x}%`, top: `calc(${p.y}% + 32px)`, transform: "translateX(-50%)", fontSize: 9, whiteSpace: "nowrap", color: "#fff", background: "rgba(0,0,0,0.55)", border: `1px solid ${C.ink}`, padding: "1px 5px" }}>{locked ? "???" : s.boss}</div>
             );
           })}
         </div>
-        <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 8, textAlign: "center" }}>앞 보스를 격파해야 다음 스테이지가 열려요</div>
+        <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 8, textAlign: "center" }}>길을 따라 다음 스테이지로! 앞 보스를 잡아야 열려요</div>
       </div>
       {sel && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 14 }} onClick={() => setSel(null)}>
@@ -2421,7 +2541,22 @@ function VapeModal({ onClose }) {
   );
 }
 
-function SmokeView({ onBack, bubble }) {
+function JjeopView({ onBack, bubble, onReward }) {
+  const [proofOpen, setProofOpen] = useState(false);
+  const [proofImg, setProofImg] = useState(null);
+  const [proofDone, setProofDone] = useState(false);
+  const fileRef = useRef(null);
+  const pickProof = (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    setProofImg(url);
+  };
+  const submitProof = () => {
+    if (!proofImg || proofDone) return;
+    setProofDone(true);
+    onReward && onReward(5);
+  };
   const [modal, setModal] = useState(null);
   const [winOpen, setWinOpen] = useState(false);
   const furniture = [
@@ -3190,7 +3325,7 @@ export default function App() {
         {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
         {view === "sandbag" && <SandbagView onBack={backToWorld} scores={boxScores} onEnd={(nick, count) => setBoxScores((s) => [...s, { nick, count }])} />}
         {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
-        {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} />}
+        {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} onReward={(n) => award(n)} />}
         {view === "board" && <BoardView onBack={backToWorld} />}
         {view === "bank" && <BankView gems={gems} lifetime={lifetime} exchanged={exchanged} history={history} onExchange={doExchange} onBack={backToWorld} />}
         {view === "rent" && rentMeta && <RentView house={rentMeta} gems={gems} rented={!!rented[rentId]} onRent={() => { setGems((g) => g - rentMeta.rent); setRented((r) => ({ ...r, [rentId]: true })); }} onBack={backToWorld} />}
