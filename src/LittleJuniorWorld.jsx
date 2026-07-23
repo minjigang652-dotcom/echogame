@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v16 · 2026-07-24";
+const APP_VERSION = "v18 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -5300,6 +5300,10 @@ function SmokeView({ onBack, bubble }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724o", type: "업데이트", date: "2026-07-24", title: "🌦 실제 날씨 자동 갱신",
+    body: "· 실제 날씨 예보를 10분마다 자동으로 다시 받아와요\n· 다른 탭에 갔다가 돌아오면 즉시 최신 날씨로 갱신됩니다\n· 실제로 비가 그치면 게임 속 비도 멈추고, 비가 오기 시작하면 게임에도 내려요\n· 기온 표시도 함께 바뀝니다\n· 상단 날씨 표시에 마우스를 올리면 마지막 갱신 시각이 보여요" },
+  { id: "u20260724n", type: "업데이트", date: "2026-07-24", title: "📖 사용설명서에 지역 설정 안내 추가",
+    body: "· 🌱 시작 탭에 「📍 지역 설정 · 실시간 날씨」 항목이 생겼어요\n· 🏛 생활 탭에도 「🌦 날씨」 항목을 추가했어요\n· 고른 지역의 실제 예보를 가져와 기온·날씨 아이콘이 바뀌고, 비 예보면 마을에 비가 내립니다\n· 지역 선택 창에도 실시간 예보 기반이라는 설명을 넣었어요" },
   { id: "u20260724m", type: "업데이트", date: "2026-07-24", title: "✅ 완료하면 광장에서 사라지고 도감으로",
     body: "· ✅ 완료를 누르면 바로 완료 처리돼요\n· 하드모드 광장에서는 완료한 퀘스트가 지도에서 사라지고 🧠 사고 도감에만 남아요\n· 진행도(n/n)는 전체 기준으로 계속 정확하게 표시돼요\n· 보상은 즉시 지급되지 않고, 🏆 제단에 완료 파편을 올려 GM 검수를 받아야 지급됩니다\n· ⚔ 보스 격파는 기존처럼 즉시 보상이에요" },
   { id: "u20260724l", type: "업데이트", date: "2026-07-24", title: "🔙 퀘스트 뒤로가기 · 🏆 완료는 제단에서",
@@ -5761,6 +5765,7 @@ const HELP_DATA = {
     { icon: "🎟️", title: "웰컴 쿠폰", body: "사전예약자 혜택으로 처음 한 번 💎100 젬을 드려요." },
     { icon: "🎮", title: "조작법", body: "W A S D 또는 방향키로 이동 · Space로 상호작용 · 스쿨/보스맵에서는 E로 퀘스트 열기 · 다른 사람 캐릭터를 클릭하면 선물 주기." },
     { icon: "🗺", title: "길 찾기", body: "우하단 미니맵을 클릭하면 전체 지도가 열려요. 구역과 건물 이름이 모두 표시됩니다." },
+    { icon: "📍", title: "지역 설정 · 실시간 날씨", body: "상단 ＋지역 버튼으로 내가 사는 지역을 고를 수 있어요. 서울 · 영등포구 · 강동구 · 마포구 · 인천 · 용인 · 부산 · 대구 · 대전 · 제주 중에서 선택합니다.\n\n고른 지역의 실제 날씨 예보를 그대로 가져와요. 상단에 현재 기온과 날씨 아이콘이 뜨고, 진짜로 비가 오는 날에는 마을에도 비가 내립니다. 10분마다 자동으로 갱신되니, 실제로 비가 그치면 게임 속 비도 멈춰요. 강 건너 치앙마이는 태국 치앙마이의 실제 날씨를 따라가요.\n\n강을 건너면 상단 날씨 표시도 치앙마이 기준으로 자동으로 바뀝니다." },
   ],
   "🏢 퀘스트": [
     { icon: "🏆", title: "퀘스트 완료의 제단", body: "주민센터 남쪽의 신비한 상징물. 끝낸 퀘스트를 [퀘스트 신청 파편]과 [퀘스트 수락 파편]으로 봉헌하고, 항목마다 🛡 GM 검수 완료 / ⭐ 보상 완료를 체크해요. 둘 다 체크되면 '봉인 완료'로 바뀝니다.", go: "questdone", goLabel: "제단 가기" },
@@ -5769,6 +5774,7 @@ const HELP_DATA = {
     { icon: "🎬", title: "영상스쿨 (초보자용)", body: "코어개념 → 레퍼런스 → 원고작성 → 영상제작. 프롬프트 복사 버튼과 어시스턴트가 있어요.", go: "videoschool", goLabel: "영상스쿨 가기" },
   ],
   "🏛 생활": [
+    { icon: "🌦", title: "날씨", body: "상단 ＋지역에서 고른 지역의 실제 예보를 가져와요. 접속할 때 · 지역을 바꿀 때 · 10분마다 · 다른 탭에 갔다 돌아올 때 자동으로 다시 받아옵니다. 실제로 비가 그치면 게임 속 비도 멈춰요. 날씨 표시에 마우스를 올리면 마지막 갱신 시각이 보입니다." },
     { icon: "🏛", title: "주민센터", body: "회의실 예약, 음료 코너(HP·MP +20), 공지사항과 캘린더.", go: "center", goLabel: "주민센터 가기" },
     { icon: "🛍️", title: "무신사", body: "상의·하의·신발을 무료로 입어보고 마음에 들면 구매. 착용한 옷은 다른 접속자에게도 보여요.", go: "musinsa", goLabel: "무신사 가기" },
     { icon: "🛒", title: "이케아", body: "집 외관 · 가구 · 교통수단 구매. 탈것을 타면 마을에서 더 빨리 이동해요.", go: "ikea", goLabel: "이케아 가기" },
@@ -6628,19 +6634,38 @@ const REGIONS = {
   "제주": { lat: 33.4996, lon: 126.5312 },
 };
 function isRain(code) { return code != null && ((code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95); }
+/* 실제 날씨 예보(Open-Meteo)를 가져와 게임에 반영합니다.
+   접속 시 · 지역 변경 시 · 10분마다 · 창으로 돌아올 때 자동으로 다시 받아와요. */
+const WX_REFRESH_MS = 10 * 60 * 1000;
 function useWeather(points) {
   const [wx, setWx] = useState({});
   const keyStr = JSON.stringify(points);
   useEffect(() => {
     let alive = true;
-    Object.entries(points).forEach(([key, p]) => {
-      if (!p) return;
-      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&current=temperature_2m,weather_code`)
-        .then((r) => r.json())
-        .then((d) => { if (alive && d && d.current) setWx((w) => ({ ...w, [key]: { temp: Math.round(d.current.temperature_2m), code: d.current.weather_code } })); })
-        .catch(() => {});
-    });
-    return () => { alive = false; };
+    const load = () => {
+      Object.entries(points).forEach(([key, p]) => {
+        if (!p) return;
+        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&current=temperature_2m,weather_code`)
+          .then((r) => r.json())
+          .then((d) => {
+            if (!alive || !d || !d.current) return;
+            setWx((w) => ({ ...w, [key]: { temp: Math.round(d.current.temperature_2m), code: d.current.weather_code, at: Date.now() } }));
+          })
+          .catch(() => {});
+      });
+    };
+    load();
+    const iv = setInterval(load, WX_REFRESH_MS);
+    // 다른 탭에 갔다가 돌아오면 바로 최신 날씨로
+    const onBack = () => { if (!document.hidden) load(); };
+    document.addEventListener("visibilitychange", onBack);
+    window.addEventListener("focus", load);
+    return () => {
+      alive = false;
+      clearInterval(iv);
+      document.removeEventListener("visibilitychange", onBack);
+      window.removeEventListener("focus", load);
+    };
   }, [keyStr]);
   return wx;
 }
@@ -7615,7 +7640,8 @@ function EchoTown() {
               <VitalBar label="HP" val={hp} color={C.danger} />
               <VitalBar label="MP" val={mp} color="#3a7bd5" />
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.parch, border: `2px solid ${C.ink}`, padding: "4px 8px" }}>
+            <div title={curWx && curWx.at ? `${wxName} 실시간 예보 · ${new Date(curWx.at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 기준 (10분마다 갱신)` : "날씨 불러오는 중"}
+              style={{ display: "flex", alignItems: "center", gap: 6, background: C.parch, border: `2px solid ${C.ink}`, padding: "4px 8px" }}>
               <span style={{ fontSize: 16 }}>{curWx ? wxIcon(curWx.code) : "⏳"}</span>
               <div style={{ lineHeight: 1.1 }}>
                 <div style={{ fontSize: 13, fontWeight: "bold" }}>{curWx ? `${curWx.temp}°` : "--"}</div>
@@ -7628,7 +7654,7 @@ function EchoTown() {
                 <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340 }}>
                   <Panel style={{ padding: 14 }}>
                     <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 10 }}>📍 마을 지역 선택</div>
-                    <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>고르면 상단 날씨가 그 지역으로 바로 바뀌어요.</div>
+                    <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8, lineHeight: 1.7 }}>실제 날씨 예보를 10분마다 가져와요.<br />비가 오는 날에는 마을에도 비가 내립니다 🌧</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
                       {Object.keys(REGIONS).map((r) => (
                         <PxButton key={r} tone={r === townRegion ? "good" : "wood"} onClick={() => { setTownRegion(r); setRegionOpen(false); }} style={{ padding: 10, fontSize: 13 }}>{r}</PxButton>
