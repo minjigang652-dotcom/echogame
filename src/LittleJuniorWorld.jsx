@@ -869,6 +869,35 @@ function probeSpriteFiles() {
   });
 }
 
+/* 🌧 비 — 굵기·길이·속도·투명도가 제각각인 세로 빗줄기.
+   화면(뷰포트) 위에 덮이므로 지도를 움직여도 밀도가 일정해요.
+   투명도를 넉넉히 줘서 건물이 비쳐 보이지만, 밝은 빗줄기로 존재감은 확실하게. */
+function RainLayer({ count = 120, height = 480, zIndex = 24 }) {
+  const drops = useMemo(() => Array.from({ length: count }, (_, i) => {
+    const near = Math.random();                       // 0=멀리(흐릿·느림) 1=가까이(굵고·빠름)
+    return {
+      k: i,
+      x: Math.random() * 100,
+      len: 26 + near * 120 + Math.random() * 40,
+      dur: 1.05 - near * 0.55 + Math.random() * 0.25,
+      delay: -Math.random() * 2.4,
+      op: 0.1 + near * 0.42 + Math.random() * 0.12,
+      w: near > 0.82 ? 2 : 1,
+    };
+  }), [count]);
+  return (
+    <div className="rain-vp" aria-hidden style={{ zIndex }}>
+      {drops.map((d) => (
+        <span key={d.k} className="rain-drop" style={{
+          left: d.x + "%", height: d.len, width: d.w, opacity: d.op,
+          animationDuration: d.dur + "s", animationDelay: d.delay + "s",
+          "--fall": (height + 180) + "px",
+        }} />
+      ))}
+    </div>
+  );
+}
+
 function LetterN({ size = 80 }) {
   return (
     <svg width={size} height={size * 1.2} viewBox="0 0 20 24" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
@@ -1189,7 +1218,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
   return { others, count, status, sendChat, sendEvent };
 }
 
-function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = null, carry = null, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null, onGift = null, myNick = "" }) {
+function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = null, carry = null, shuffle = false, onShuffle, onNextTrack, onPrevTrack, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null, onGift = null, myNick = "" }) {
   const [songOpen, setSongOpen] = useState(false);
   const [teleport, setTeleport] = useState(null);
   const [whoOpen, setWhoOpen] = useState(false);
@@ -1363,7 +1392,10 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
               </div>
             )}
           </div>
+          <PxButton tone="wood" onClick={onPrevTrack} title="이전 곡" style={{ fontSize: 11, padding: "3px 7px" }}>⏮</PxButton>
           <PxButton tone="gold" onClick={onToggleBgm} style={{ fontSize: 11, padding: "3px 8px" }}>{bgm.playing ? "⏸" : "▶"}</PxButton>
+          <PxButton tone="wood" onClick={onNextTrack} title="다음 곡" style={{ fontSize: 11, padding: "3px 7px" }}>⏭</PxButton>
+          <PxButton tone={shuffle ? "good" : "wood"} onClick={onShuffle} title={shuffle ? "셔플 켜짐 — 무작위 재생" : "셔플 (아무 곡이나 재생)"} style={{ fontSize: 11, padding: "3px 8px" }}>🔀{shuffle ? " ON" : ""}</PxButton>
           <span style={{ fontSize: 12 }}>🔊</span>
           <input type="range" min="0" max="100" value={Math.round(bgmVol * 100)} onChange={(e) => onBgmVol && onBgmVol(Number(e.target.value) / 100)} title="배경음 볼륨" style={{ width: 70, accentColor: "#ffe680", cursor: "pointer" }} />
           <PxButton tone="blue" onClick={() => setReqOpen(true)} style={{ fontSize: 11, padding: "3px 8px" }}>🎵 신청곡(🪙5)</PxButton>
@@ -1412,8 +1444,6 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
           ))}
 
           {/* 비 효과 (마을 / 치앙마이 각각) */}
-          {townRain && <div className="rain-layer" style={{ position: "absolute", left: 0, top: 0, width: RIVER_X, height: WORLD.h, pointerEvents: "none", zIndex: 15 }} />}
-          {cmRain && <div className="rain-layer" style={{ position: "absolute", left: RIVER_X, top: 0, width: WORLD.w - RIVER_X, height: WORLD.h, pointerEvents: "none", zIndex: 15 }} />}
 
           {/* 다른 접속자 */}
           {Object.values(others).filter((o) => (o.v || "world") === "world").map((o) => (
@@ -1446,6 +1476,9 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
             </div>
           </div>
         </div>
+
+        {/* 🌧 내가 있는 지역에 비가 오면 화면 위에 빗줄기 */}
+        {(pos.x >= RIVER_X ? cmRain : townRain) && <RainLayer height={480} />}
 
         {/* 처음 이동 안내 */}
         {hint && (
@@ -5030,6 +5063,8 @@ function SmokeView({ onBack, bubble }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260723y", type: "업데이트", date: "2026-07-23", title: "🎵 BGM 자동 재생·셔플 · 🌧 비 효과 리뉴얼",
+    body: "· 한 곡이 끝나면 다음 곡이 자동으로 이어져요\n· ⏮ ⏭ 이전/다음 곡 버튼 추가\n· 🔀 셔플 버튼 — 누르면 바로 아무 곡이나 무작위 재생, 이후 곡도 무작위로 이어져요\n· 🌧 비가 굵기·길이·속도·투명도가 제각각인 세로 빗줄기로 바뀌었어요\n· 반투명이라 건물이 비쳐 보이지만 빗줄기는 또렷하게 보여요\n· 내가 있는 지역(마을 / 치앙마이)의 날씨에 맞춰 비가 내려요" },
   { id: "u20260723w", type: "업데이트", date: "2026-07-23", title: "🎁 선물 행동 · 🧑 외모 꾸미기 · 🏢 대형건물 정리",
     body: "· 선물마다 할 수 있는 행동이 달라졌어요\n· 💐 꽃다발·✉️ 편지지·🕯️ 향초 : 🙌 들고다니기 / 🏠 집에 두기\n· 🍰 케이크·☕ 커피·🍫 초콜릿 : 🙌 들고다니기 / 😋 먹기(HP+15 MP+10) / 🧊 냉장고 보관\n· 들고 다니면 마을·회의실·보스맵에서 다른 사람에게도 보여요\n· 집에 둔 선물은 내 집에 장식되고, 냉장고를 누르면 안에 든 게 보여요\n· 🧑 내 프로필에서 직업·아이콘·얼굴색·머리색·헤어스타일을 바꿀 수 있어요\n· 🏢 대형건물을 CS 하나만 남기고 정리했어요" },
   { id: "u20260723v", type: "업데이트", date: "2026-07-23", title: "🎥 회의실 채팅 · 📨 초대장 개선 · 💬 진짜 DM",
@@ -6679,15 +6714,45 @@ export default function App() {
   };
 
   // 신규: 배경음악 / 채팅 / 말풍선 / 피드백 / 메뉴
-  const [worldBgm, setWorldBgm] = useState({ title: WORLD_TRACKS[0].title, file: WORLD_TRACKS[0].file, playing: false });
-  const selectTrack = (t) => { setWorldBgm((b) => ({ ...b, title: t.title, file: t.file, playing: true })); bump("song"); };
+  const [worldBgm, setWorldBgm] = useState({ title: WORLD_TRACKS[0].title, file: WORLD_TRACKS[0].file, playing: false, seq: 0 });
+  const selectTrack = (t) => { setWorldBgm((b) => ({ ...b, title: t.title, file: t.file, playing: true, seq: (b.seq || 0) + 1 })); bump("song"); };
+  /* 🔀 셔플 · 한 곡이 끝나면 자동으로 다음 곡 */
+  const [shuffle, setShuffle] = useState(false);
+  const shuffleRef = useRef(false);
+  shuffleRef.current = shuffle;
+  const stepTrack = useCallback((dir) => {
+    setWorldBgm((b) => {
+      const n = WORLD_TRACKS.length;
+      if (n === 0) return b;
+      const cur = WORLD_TRACKS.findIndex((t) => t.file === b.file);
+      let idx;
+      if (dir === 0 || (dir > 0 && shuffleRef.current)) {
+        if (n === 1) idx = 0;
+        else { do { idx = Math.floor(Math.random() * n); } while (idx === cur); }
+      } else {
+        idx = ((cur < 0 ? 0 : cur) + (dir >= 0 ? 1 : -1) + n) % n;
+      }
+      const t = WORLD_TRACKS[idx];
+      return { ...b, title: t.title, file: t.file, playing: true, seq: (b.seq || 0) + 1 };
+    });
+  }, []);
+  const toggleShuffle = () => {
+    setShuffle((v) => {
+      const nv = !v;
+      shuffleRef.current = nv;
+      if (nv) { stepTrack(0); showNotice("🔀 셔플 ON — 아무 곡이나 재생해요"); }   // 켜면 바로 무작위 재생
+      else showNotice("🔀 셔플 OFF — 순서대로 재생해요");
+      return nv;
+    });
+  };
   const audioRef = useRef(null);
   const [bgmVol, setBgmVol] = useState(0.6);
   useEffect(() => {
     const a = audioRef.current; if (!a) return;
     a.volume = bgmVol;
-    if (worldBgm.playing) a.play().catch(() => {}); else a.pause();
-  }, [worldBgm.playing, worldBgm.file, bgmVol]);
+    // 같은 곡을 다시 고른 경우에도 처음부터 재생되도록
+    if (worldBgm.playing) { if (a.currentTime > 0 && a.ended) a.currentTime = 0; a.play().catch(() => {}); } else a.pause();
+  }, [worldBgm.playing, worldBgm.file, worldBgm.seq, bgmVol]);
   const [chat, setChat] = useState([]);
   const [shout, setShout] = useState(false);
   const [bubble, setBubble] = useState(null);
@@ -7066,7 +7131,7 @@ export default function App() {
   const requestWorldSong = (title) => {
     if (gold < 5) return;
     setGold((g) => g - 5);
-    setWorldBgm((b) => ({ ...b, title, playing: true }));
+    setWorldBgm((b) => ({ ...b, title, playing: true, seq: (b.seq || 0) + 1 }));
   };
 
   const runQuest = useCallback((q) => {
@@ -7130,7 +7195,7 @@ export default function App() {
     <NetContext.Provider value={{ others: netOthers, view, roomPosRef: netRoomPosRef }}>
     <div style={{ fontFamily: "'DotGothic16', monospace", minHeight: "100vh", background: `repeating-linear-gradient(45deg, ${C.grass} 0 24px, ${C.grassDark} 24px 48px)`, color: C.ink, padding: 14, boxSizing: "border-box" }}>
       <StyleBlock />
-      <audio ref={audioRef} src={import.meta.env.BASE_URL + encodeURIComponent(worldBgm.file)} loop preload="auto" />
+      <audio ref={audioRef} src={import.meta.env.BASE_URL + encodeURIComponent(worldBgm.file)} preload="auto" onEnded={() => stepTrack(1)} />
       <div style={{ maxWidth: 960, margin: "0 auto 12px" }}>
         <Panel style={{ padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -7187,7 +7252,7 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gold} sprites={allSprites} cutCfg={cutCfg} look={myLook} carry={carrying} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} myNick={myName} onGift={(n) => setGiftTarget(n)} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gold} sprites={allSprites} cutCfg={cutCfg} look={myLook} carry={carrying} shuffle={shuffle} onShuffle={toggleShuffle} onNextTrack={() => stepTrack(1)} onPrevTrack={() => stepTrack(-1)} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} myNick={myName} onGift={(n) => setGiftTarget(n)} />}
         {view === "center" && <CenterView meetings={myMeetings} meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} myName={myName} people={people}
           chat={meetingChat[meetingId] || []}
@@ -7499,8 +7564,14 @@ function StyleBlock() {
       .smoke-puff { animation: smokeRise 1.8s ease-out forwards; }
       @keyframes bagHit { 0%{transform:translateX(0) rotate(0);} 25%{transform:translateX(7px) rotate(5deg);} 55%{transform:translateX(-6px) rotate(-4deg);} 100%{transform:translateX(0) rotate(0);} }
       .bag-hit { animation: bagHit .18s ease-out; }
-      @keyframes rainFall { from { background-position: 0 0; } to { background-position: -60px 240px; } }
-      .rain-layer { background-color: rgba(40,50,70,0.16); background-image: repeating-linear-gradient(105deg, transparent 0 9px, rgba(200,215,235,0.5) 9px 10px); animation: rainFall .45s linear infinite; }
+      /* 🌧 비 — 무작위 세로 빗줄기 (건물이 비쳐 보이도록 투명하게) */
+      .rain-vp { position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+        background: linear-gradient(180deg, rgba(24,34,54,0.20) 0%, rgba(24,34,54,0.10) 45%, rgba(24,34,54,0.06) 100%); }
+      .rain-drop { position: absolute; top: 0; display: block; border-radius: 1px;
+        background: linear-gradient(to bottom, rgba(226,238,255,0) 0%, rgba(226,238,255,0.55) 40%, rgba(255,255,255,0.95) 100%);
+        will-change: transform;
+        animation-name: rainDrop; animation-timing-function: linear; animation-iteration-count: infinite; }
+      @keyframes rainDrop { from { transform: translate3d(0,-200px,0); } to { transform: translate3d(0,var(--fall,660px),0); } }
       @keyframes bubblePop { 0%{ transform: translateX(-50%) scale(.6); opacity:0;} 60%{ transform: translateX(-50%) scale(1.05);} 100%{ transform: translateX(-50%) scale(1); opacity:1;} }
       .chat-bubble { animation: bubblePop .2s ease-out; }
       .game-vp:focus, .game-vp:focus-visible { outline: none; }
@@ -7529,7 +7600,7 @@ function StyleBlock() {
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .gem-pop,.hero-bob,.gem-spin,.enter-prompt,.chat-bubble,.px-btn,.map-obj,.qs-aura,.qs-ring,.qs-float,.qs-spark circle { animation:none !important; transition:none !important; }
+        .gem-pop,.hero-bob,.gem-spin,.enter-prompt,.chat-bubble,.px-btn,.map-obj,.qs-aura,.qs-ring,.qs-float,.qs-spark circle,.rain-drop { animation:none !important; transition:none !important; }
       }
     `}</style>
   );
