@@ -2258,7 +2258,10 @@ const SCHOOLS = {
       { id: "n5", title: "종합 실습", boss: true, roof: "#d9a441", wall: "#fff6da", steps: ["배운 것 모두 활용", "나만의 채널 기획", "1주 실행 계획"] },
     ],
   },
-  videoschool: { id: "v1", title: "코어 개념", cat: "기초", roof: "#e4a04f", wall: "#fff3e0",
+  videoschool: {
+    title: "영상스쿨", icon: "🎬", color: "#8e5a9e", grass: "#a8c8e8", road: "#e6dff2",
+    quests: [
+      { id: "v1", title: "코어 개념", cat: "기초", roof: "#e4a04f", wall: "#fff3e0",
         story: "영상은 '무엇을 보여주느냐'보다 '어떻게 보여주느냐'로 갈린다. 이 퀘스트는 구도·컷·리듬이라는 기본 근육을 만드는 단계다.",
         sections: [
           { icon: "🎬", label: "영상 후크", text: "다들 좋은 카메라부터 사는데... 사실 조회수를 가르는 건 첫 3초 구도였다." },
@@ -2293,6 +2296,8 @@ const SCHOOLS = {
           { icon: "📋", label: "제출 항목", text: "1) 기획 한 줄\n2) 대본\n3) 완성 영상 링크" },
           { icon: "📝", label: "피드백 프롬프트", text: "이 영상의 후크·전개·마무리를 각각 점수와 개선점으로 평가해줘." },
         ] },
+    ],
+  },
 };
 const SCHOOL_HOUSE_POS = [
   { x: 120, y: 110 }, { x: 320, y: 110 }, { x: 520, y: 110 },
@@ -2923,7 +2928,7 @@ function StatCard({ label, value, accent, icon }) {
 }
 
 /* ===================== 항상 떠있는 UI ===================== */
-function ChatDock({ messages, shout, onToggleShout, onSend, gems = 0 })
+function ChatDock({ messages, shout, onToggleShout, onSend, gems = 0 }) {
   const [text, setText] = useState("");
   const send = () => { if (!text.trim()) return; onSend(text, shout); setText(""); };
   return (
