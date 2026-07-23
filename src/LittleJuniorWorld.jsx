@@ -3770,7 +3770,8 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
               <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: 12, fontSize: 13, lineHeight: 1.6 }}>🎯 {sel.task}</div>
               <div style={{ fontSize: 12, textAlign: "center", margin: "10px 0", color: "#a86e13", fontWeight: "bold" }}>보상 ⭐ {sel.gem}</div>
               {done[sel.id] && typeof done[sel.id] === "string" && <div style={{ fontSize: 11, textAlign: "center", color: C.good, marginBottom: 8 }}>✅ {done[sel.id]}님이 완료했어요</div>}
-              {map.mode === "hard" && !done[sel.id] && !sel.isBoss && (
+              {lockReason(sel) && <div style={{ background: "#fbe4e0", border: `2px solid ${C.danger}`, borderRadius: 8, color: C.danger, padding: 9, fontSize: 12, margin: "10px 0", textAlign: "center", fontWeight: "bold" }}>🔒 {lockReason(sel)}</div>}
+              {map.mode === "hard" && !done[sel.id] && !sel.isBoss && !lockReason(sel) && (
                 <div style={{ background: "#fff6e8", border: `2px solid ${C.ink}`, borderRadius: 10, padding: 11, marginBottom: 10 }}>
                   {!accepted[sel.id] ? (
                     <PxButton tone="gold" onClick={() => onAccept && onAccept(sel.id, sel.title)} style={{ width: "100%", padding: 11, fontSize: 13 }}>🤝 퀘스트 수락하기</PxButton>
@@ -3807,12 +3808,11 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                   )}
                 </div>
               )}
-              {sel.level === "초보자" && sel.field && onGoSchool && (
+              {sel.level === "초보자" && sel.field && onGoSchool && !lockReason(sel) && (
                 <PxButton tone="blue" onClick={() => onGoSchool(sel.field)} style={{ width: "100%", padding: 10, fontSize: 13, marginBottom: 10 }}>
                   {sel.field === "naverschool" ? "📗 네이버스쿨로 가서 배우기 →" : "🎬 영상스쿨로 가서 배우기 →"}
                 </PxButton>
               )}
-              {lockReason(sel) && <div style={{ background: "#fbe4e0", border: `2px solid ${C.danger}`, borderRadius: 8, color: C.danger, padding: 9, fontSize: 12, marginBottom: 10, textAlign: "center" }}>🔒 {lockReason(sel)}</div>}
               <div style={{ display: "flex", gap: 8 }}>
                 <PxButton tone="ink" onClick={() => setSel(null)} style={{ flex: 1, padding: 10, fontSize: 13 }}>닫기</PxButton>
                 <PxButton tone="gold" disabled={!!done[sel.id] || !!lockReason(sel)} onClick={() => clear(sel)} style={{ flex: 1, padding: 10, fontSize: 13 }}>{done[sel.id] ? "완료됨 ✓" : sel.isBoss ? "⚔ 격파!" : "✅ 완료"}</PxButton>
@@ -4011,6 +4011,19 @@ function SmokeView({ onBack, bubble }) {
 }
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
+const UPDATE_NOTES = [
+  { id: "u20260723a", type: "업데이트", date: "2026-07-23", title: "🏠 집 시스템 오픈",
+    body: "· 내 집 첫 방문 시 비밀번호 설정 (최초 1회)\n· 현관에서 비밀번호 입력 후 입장 — 비밀번호를 알면 누구나 입장 가능\n· 🔔 초인종: 집주인에게 알림 → 문 열어주기 / 거절하기 선택\n· 📮 우체통: 방명록·편지·선물 전송 (택배비 ⭐0.3), 받은 편지함 확인\n· 🎁 마을에서 다른 사람 캐릭터를 클릭하면 바로 선물 주기" },
+  { id: "u20260723b", type: "업데이트", date: "2026-07-23", title: "🗺 보스맵 도전기 개편",
+    body: "· 🌱 이지모드(어플·속옷·양말) / 🔥 하드모드(사고력 훈련) 분리\n· 아래→위로 올라가는 세로 맵, 스테이지 구역 표시\n· 캐릭터 이동이 부드러워졌어요\n· 👾 보스 도감 추가 (처치 / 진행중 / ??? )\n· ＋ 버튼으로 퀘스트·보스맵 직접 추가 (초보자/숙련자, 네이버/영상 선택)\n· 하드모드 퀘스트: 🤝 수락 → 파티원 모집 → ▶ 시작 → 💬 대화방 · 📓 퀘스트 일지\n· [수정] 잠긴 퀘스트에서 진행되던 문제 해결" },
+  { id: "u20260723c", type: "업데이트", date: "2026-07-23", title: "💾 서버 저장 시작",
+    body: "· 이름으로 접속하면 젬·옷·가구·탈것·뱃지·메모가 서버에 저장돼요\n· 새로고침하거나 다른 기기에서도 이어서 플레이 가능\n· 🏆 샌드백·수영 랭킹이 모두에게 공유돼요\n· 📮 편지·선물은 상대가 접속 중이 아니어도 도착해요\n· 🗺 보스맵 진행도는 팀 전체가 함께 봐요" },
+  { id: "u20260723d", type: "업데이트", date: "2026-07-23", title: "📋 게시판 · 🗺 지도 개선",
+    body: "· 게시판에 🤝 모집 / 🆕 업데이트 탭 추가\n· ✍️ 글쓰기로 공지·이벤트·모집·업데이트 직접 등록 (코드 수정 불필요)\n· 업데이트 글은 [확인했어요]를 누르면 사라져요\n· 미니맵 구역과 전체지도 건물 이름을 누르면 그곳으로 순간이동 🚀" },
+  { id: "u20260723e", type: "업데이트", date: "2026-07-23", title: "👥 멀티플레이 · 편의 기능",
+    body: "· 같은 방 안에서도 서로 보여요\n· 채팅·말풍선·춤·옷·집 외관이 실시간으로 공유돼요\n· 말풍선이 50자까지 줄바꿈돼요\n· 🔊 배경음악·리스닝방 볼륨 조절\n· 🏅 뱃지 시스템 (방문·소통·운동·흡연·샌드백·보스맵·노래)\n· 📖 게임 내 사용설명서 추가 (장소 바로가기 포함)\n· 입력창에서 방향키·스페이스가 막히던 문제 해결" },
+];
+
 function BoardView({ onBack, myName = "" }) {
   const [dbList, setDbList] = useState([]);
   const [wOpen, setWOpen] = useState(false);
@@ -4063,16 +4076,16 @@ function BoardView({ onBack, myName = "" }) {
         <PxButton tone={tab === "cal" ? "gold" : "wood"} onClick={() => setTab("cal")} style={{ fontSize: 12, padding: "8px 12px" }}>📅 캘린더</PxButton>
         <PxButton tone={tab === "party" ? "gold" : "wood"} onClick={() => setTab("party")} style={{ fontSize: 12, padding: "8px 12px" }}>🤝 모집</PxButton>
         <PxButton tone={tab === "update" ? "gold" : "wood"} onClick={() => setTab("update")} style={{ fontSize: 12, padding: "8px 12px" }}>
-          🆕 업데이트{dbList.filter((n) => n.type === "업데이트" && !seen[n.id]).length > 0 ? ` (${dbList.filter((n) => n.type === "업데이트" && !seen[n.id]).length})` : ""}
+          🆕 업데이트{[...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => !seen[n.id]).length > 0 ? ` (${[...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => !seen[n.id]).length})` : ""}
         </PxButton>
       </div>
 
       <div style={{ padding: 16, background: `repeating-linear-gradient(0deg, ${C.parch} 0 40px, ${C.parchLine} 40px 80px)` }}>
         {tab === "party" && (
           <div style={{ display: "grid", gap: 8 }}>
-            {dbList.filter((n) => n.type === "모집").length === 0 ? (
+            {dbList.filter((n) => n.type === "모집" || String(n.title || "").startsWith("[파티모집]")).length === 0 ? (
               <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 24 }}>아직 모집 중인 파티가 없어요 🤝<br />보스맵 하드모드에서 퀘스트를 수락하고 모집해보세요!</div>
-            ) : dbList.filter((n) => n.type === "모집").map((a) => (
+            ) : dbList.filter((n) => n.type === "모집" || String(n.title || "").startsWith("[파티모집]")).map((a) => (
               <div key={a.id} style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 8, padding: "10px 12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 10, color: "#fff", background: "#8e5a9e", borderRadius: 10, padding: "2px 8px", whiteSpace: "nowrap" }}>🤝 모집</span>
@@ -4087,9 +4100,9 @@ function BoardView({ onBack, myName = "" }) {
 
         {tab === "update" && (
           <div style={{ display: "grid", gap: 8 }}>
-            {dbList.filter((n) => n.type === "업데이트" && !seen[n.id]).length === 0 ? (
+            {[...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => !seen[n.id]).length === 0 ? (
               <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 24 }}>확인하지 않은 업데이트가 없어요 ✅</div>
-            ) : dbList.filter((n) => n.type === "업데이트" && !seen[n.id]).map((a) => (
+            ) : [...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => !seen[n.id]).map((a) => (
               <div key={a.id} style={{ background: "#fffbe8", border: `3px solid ${C.ink}`, borderRadius: 8, padding: "10px 12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 10, color: C.ink, background: "#ffd75e", borderRadius: 10, padding: "2px 8px", whiteSpace: "nowrap" }}>🆕 업데이트</span>
@@ -4107,7 +4120,7 @@ function BoardView({ onBack, myName = "" }) {
 
         {tab === "notice" && (
           <div style={{ display: "grid", gap: 8 }}>
-            {[...dbList.filter((n) => n.type !== "모집" && n.type !== "업데이트"), ...ANNOUNCEMENTS].map((a) => (
+            {[...dbList.filter((n) => n.type !== "모집" && n.type !== "업데이트" && !String(n.title || "").startsWith("[파티모집]")), ...ANNOUNCEMENTS].map((a) => (
               <button key={a.id} onClick={() => setOpenDoc(a)} className="px-btn" style={{ textAlign: "left", background: C.white, border: `3px solid ${C.ink}`, padding: "10px 12px", cursor: "pointer", fontFamily: "'DotGothic16', monospace" }}>
                 <div style={{ fontSize: 14, fontWeight: "bold", display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 10, color: "#fff", background: a.type === "이벤트" ? "#d76b96" : "#5b8def", padding: "2px 6px", whiteSpace: "nowrap" }}>{a.type || "공지"}</span>
