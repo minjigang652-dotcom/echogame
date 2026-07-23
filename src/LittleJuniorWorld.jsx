@@ -809,6 +809,9 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
         ch.on("broadcast", { event: "qparty" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("qparty", payload);
         });
+        ch.on("broadcast", { event: "qlock" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("qlock", payload);
+        });
         ch.on("broadcast", { event: "pwtry" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("pwtry", payload);
         });
@@ -3390,7 +3393,7 @@ const BOSS_MAPS_INIT = [
   },
 ];
 
-function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend }) {
+function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree }) {
   const [tMsg, setTMsg] = useState("");
   const [maps, setMaps] = useState(BOSS_MAPS_INIT);
   const [mode, setMode] = useState("easy");
@@ -3758,6 +3761,17 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
               <div style={{ textAlign: "center" }}>
                 <div style={{ width: 78, height: 78, margin: "0 auto", borderRadius: "50%", background: sel.isBoss ? "radial-gradient(circle at 35% 30%, #ffffff44, #8c2f21)" : `radial-gradient(circle at 35% 30%, #fffbe8, ${map.color})`, border: `3px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 38, boxShadow: "0 5px 10px rgba(0,0,0,0.3)" }}>{sel.icon}</div>
                 <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 8 }}>{sel.isBoss ? "👑 BOSS" : `${sel.stage} STAGE · ${sel.stageName}`}</div>
+                {accepted[sel.id] && (
+                  <div style={{ display: "flex", gap: 4, justifyContent: "center", flexWrap: "wrap", marginTop: 8 }}>
+                    <span style={{ fontSize: 10, color: C.inkSoft, alignSelf: "center" }}>👥 파티</span>
+                    {(accepted[sel.id].party || []).map((p) => (
+                      <span key={p} style={{ fontSize: 10, fontWeight: "bold", color: C.white, background: (accepted[sel.id].agree || []).includes(p) ? "#2f9e6e" : "#5b8def", borderRadius: 10, padding: "2px 9px" }}>
+                        {p}{(accepted[sel.id].agree || []).includes(p) ? " ✓" : ""}
+                      </span>
+                    ))}
+                    {accepted[sel.id].locked && <span style={{ fontSize: 10, fontWeight: "bold", color: C.ink, background: "#ffd75e", borderRadius: 10, padding: "2px 9px" }}>🔒 확정</span>}
+                  </div>
+                )}
                 {sel.level && (
                   <div style={{ display: "flex", gap: 5, justifyContent: "center", marginTop: 6 }}>
                     <span style={{ fontSize: 10, fontWeight: "bold", color: C.white, background: sel.level === "초보자" ? "#2f9e6e" : "#c0563a", borderRadius: 10, padding: "2px 9px" }}>{sel.level === "초보자" ? "🌱 초보자" : "🔥 숙련자"}</span>
@@ -3775,9 +3789,10 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                 <div style={{ background: "#fff6e8", border: `2px solid ${C.ink}`, borderRadius: 10, padding: 11, marginBottom: 10 }}>
                   {!accepted[sel.id] ? (
                     <PxButton tone="gold" onClick={() => onAccept && onAccept(sel.id, sel.title)} style={{ width: "100%", padding: 11, fontSize: 13 }}>🤝 퀘스트 수락하기</PxButton>
+                  ) : (accepted[sel.id].locked && !(accepted[sel.id].party || []).includes(myName)) ? (
+                    <div style={{ fontSize: 12, color: C.danger, textAlign: "center", padding: 8, fontWeight: "bold" }}>🔒 파티가 확정된 퀘스트예요. 참여할 수 없어요.</div>
                   ) : (
                     <div>
-                      <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>👥 파티 ({(accepted[sel.id].party || []).join(", ") || myName})</div>
                       {!accepted[sel.id].started ? (
                         <div>
                           <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 6 }}>파티원을 모집한 뒤 시작하세요</div>
@@ -3785,6 +3800,13 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                             <PxButton tone="wood" onClick={() => onShout && onShout(`📢 「${sel.title}」 퀘스트 같이 하실 분!`)} style={{ flex: 1, fontSize: 11, padding: 8 }}>📢 확성기 모집</PxButton>
                             <PxButton tone="wood" onClick={() => onBoard && onBoard(sel.title)} style={{ flex: 1, fontSize: 11, padding: 8 }}>📋 게시판 모집</PxButton>
                           </div>
+                          {!accepted[sel.id].locked ? (
+                            <PxButton tone={(accepted[sel.id].agree || []).includes(myName) ? "ink" : "danger"} onClick={() => onAgree && onAgree(sel.id)} style={{ width: "100%", padding: 9, fontSize: 12, marginBottom: 6 }}>
+                              🔒 퀘스트 잠금 동의 ({(accepted[sel.id].agree || []).length}/{(accepted[sel.id].party || []).length})
+                            </PxButton>
+                          ) : (
+                            <div style={{ fontSize: 11, color: C.good, textAlign: "center", marginBottom: 6, fontWeight: "bold" }}>🔒 파티 확정 — 더 이상 참여할 수 없어요</div>
+                          )}
                           <PxButton tone="good" onClick={() => onStart && onStart(sel.id)} style={{ width: "100%", padding: 10, fontSize: 13 }}>▶ 퀘스트 시작</PxButton>
                         </div>
                       ) : (
@@ -5167,7 +5189,7 @@ export default function App() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if ((kind === "qchat" || kind === "qparty") ) { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qlock") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "qchat") {
         setQThreads((t) => ({ ...t, [p.qid]: [...(t[p.qid] || []), { who: p.who, text: p.text }] }));
@@ -5175,6 +5197,16 @@ export default function App() {
       }
       if (kind === "qparty") {
         setQAccept((a) => (a[p.qid] ? { ...a, [p.qid]: { ...a[p.qid], party: Array.from(new Set([...(a[p.qid].party || []), p.who])) } } : a));
+        return;
+      }
+      if (kind === "qlock") {
+        setQAccept((a) => {
+          const cur = a[p.qid]; if (!cur) return a;
+          const agree = Array.from(new Set([...(cur.agree || []), p.who]));
+          const party = cur.party || [];
+          const locked = party.length > 0 && party.every((n) => agree.includes(n));
+          return { ...a, [p.qid]: { ...cur, agree, locked } };
+        });
         return;
       }
       if (kind === "pwtry") {
@@ -5370,7 +5402,19 @@ export default function App() {
         {view === "ikea" && <IkeaView gems={gems} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
         {view === "project" && <BossMapView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss) => bump(isBoss ? "boss" : "quest")}
           accepted={qAccept} notes={qNotes} threads={qThreads}
-          onAccept={(qid, title) => { setQAccept((a) => ({ ...a, [qid]: { party: [myName || "나"], started: false, title } })); if (netSendEvent) netSendEvent("qparty", { qid, who: myName || "나" }); showNotice("🤝 퀘스트를 수락했어요"); }}
+          onAccept={(qid, title) => { setQAccept((a) => (a[qid] && a[qid].locked ? a : { ...a, [qid]: a[qid] ? { ...a[qid], party: Array.from(new Set([...(a[qid].party || []), myName || "나"])) } : { party: [myName || "나"], agree: [], locked: false, started: false, title } })); if (netSendEvent) netSendEvent("qparty", { qid, who: myName || "나" }); showNotice("🤝 퀘스트를 수락했어요"); }}
+          onAgree={(qid) => {
+            const me = myName || "나";
+            setQAccept((a) => {
+              const cur = a[qid]; if (!cur) return a;
+              const agree = Array.from(new Set([...(cur.agree || []), me]));
+              const party = cur.party || [];
+              const locked = party.length > 0 && party.every((n) => agree.includes(n));
+              if (locked) showNotice("🔒 파티 전원 동의 — 퀘스트가 확정됐어요!");
+              return { ...a, [qid]: { ...cur, agree, locked } };
+            });
+            if (netSendEvent) netSendEvent("qlock", { qid, who: me });
+          }}
           onStart={(qid) => { setQAccept((a) => ({ ...a, [qid]: { ...a[qid], started: true } })); showNotice("▶ 퀘스트를 시작했어요!"); }}
           onShout={(msg) => { postChat(msg, true); showNotice("📢 마을에 알렸어요"); }}
           onBoard={(title) => { dbAddNotice("모집", `[파티모집] ${title}`, `${myName || "익명"}님이 「${title}」 퀘스트 파티원을 찾고 있어요!`); showNotice("📋 게시판에 모집글을 올렸어요"); }}
