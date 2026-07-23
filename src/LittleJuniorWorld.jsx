@@ -551,6 +551,7 @@ function buildWorld() {
   // 중심 주민센터
   list.push({ id: "center", kind: "center", x: 1300, y: 760, r: 90, label: "🏛 주민센터", sub: "마을 중심 · 회의/모임" });
   list.push({ id: "ikea", kind: "small", x: 1470, y: 1000, r: 60, label: "🛒 이케아", tint: "#0051ba" });
+  list.push({ id: "coredict", kind: "small", x: 1180, y: 640, r: 58, label: "📖 코어사전", tint: "#8a5a3b" });
   list.push({ id: "project", kind: "small", x: 1120, y: 970, r: 60, label: "🗺 보스맵 도전기" });
   list.push({ id: "naverschool", kind: "small", x: 1800, y: 300, r: 70, label: "📗 네이버스쿨" });
   list.push({ id: "videoschool", kind: "small", x: 2030, y: 300, r: 70, label: "🎬 영상스쿨" });
@@ -751,6 +752,15 @@ async function dbLoadBoss() {
 }
 async function dbClearBoss(mapId, questId, by) {
   try { const s = await getSupa(); await s.from("boss_progress").upsert({ map_id: mapId, quest_id: questId, cleared_by: by || null }); } catch (e) {}
+}
+async function dbDictList() {
+  try { const s = await getSupa(); const r = await s.from("dictionary").select("word,meaning,updated_by,updated_at").order("word"); return (r && r.data) || []; } catch (e) { return []; }
+}
+async function dbDictSave(word, meaning, by) {
+  try { const s = await getSupa(); await s.from("dictionary").upsert({ word, meaning, updated_by: by || null, updated_at: new Date().toISOString() }); return true; } catch (e) { return false; }
+}
+async function dbDictDelete(word) {
+  try { const s = await getSupa(); await s.from("dictionary").delete().eq("word", word); } catch (e) {}
 }
 async function dbAllPlayers() {
   try {
@@ -1019,6 +1029,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 
   const spriteFor = (o) => {
     if (o.id === "project") return <Board size={110} />;
+    if (o.id === "coredict") return <BookIcon size={104} />;
     if (o.id === "sandbag") return <Sandbag size={92} />;
     if (o.id === "naverschool") return <School wall="#bfe3c8" roof="#2db400" size={140} />;
     if (o.id === "videoschool") return <School wall="#e7cfe9" roof="#8e5a9e" size={140} />;
@@ -3497,6 +3508,17 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
   const net = useContext(NetContext);
   const [tMsg, setTMsg] = useState("");
   const [editing, setEditing] = useState(null);
+  const [nowTs, setNowTs] = useState(Date.now());
+  useEffect(() => { const iv = setInterval(() => setNowTs(Date.now()), 1000); return () => clearInterval(iv); }, []);
+  const dueText = (due) => {
+    if (!due) return null;
+    const t = new Date(due).getTime();
+    if (isNaN(t)) return null;
+    const d = t - nowTs;
+    if (d <= 0) return { txt: "⌛ 마감됨", over: true };
+    const h = Math.floor(d / 3600000), m = Math.floor((d % 3600000) / 60000), sec = Math.floor((d % 60000) / 1000);
+    return { txt: `⏳ ${h > 0 ? h + "시간 " : ""}${m}분 ${sec}초 남음`, over: false };
+  };
   const canEdit = (nd) => !!nd && !nd.isBoss && (!nd.owner || nd.owner === myName);
   const saveEdit = () => {
     if (!editing || !editing.title.trim()) return;
@@ -3515,7 +3537,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
   const [dexMode, setDexMode] = useState("easy");
   const [addOpen, setAddOpen] = useState(false);
   const [addTab, setAddTab] = useState("quest");
-  const [fQ, setFQ] = useState({ stage: 1, title: "", icon: "🎯", gem: 5, desc: "", task: "", level: "초보자", field: "naverschool" });
+  const [fQ, setFQ] = useState({ stage: 1, title: "", icon: "🎯", gem: 5, desc: "", task: "", level: "초보자", field: "naverschool", due: "" });
   const [fM, setFM] = useState({ name: "", icon: "🗺", boss: "", bossIcon: "👹" });
   const [cleared, setCleared] = useState({});
   useEffect(() => { dbLoadBoss().then((d) => { if (d && Object.keys(d).length) setCleared((c) => ({ ...d, ...c })); }); }, []);
@@ -3661,10 +3683,11 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
   const addQuest = () => {
     if (!fQ.title.trim()) return;
     const id = "cq" + Date.now();
-    const nq = { id, title: fQ.title.trim(), icon: fQ.icon || "🎯", gem: Number(fQ.gem) || 5, desc: fQ.desc.trim() || "새로 추가된 퀘스트", task: fQ.task.trim() || fQ.title.trim(), level: fQ.level, field: fQ.level === "초보자" ? fQ.field : null, owner: myName || "익명" };
+    const nq = { id, title: fQ.title.trim(), icon: fQ.icon || "🎯", gem: Number(fQ.gem) || 5, desc: fQ.desc.trim() || "새로 추가된 퀘스트", task: fQ.task.trim() || fQ.title.trim(), level: fQ.level, field: fQ.level === "초보자" ? fQ.field : null, owner: myName || "익명", due: fQ.due || null };
     setMaps((ms) => ms.map((m, i) => {
       if (i !== mapIdx) return m;
-      const stages = m.stages.map((st) => (st.n !== Number(fQ.stage) ? st : { ...st, quests: [nq, ...st.quests] }));
+      const targetStage = isPlaza ? m.stages[0].n : Number(fQ.stage);
+      const stages = m.stages.map((st) => (st.n !== targetStage ? st : { ...st, quests: [nq, ...st.quests] }));
       return { ...m, stages };
     }));
     setFQ({ ...fQ, title: "", desc: "", task: "" });
@@ -3760,7 +3783,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                     {isDone ? "✅" : locked ? "🔒" : nd.icon}
                   </div>
                   <div style={{ marginTop: 5, fontSize: 11, fontWeight: "bold", color: nd.isBoss ? C.white : C.ink, background: nd.isBoss ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.92)", borderRadius: 12, padding: "2px 9px", whiteSpace: "nowrap", boxShadow: "0 2px 3px rgba(0,0,0,0.18)" }}>
-                    {accepted[nd.id] ? (accepted[nd.id].started ? "▶ " : "🤝 ") : ""}{nd.level ? (nd.level === "초보자" ? "🌱" : "🔥") : ""}{nd.title}
+                    {accepted[nd.id] ? (accepted[nd.id].started ? "▶ " : "🤝 ") : ""}{nd.due && !done[nd.id] ? "⏳" : ""}{nd.level ? (nd.level === "초보자" ? "🌱" : "🔥") : ""}{nd.title}
                   </div>
                 </div>
               );
@@ -3907,10 +3930,12 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
               </div>
               {addTab === "quest" ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                  <div style={{ fontSize: 11, color: C.inkSoft }}>「{map.name}」 맵에 퀘스트를 추가해요</div>
-                  <select value={fQ.stage} onChange={(e) => setFQ({ ...fQ, stage: e.target.value })} style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }}>
-                    {map.stages.map((st) => <option key={st.n} value={st.n}>{st.n} 스테이지 · {st.name}</option>)}
-                  </select>
+                  <div style={{ fontSize: 11, color: C.inkSoft }}>「{map.icon} {map.name}」{isPlaza ? " 광장" : " 맵"}에 퀘스트를 추가해요</div>
+                  {!isPlaza && (
+                    <select value={fQ.stage} onChange={(e) => setFQ({ ...fQ, stage: e.target.value })} style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }}>
+                      {map.stages.map((st) => <option key={st.n} value={st.n}>{st.n} 스테이지 · {st.name}</option>)}
+                    </select>
+                  )}
                   <div style={{ display: "flex", gap: 6 }}>
                     <input value={fQ.icon} onChange={(e) => setFQ({ ...fQ, icon: e.target.value })} maxLength={2} placeholder="🎯" style={{ width: 52, textAlign: "center", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 16 }} />
                     <input value={fQ.title} onChange={(e) => setFQ({ ...fQ, title: e.target.value })} placeholder="퀘스트 이름" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
@@ -3928,7 +3953,10 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                     </div>
                   )}
                   <input value={fQ.desc} onChange={(e) => setFQ({ ...fQ, desc: e.target.value })} placeholder="한 줄 설명 (선택)" style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
-                  <input value={fQ.task} onChange={(e) => setFQ({ ...fQ, task: e.target.value })} placeholder="목표 (선택)" style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                  <input value={fQ.task} onChange={(e) => setFQ({ ...fQ, task: e.target.value })} placeholder="목표 · 무엇을 하면 완료인가요?" style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                  <div style={{ fontSize: 11, fontWeight: "bold" }}>⏳ 제한시간 (선택)</div>
+                  <input type="datetime-local" value={fQ.due || ""} onChange={(e) => setFQ({ ...fQ, due: e.target.value })} style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                  <div style={{ fontSize: 10, color: C.inkSoft }}>보상은 위 ⭐ 칸에서 정해요 (기본 5젬)</div>
                   <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                     <PxButton tone="ink" onClick={() => setAddOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>
                     <PxButton tone="gold" disabled={!fQ.title.trim()} onClick={addQuest} style={{ flex: 1, padding: 10, fontSize: 13 }}>추가하기</PxButton>
@@ -3986,6 +4014,11 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
               <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10, textAlign: "center", lineHeight: 1.6 }}>{sel.desc}</div>
               <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: 12, fontSize: 13, lineHeight: 1.6 }}>🎯 {sel.task}</div>
               <div style={{ fontSize: 12, textAlign: "center", margin: "10px 0", color: "#a86e13", fontWeight: "bold" }}>보상 ⭐ {sel.gem}</div>
+              {sel.due && dueText(sel.due) && (
+                <div style={{ fontSize: 13, textAlign: "center", marginBottom: 10, fontWeight: "bold", color: dueText(sel.due).over ? C.danger : "#2f9e6e", background: dueText(sel.due).over ? "#fbe4e0" : "#e6f4ec", border: `2px solid ${dueText(sel.due).over ? C.danger : "#2f9e6e"}`, borderRadius: 8, padding: 8 }}>
+                  {dueText(sel.due).txt}<div style={{ fontSize: 10, color: C.inkSoft, fontWeight: "normal", marginTop: 2 }}>마감 {new Date(sel.due).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+                </div>
+              )}
               {done[sel.id] && typeof done[sel.id] === "string" && <div style={{ fontSize: 11, textAlign: "center", color: C.good, marginBottom: 8 }}>✅ {done[sel.id]}님이 완료했어요</div>}
               {lockReason(sel) && <div style={{ background: "#fbe4e0", border: `2px solid ${C.danger}`, borderRadius: 8, color: C.danger, padding: 9, fontSize: 12, margin: "10px 0", textAlign: "center", fontWeight: "bold" }}>🔒 {lockReason(sel)}</div>}
               {map.mode === "hard" && !done[sel.id] && !sel.isBoss && !lockReason(sel) && (
@@ -4155,6 +4188,80 @@ function IkeaView({ gems, owned, houseSkin, vehicle, myFurni, onBuy, onBack, bub
     </RoomView>
   );
 }
+/* ======================= 코어사전 ======================= */
+function BookIcon({ size = 96 }) {
+  return (
+    <svg width={size} height={size * 0.9} viewBox="0 0 22 20" shapeRendering="crispEdges" style={{ imageRendering: "pixelated" }}>
+      <rect x="1" y="3" width="20" height="15" fill="#8a5a3b" stroke="#2b1f14" strokeWidth="0.6" />
+      <rect x="2" y="4" width="8.5" height="13" fill="#fdf6e3" stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="11.5" y="4" width="8.5" height="13" fill="#f7efdc" stroke="#2b1f14" strokeWidth="0.4" />
+      <rect x="10.5" y="3" width="1" height="15" fill="#5e3a22" />
+      <rect x="3.5" y="6" width="6" height="0.8" fill="#c9bfa5" /><rect x="3.5" y="8" width="6" height="0.8" fill="#c9bfa5" /><rect x="3.5" y="10" width="4" height="0.8" fill="#c9bfa5" />
+      <rect x="12.5" y="6" width="6" height="0.8" fill="#c9bfa5" /><rect x="12.5" y="8" width="6" height="0.8" fill="#c9bfa5" /><rect x="12.5" y="10" width="5" height="0.8" fill="#c9bfa5" />
+      <rect x="9" y="0" width="4" height="4" fill="#d9a441" stroke="#2b1f14" strokeWidth="0.4" />
+    </svg>
+  );
+}
+
+function CoreDictView({ onBack, myName = "" }) {
+  const [list, setList] = useState([]);
+  const [q, setQ] = useState("");
+  const [word, setWord] = useState("");
+  const [mean, setMean] = useState("");
+  const [editing, setEditing] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const say = (m) => { setMsg(m); setTimeout(() => setMsg(null), 1800); };
+  const reload = () => dbDictList().then((r) => setList(r || []));
+  useEffect(() => { reload(); }, []);
+  const save = () => {
+    const w = word.trim(), m = mean.trim();
+    if (!w || !m) return;
+    dbDictSave(w, m, myName || "익명").then((ok) => {
+      if (ok) { say(editing ? "수정했어요 ✏️" : "등록했어요 📖"); setWord(""); setMean(""); setEditing(null); reload(); }
+      else say("저장 실패 — 사전 테이블을 만들어주세요");
+    });
+  };
+  const startEdit = (it) => { setEditing(it.word); setWord(it.word); setMean(it.meaning); };
+  const shown = list.filter((it) => !q.trim() || it.word.includes(q.trim()) || (it.meaning || "").includes(q.trim()));
+  return (
+    <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <TitleBar icon="📖" title="코어사전" sub="누구나 우리만의 단어와 뜻을 등록·수정할 수 있어요" onBack={onBack} bg="#8a5a3b" fg={C.white} />
+      <div style={{ padding: 14, background: "#f7efdc" }}>
+        <div style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 7 }}>{editing ? `✏️ 「${editing}」 수정 중` : "✍️ 새 단어 등록"}</div>
+          <input value={word} onChange={(e) => setWord(e.target.value)} placeholder="단어 (예: 쩝쩝박사)" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, marginBottom: 7 }} />
+          <textarea value={mean} onChange={(e) => setMean(e.target.value)} placeholder="뜻 · 설명을 자유롭게 적어주세요" style={{ width: "100%", boxSizing: "border-box", height: 80, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "none" }} />
+          <div style={{ display: "flex", gap: 7, marginTop: 8 }}>
+            {editing && <PxButton tone="ink" onClick={() => { setEditing(null); setWord(""); setMean(""); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>}
+            <PxButton tone="gold" disabled={!word.trim() || !mean.trim()} onClick={save} style={{ flex: 2, padding: 10, fontSize: 13 }}>{editing ? "수정 저장" : "📖 사전에 등록"}</PxButton>
+          </div>
+          {msg && <div style={{ fontSize: 12, color: C.good, textAlign: "center", marginTop: 7, fontWeight: "bold" }}>{msg}</div>}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 단어 검색" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+          <span style={{ fontSize: 11, color: C.inkSoft }}>{shown.length}개</span>
+        </div>
+        <div style={{ maxHeight: 300, overflow: "auto", display: "flex", flexDirection: "column", gap: 7 }}>
+          {shown.length === 0 ? (
+            <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 24 }}>아직 등록된 단어가 없어요 📖<br />첫 단어를 등록해보세요!</div>
+          ) : shown.map((it) => (
+            <div key={it.word} style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 11 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <b style={{ flex: 1, fontSize: 14 }}>📗 {it.word}</b>
+                <PxButton tone="wood" onClick={() => startEdit(it)} style={{ fontSize: 10, padding: "4px 8px" }}>✏️ 수정</PxButton>
+                <PxButton tone="danger" onClick={() => { if (window.confirm(`「${it.word}」를 삭제할까요?`)) dbDictDelete(it.word).then(reload); }} style={{ fontSize: 10, padding: "4px 8px" }}>🗑</PxButton>
+              </div>
+              <div style={{ fontSize: 13, lineHeight: 1.7, marginTop: 5, whiteSpace: "pre-wrap" }}>{it.meaning}</div>
+              {it.updated_by && <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 5 }}>✍️ 최근 수정 {it.updated_by}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
 /* ======================= 흡연의 방(플레이버) ======================= */
 const SMOKE_PEOPLE = ["정인", "호중", "희정", "유리", "의준"];
 const SMOKE_LINES = ["오늘 왜이렇게 춥냐 ㅋㅋ", "커피 한잔 하실분~", "아 마감 언제끝나ㅠ", "날씨 좋다 그치", "점심 뭐먹지", "주말에 뭐함?", "일 너무 많아 진짜", "ㅋㅋㅋㅋㅋㅋ", "맞아맞아", "와 대박", "나 이제 끊을거야 (3일째)", "치앙마이 가고싶다", "한 대 피우고 가자", "오늘도 화이팅~"];
@@ -4261,6 +4368,8 @@ function SmokeView({ onBack, bubble }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260723l", type: "업데이트", date: "2026-07-23", title: "📖 코어사전 오픈 · ⏳ 퀘스트 제한시간",
+    body: "· 주민센터 근처에 📖 코어사전이 생겼어요\n· 누구나 우리만의 단어와 뜻을 등록·수정·삭제할 수 있어요 (나무위키처럼)\n· 단어 검색과 최근 수정자 표시 지원\n· 퀘스트 추가 시 ⏳ 제한시간(마감 일시)을 정할 수 있어요 — 실시간 카운트다운 표시\n· 하드모드(광장)에서는 스테이지 선택 없이 바로 광장에 퀘스트가 추가돼요" },
   { id: "u20260723k", type: "업데이트", date: "2026-07-23", title: "🔧 편의 개선 모음",
     body: "· 🏅 이미 받은 뱃지가 반복해서 뜨던 문제 수정\n· 👥 상단 접속자수를 누르면 누가 접속 중인지 목록이 나와요\n· 마을주민들 목록에 🟢 접속 중 / ⚪ 오프라인 표시\n· 📅 회의 초대를 수락하면 주민센터 상단에 내 회의 일정이 떠요\n· 🪑 회의실 대형 테이블·라운지 테이블에 앉은 사람 이름이 보여요\n· 📜 게시판 업데이트 탭 아래에 확인한 업데이트 기록 보관\n· 보스맵 도감 버튼이 모드별 1개로 정리 (이지=보스도감, 하드=사고도감)" },
   { id: "u20260723j", type: "업데이트", date: "2026-07-23", title: "📚 퀘스트 도감 · 🧠 사고 도감 오픈",
@@ -5703,6 +5812,7 @@ export default function App() {
         {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} scores={swimScores} onRecord={(nick, time) => { setSwimScores((s) => [...s, { nick, time }]); bump("swim"); dbAddRank("swim", nick, time, null).then(reloadRanks); }} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => { award(4); bump("gym"); }} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
+        {view === "coredict" && <CoreDictView myName={myName} onBack={backToWorld} />}
         {view === "ikea" && <IkeaView gems={gems} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
         {view === "project" && <BossMapView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss) => bump(isBoss ? "boss" : "quest")}
           accepted={qAccept} notes={qNotes} threads={qThreads}
