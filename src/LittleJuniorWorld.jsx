@@ -495,7 +495,9 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
                 <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px" }}>{o.bubble}</div>
               )}
               <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
-              <Hero facing={o.f || 1} moving={false} size={30} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
+              <div className={o.dm ? "dance-" + o.dm : ""} style={{ transformOrigin: "bottom center" }}>
+                <Hero facing={o.f || 1} moving={false} size={30} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
+              </div>
             </div>
           ))}
 
@@ -702,7 +704,7 @@ const SUPA_URL = "https://fbemzeslbvweojmgvohv.supabase.co";
 const SUPA_KEY = "sb_publishable_dErg2UZWZQjifyAgO5-ejg_5AH563FV";
 const MY_ID = Math.random().toString(36).slice(2, 10);
 
-function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef, roomPosRef) {
+function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef, roomPosRef, danceRef, houseRef) {
   const [others, setOthers] = useState({});
   const [count, setCount] = useState(1);
   const [status, setStatus] = useState("연결 중…");
@@ -753,6 +755,8 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
                 const rp = (roomPosRef && roomPosRef.current) || { x: 0, y: 0 };
                 return { id: MY_ID, name: myName, x: Math.round(p.x), y: Math.round(p.y), f: facingRef.current || 1,
                   v: (viewRef && viewRef.current) || "world", rx: Math.round(rp.x), ry: Math.round(rp.y),
+                  dm: (danceRef && danceRef.current) || null,
+                  hs: (houseRef && houseRef.current) ? { r: houseRef.current.roof, w: houseRef.current.wall } : null,
                   oc: [of.top ? of.top.color : null, of.bottom ? of.bottom.color : null, of.shoes ? of.shoes.color : null] };
               })() });
             }, 160);
@@ -792,7 +796,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
   return { others, count, status, sendChat };
 }
 
-function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null }) {
+function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null }) {
   const [songOpen, setSongOpen] = useState(false);
   const vehicleRef = useRef(vehicle);
   vehicleRef.current = vehicle;
@@ -804,6 +808,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
   const passRef = useRef(false);  // NPC 대화 {label,lines,shown}
   const [hint, setHint] = useState(true);        // "클릭하면 이동" 안내
   const [danceMove, setDanceMove] = useState(null);
+  useEffect(() => { if (danceRef) danceRef.current = danceMove; }, [danceMove, danceRef]);
   const [danceMenu, setDanceMenu] = useState(false);
   const DANCE_MOVES = [
     { key: "sway", label: "🕺 좌우 흔들기" },
@@ -919,7 +924,16 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
       case "bank": return <PixelBank size={150} />;
       case "board": return <Board size={120} />;
       case "big": return <BigBuilding color={o.meta.color} colorDk={o.meta.colorDk} size={150} />;
-      case "house": { const mine = isMyHouse(o.meta.name); const sk = mine && houseSkin; return <PixelHouse roof={sk ? sk.roof : o.meta.roof} roofDk={sk ? sk.roof : o.meta.roofDk} wall={sk ? sk.wall : o.meta.wall} size={110} />; }
+      case "house": {
+        const owner = (o.meta.name || "").replace(/이네$|네$/, "");
+        const mine = isMyHouse(o.meta.name);
+        let sk = mine && houseSkin ? { roof: houseSkin.roof, wall: houseSkin.wall } : null;
+        if (!sk) {
+          const op = Object.values(others).find((p) => p.hs && p.name === owner);
+          if (op) sk = { roof: op.hs.r, wall: op.hs.w };
+        }
+        return <PixelHouse roof={sk ? sk.roof : o.meta.roof} roofDk={sk ? sk.roof : o.meta.roofDk} wall={sk ? sk.wall : o.meta.wall} size={110} />;
+      }
       case "small": return <SmallHut tint={o.tint} size={100} />;
       case "facility": return <Facility color={o.color} colorDk={o.colorDk} icon={o.icon} size={160} />;
       case "sign": return <Signpost size={100} />;
@@ -1004,7 +1018,9 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
                 <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>{o.bubble}</div>
               )}
               <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
-              <Hero facing={o.f || 1} moving={false} size={34} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
+              <div className={o.dm ? "dance-" + o.dm : ""} style={{ transformOrigin: "bottom center" }}>
+                <Hero facing={o.f || 1} moving={false} size={34} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
+              </div>
             </div>
           ))}
 
@@ -3092,6 +3108,9 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest }) {
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
   const [cam, setCam] = useState(0);
+  const mapElRef = useRef(null);
+  const heroElRef = useRef(null);
+  const camRef = useRef(0);
   const keys = useRef({});
   const posRef = useRef({ x: 300, y: 90 });
   const nearRef = useRef(null);
@@ -3156,6 +3175,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest }) {
 
   useEffect(() => {
     let raf;
+    let wasMoving = false, lastFacing = 1;
     const loop = () => {
       if (!openRef.current) {
         const k = keys.current; let { x, y } = posRef.current; let dx = 0, dy = 0;
@@ -3163,17 +3183,28 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest }) {
         if (k["arrowright"] || k["d"]) dx += 1;
         if (k["arrowup"] || k["w"]) dy -= 1;
         if (k["arrowdown"] || k["s"]) dy += 1;
-        if (dx || dy) {
+        const isMoving = !!(dx || dy);
+        if (isMoving) {
           const len = Math.hypot(dx, dy) || 1;
-          x = Math.max(30, Math.min(MAP_W - 30, x + (dx / len) * 4.2));
-          y = Math.max(40, Math.min(MAP_H - 30, y + (dy / len) * 4.2));
-          posRef.current = { x, y }; setPos({ x, y }); setMoving(true);
-          if (dx) setFacing(dx > 0 ? 1 : -1);
-        } else setMoving(false);
+          x = Math.max(30, Math.min(MAP_W - 30, x + (dx / len) * 4.6));
+          y = Math.max(40, Math.min(MAP_H - 30, y + (dy / len) * 4.6));
+          posRef.current = { x, y };
+          if (dx && lastFacing !== (dx > 0 ? 1 : -1)) { lastFacing = dx > 0 ? 1 : -1; setFacing(lastFacing); }
+        }
+        if (isMoving !== wasMoving) { wasMoving = isMoving; setMoving(isMoving); }
+
+        if (heroElRef.current) {
+          heroElRef.current.style.left = posRef.current.x + "px";
+          heroElRef.current.style.top = posRef.current.y + "px";
+        }
+        const target = Math.max(0, Math.min(MAP_H - VIEW_H, posRef.current.y - VIEW_H / 2));
+        camRef.current += (target - camRef.current) * 0.18;
+        if (Math.abs(target - camRef.current) < 0.5) camRef.current = target;
+        if (mapElRef.current) mapElRef.current.style.top = -camRef.current + "px";
+
         let f = null;
         for (const nd of nodesRef.current) if (Math.hypot(nd.x - posRef.current.x, nd.y - posRef.current.y) < 52) { f = nd.id; break; }
         if (f !== nearRef.current) { nearRef.current = f; setNear(f); }
-        setCam(Math.max(0, Math.min(MAP_H - VIEW_H, posRef.current.y - VIEW_H / 2)));
       }
       raf = requestAnimationFrame(loop);
     };
@@ -3185,7 +3216,11 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest }) {
     const y = MAP_H - 70;
     posRef.current = { x: 300, y };
     setPos({ x: 300, y });
-    setCam(Math.max(0, MAP_H - VIEW_H));
+    const c = Math.max(0, MAP_H - VIEW_H);
+    camRef.current = c;
+    setCam(c);
+    if (heroElRef.current) { heroElRef.current.style.left = "300px"; heroElRef.current.style.top = y + "px"; }
+    if (mapElRef.current) mapElRef.current.style.top = -c + "px";
   }, [mapIdx, MAP_H]);
   const switchMap = (i) => { setMapIdx(i); setSel(null); };
   const addQuest = () => {
@@ -3232,7 +3267,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest }) {
         </div>
 
         <div style={{ position: "relative", width: "100%", maxWidth: MAP_W, height: VIEW_H, margin: "0 auto", border: `3px solid ${C.ink}`, borderRadius: 12, overflow: "hidden", boxShadow: "inset 0 0 40px rgba(0,0,0,0.12)" }}>
-          <div style={{ position: "absolute", left: 0, top: -cam, width: MAP_W, height: MAP_H, transition: "top .1s linear" }}>
+          <div ref={mapElRef} style={{ position: "absolute", left: 0, top: -cam, width: MAP_W, height: MAP_H, willChange: "top" }}>
             {map.stages.map((st, si) => {
               const open = stageOpen(st.n);
               const cleared_ = stageDone(st.n);
@@ -3282,7 +3317,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest }) {
               );
             })}
 
-            <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-100%)", zIndex: 6, filter: "drop-shadow(0 4px 3px rgba(0,0,0,0.35))" }}>
+            <div ref={heroElRef} style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-100%)", zIndex: 6, filter: "drop-shadow(0 4px 3px rgba(0,0,0,0.35))", willChange: "left, top" }}>
               <Hero facing={facing} moving={moving} size={38} />
             </div>
           </div>
@@ -4416,8 +4451,10 @@ export default function App() {
   const onChatRef = useRef(null);
   const netOutfitRef = useRef(null);
   const netViewRef = useRef("world");
+  const netDanceRef = useRef(null);
+  const netHouseRef = useRef(null);
   const netRoomPosRef = useRef({ x: 0, y: 0 });
-  const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef, netOutfitRef, netViewRef, netRoomPosRef);
+  const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef, netOutfitRef, netViewRef, netRoomPosRef, netDanceRef, netHouseRef);
   const [nameOpen, setNameOpen] = useState(true);
   const [nameInput, setNameInput] = useState("");
   const [couponOpen, setCouponOpen] = useState(false);
@@ -4435,6 +4472,7 @@ export default function App() {
   const isMyHouse = (n) => !!(n && myName && n.replace(/이네$|네$/, "") === myName);
   const [ikeaOwned, setIkeaOwned] = useState({});
   const [houseSkin, setHouseSkin] = useState(null);
+  useEffect(() => { netHouseRef.current = houseSkin; }, [houseSkin]);
   const [vehicle, setVehicle] = useState(null);
   const [myFurni, setMyFurni] = useState([]);
   const buyIkea = (kind, item) => {
@@ -4664,7 +4702,7 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} />}
         {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && <HomeView house={houseMeta} skin={houseMeta && isMyHouse(houseMeta.name) ? houseSkin : null} extras={houseMeta && isMyHouse(houseMeta.name) ? myFurni : []} extras={myFurni} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
