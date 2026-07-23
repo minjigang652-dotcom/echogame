@@ -288,7 +288,10 @@ function Tree() {
   );
 }
 
-function Hero({ facing = 1, moving = false, size = 34 }) {
+function Hero({ facing = 1, moving = false, size = 34, outfit = null }) {
+  const top = (outfit && outfit.top) ? outfit.top.color : C.bankRoof;
+  const bottom = (outfit && outfit.bottom) ? outfit.bottom.color : C.woodDark;
+  const shoes = (outfit && outfit.shoes) ? outfit.shoes.color : null;
   return (
     <div aria-hidden style={{ transform: `scaleX(${facing})` }}>
       <svg width={size} height={size * 1.24} viewBox="0 0 17 21" shapeRendering="crispEdges" className={moving ? "hero-bob" : ""}>
@@ -296,11 +299,13 @@ function Hero({ facing = 1, moving = false, size = 34 }) {
         <rect x="4" y="0" width="9" height="3" fill={C.woodDark} />
         <rect x="6" y="4" width="1" height="1" fill={C.ink} />
         <rect x="10" y="4" width="1" height="1" fill={C.ink} />
-        <rect x="4" y="7" width="9" height="8" fill={C.bankRoof} stroke={C.ink} strokeWidth="0.6" />
+        <rect x="4" y="7" width="9" height="8" fill={top} stroke={C.ink} strokeWidth="0.6" />
         <rect x="2" y="8" width="2" height="5" fill="#f4c9a0" />
         <rect x="13" y="8" width="2" height="5" fill="#f4c9a0" />
-        <rect x="5" y="15" width="3" height="5" fill={C.woodDark} />
-        <rect x="9" y="15" width="3" height="5" fill={C.woodDark} />
+        <rect x="5" y="15" width="3" height="5" fill={bottom} />
+        <rect x="9" y="15" width="3" height="5" fill={bottom} />
+        {shoes && <rect x="4.5" y="19" width="3.5" height="2" fill={shoes} stroke={C.ink} strokeWidth="0.4" />}
+        {shoes && <rect x="9" y="19" width="3.5" height="2" fill={shoes} stroke={C.ink} strokeWidth="0.4" />}
       </svg>
     </div>
   );
@@ -667,7 +672,7 @@ function GuardGate({ onPass, onClose }) {
     </div>
   );
 }
-function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack }) {
+function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null }) {
   const [songOpen, setSongOpen] = useState(false);
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
@@ -880,7 +885,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
               </div>
             )}
             <div className={danceMove ? "dance-" + danceMove : ""} style={{ transformOrigin: "bottom center" }}>
-              <Hero facing={facing} moving={moving} size={36} />
+              <Hero facing={facing} moving={moving} size={36} outfit={outfit} />
             </div>
           </div>
         </div>
@@ -3123,7 +3128,7 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} bubble={bubble} townRain={townRain} cmRain={cmRain} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} bubble={bubble} townRain={townRain} cmRain={cmRain} />}
         {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && <HomeView house={houseMeta} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
