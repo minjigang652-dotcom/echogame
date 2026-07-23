@@ -2351,7 +2351,65 @@ function SchoolView({ school, onBack }) {
           </div>
           <b style={{ fontSize: 12 }}>{doneCount}/{houses.length} 완료</b>
         </div>
-        <div style={{ position: "relative", width: "100%", maxWidth: MAP_W, height: MAP_H, margin: "0 auto", background: s.grass, border:
+        <div style={{ position: "relative", width: "100%", maxWidth: MAP_W, height: MAP_H, margin: "0 auto", background: s.grass, border: `4px solid ${C.ink}`, overflow: "hidden" }}>
+          <div style={{ position: "absolute", left: "50%", top: 0, transform: "translateX(-50%)", width: 70, height: "100%", background: s.road, borderLeft: `3px dashed rgba(0,0,0,0.15)`, borderRight: `3px dashed rgba(0,0,0,0.15)` }} />
+          <div style={{ position: "absolute", left: 40, top: 210, fontSize: 22 }}>🌳</div>
+          <div style={{ position: "absolute", left: 600, top: 200, fontSize: 22 }}>🌳</div>
+          <div style={{ position: "absolute", left: 250, top: 240, fontSize: 18 }}>🌲</div>
+          <div style={{ position: "absolute", left: 470, top: 220, fontSize: 18 }}>🌸</div>
+
+          {houses.map((h, i) => {
+            const done = !!cleared[h.id];
+            const locked = i > 0 && !cleared[houses[i - 1].id];
+            const active = near === h.id;
+            return (
+              <div key={h.id} style={{ position: "absolute", left: h.x, top: h.y, transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", filter: locked ? "grayscale(0.8) brightness(0.8)" : "none" }}>
+                <div style={{ position: "relative" }}>
+                  <PixelHouse roof={h.roof} roofDk={C.ink} wall={h.wall} size={92} />
+                  <div style={{ position: "absolute", right: -6, top: 6, fontSize: 16 }}>{locked ? "🔒" : done ? "✅" : h.boss ? "👑" : ""}</div>
+                </div>
+                <div style={{ marginTop: 2, fontSize: 11, background: C.white, border: `2px solid ${C.ink}`, padding: "1px 6px", whiteSpace: "nowrap", boxShadow: active ? `0 0 0 3px ${C.gem}` : "none" }}>{locked ? "???" : h.title}</div>
+              </div>
+            );
+          })}
+
+          <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-100%)", zIndex: 5 }}>
+            <Hero facing={facing} moving={moving} size={34} />
+          </div>
+
+          {near && (
+            <div className="enter-prompt" style={{ position: "absolute", left: "50%", bottom: 10, transform: "translateX(-50%)", background: C.ink, color: C.white, border: `2px solid ${C.gem}`, padding: "5px 12px", fontSize: 12, zIndex: 6 }}>E · 퀘스트 확인</div>
+          )}
+        </div>
+      </div>
+
+      {open && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 14 }} onClick={() => setOpen(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
+            <Panel style={{ padding: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 24 }}>{open.boss ? "👑" : "🏠"}</span>
+                <b style={{ flex: 1, fontSize: 15 }}>{open.title}</b>
+                {cleared[open.id] && <span style={{ fontSize: 11, color: C.good }}>완료 ✓</span>}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {open.steps.map((st, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, background: C.white, border: `2px solid ${C.ink}`, padding: "7px 9px", fontSize: 13 }}>
+                    <b style={{ color: s.color }}>{i + 1}</b><span>{st}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <PxButton tone="ink" onClick={() => setOpen(null)} style={{ flex: 1, padding: 9, fontSize: 13 }}>닫기</PxButton>
+                <PxButton tone="good" disabled={!!cleared[open.id]} onClick={() => { setCleared((c) => ({ ...c, [open.id]: true })); setOpen(null); }} style={{ flex: 1, padding: 9, fontSize: 13 }}>{cleared[open.id] ? "완료됨" : "✅ 완료"}</PxButton>
+              </div>
+            </Panel>
+          </div>
+        </div>
+      )}
+    </Panel>
+  );
+}
 /* ======================= 보스맵 도전기 ======================= */
 const BOSS_STAGES = {
   easy: [
