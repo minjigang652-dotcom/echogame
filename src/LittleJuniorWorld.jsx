@@ -4858,7 +4858,7 @@ export default function App() {
       case "bank": setView("bank"); break;
       case "board": setView("board"); break;
       case "big": setBigId(o.id); setView("big"); break;
-      case "house": setHouseId(o.id); setView("house"); break;
+      case "house": setUnlocked({}); setHouseId(o.id); setView("house"); break;
       case "small": if (o.id === "smoke") bump("smoke"); setView(o.id); break; // thanks/heart/listening/reels/smoke
       case "facility": setView(o.id); break; // pool/gym
       case "rent": setRentId(o.id); setView("rent"); break;
@@ -4933,7 +4933,7 @@ export default function App() {
           <HomeView house={houseMeta} skin={isMyHouse(houseMeta.name) ? houseSkin : null} extras={isMyHouse(houseMeta.name) ? myFurni : []} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />
         ) : (
           <HouseGate house={houseMeta} isMine={isMyHouse(houseMeta.name)} myName={myName} hasPw={!!housePw}
-            onSetPw={(p) => { setHousePw(p); saveJSON("echotown_pw", p); setUnlocked((u) => ({ ...u, [houseId]: true })); }}
+            onSetPw={(p) => { setHousePw(p); saveJSON("echotown_pw", p); }}
             onEnter={(p) => { if (p && p === housePw) { setUnlocked((u) => ({ ...u, [houseId]: true })); return true; } return false; }}
             onBell={ringBell} onMail={(owner) => setMailTarget(owner)} onBack={backToWorld} />
         ))}
