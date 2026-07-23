@@ -4179,6 +4179,109 @@ function saveStats(v) {
   try { window.localStorage.setItem("echotown_stats", JSON.stringify(v)); } catch (e) {}
 }
 
+/* ======================= 도움말 (사용설명서) ======================= */
+const HELP_CATS = ["🌱 시작", "🏢 업무", "🏛 생활", "🎮 놀이", "🏠 집", "👥 소통", "⭐ 젬·뱃지", "❓ FAQ"];
+const HELP_DATA = {
+  "🌱 시작": [
+    { icon: "🧑", title: "이름 정하기", body: "처음 들어오면 이름을 정해요. 이름이 정인·창민·도희·유리·민지·희정·의준·호종 중 하나면 그 집이 내 집이 됩니다. 상단 🧑 버튼으로 언제든 변경 가능해요." },
+    { icon: "🎟️", title: "웰컴 쿠폰", body: "사전예약자 혜택으로 처음 한 번 ⭐100 젬을 드려요." },
+    { icon: "🎮", title: "조작법", body: "W A S D 또는 방향키로 이동 · Space로 상호작용 · 스쿨/보스맵에서는 E로 퀘스트 열기 · 다른 사람 캐릭터를 클릭하면 선물 주기." },
+    { icon: "🗺", title: "길 찾기", body: "우하단 미니맵을 클릭하면 전체 지도가 열려요. 구역과 건물 이름이 모두 표시됩니다." },
+  ],
+  "🏢 업무": [
+    { icon: "🛠", title: "초보자", body: "담당자별 업무 리스트. 반복/신규 구분, 진행 체크, 담당자와 1:1 채팅, 오늘 총 업무 시간 기록." },
+    { icon: "🗺", title: "보스맵 도전기", body: "프로젝트를 게임처럼. 이지모드(어플·속옷·양말)와 하드모드(사고력 훈련). 아래에서 위로 올라가며 스테이지를 클리어하고 꼭대기 보스를 잡아요.", go: "project", goLabel: "보스맵 가기" },
+    { icon: "📗", title: "네이버스쿨", body: "개념정리 → 블로그 → 카페 → 지식인 순서로 배우는 학습 맵. 집(퀘스트) 앞에서 E.", go: "naverschool", goLabel: "네이버스쿨 가기" },
+    { icon: "🎬", title: "영상스쿨", body: "코어개념 → 레퍼런스 → 원고작성 → 영상제작. 프롬프트 복사 버튼과 어시스턴트가 있어요.", go: "videoschool", goLabel: "영상스쿨 가기" },
+    { icon: "🥊", title: "샌드백", body: "마우스/키보드로 타격. 상대 이름을 붙인 샌드백도 만들 수 있고 랭킹에 집계돼요.", go: "sandbag", goLabel: "샌드백 가기" },
+  ],
+  "🏛 생활": [
+    { icon: "🏛", title: "주민센터", body: "회의실 예약, 음료 코너(HP·MP +20), 공지사항과 캘린더.", go: "center", goLabel: "주민센터 가기" },
+    { icon: "🛍️", title: "무신사", body: "상의·하의·신발을 무료로 입어보고 마음에 들면 구매. 착용한 옷은 다른 접속자에게도 보여요.", go: "musinsa", goLabel: "무신사 가기" },
+    { icon: "🛒", title: "이케아", body: "집 외관 · 가구 · 교통수단 구매. 탈것을 타면 마을에서 더 빨리 이동해요.", go: "ikea", goLabel: "이케아 가기" },
+    { icon: "🍴", title: "쩝쩝박사", body: "원형 테이블에서 오늘의 메뉴 뽑기, 메뉴 추천 게시판, 점심술사(인증샷 제출 시 ⭐5).", go: "jjeop", goLabel: "쩝쩝박사 가기" },
+    { icon: "🏦", title: "중앙은행", body: "모은 젬을 원화로 환전하고 내역을 확인해요.", go: "bank", goLabel: "은행 가기" },
+    { icon: "📋", title: "게시판", body: "공지·이벤트 라벨로 구분된 마을 소식과 캘린더.", go: "board", goLabel: "게시판 가기" },
+  ],
+  "🎮 놀이": [
+    { icon: "🎮", title: "미니게임 방", body: "반응속도 · 가위바위보 · 숫자순서 · 라이어게임 · 대회 코너. 라이어는 방을 만들고 주민을 초대해요.", go: "minigame", goLabel: "미니게임 가기" },
+    { icon: "🏊", title: "수영장", body: "스페이스바 연타로 레인 경주. 1등이면 젬을 받고 기록이 랭킹에 남아요.", go: "pool", goLabel: "수영장 가기" },
+    { icon: "🏋️", title: "헬스장", body: "운동하고 젬 획득. 스트레칭 안내도 있어요.", go: "gym", goLabel: "헬스장 가기" },
+    { icon: "🚬", title: "흡연의 방", body: "재떨이 수다방(티키타카), 담배·전자담배, 창문 환기.", go: "smoke", goLabel: "흡연의 방 가기" },
+    { icon: "🎧", title: "리스닝 방", body: "음악 감상과 신청곡. 🔊 슬라이더로 볼륨 조절.", go: "listening", goLabel: "리스닝 방 가기" },
+    { icon: "🎬", title: "릴스 방", body: "카테고리별 짧은 영상 모음. 카테고리 추가도 가능해요.", go: "reels", goLabel: "릴스 방 가기" },
+    { icon: "🙏", title: "감사의 방", body: "선물을 사고 감사 포스트잇을 붙여요. 산 선물은 우체통·직접 선물로 보낼 수 있어요.", go: "thanks", goLabel: "감사의 방 가기" },
+    { icon: "💌", title: "마음의 방", body: "고해성사함과 서운함 우체통. 익명으로 마음을 남겨요.", go: "heart", goLabel: "마음의 방 가기" },
+  ],
+  "🏠 집": [
+    { icon: "🔒", title: "비밀번호", body: "내 집 첫 방문 때 비밀번호를 설정해요(최초 1회). 이후에는 방문할 때마다 현관에서 비밀번호를 입력해 들어갑니다. 비밀번호를 아는 사람은 누구나 들어올 수 있어요." },
+    { icon: "🔔", title: "초인종", body: "누르면 딩동 소리와 함께 집주인에게 알림이 갑니다. 주인은 문 열어주기 / 거절하기를 선택할 수 있어요." },
+    { icon: "📮", title: "우체통", body: "방명록·편지를 남기고 선물도 함께 보내요(택배비 ⭐0.3). 내 집 우체통에서는 받은 편지함을 확인할 수 있어요." },
+    { icon: "🛋", title: "집 꾸미기", body: "이케아에서 산 외관과 가구가 내 집에 반영되고, 마을에서도 그 집이 바뀌어 보여요." },
+  ],
+  "👥 소통": [
+    { icon: "💬", title: "채팅", body: "좌측 하단에서 입력하면 머리 위 말풍선으로 뜨고 모든 접속자에게 보여요(50자까지)." },
+    { icon: "📢", title: "확성기", body: "⭐1을 내면 크게 외칠 수 있어요. 한 번 외치면 자동으로 꺼집니다." },
+    { icon: "💃", title: "춤", body: "우상단 💃 버튼으로 동작 선택. 다른 사람에게도 춤추는 모습이 보여요." },
+    { icon: "🎁", title: "선물 주기", body: "마을에서 다른 사람 캐릭터를 클릭하면 선물과 한마디를 바로 보낼 수 있어요." },
+    { icon: "📞", title: "DM · 페이스톡", body: "메뉴(☰) → 마을주민들에서 1:1 채팅과 영상통화를 할 수 있어요." },
+    { icon: "🛂", title: "치앙마이 가는 법", body: "강 건너 다리 앞 검문소에서 통행코드를 입력해야 건널 수 있어요." },
+  ],
+  "⭐ 젬·뱃지": [
+    { icon: "⭐", title: "젬 얻는 법", body: "퀘스트·보스 클리어, 미니게임 승리, 헬스장 운동, 점심술사 인증샷, 웰컴 쿠폰." },
+    { icon: "🛒", title: "젬 쓰는 법", body: "옷·가구·집외관·탈것 구매, 선물 구매, 확성기(1젬), 우체통 택배(0.3젬), 치앙마이 렌트, 환전." },
+    { icon: "🏅", title: "뱃지", body: "방문·소통·운동·흡연·샌드백·보스맵·노래 7개 카테고리. 조건을 채우면 축하 팝업이 뜨고 기록은 저장돼요." },
+  ],
+  "❓ FAQ": [
+    { icon: "👥", title: "다른 사람이 안 보여요", body: "우상단 👥 표시가 초록색인지 확인하세요. 회색이면 연결 중이거나 실패입니다. Ctrl+Shift+R로 새로고침해보세요." },
+    { icon: "🔊", title: "소리가 안 나요", body: "브라우저 정책상 한 번 클릭한 뒤에야 소리가 재생돼요. 상단 ♬ 바의 ▶를 눌러주세요." },
+    { icon: "💾", title: "진행이 초기화돼요", body: "방문 횟수·뱃지·집 비밀번호·받은 편지를 빼면 대부분은 새로고침 시 초기화됩니다(데모 단계)." },
+    { icon: "⌨️", title: "글자가 안 쳐져요", body: "입력창을 클릭한 뒤 입력하세요. 입력 중에는 이동키가 작동하지 않습니다." },
+  ],
+};
+
+function HelpButton({ onClick }) {
+  return (
+    <button onClick={onClick} title="사용설명서" style={{ position: "fixed", right: 14, bottom: 248, zIndex: 60, width: 46, height: 46, background: "linear-gradient(180deg,#7bbf8f,#2f7d5e)", border: `3px solid ${C.ink}`, boxShadow: `0 3px 0 ${C.ink}`, cursor: "pointer", fontSize: 20, color: C.white }}>📖</button>
+  );
+}
+
+function HelpModal({ onClose, onGo }) {
+  const [cat, setCat] = useState(HELP_CATS[0]);
+  const list = HELP_DATA[cat] || [];
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 110, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460 }}>
+        <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16, boxShadow: "0 10px 26px rgba(0,0,0,0.4)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 22 }}>📖</span>
+            <b style={{ flex: 1, fontSize: 15 }}>에코타운 사용설명서</b>
+            <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+          </div>
+          <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
+            {HELP_CATS.map((c) => (
+              <button key={c} onClick={() => setCat(c)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "6px 9px", borderRadius: 16, border: `2px solid ${C.ink}`, background: cat === c ? "linear-gradient(180deg,#3fa07a,#1d6b4a)" : C.white, color: cat === c ? C.white : C.ink, fontWeight: "bold" }}>{c}</button>
+            ))}
+          </div>
+          <div style={{ maxHeight: 330, overflow: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+            {list.map((it, i) => (
+              <div key={i} style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                  <span style={{ fontSize: 20 }}>{it.icon}</span>
+                  <b style={{ flex: 1, fontSize: 14 }}>{it.title}</b>
+                  {it.go && <PxButton tone="blue" onClick={() => onGo(it.go)} style={{ fontSize: 10, padding: "5px 9px" }}>▶ {it.goLabel || "이동하기"}</PxButton>}
+                </div>
+                <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.7 }}>{it.body}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginTop: 10 }}>▶ 버튼을 누르면 해당 장소로 바로 이동해요</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BadgeButton({ onClick, count }) {
   return (
     <button onClick={onClick} title="뱃지" style={{ position: "fixed", right: 14, bottom: 190, zIndex: 60, width: 46, height: 46, background: "linear-gradient(180deg,#e0a13d,#a86e13)", border: `3px solid ${C.ink}`, boxShadow: `0 3px 0 ${C.ink}`, cursor: "pointer", fontSize: 20, color: C.white }}>
@@ -4758,6 +4861,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [invOpen, setInvOpen] = useState(false);
   const [badgeOpen, setBadgeOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [housePw, setHousePw] = useState(() => loadJSON("echotown_pw", null));
   const [mail, setMail] = useState(() => loadJSON("echotown_mail", []));
   const [unlocked, setUnlocked] = useState({});
@@ -5084,6 +5188,8 @@ export default function App() {
       {notice && (
         <div style={{ position: "fixed", left: "50%", top: 16, transform: "translateX(-50%)", zIndex: 150, background: C.ink, color: C.white, border: `3px solid ${C.gem}`, borderRadius: 10, padding: "10px 18px", fontSize: 13, fontFamily: "'DotGothic16', monospace", boxShadow: "0 6px 16px rgba(0,0,0,0.4)" }}>{notice}</div>
       )}
+      <HelpButton onClick={() => setHelpOpen(true)} />
+      {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} onGo={(v) => { setHelpOpen(false); if (v === "world") { backToWorld(); } else { setView(v); } }} />}
       <BadgeButton onClick={() => setBadgeOpen(true)} count={BADGES.filter((b) => (stats[b.stat] || 0) >= b.need).length} />
       {badgeOpen && <BadgeModal onClose={() => setBadgeOpen(false)} stats={stats} />}
       {newBadge && (
