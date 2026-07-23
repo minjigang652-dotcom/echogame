@@ -704,6 +704,65 @@ const SUPA_URL = "https://fbemzeslbvweojmgvohv.supabase.co";
 const SUPA_KEY = "sb_publishable_dErg2UZWZQjifyAgO5-ejg_5AH563FV";
 const MY_ID = Math.random().toString(36).slice(2, 10);
 
+/* ======================= DB (Supabase 저장) ======================= */
+let _supa = null;
+async function getSupa() {
+  if (_supa) return _supa;
+  const mod = await import(/* @vite-ignore */ "https://esm.sh/@supabase/supabase-js@2");
+  _supa = mod.createClient(SUPA_URL, SUPA_KEY);
+  return _supa;
+}
+async function dbSaveProfile(name, data) {
+  if (!name) return;
+  try { const s = await getSupa(); await s.from("saves").upsert({ name, data, updated_at: new Date().toISOString() }); } catch (e) {}
+}
+async function dbLoadProfile(name) {
+  if (!name) return null;
+  try { const s = await getSupa(); const r = await s.from("saves").select("data").eq("name", name).maybeSingle(); return r && r.data ? r.data.data : null; } catch (e) { return null; }
+}
+async function dbAddRank(game, nick, score, target) {
+  try { const s = await getSupa(); await s.from("rankings").insert({ game, nick, score, target: target || null }); } catch (e) {}
+}
+async function dbTopRanks(game, desc) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("rankings").select("nick,score,target").eq("game", game).order("score", { ascending: !desc }).limit(20);
+    return (r && r.data) || [];
+  } catch (e) { return []; }
+}
+async function dbSendMail(to, from, body, item) {
+  try { const s = await getSupa(); await s.from("mail").insert({ to_name: to, from_name: from, body: body || null, item: item || null }); } catch (e) {}
+}
+async function dbLoadMail(to) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("mail").select("from_name,body,item,created_at").eq("to_name", to).order("created_at", { ascending: true }).limit(100);
+    return ((r && r.data) || []).map((m) => ({ from: m.from_name, text: m.body, item: m.item, at: new Date(m.created_at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) }));
+  } catch (e) { return []; }
+}
+async function dbLoadBoss() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("boss_progress").select("map_id,quest_id,cleared_by");
+    const out = {};
+    ((r && r.data) || []).forEach((x) => { out[x.map_id] = { ...(out[x.map_id] || {}), [x.quest_id]: x.cleared_by || true }; });
+    return out;
+  } catch (e) { return {}; }
+}
+async function dbClearBoss(mapId, questId, by) {
+  try { const s = await getSupa(); await s.from("boss_progress").upsert({ map_id: mapId, quest_id: questId, cleared_by: by || null }); } catch (e) {}
+}
+async function dbNotices() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("id,type,title,body,created_at").order("created_at", { ascending: false }).limit(50);
+    return ((r && r.data) || []).map((n) => ({ id: "db" + n.id, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
+  } catch (e) { return []; }
+}
+async function dbAddNotice(type, title, body) {
+  try { const s = await getSupa(); await s.from("notices").insert({ type, title, body: body || null }); } catch (e) {}
+}
+
 function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef, roomPosRef, danceRef, houseRef) {
   const [others, setOthers] = useState({});
   const [count, setCount] = useState(1);
@@ -3314,7 +3373,7 @@ const BOSS_MAPS_INIT = [
   },
 ];
 
-function BossMapView({ onBack, onReward, onGoSchool, onClearQuest }) {
+function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "" }) {
   const [maps, setMaps] = useState(BOSS_MAPS_INIT);
   const [mode, setMode] = useState("easy");
   const [mapIdx, setMapIdx] = useState(0);
@@ -3324,6 +3383,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest }) {
   const [fQ, setFQ] = useState({ stage: 1, title: "", icon: "🎯", gem: 5, desc: "", task: "", level: "초보자", field: "naverschool" });
   const [fM, setFM] = useState({ name: "", icon: "🗺", boss: "", bossIcon: "👹" });
   const [cleared, setCleared] = useState({});
+  useEffect(() => { dbLoadBoss().then((d) => { if (d && Object.keys(d).length) setCleared((c) => ({ ...d, ...c })); }); }, []);
   const [sel, setSel] = useState(null);
   const [warn, setWarn] = useState(null);
   const [pos, setPos] = useState({ x: 300, y: 90 });
@@ -3371,7 +3431,8 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest }) {
     const r = lockReason(nd);
     if (r) { setWarn(r); setTimeout(() => setWarn(null), 2000); return; }
     if (done[nd.id]) return;
-    setCleared((c) => ({ ...c, [map.id]: { ...(c[map.id] || {}), [nd.id]: true } }));
+    setCleared((c) => ({ ...c, [map.id]: { ...(c[map.id] || {}), [nd.id]: myName || true } }));
+    dbClearBoss(map.id, nd.id, myName || null);
     onReward && onReward(nd.gem);
     onClearQuest && onClearQuest(!!nd.isBoss);
     setSel(null);
@@ -3690,6 +3751,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest }) {
               <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10, textAlign: "center", lineHeight: 1.6 }}>{sel.desc}</div>
               <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: 12, fontSize: 13, lineHeight: 1.6 }}>🎯 {sel.task}</div>
               <div style={{ fontSize: 12, textAlign: "center", margin: "10px 0", color: "#a86e13", fontWeight: "bold" }}>보상 ⭐ {sel.gem}</div>
+              {done[sel.id] && typeof done[sel.id] === "string" && <div style={{ fontSize: 11, textAlign: "center", color: C.good, marginBottom: 8 }}>✅ {done[sel.id]}님이 완료했어요</div>}
               {sel.level === "초보자" && sel.field && onGoSchool && (
                 <PxButton tone="blue" onClick={() => onGoSchool(sel.field)} style={{ width: "100%", padding: 10, fontSize: 13, marginBottom: 10 }}>
                   {sel.field === "naverschool" ? "📗 네이버스쿨로 가서 배우기 →" : "🎬 영상스쿨로 가서 배우기 →"}
@@ -3894,7 +3956,18 @@ function SmokeView({ onBack, bubble }) {
 }
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
-function BoardView({ onBack }) {
+function BoardView({ onBack, myName = "" }) {
+  const [dbList, setDbList] = useState([]);
+  const [wOpen, setWOpen] = useState(false);
+  const [wType, setWType] = useState("공지");
+  const [wTitle, setWTitle] = useState("");
+  const [wBody, setWBody] = useState("");
+  const reload = () => dbNotices().then((r) => setDbList(r || []));
+  useEffect(() => { reload(); }, []);
+  const post = () => {
+    if (!wTitle.trim()) return;
+    dbAddNotice(wType, wTitle.trim(), wBody.trim()).then(() => { setWTitle(""); setWBody(""); setWOpen(false); reload(); });
+  };
   const [tab, setTab] = useState("notice");
   const [openDoc, setOpenDoc] = useState(null);
   const [day, setDay] = useState(null);
@@ -3906,7 +3979,28 @@ function BoardView({ onBack }) {
   const key = (d) => `2026-07-${String(d).padStart(2, "0")}`;
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="📋" title="게시판" sub="공지사항 · 2026년 7월 캘린더" onBack={onBack} bg={C.wood} fg={C.white} />
+      <TitleBar icon="📋" title="게시판" sub="공지사항 · 2026년 7월 캘린더" onBack={onBack} bg={C.wood} fg={C.white}
+        right={<PxButton tone="gold" onClick={() => setWOpen(true)} style={{ fontSize: 11, padding: "5px 10px" }}>✍️ 글쓰기</PxButton>} />
+      {wOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={() => setWOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 360 }}>
+            <Panel style={{ padding: 16 }}>
+              <b style={{ fontSize: 14 }}>✍️ 새 글 쓰기</b>
+              <div style={{ display: "flex", gap: 6, margin: "10px 0" }}>
+                {["공지", "이벤트"].map((t) => (
+                  <PxButton key={t} tone={wType === t ? "good" : "wood"} onClick={() => setWType(t)} style={{ flex: 1, fontSize: 12, padding: 8 }}>{t}</PxButton>
+                ))}
+              </div>
+              <input value={wTitle} onChange={(e) => setWTitle(e.target.value)} placeholder="제목" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, marginBottom: 6 }} />
+              <textarea value={wBody} onChange={(e) => setWBody(e.target.value)} placeholder="내용" style={{ width: "100%", boxSizing: "border-box", height: 90, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "none" }} />
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <PxButton tone="ink" onClick={() => setWOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>
+                <PxButton tone="gold" disabled={!wTitle.trim()} onClick={post} style={{ flex: 1, padding: 10, fontSize: 13 }}>등록</PxButton>
+              </div>
+            </Panel>
+          </div>
+        </div>
+      )}
       <div style={{ display: "flex", gap: 6, padding: 10, background: C.parchLine, borderBottom: `3px solid ${C.parchEdge}` }}>
         <PxButton tone={tab === "notice" ? "gold" : "wood"} onClick={() => setTab("notice")} style={{ fontSize: 12, padding: "8px 12px" }}>📢 공지사항</PxButton>
         <PxButton tone={tab === "cal" ? "gold" : "wood"} onClick={() => setTab("cal")} style={{ fontSize: 12, padding: "8px 12px" }}>📅 캘린더</PxButton>
@@ -3915,7 +4009,7 @@ function BoardView({ onBack }) {
       <div style={{ padding: 16, background: `repeating-linear-gradient(0deg, ${C.parch} 0 40px, ${C.parchLine} 40px 80px)` }}>
         {tab === "notice" && (
           <div style={{ display: "grid", gap: 8 }}>
-            {ANNOUNCEMENTS.map((a) => (
+            {[...dbList, ...ANNOUNCEMENTS].map((a) => (
               <button key={a.id} onClick={() => setOpenDoc(a)} className="px-btn" style={{ textAlign: "left", background: C.white, border: `3px solid ${C.ink}`, padding: "10px 12px", cursor: "pointer", fontFamily: "'DotGothic16', monospace" }}>
                 <div style={{ fontSize: 14, fontWeight: "bold", display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 10, color: "#fff", background: a.type === "이벤트" ? "#d76b96" : "#5b8def", padding: "2px 6px", whiteSpace: "nowrap" }}>{a.type || "공지"}</span>
@@ -4794,15 +4888,38 @@ export default function App() {
   const [nameInput, setNameInput] = useState("");
   const [couponOpen, setCouponOpen] = useState(false);
   const [couponDone, setCouponDone] = useState(false);
+  const applySave = (d) => {
+    if (!d) return false;
+    if (typeof d.gems === "number") setGems(d.gems);
+    if (typeof d.lifetime === "number") setLifetime(d.lifetime);
+    if (d.outfit) setOutfit(d.outfit);
+    if (d.owned) setOwned(d.owned);
+    if (d.ikeaOwned) setIkeaOwned(d.ikeaOwned);
+    if (d.houseSkin !== undefined) setHouseSkin(d.houseSkin);
+    if (d.vehicle !== undefined) setVehicle(d.vehicle);
+    if (d.myFurni) setMyFurni(d.myFurni);
+    if (d.thanksInv) setThanksInv(d.thanksInv);
+    if (d.memos) setMemos(d.memos);
+    if (d.stats) { setStats(d.stats); saveJSON("echotown_stats", d.stats); }
+    if (d.housePw) { setHousePw(d.housePw); saveJSON("echotown_pw", d.housePw); }
+    if (d.couponDone) setCouponDone(true);
+    return true;
+  };
   const confirmName = (nm) => {
     const t = (nm || "").trim(); if (!t) return;
     setMyName(t); setNameOpen(false);
+    dbLoadProfile(t).then((d) => {
+      if (d) { applySave(d); showNotice(`💾 ${t}님의 저장 데이터를 불러왔어요`); }
+      dbLoadMail(t).then((ms) => { if (ms && ms.length) setMail(ms); });
+    });
     setOutfit((o) => (o.top || o.bottom || o.shoes) ? o : {
       top: CLOTHES.top[Math.floor(Math.random() * CLOTHES.top.length)],
       bottom: CLOTHES.bottom[Math.floor(Math.random() * CLOTHES.bottom.length)],
       shoes: CLOTHES.shoes[Math.floor(Math.random() * CLOTHES.shoes.length)],
     });
-    if (!couponDone) { setCouponDone(true); setGems((g) => g + 100); setLifetime((l) => l + 100); setCouponOpen(true); }
+    dbLoadProfile(t).then((d) => {
+      if (!d && !couponDone) { setCouponDone(true); setGems((g) => g + 100); setLifetime((l) => l + 100); setCouponOpen(true); }
+    });
   };
   const isMyHouse = (n) => !!(n && myName && n.replace(/이네$|네$/, "") === myName);
   const [ikeaOwned, setIkeaOwned] = useState({});
@@ -4823,6 +4940,11 @@ export default function App() {
   };
   const [swimScores, setSwimScores] = useState([{ nick: "유리", time: 8.2 }, { nick: "정인", time: 9.1 }, { nick: "호중", time: 9.8 }, { nick: "의준", time: 10.4 }]);
   const [boxScores, setBoxScores] = useState([{ nick: "창민", count: 18294719 }, { nick: "정인", count: 129572 }]);
+  const reloadRanks = useCallback(() => {
+    dbTopRanks("sandbag", true).then((r) => { if (r.length) setBoxScores([{ nick: "창민", count: 18294719 }, { nick: "정인", count: 129572 }, ...r.map((x) => ({ nick: x.nick, count: Number(x.score), target: x.target }))]); });
+    dbTopRanks("swim", false).then((r) => { if (r.length) setSwimScores(r.map((x) => ({ nick: x.nick, time: Number(x.score) }))); });
+  }, []);
+  useEffect(() => { reloadRanks(); }, [reloadRanks]);
   const [townRegion, setTownRegion] = useState("서울");
   const [regionOpen, setRegionOpen] = useState(false);
   const wxPoints = useMemo(() => ({ town: REGIONS[townRegion], chiangmai: { lat: 18.7883, lon: 98.9853 } }), [townRegion]);
@@ -4942,7 +5064,7 @@ export default function App() {
       }
       if (kind === "mail") {
         const item = { from: p.from, text: p.text, item: p.item, at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
-        setMail((v) => { const n = [...v, item]; saveJSON("echotown_mail", n); return n; });
+        setMail((v) => [...v, item]);
         if (p.item) setThanksInv((v) => [...v, p.item]);
         showNotice(`📬 ${p.from}님이 ${p.item ? "선물을 보냈어요!" : "편지를 남겼어요!"}`);
       }
@@ -4959,14 +5081,26 @@ export default function App() {
     setGems((g) => g - 0.3);
     if (payload.item) setThanksInv((v) => v.filter((_, i) => i !== payload.item._i));
     if (netSendEvent) netSendEvent("mail", payload);
+    dbSendMail(payload.to, payload.from, payload.text, payload.item || null);
     showNotice("📮 우체통에 넣었어요!");
   };
   const sendGift = (payload) => {
     if (payload.item) setThanksInv((v) => v.filter((_, i) => i !== payload.item._i));
     if (netSendEvent) netSendEvent("mail", payload);
+    dbSendMail(payload.to, payload.from, payload.text, payload.item || null);
     showNotice(`🎁 ${payload.to}님에게 보냈어요!`);
   };
   const ringBell = (owner) => { if (netSendEvent) netSendEvent("bell", { to: owner, from: myName || "익명" }); };
+  const saveTimer = useRef(null);
+  useEffect(() => {
+    if (!myName) return;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      dbSaveProfile(myName, { gems, lifetime, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone });
+    }, 2000);
+    return () => clearTimeout(saveTimer.current);
+  }, [myName, gems, lifetime, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone]);
+
   const requestWorldSong = (title) => {
     if (gems < 5) return;
     setGems((g) => g - 5);
@@ -5099,23 +5233,23 @@ export default function App() {
               if (netSendEvent) { netSendEvent("pwtry", { to: ow, from: myName, pw: p }); return "wait"; }
               return false;
             }}
-            onBell={ringBell} onMail={(owner) => setMailTarget(owner)} onBack={backToWorld} />
+            onBell={ringBell} onMail={(owner) => { setMailTarget(owner); if (owner === myName) dbLoadMail(owner).then((ms) => setMail(ms || [])); }} onBack={backToWorld} />
         ))}
         {view === "thanks" && <ThanksView gems={gems} inventory={thanksInv} postits={postits} onBuy={(it) => { setGems((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={(p) => setPostits((v) => [...v, { ...p, id: Date.now() }])} onBack={backToWorld} bubble={bubble} />}
         {view === "heart" && <HeartView gems={gems} worries={worries} onPost={(text, cost, kind) => { setGems((g) => g - cost); setWorries((w) => [{ id: Date.now(), text, kind }, ...w]); }} onBack={backToWorld} bubble={bubble} />}
         {view === "listening" && <ListeningView onBack={backToWorld} gems={gems} onSpend={(n) => setGems((g) => g - n)} bubble={bubble} />}
         {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} />}
         {view === "minigame" && <MiniGameRoom myName={myName} onBack={backToWorld} onReward={(n) => award(n)} bubble={bubble} />}
-        {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} scores={swimScores} onRecord={(nick, time) => { setSwimScores((s) => [...s, { nick, time }]); bump("swim"); }} bubble={bubble} />}
+        {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} scores={swimScores} onRecord={(nick, time) => { setSwimScores((s) => [...s, { nick, time }]); bump("swim"); dbAddRank("swim", nick, time, null).then(reloadRanks); }} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => { award(4); bump("gym"); }} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
         {view === "ikea" && <IkeaView gems={gems} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
-        {view === "project" && <BossMapView onBack={backToWorld} onReward={(n) => award(n)} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss) => bump(isBoss ? "boss" : "quest")} />}
+        {view === "project" && <BossMapView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss) => bump(isBoss ? "boss" : "quest")} />}
         {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
-        {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count, target) => { setBoxScores((s) => [...s, { nick, count, target }]); bump("punch", count); }} />}
+        {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count, target) => { setBoxScores((s) => [...s, { nick, count, target }]); bump("punch", count); dbAddRank("sandbag", nick, count, target).then(reloadRanks); }} />}
         {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
         {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} onReward={(n) => award(n)} />}
-        {view === "board" && <BoardView onBack={backToWorld} />}
+        {view === "board" && <BoardView myName={myName} onBack={backToWorld} />}
         {view === "bank" && <BankView gems={gems} lifetime={lifetime} exchanged={exchanged} history={history} onExchange={doExchange} onBack={backToWorld} />}
         {view === "rent" && rentMeta && <RentView house={rentMeta} gems={gems} rented={!!rented[rentId]} onRent={() => { setGems((g) => g - rentMeta.rent); setRented((r) => ({ ...r, [rentId]: true })); }} onBack={backToWorld} />}
       </div>
