@@ -1613,7 +1613,205 @@ function ContestModal({ onClose, onPlay }) {
     </RoomModal>
   );
 }
+/* ======================= 라이어 게임 ======================= */
+const LIAR_TOPICS = {
+  "음식": ["마라탕", "치킨", "김치찌개", "피자", "떡볶이", "초밥", "삼겹살", "냉면", "짜장면", "곱창"],
+  "직장": ["회의", "연차", "월급", "출근", "야근", "회식", "점심시간", "퇴사", "결재", "카톡 답장"],
+  "장소": ["수영장", "헬스장", "공항", "도서관", "편의점", "놀이공원", "카페", "지하철", "찜질방", "노래방"],
+  "취미": ["넷플릭스", "등산", "캠핑", "게임", "독서", "여행", "사진", "낚시", "홈트", "덕질"],
+  "에코타운": ["스타 젬", "치앙마이", "쩝쩝박사", "주민센터", "무신사", "샌드백", "점심술사", "보스맵", "흡연의 방", "네이버스쿨"],
+};
+const LIAR_NPCS = ["정인", "호중", "희정", "유리", "의준", "창민", "도희", "민서"];
+const LIAR_LINES = [
+  "음... 저는 꽤 자주 접하는 편이에요.", "생각보다 호불호가 갈리죠.", "저는 좋아하는데 사람마다 다르더라고요.",
+  "이건 타이밍이 중요하죠.", "돈이 좀 들긴 해요 ㅋㅋ", "주말에 많이들 하지 않나요?",
+  "말 안 해도 다들 알 것 같은데요.", "저는 좀 애매해요 솔직히.", "처음엔 별로였는데 지금은 괜찮아요.",
+  "이거 얘기하면 너무 티나려나...", "무난하게 좋아요.", "요즘 특히 많이 하죠.",
+];
+function LiarGame({ onClose, onReward }) {
+  const [phase, setPhase] = useState("lobby");
+  const [cat, setCat] = useState("랜덤");
+  const [size, setSize] = useState(5);
+  const [players, setPlayers] = useState([]);
+  const [word, setWord] = useState("");
+  const [usedCat, setUsedCat] = useState("");
+  const [liarIdx, setLiarIdx] = useState(0);
+  const [turn, setTurn] = useState(0);
+  const [talks, setTalks] = useState([]);
+  const [myTalk, setMyTalk] = useState("");
+  const [votes, setVotes] = useState(null);
+  const [guess, setGuess] = useState("");
+  const [outcome, setOutcome] = useState(null);
 
+  const makeRoom = () => {
+    const names = [...LIAR_NPCS].sort(() => Math.random() - 0.5).slice(0, size - 1);
+    setPlayers(["나", ...names]);
+    setPhase("wait");
+  };
+  const start = () => {
+    const cats = Object.keys(LIAR_TOPICS);
+    const useCat = cat === "랜덤" ? cats[Math.floor(Math.random() * cats.length)] : cat;
+    const list = LIAR_TOPICS[useCat];
+    setUsedCat(useCat);
+    setWord(list[Math.floor(Math.random() * list.length)]);
+    setLiarIdx(Math.floor(Math.random() * players.length));
+    setTalks([]); setTurn(0); setVotes(null); setGuess(""); setOutcome(null);
+    setPhase("reveal");
+  };
+  const iAmLiar = liarIdx === 0;
+
+  const npcTalk = (i) => LIAR_LINES[Math.floor(Math.random() * LIAR_LINES.length)];
+  const nextTurn = (myText) => {
+    const arr = [...talks];
+    if (turn === 0) arr.push({ who: "나", text: myText });
+    for (let i = arr.length; i < players.length; i++) arr.push({ who: players[i], text: npcTalk(i) });
+    setTalks(arr); setTurn(players.length); setPhase("vote");
+  };
+  const doVote = (targetIdx) => {
+    const tally = {};
+    tally[targetIdx] = 1;
+    for (let i = 1; i < players.length; i++) {
+      let v = Math.floor(Math.random() * players.length);
+      if (i === liarIdx && v === liarIdx) v = (v + 1) % players.length;
+      tally[v] = (tally[v] || 0) + 1;
+    }
+    let top = 0, best = -1;
+    Object.entries(tally).forEach(([k, n]) => { if (n > best) { best = n; top = Number(k); } });
+    setVotes({ tally, top });
+    if (top === liarIdx) {
+      if (iAmLiar) { setPhase("guess"); }
+      else { setOutcome("win"); onReward && onReward(8); setPhase("result"); }
+    } else {
+      setOutcome(iAmLiar ? "liarwin" : "lose");
+      if (iAmLiar) onReward && onReward(10);
+      setPhase("result");
+    }
+  };
+  const submitGuess = () => {
+    const ok = guess.trim() === word;
+    setOutcome(ok ? "liarwin" : "lose");
+    if (ok) onReward && onReward(12);
+    setPhase("result");
+  };
+
+  return (
+    <RoomModal title="🕵️ 라이어 게임" onClose={onClose} maxW={430}>
+      {phase === "lobby" && (
+        <div>
+          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10 }}>방을 만들고 마을 사람들을 모아요. 라이어 한 명만 제시어를 몰라요!</div>
+          <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 5 }}>카테고리</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 12 }}>
+            {["랜덤", ...Object.keys(LIAR_TOPICS)].map((c) => (
+              <PxButton key={c} tone={cat === c ? "good" : "wood"} onClick={() => setCat(c)} style={{ fontSize: 11, padding: "5px 9px" }}>{c === "랜덤" ? "🎲 랜덤" : c}</PxButton>
+            ))}
+          </div>
+          <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 5 }}>인원</div>
+          <div style={{ display: "flex", gap: 5, marginBottom: 14 }}>
+            {[4, 5, 6, 7].map((n) => (
+              <PxButton key={n} tone={size === n ? "gold" : "wood"} onClick={() => setSize(n)} style={{ fontSize: 12, padding: "6px 12px" }}>{n}명</PxButton>
+            ))}
+          </div>
+          <PxButton tone="good" onClick={makeRoom} style={{ width: "100%", padding: 11, fontSize: 14 }}>🚪 방 만들기</PxButton>
+        </div>
+      )}
+
+      {phase === "wait" && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <b style={{ fontSize: 13 }}>대기실 · {cat === "랜덤" ? "🎲 랜덤" : cat}</b>
+            <span style={{ fontSize: 11, color: C.inkSoft }}>{players.length}/{size}명</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
+            {players.map((p, i) => (
+              <div key={i} style={{ background: p === "나" ? C.gem : C.white, border: `2px solid ${C.ink}`, padding: "7px 9px", fontSize: 12 }}>
+                {p === "나" ? "👤 나 (방장)" : `🧑 ${p}`}
+              </div>
+            ))}
+            {Array.from({ length: Math.max(0, size - players.length) }).map((_, i) => (
+              <div key={"e" + i} style={{ background: "#e7dfcc", border: `2px dashed ${C.ink}`, padding: "7px 9px", fontSize: 11, color: C.inkSoft }}>비어있음</div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <PxButton tone="wood" onClick={() => { if (players.length < size) setPlayers((p) => [...p, LIAR_NPCS.filter((n) => !p.includes(n))[0]]); }} disabled={players.length >= size} style={{ flex: 1, padding: 9, fontSize: 12 }}>➕ 초대하기</PxButton>
+            <PxButton tone="good" onClick={start} disabled={players.length < 4} style={{ flex: 1, padding: 9, fontSize: 12 }}>▶ 게임 시작</PxButton>
+          </div>
+        </div>
+      )}
+
+      {phase === "reveal" && (
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 6 }}>카테고리 · {usedCat}</div>
+          <div style={{ background: iAmLiar ? "#c0563a" : C.white, color: iAmLiar ? C.white : C.ink, border: `4px solid ${C.ink}`, padding: "22px 12px", marginBottom: 12 }}>
+            {iAmLiar ? (
+              <>
+                <div style={{ fontSize: 34 }}>🤫</div>
+                <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 14, marginTop: 8 }}>당신은 라이어!</div>
+                <div style={{ fontSize: 12, marginTop: 6 }}>제시어를 모르는 척 티 안 나게 말해보세요</div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 11, color: C.inkSoft }}>제시어</div>
+                <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 18, margin: "10px 0" }}>{word}</div>
+                <div style={{ fontSize: 12, color: C.inkSoft }}>라이어가 눈치채지 못하게 설명하세요</div>
+              </>
+            )}
+          </div>
+          <PxButton tone="good" onClick={() => setPhase("talk")} style={{ width: "100%", padding: 10, fontSize: 13 }}>확인했어요 ▶</PxButton>
+        </div>
+      )}
+
+      {phase === "talk" && (
+        <div>
+          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>내 차례예요. 한 마디로 설명해보세요 (너무 대놓고 말하면 라이어가 눈치채요!)</div>
+          <input value={myTalk} onChange={(e) => setMyTalk(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && myTalk.trim()) nextTurn(myTalk.trim()); }} placeholder="예: 비 오는 날 생각나요" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+          <PxButton tone="good" disabled={!myTalk.trim()} onClick={() => nextTurn(myTalk.trim())} style={{ width: "100%", marginTop: 10, padding: 10, fontSize: 13 }}>말하기 ▶</PxButton>
+        </div>
+      )}
+
+      {phase === "vote" && (
+        <div>
+          <div style={{ maxHeight: 150, overflow: "auto", background: "#efe6d2", border: `3px solid ${C.ink}`, padding: 8, marginBottom: 10, display: "flex", flexDirection: "column", gap: 5 }}>
+            {talks.map((t, i) => (
+              <div key={i} style={{ fontSize: 12 }}><b style={{ color: "#5b8def" }}>{t.who}</b> · {t.text}</div>
+            ))}
+          </div>
+          <div style={{ fontSize: 13, fontWeight: "bold", marginBottom: 6 }}>🗳 누가 라이어일까요?</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+            {players.map((p, i) => i !== 0 && (
+              <PxButton key={i} tone="wood" onClick={() => doVote(i)} style={{ padding: 9, fontSize: 12 }}>{p}</PxButton>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {phase === "guess" && (
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 34 }}>😱</div>
+          <div style={{ fontSize: 14, margin: "8px 0" }}>들켰어요! 마지막 기회 — 제시어를 맞히면 역전승!</div>
+          <input value={guess} onChange={(e) => setGuess(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submitGuess(); }} placeholder="제시어는?" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: C.white }} />
+          <PxButton tone="gold" onClick={submitGuess} style={{ width: "100%", marginTop: 10, padding: 10, fontSize: 13 }}>정답 제출</PxButton>
+        </div>
+      )}
+
+      {phase === "result" && (
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 40 }}>{outcome === "win" ? "🎉" : outcome === "liarwin" ? "🕵️" : "😵"}</div>
+          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 14, margin: "8px 0" }}>
+            {outcome === "win" ? "라이어 검거 성공!" : outcome === "liarwin" ? "라이어 승리!" : "라이어가 도망쳤다..."}
+          </div>
+          <div style={{ fontSize: 13, marginBottom: 6 }}>라이어는 <b style={{ color: C.danger }}>{players[liarIdx]}</b> 였어요</div>
+          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10 }}>제시어 · {word} ({usedCat})</div>
+          {outcome === "win" && <div style={{ fontSize: 13, color: C.good, marginBottom: 10 }}>+8 ⭐ 획득!</div>}
+          {outcome === "liarwin" && <div style={{ fontSize: 13, color: C.good, marginBottom: 10 }}>+{iAmLiar ? (votes && votes.top === liarIdx ? 12 : 10) : 0} ⭐ 획득!</div>}
+          <div style={{ display: "flex", gap: 8 }}>
+            <PxButton tone="ink" onClick={onClose} style={{ flex: 1, padding: 10, fontSize: 13 }}>나가기</PxButton>
+            <PxButton tone="good" onClick={() => setPhase("lobby")} style={{ flex: 1, padding: 10, fontSize: 13 }}>🔄 다시</PxButton>
+          </div>
+        </div>
+      )}
+    </RoomModal>
+  );
+}
 function MiniGameRoom({ onBack, onReward, bubble }) {
   const [game, setGame] = useState(null); // 'reaction' | 'rps' | 'sequence'
   const [contest, setContest] = useState(false);
@@ -1621,6 +1819,7 @@ function MiniGameRoom({ onBack, onReward, bubble }) {
     { id: "reaction", x: 60, y: 110, w: 130, h: 100, color: "#5b8def", emoji: "⚡", label: "반응속도", onInteract: () => setGame("reaction") },
     { id: "rps", x: 260, y: 110, w: 130, h: 100, color: "#d76b96", emoji: "✊", label: "가위바위보", onInteract: () => setGame("rps") },
     { id: "seq", x: 460, y: 110, w: 130, h: 100, color: "#e0a13d", emoji: "🔢", label: "숫자 순서", onInteract: () => setGame("sequence") },
+    { id: "liar", x: 60, y: 260, w: 150, h: 100, color: "#7a5cd6", emoji: "🕵️", label: "라이어 게임", onInteract: () => setGame("liar") },
     { id: "contest", x: 260, y: 260, w: 150, h: 100, color: "#c9a15f", emoji: "🏆", label: "대회 코너", onInteract: () => setContest(true) },
   ];
   return (
@@ -1628,6 +1827,7 @@ function MiniGameRoom({ onBack, onReward, bubble }) {
       {game === "reaction" && <ReactionGame onClose={() => setGame(null)} onReward={onReward} />}
       {game === "rps" && <RpsGame onClose={() => setGame(null)} onReward={onReward} />}
       {game === "sequence" && <SequenceGame onClose={() => setGame(null)} onReward={onReward} />}
+      {game === "liar" && <LiarGame onClose={() => setGame(null)} onReward={onReward} />}
       {contest && <ContestModal onClose={() => setContest(false)} onPlay={(g) => { setContest(false); setGame(g); }} />}
     </RoomView>
   );
