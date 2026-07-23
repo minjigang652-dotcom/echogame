@@ -678,7 +678,7 @@ const SUPA_URL = "https://fbemzeslbvweojmgvohv.supabase.co";
 const SUPA_KEY = "sb_publishable_dErg2UZWZQjifyAgO5-ejg_5AH563FV";
 const MY_ID = Math.random().toString(36).slice(2, 10);
 
-function useMultiplayer(myName, posRef, facingRef, onChatRef) {
+function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef) {
   const [others, setOthers] = useState({});
   const [count, setCount] = useState(1);
   const [status, setStatus] = useState("연결 중…");
@@ -724,7 +724,11 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef) {
             await ch.track({ name: myName });
             sendIv = setInterval(() => {
               const p = posRef.current || { x: 0, y: 0 };
-              ch.send({ type: "broadcast", event: "pos", payload: { id: MY_ID, name: myName, x: Math.round(p.x), y: Math.round(p.y), f: facingRef.current || 1, mv: !!(facingRef.movingRef && facingRef.movingRef.current) } });
+              ch.send({ type: "broadcast", event: "pos", payload: (() => {
+                const of = (outfitRef && outfitRef.current) || {};
+                return { id: MY_ID, name: myName, x: Math.round(p.x), y: Math.round(p.y), f: facingRef.current || 1,
+                  oc: [of.top ? of.top.color : null, of.bottom ? of.bottom.color : null, of.shoes ? of.shoes.color : null] };
+              })() });
             }, 160);
           } else if (st === "CHANNEL_ERROR" || st === "TIMED_OUT") {
             setStatus("연결 실패");
@@ -971,7 +975,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
                 <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>{o.bubble}</div>
               )}
               <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
-              <Hero facing={o.f || 1} moving={o.mv ? true : false} size={34} />
+              <Hero facing={o.f || 1} moving={false} size={34} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
             </div>
           ))}
 
@@ -4261,7 +4265,8 @@ export default function App() {
   const netFacingRef = useRef(1);
   useEffect(() => { netPosRef.current = worldPos; }, [worldPos]);
   const onChatRef = useRef(null);
-  const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef);
+  const netOutfitRef = useRef(null);
+  const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef, netOutfitRef);
   const [nameOpen, setNameOpen] = useState(true);
   const [nameInput, setNameInput] = useState("");
   const [couponOpen, setCouponOpen] = useState(false);
@@ -4299,6 +4304,7 @@ export default function App() {
   const townRain = isRain(weather.town && weather.town.code);
   const cmRain = isRain(weather.chiangmai && weather.chiangmai.code);
   const [outfit, setOutfit] = useState({ top: null, bottom: null, shoes: null });
+  useEffect(() => { netOutfitRef.current = outfit; }, [outfit]);
   const [owned, setOwned] = useState({});
   const tryOnClothing = (catKey, item) => setOutfit((o) => ({ ...o, [catKey]: item }));
   const buyClothing = (catKey, item) => {
