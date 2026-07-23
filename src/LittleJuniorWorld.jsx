@@ -524,6 +524,7 @@ function buildWorld() {
   const list = [];
   // 중심 주민센터
   list.push({ id: "center", kind: "center", x: 1300, y: 760, r: 90, label: "🏛 주민센터", sub: "마을 중심 · 회의/모임" });
+  list.push({ id: "ikea", kind: "small", x: 1470, y: 1000, r: 60, label: "🛒 이케아", tint: "#0051ba" });
   list.push({ id: "project", kind: "small", x: 1120, y: 970, r: 60, label: "🗺 보스맵 도전기" });
   list.push({ id: "naverschool", kind: "small", x: 1800, y: 300, r: 70, label: "📗 네이버스쿨" });
   list.push({ id: "videoschool", kind: "small", x: 2030, y: 300, r: 70, label: "🎬 영상스쿨" });
@@ -672,8 +673,10 @@ function GuardGate({ onPass, onClose }) {
     </div>
   );
 }
-function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null }) {
+function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null }) {
   const [songOpen, setSongOpen] = useState(false);
+  const vehicleRef = useRef(vehicle);
+  vehicleRef.current = vehicle;
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
@@ -742,7 +745,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 
   useEffect(() => {
     let raf;
-    const SPEED = 4.2;
+    const SPEED = 4.2 * (vehicleRef.current ? vehicleRef.current.speed :
     const loop = () => {
       const k = keys.current;
       let { x, y } = posRef.current;
@@ -886,6 +889,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
             )}
             <div className={danceMove ? "dance-" + danceMove : ""} style={{ transformOrigin: "bottom center" }}>
               <Hero facing={facing} moving={moving} size={36} outfit={outfit} />
+              {vehicle && <div style={{ position: "absolute", left: "50%", bottom: -6, transform: "translateX(-50%)", fontSize: 20 }}>{vehicle.emoji}</div>}
             </div>
           </div>
         </div>
@@ -1259,7 +1263,7 @@ function MeetingView({ roomId, room, onUpdate, onBack }) {
 }
 
 /* ======================= 집(가구 + 메모장) ======================= */
-function HomeView({ house, memo, onSaveMemo, onBack, bubble }) {
+function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras = [] }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(memo || "");
   const furniture = [
@@ -1268,8 +1272,15 @@ function HomeView({ house, memo, onSaveMemo, onBack, bubble }) {
     { id: "tv", x: 250, y: 280, w: 120, h: 56, color: "#3a3a3a", emoji: "📺", label: "티비", toast: "TV를 켰다 📺 예능이 나온다" },
     { id: "desk", x: 430, y: 90, w: 150, h: 90, color: "#a9814a", emoji: "🖥️", label: "책상(메모)", onInteract: () => { setText(memo || ""); setOpen(true); } },
   ];
+  const EX_POS = [[240, 60], [430, 250], [60, 170], [330, 170], [520, 320], [150, 330], [520, 190], [250, 380]];
+  extras.forEach((id, i) => {
+    const it = IKEA_ITEMS.furni.find((x) => x.id === id);
+    if (!it) return;
+    const p = EX_POS[i % EX_POS.length];
+    furniture.push({ id: "ex" + id, x: p[0], y: p[1], w: 70, h: 60, color: it.color, emoji: it.emoji, label: it.name, toast: `${it.name} · 이케아에서 산 가구 🛒` });
+  });
   return (
-    <RoomView title={house.name} icon="🏠" sub="침대·쇼파·티비·책상 · 책상에서 메모 작성" bg="#efe6d2" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={open} headerBg={house.wall} bubble={bubble}>
+    <RoomView title={house.name} icon="🏠" sub={skin ? `내 집 · ${skin.name} 스타일` : "침대·쇼파·티비·책상 · 책상에서 메모 작성"} bg={skin ? skin.bg : "#efe6d2"} roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={open} headerBg={skin ? skin.roof : house.wall} bubble={bubble}>
       {open && (
         <RoomModal title="📝 개인 메모장" onClose={() => setOpen(false)}>
           <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>{house.name} 책상 · 나만 보는 메모</div>
@@ -2919,6 +2930,87 @@ function BossMapView({ onBack, onReward }) {
     </Panel>
   );
 }
+/* ======================= 이케아(집꾸미기 · 교통수단) ======================= */
+const IKEA_ITEMS = {
+  house: [
+    { id: "hw1", name: "화이트 우드", price: 12, wall: "#f5efe3", roof: "#c98ba0", bg: "#f7f3ea" },
+    { id: "hw2", name: "네이비 모던", price: 15, wall: "#dfe6f2", roof: "#2c3e66", bg: "#eaf0f8" },
+    { id: "hw3", name: "포레스트 그린", price: 15, wall: "#e3efe0", roof: "#2e7d5b", bg: "#edf6ea" },
+    { id: "hw4", name: "테라코타", price: 18, wall: "#f7e6da", roof: "#c0563a", bg: "#faeee6" },
+    { id: "hw5", name: "블랙 미니멀", price: 22, wall: "#dcdcdc", roof: "#2b2b2b", bg: "#ededed" },
+  ],
+  furni: [
+    { id: "f1", name: "러그", price: 5, emoji: "🟫", color: "#c98a6a" },
+    { id: "f2", name: "화분", price: 4, emoji: "🪴", color: "#7bbf8f" },
+    { id: "f3", name: "책장", price: 8, emoji: "📚", color: "#a9814a" },
+    { id: "f4", name: "스탠드 조명", price: 6, emoji: "💡", color: "#e0c060" },
+    { id: "f5", name: "게이밍 의자", price: 12, emoji: "🪑", color: "#7a5cd6" },
+    { id: "f6", name: "냉장고", price: 14, emoji: "🧊", color: "#cfe0ea" },
+    { id: "f7", name: "피아노", price: 20, emoji: "🎹", color: "#2b2b2b" },
+    { id: "f8", name: "수족관", price: 18, emoji: "🐠", color: "#4bb4d8" },
+  ],
+  vehicle: [
+    { id: "v1", name: "킥보드", price: 8, emoji: "🛴", speed: 1.25 },
+    { id: "v2", name: "자전거", price: 14, emoji: "🚲", speed: 1.5 },
+    { id: "v3", name: "스쿠터", price: 22, emoji: "🛵", speed: 1.8 },
+    { id: "v4", name: "자동차", price: 40, emoji: "🚗", speed: 2.2 },
+    { id: "v5", name: "스포츠카", price: 80, emoji: "🏎️", speed: 2.8 },
+  ],
+};
+const IKEA_TABS = { house: "🏠 집 외관", furni: "🛋 가구", vehicle: "🚲 교통수단" };
+
+function IkeaView({ gems, owned, houseSkin, vehicle, myFurni, onBuy, onBack, bubble }) {
+  const [tab, setTab] = useState(null);
+  const furniture = [
+    { id: "house", x: 70, y: 120, w: 130, h: 110, color: "#e0a13d", emoji: "🏠", label: "집 외관 코너", onInteract: () => setTab("house") },
+    { id: "furni", x: 260, y: 120, w: 130, h: 110, color: "#7bbf8f", emoji: "🛋", label: "가구 코너", onInteract: () => setTab("furni") },
+    { id: "vehicle", x: 450, y: 120, w: 130, h: 110, color: "#5b8def", emoji: "🚲", label: "교통수단 코너", onInteract: () => setTab("vehicle") },
+    { id: "staff", x: 270, y: 300, w: 50, h: 82, npc: true, facing: 1, label: "직원 도희", toast: "필요한 거 있으면 말씀하세요! 🛒" },
+  ];
+  const equippedId = (kind) => (kind === "house" ? (houseSkin && houseSkin.id) : kind === "vehicle" ? (vehicle && vehicle.id) : null);
+  return (
+    <RoomView title="이케아" icon="🛒" sub="집 외관 · 가구 · 교통수단을 사고 바로 적용해요" bg="#eef2f6" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!tab} headerBg="#0051ba" bubble={bubble}>
+      {tab && (
+        <RoomModal title={`🛒 이케아 · ${IKEA_TABS[tab]}`} onClose={() => setTab(null)} maxW={430}>
+          <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
+            {Object.keys(IKEA_TABS).map((k) => (
+              <PxButton key={k} tone={tab === k ? "good" : "wood"} onClick={() => setTab(k)} style={{ flex: 1, fontSize: 11, padding: "6px 4px" }}>{IKEA_TABS[k]}</PxButton>
+            ))}
+          </div>
+          <div style={{ fontSize: 12, marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: C.inkSoft }}>
+              {tab === "house" ? "적용하면 내 집 분위기가 바뀌어요" : tab === "furni" ? "구매하면 내 집에 배치돼요" : "타면 마을에서 더 빨리 이동해요"}
+            </span>
+            <GemBadge amount={gems} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, maxHeight: 260, overflow: "auto" }}>
+            {IKEA_ITEMS[tab].map((it) => {
+              const has = !!owned[it.id];
+              const on = tab === "furni" ? myFurni.includes(it.id) : equippedId(tab) === it.id;
+              return (
+                <div key={it.id} style={{ background: on ? C.gem : C.white, border: `3px solid ${C.ink}`, padding: 8, textAlign: "center" }}>
+                  {tab === "house" ? (
+                    <div style={{ height: 40, border: `2px solid ${C.ink}`, background: it.wall, position: "relative" }}>
+                      <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: 14, background: it.roof }} />
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 30, lineHeight: 1.2 }}>{it.emoji}</div>
+                  )}
+                  <div style={{ fontSize: 11, marginTop: 4 }}>{it.name}</div>
+                  {tab === "vehicle" && <div style={{ fontSize: 9, color: C.inkSoft }}>속도 x{it.speed}</div>}
+                  <PxButton tone={on ? "ink" : has ? "good" : gems < it.price ? "wood" : "gold"} disabled={!has && gems < it.price}
+                    onClick={() => onBuy(tab, it)} style={{ marginTop: 5, fontSize: 10, padding: "5px 7px", width: "100%" }}>
+                    {on ? (tab === "furni" ? "배치됨 ✓" : "사용중 ✓") : has ? (tab === "furni" ? "배치하기" : "적용하기") : gems < it.price ? `⭐${it.price} 부족` : `⭐${it.price} 구매`}
+                  </PxButton>
+                </div>
+              );
+            })}
+          </div>
+        </RoomModal>
+      )}
+    </RoomView>
+  );
+}
 /* ======================= 흡연의 방(플레이버) ======================= */
 const SMOKE_PEOPLE = ["정인", "호중", "희정", "유리", "의준"];
 const SMOKE_LINES = ["오늘 왜이렇게 춥냐 ㅋㅋ", "커피 한잔 하실분~", "아 마감 언제끝나ㅠ", "날씨 좋다 그치", "점심 뭐먹지", "주말에 뭐함?", "일 너무 많아 진짜", "ㅋㅋㅋㅋㅋㅋ", "맞아맞아", "와 대박", "나 이제 끊을거야 (3일째)", "치앙마이 가고싶다", "한 대 피우고 가자", "오늘도 화이팅~"];
@@ -3585,6 +3677,21 @@ export default function App() {
   ]);
   const [worries, setWorries] = useState([]);
   const [rented, setRented] = useState({});
+  const [ikeaOwned, setIkeaOwned] = useState({});
+  const [houseSkin, setHouseSkin] = useState(null);
+  const [vehicle, setVehicle] = useState(null);
+  const [myFurni, setMyFurni] = useState([]);
+  const buyIkea = (kind, item) => {
+    const has = !!ikeaOwned[item.id];
+    if (!has) {
+      if (gems < item.price) return;
+      setGems((g) => g - item.price);
+      setIkeaOwned((v) => ({ ...v, [item.id]: true }));
+    }
+    if (kind === "house") setHouseSkin((h) => (h && h.id === item.id ? null : item));
+    else if (kind === "vehicle") setVehicle((v) => (v && v.id === item.id ? null : item));
+    else setMyFurni((v) => (v.includes(item.id) ? v.filter((x) => x !== item.id) : [...v, item.id]));
+  };
   const [swimScores, setSwimScores] = useState([{ nick: "유리", time: 8.2 }, { nick: "정인", time: 9.1 }, { nick: "호중", time: 9.8 }, { nick: "의준", time: 10.4 }]);
   const [boxScores, setBoxScores] = useState([{ nick: "창민", count: 18294719 }, { nick: "정인", count: 129572 }]);
   const [townRegion, setTownRegion] = useState("서울");
@@ -3763,10 +3870,10 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} bubble={bubble} townRain={townRain} cmRain={cmRain} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} bubble={bubble} townRain={townRain} cmRain={cmRain} />}
         {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
-        {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && <HomeView house={houseMeta} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
+        {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && <HomeView house={houseMeta} skin={houseSkin} extras={myFurni} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
         {view === "thanks" && <ThanksView gems={gems} inventory={thanksInv} postits={postits} onBuy={(it) => { setGems((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={(p) => setPostits((v) => [...v, { ...p, id: Date.now() }])} onBack={backToWorld} bubble={bubble} />}
         {view === "heart" && <HeartView gems={gems} worries={worries} onPost={(text, cost, kind) => { setGems((g) => g - cost); setWorries((w) => [{ id: Date.now(), text, kind }, ...w]); }} onBack={backToWorld} bubble={bubble} />}
         {view === "listening" && <ListeningView onBack={backToWorld} gems={gems} onSpend={(n) => setGems((g) => g - n)} bubble={bubble} />}
@@ -3775,6 +3882,7 @@ export default function App() {
         {view === "pool" && <PoolView onBack={backToWorld} onReward={(n) => award(n)} scores={swimScores} onRecord={(nick, time) => setSwimScores((s) => [...s, { nick, time }])} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => award(4)} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
+        {view === "ikea" && <IkeaView gems={gems} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
         {view === "project" && <BossMapView onBack={backToWorld} onReward={(n) => award(n)} />}
         {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
         {view === "sandbag" && <SandbagView onBack={backToWorld} scores={boxScores} onEnd={(nick, count) => setBoxScores((s) => [...s, { nick, count }])} />}
