@@ -803,6 +803,12 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
         ch.on("broadcast", { event: "bell" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("bell", payload);
         });
+        ch.on("broadcast", { event: "qchat" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("qchat", payload);
+        });
+        ch.on("broadcast", { event: "qparty" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("qparty", payload);
+        });
         ch.on("broadcast", { event: "pwtry" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("pwtry", payload);
         });
@@ -3373,7 +3379,8 @@ const BOSS_MAPS_INIT = [
   },
 ];
 
-function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "" }) {
+function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend }) {
+  const [tMsg, setTMsg] = useState("");
   const [maps, setMaps] = useState(BOSS_MAPS_INIT);
   const [mode, setMode] = useState("easy");
   const [mapIdx, setMapIdx] = useState(0);
@@ -3595,7 +3602,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "" }
                     {isDone ? "✅" : locked ? "🔒" : nd.icon}
                   </div>
                   <div style={{ marginTop: 5, fontSize: 11, fontWeight: "bold", color: nd.isBoss ? C.white : C.ink, background: nd.isBoss ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.92)", borderRadius: 12, padding: "2px 9px", whiteSpace: "nowrap", boxShadow: "0 2px 3px rgba(0,0,0,0.18)" }}>
-                    {nd.level ? (nd.level === "초보자" ? "🌱" : "🔥") : ""}{nd.title}
+                    {accepted[nd.id] ? (accepted[nd.id].started ? "▶ " : "🤝 ") : ""}{nd.level ? (nd.level === "초보자" ? "🌱" : "🔥") : ""}{nd.title}
                   </div>
                 </div>
               );
@@ -3752,6 +3759,43 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "" }
               <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: 12, fontSize: 13, lineHeight: 1.6 }}>🎯 {sel.task}</div>
               <div style={{ fontSize: 12, textAlign: "center", margin: "10px 0", color: "#a86e13", fontWeight: "bold" }}>보상 ⭐ {sel.gem}</div>
               {done[sel.id] && typeof done[sel.id] === "string" && <div style={{ fontSize: 11, textAlign: "center", color: C.good, marginBottom: 8 }}>✅ {done[sel.id]}님이 완료했어요</div>}
+              {map.mode === "hard" && !done[sel.id] && !sel.isBoss && (
+                <div style={{ background: "#fff6e8", border: `2px solid ${C.ink}`, borderRadius: 10, padding: 11, marginBottom: 10 }}>
+                  {!accepted[sel.id] ? (
+                    <PxButton tone="gold" onClick={() => onAccept && onAccept(sel.id, sel.title)} style={{ width: "100%", padding: 11, fontSize: 13 }}>🤝 퀘스트 수락하기</PxButton>
+                  ) : (
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>👥 파티 ({(accepted[sel.id].party || []).join(", ") || myName})</div>
+                      {!accepted[sel.id].started ? (
+                        <div>
+                          <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 6 }}>파티원을 모집한 뒤 시작하세요</div>
+                          <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                            <PxButton tone="wood" onClick={() => onShout && onShout(`📢 「${sel.title}」 퀘스트 같이 하실 분!`)} style={{ flex: 1, fontSize: 11, padding: 8 }}>📢 확성기 모집</PxButton>
+                            <PxButton tone="wood" onClick={() => onBoard && onBoard(sel.title)} style={{ flex: 1, fontSize: 11, padding: 8 }}>📋 게시판 모집</PxButton>
+                          </div>
+                          <PxButton tone="good" onClick={() => onStart && onStart(sel.id)} style={{ width: "100%", padding: 10, fontSize: 13 }}>▶ 퀘스트 시작</PxButton>
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: "bold", margin: "4px 0 5px" }}>💬 퀘스트 대화방</div>
+                          <div style={{ height: 110, overflow: "auto", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: 7, display: "flex", flexDirection: "column", gap: 4 }}>
+                            {(threads[sel.id] || []).length === 0 && <div style={{ fontSize: 11, color: C.inkSoft }}>대화를 시작해보세요</div>}
+                            {(threads[sel.id] || []).map((m, i) => (
+                              <div key={i} style={{ fontSize: 12 }}><b style={{ color: "#5b8def" }}>{m.who}</b> {m.text}</div>
+                            ))}
+                          </div>
+                          <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
+                            <input value={tMsg} onChange={(e) => setTMsg(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} placeholder="메시지" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
+                            <PxButton tone="blue" onClick={() => { if (tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} style={{ fontSize: 11, padding: "7px 10px" }}>➤</PxButton>
+                          </div>
+                          <div style={{ fontSize: 12, fontWeight: "bold", margin: "10px 0 5px" }}>📓 퀘스트 일지</div>
+                          <textarea value={notes[sel.id] || ""} onChange={(e) => onNote && onNote(sel.id, e.target.value)} placeholder="진행 상황·메모를 남겨두세요" style={{ width: "100%", boxSizing: "border-box", height: 70, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, resize: "none", background: C.white }} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               {sel.level === "초보자" && sel.field && onGoSchool && (
                 <PxButton tone="blue" onClick={() => onGoSchool(sel.field)} style={{ width: "100%", padding: 10, fontSize: 13, marginBottom: 10 }}>
                   {sel.field === "naverschool" ? "📗 네이버스쿨로 가서 배우기 →" : "🎬 영상스쿨로 가서 배우기 →"}
@@ -4274,7 +4318,7 @@ function saveStats(v) {
 }
 
 /* ======================= 도움말 (사용설명서) ======================= */
-const HELP_CATS = ["🌱 시작", "🏢 업무", "🏛 생활", "🎮 놀이", "🏠 집", "👥 소통", "⭐ 젬·뱃지", "❓ FAQ"];
+const HELP_CATS = ["🌱 시작", "🏢 퀘스트", "🏛 생활", "🎮 놀이", "🏠 집", "👥 소통", "⭐ 젬·뱃지", "❓ FAQ"];
 const HELP_DATA = {
   "🌱 시작": [
     { icon: "🧑", title: "이름 정하기", body: "처음 들어오면 이름을 정해요. 이름이 정인·창민·도희·유리·민지·희정·의준·호종 중 하나면 그 집이 내 집이 됩니다. 상단 🧑 버튼으로 언제든 변경 가능해요." },
@@ -4282,12 +4326,10 @@ const HELP_DATA = {
     { icon: "🎮", title: "조작법", body: "W A S D 또는 방향키로 이동 · Space로 상호작용 · 스쿨/보스맵에서는 E로 퀘스트 열기 · 다른 사람 캐릭터를 클릭하면 선물 주기." },
     { icon: "🗺", title: "길 찾기", body: "우하단 미니맵을 클릭하면 전체 지도가 열려요. 구역과 건물 이름이 모두 표시됩니다." },
   ],
-  "🏢 업무": [
-    { icon: "🛠", title: "초보자", body: "담당자별 업무 리스트. 반복/신규 구분, 진행 체크, 담당자와 1:1 채팅, 오늘 총 업무 시간 기록." },
-    { icon: "🗺", title: "보스맵 도전기", body: "프로젝트를 게임처럼. 이지모드(어플·속옷·양말)와 하드모드(사고력 훈련). 아래에서 위로 올라가며 스테이지를 클리어하고 꼭대기 보스를 잡아요.", go: "project", goLabel: "보스맵 가기" },
-    { icon: "📗", title: "네이버스쿨", body: "개념정리 → 블로그 → 카페 → 지식인 순서로 배우는 학습 맵. 집(퀘스트) 앞에서 E.", go: "naverschool", goLabel: "네이버스쿨 가기" },
-    { icon: "🎬", title: "영상스쿨", body: "코어개념 → 레퍼런스 → 원고작성 → 영상제작. 프롬프트 복사 버튼과 어시스턴트가 있어요.", go: "videoschool", goLabel: "영상스쿨 가기" },
-    { icon: "🥊", title: "샌드백", body: "마우스/키보드로 타격. 상대 이름을 붙인 샌드백도 만들 수 있고 랭킹에 집계돼요.", go: "sandbag", goLabel: "샌드백 가기" },
+  "🏢 퀘스트": [
+    { icon: "🗺", title: "보스맵 도전기 (숙련자용)", body: "프로젝트를 게임처럼. 이지모드(어플·속옷·양말)와 하드모드(사고력 훈련). 아래에서 위로 올라가며 스테이지를 클리어하고 꼭대기 보스를 잡아요.", go: "project", goLabel: "보스맵 가기" },
+    { icon: "📗", title: "네이버스쿨 (초보자용)", body: "개념정리 → 블로그 → 카페 → 지식인 순서로 배우는 학습 맵. 집(퀘스트) 앞에서 E.", go: "naverschool", goLabel: "네이버스쿨 가기" },
+    { icon: "🎬", title: "영상스쿨 (초보자용)", body: "코어개념 → 레퍼런스 → 원고작성 → 영상제작. 프롬프트 복사 버튼과 어시스턴트가 있어요.", go: "videoschool", goLabel: "영상스쿨 가기" },
   ],
   "🏛 생활": [
     { icon: "🏛", title: "주민센터", body: "회의실 예약, 음료 코너(HP·MP +20), 공지사항과 캘린더.", go: "center", goLabel: "주민센터 가기" },
@@ -4298,6 +4340,7 @@ const HELP_DATA = {
     { icon: "📋", title: "게시판", body: "공지·이벤트 라벨로 구분된 마을 소식과 캘린더.", go: "board", goLabel: "게시판 가기" },
   ],
   "🎮 놀이": [
+    { icon: "🥊", title: "샌드백", body: "마우스/키보드로 타격. 상대 이름을 붙인 샌드백도 만들 수 있고 랭킹에 집계돼요.", go: "sandbag", goLabel: "샌드백 가기" },
     { icon: "🎮", title: "미니게임 방", body: "반응속도 · 가위바위보 · 숫자순서 · 라이어게임 · 대회 코너. 라이어는 방을 만들고 주민을 초대해요.", go: "minigame", goLabel: "미니게임 가기" },
     { icon: "🏊", title: "수영장", body: "스페이스바 연타로 레인 경주. 1등이면 젬을 받고 기록이 랭킹에 남아요.", go: "pool", goLabel: "수영장 가기" },
     { icon: "🏋️", title: "헬스장", body: "운동하고 젬 획득. 스트레칭 안내도 있어요.", go: "gym", goLabel: "헬스장 가기" },
@@ -4310,7 +4353,7 @@ const HELP_DATA = {
   "🏠 집": [
     { icon: "🔒", title: "비밀번호", body: "내 집 첫 방문 때 비밀번호를 설정해요(최초 1회). 이후에는 방문할 때마다 현관에서 비밀번호를 입력해 들어갑니다. 비밀번호를 아는 사람은 누구나 들어올 수 있어요." },
     { icon: "🔔", title: "초인종", body: "누르면 딩동 소리와 함께 집주인에게 알림이 갑니다. 주인은 문 열어주기 / 거절하기를 선택할 수 있어요." },
-    { icon: "📮", title: "우체통", body: "방명록·편지를 남기고 선물도 함께 보내요(택배비 ⭐0.3). 내 집 우체통에서는 받은 편지함을 확인할 수 있어요." },
+    { icon: "📮", title: "우체통", body: "방명록·편지를 남기고 선물도 함께 보내요(택배비 ⭐0.3). 보낼 선물은 🙏 감사의 방에서 미리 구매해두면 목록에 나와요. 내 집 우체통에서는 받은 편지함을 확인할 수 있어요.", go: "thanks", goLabel: "감사의 방 가기" },
     { icon: "🛋", title: "집 꾸미기", body: "이케아에서 산 외관과 가구가 내 집에 반영되고, 마을에서도 그 집이 바뀌어 보여요." },
   ],
   "👥 소통": [
@@ -4319,7 +4362,7 @@ const HELP_DATA = {
     { icon: "💃", title: "춤", body: "우상단 💃 버튼으로 동작 선택. 다른 사람에게도 춤추는 모습이 보여요." },
     { icon: "🎁", title: "선물 주기", body: "마을에서 다른 사람 캐릭터를 클릭하면 선물과 한마디를 바로 보낼 수 있어요." },
     { icon: "📞", title: "DM · 페이스톡", body: "메뉴(☰) → 마을주민들에서 1:1 채팅과 영상통화를 할 수 있어요." },
-    { icon: "🛂", title: "치앙마이 가는 법", body: "강 건너 다리 앞 검문소에서 통행코드를 입력해야 건널 수 있어요." },
+    { icon: "🛂", title: "치앙마이 가는 법", body: "강 건너 다리 앞 🛂 검문소에서 통행코드를 입력해야 건널 수 있어요. 통행코드는 📋 게시판 공지나 마을 주민에게 물어보면 알 수 있어요. (확성기로 물어보는 것도 방법!)", go: "board", goLabel: "게시판 가기" },
   ],
   "⭐ 젬·뱃지": [
     { icon: "⭐", title: "젬 얻는 법", body: "퀘스트·보스 클리어, 미니게임 승리, 헬스장 운동, 점심술사 인증샷, 웰컴 쿠폰." },
@@ -4903,6 +4946,8 @@ export default function App() {
     if (d.stats) { setStats(d.stats); saveJSON("echotown_stats", d.stats); }
     if (d.housePw) { setHousePw(d.housePw); saveJSON("echotown_pw", d.housePw); }
     if (d.couponDone) setCouponDone(true);
+    if (d.qNotes) setQNotes(d.qNotes);
+    if (d.qAccept) setQAccept(d.qAccept);
     return true;
   };
   const confirmName = (nm) => {
@@ -4984,6 +5029,9 @@ export default function App() {
   const [invOpen, setInvOpen] = useState(false);
   const [badgeOpen, setBadgeOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [qAccept, setQAccept] = useState({});
+  const [qNotes, setQNotes] = useState({});
+  const [qThreads, setQThreads] = useState({});
   const [housePw, setHousePw] = useState(() => loadJSON("echotown_pw", null));
   const [mail, setMail] = useState(() => loadJSON("echotown_mail", []));
   const [unlocked, setUnlocked] = useState({});
@@ -5051,8 +5099,17 @@ export default function App() {
   }, [sayBubble, myName, netSendChat, bump]);
   useEffect(() => {
     onChatRef.net = (kind, p) => {
-      if (!p || p.to !== (myName || "")) return;
+      if (!p) return;
+      if ((kind === "qchat" || kind === "qparty") ) { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
+      if (kind === "qchat") {
+        setQThreads((t) => ({ ...t, [p.qid]: [...(t[p.qid] || []), { who: p.who, text: p.text }] }));
+        return;
+      }
+      if (kind === "qparty") {
+        setQAccept((a) => (a[p.qid] ? { ...a, [p.qid]: { ...a[p.qid], party: Array.from(new Set([...(a[p.qid].party || []), p.who])) } } : a));
+        return;
+      }
       if (kind === "pwtry") {
         const ok = !!housePw && p.pw === housePw;
         if (netSendEvent) netSendEvent("door", { to: p.from, from: myName, ok });
@@ -5096,10 +5153,10 @@ export default function App() {
     if (!myName) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      dbSaveProfile(myName, { gems, lifetime, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone });
+      dbSaveProfile(myName, { gems, lifetime, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept });
     }, 2000);
     return () => clearTimeout(saveTimer.current);
-  }, [myName, gems, lifetime, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone]);
+  }, [myName, gems, lifetime, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept]);
 
   const requestWorldSong = (title) => {
     if (gems < 5) return;
@@ -5244,7 +5301,14 @@ export default function App() {
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => { award(4); bump("gym"); }} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
         {view === "ikea" && <IkeaView gems={gems} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
-        {view === "project" && <BossMapView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss) => bump(isBoss ? "boss" : "quest")} />}
+        {view === "project" && <BossMapView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss) => bump(isBoss ? "boss" : "quest")}
+          accepted={qAccept} notes={qNotes} threads={qThreads}
+          onAccept={(qid, title) => { setQAccept((a) => ({ ...a, [qid]: { party: [myName || "나"], started: false, title } })); if (netSendEvent) netSendEvent("qparty", { qid, who: myName || "나" }); showNotice("🤝 퀘스트를 수락했어요"); }}
+          onStart={(qid) => { setQAccept((a) => ({ ...a, [qid]: { ...a[qid], started: true } })); showNotice("▶ 퀘스트를 시작했어요!"); }}
+          onShout={(msg) => { postChat(msg, true); showNotice("📢 마을에 알렸어요"); }}
+          onBoard={(title) => { dbAddNotice("이벤트", `[파티모집] ${title}`, `${myName || "익명"}님이 「${title}」 퀘스트 파티원을 찾고 있어요!`); showNotice("📋 게시판에 모집글을 올렸어요"); }}
+          onNote={(qid, v) => setQNotes((n) => ({ ...n, [qid]: v }))}
+          onThreadSend={(qid, text) => { setQThreads((t) => ({ ...t, [qid]: [...(t[qid] || []), { who: myName || "나", text }] })); if (netSendEvent) netSendEvent("qchat", { qid, who: myName || "나", text }); }} />}
         {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
         {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count, target) => { setBoxScores((s) => [...s, { nick, count, target }]); bump("punch", count); dbAddRank("sandbag", nick, count, target).then(reloadRanks); }} />}
         {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
