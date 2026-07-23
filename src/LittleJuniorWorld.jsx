@@ -2,6 +2,14 @@ import React, { useEffect, useRef, useState, useMemo, useCallback, createContext
 
 const NetContext = createContext({ others: {}, view: "world", roomPosRef: null });
 
+/* 입력창(input/textarea/select)에 타이핑 중이면 게임 키 조작을 무시 */
+function isTyping(e) {
+  const t = e && e.target;
+  if (!t) return false;
+  const tag = (t.tagName || "").toUpperCase();
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable === true;
+}
+
 /* =============================================================================
    작은 주니어 네이버 : 오픈월드 에디션 (프로토타입)
    - 스타듀밸리풍 16비트 도트. 카메라가 캐릭터를 따라 움직이는 마을.
@@ -393,6 +401,7 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
   useEffect(() => {
     const norm = (k) => (k.length === 1 ? k.toLowerCase() : k);
     const down = (e) => {
+      if (isTyping(e)) return;
       const raw = e.key.toLowerCase();
       if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d"].includes(raw)) e.preventDefault();
       if (pausedRef.current) return;
@@ -836,6 +845,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
   useEffect(() => {
     const norm = (k) => (k.length === 1 ? k.toLowerCase() : k);
     const down = (e) => {
+      if (isTyping(e)) return;
       const raw = e.key.toLowerCase();
       if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d"].includes(raw)) e.preventDefault();
       if (hintRef.current) { hintRef.current = false; setHint(false); }
@@ -2213,6 +2223,7 @@ function SwimRace({ onClose, onReward, scores, onRecord, myName = "" }) {
   };
   useEffect(() => {
     const onKey = (e) => {
+      if (isTyping(e)) return;
       if (e.code === "Space" || e.key === " ") {
         e.preventDefault();
         if (phase === "ready" || phase === "done") { startRace(); return; }
@@ -2625,7 +2636,7 @@ function SandbagView({ onBack, scores, onEnd, myName = "" }) {
   const submit = () => { onEnd(nick.trim() || myName || "익명", count, target); setCount(0); setNick(myName); setEnding(false); };
   useEffect(() => {
     if (mode !== "keyboard") return;
-    const onKey = (e) => { if ((e.code === "Space" || e.key === " ") && !ending) { e.preventDefault(); hit(); } };
+    const onKey = (e) => { if (isTyping(e)) return; if ((e.code === "Space" || e.key === " ") && !ending) { e.preventDefault(); hit(); } };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [mode, ending]);
@@ -2848,6 +2859,7 @@ function SchoolView({ school, onBack }) {
 
   useEffect(() => {
     const down = (e) => {
+      if (isTyping(e)) return;
       const raw = e.key.toLowerCase();
       if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d", "e"].includes(raw)) e.preventDefault();
       if (openRef.current) return;
@@ -3125,6 +3137,7 @@ function BossMapView({ onBack, onReward, onGoSchool }) {
   useEffect(() => { openRef.current = !!sel; }, [sel]);
   useEffect(() => {
     const down = (e) => {
+      if (isTyping(e)) return;
       const k = e.key.toLowerCase();
       if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d", "e"].includes(k)) e.preventDefault();
       if (openRef.current) return;
@@ -4307,6 +4320,11 @@ export default function App() {
   const confirmName = (nm) => {
     const t = (nm || "").trim(); if (!t) return;
     setMyName(t); setNameOpen(false);
+    setOutfit((o) => (o.top || o.bottom || o.shoes) ? o : {
+      top: CLOTHES.top[Math.floor(Math.random() * CLOTHES.top.length)],
+      bottom: CLOTHES.bottom[Math.floor(Math.random() * CLOTHES.bottom.length)],
+      shoes: CLOTHES.shoes[Math.floor(Math.random() * CLOTHES.shoes.length)],
+    });
     if (!couponDone) { setCouponDone(true); setGems((g) => g + 100); setLifetime((l) => l + 100); setCouponOpen(true); }
   };
   const isMyHouse = (n) => !!(n && myName && n.replace(/이네$|네$/, "") === myName);
