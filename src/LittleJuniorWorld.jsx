@@ -2923,7 +2923,7 @@ function StatCard({ label, value, accent, icon }) {
 }
 
 /* ===================== 항상 떠있는 UI ===================== */
-function ChatDock({ messages, shout, onToggleShout, onSend }) {
+function ChatDock({ messages, shout, onToggleShout, onSend, gems = 0 })
   const [text, setText] = useState("");
   const send = () => { if (!text.trim()) return; onSend(text, shout); setText(""); };
   return (
@@ -2939,9 +2939,11 @@ function ChatDock({ messages, shout, onToggleShout, onSend }) {
         </div>
       )}
       <div style={{ display: "flex", gap: 4, background: C.parch, border: `3px solid ${C.ink}`, padding: 4 }}>
-        <button onClick={onToggleShout} title="확성기" style={{ background: shout ? C.gem : C.white, border: `2px solid ${C.ink}`, cursor: "pointer", fontSize: 15, width: 32, flexShrink: 0 }}>📢</button>
+        <button onClick={onToggleShout} disabled={!shout && gems < 1} title={shout ? "확성기 ON" : "확성기 켜기 (⭐1)"} style={{ position: "relative", background: shout ? C.gem : C.white, border: `2px solid ${C.ink}`, cursor: !shout && gems < 1 ? "not-allowed" : "pointer", opacity: !shout && gems < 1 ? 0.5 : 1, fontSize: 15, width: 34, flexShrink: 0 }}>
+          📢<span style={{ position: "absolute", right: 1, bottom: 0, fontSize: 8, color: C.ink, background: "#ffe680", border: `1px solid ${C.ink}`, padding: "0 1px", lineHeight: 1.2 }}>{shout ? "ON" : "1"}</span>
+        </button>
         <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }}
-          placeholder={shout ? "확성기 ON · 크게 외치기" : "채팅 입력 후 Enter"} style={{ flex: 1, minWidth: 0, border: `2px solid ${C.ink}`, padding: "4px 6px", fontSize: 12, background: C.white, fontFamily: "'DotGothic16', monospace" }} />
+          placeholder={shout ? "📢 확성기 ON · 크게 외치기" : gems < 1 ? "채팅 입력 (확성기는 ⭐1 필요)" : "채팅 입력 후 Enter"} style={{ flex: 1, minWidth: 0, border: `2px solid ${C.ink}`, padding: "4px 6px", fontSize: 12, background: C.white, fontFamily: "'DotGothic16', monospace" }} />
         <button onClick={send} style={{ background: C.good, color: C.white, border: `2px solid ${C.ink}`, cursor: "pointer", fontSize: 12, padding: "0 8px", flexShrink: 0 }}>▶</button>
       </div>
     </div>
@@ -3335,6 +3337,7 @@ export default function App() {
     const t = text.trim(); if (!t) return;
     setChat((c) => [...c, { id: Date.now(), nick: "나", text: t, shout: isShout }].slice(-4));
     sayBubble(t);
+    if (isShout) setShout(false);
   }, [sayBubble]);
   const requestWorldSong = (title) => {
     if (gems < 5) return;
@@ -3475,7 +3478,13 @@ export default function App() {
       </div>
 
       {/* 항상 떠있는 UI: 채팅 / 메뉴 / 피드백 */}
-      <ChatDock messages={chat} shout={shout} onToggleShout={() => setShout((s) => !s)} onSend={postChat} />
+      <ChatDock messages={chat} shout={shout} gems={gems} onSend={postChat}
+        onToggleShout={() => {
+          if (shout) { setShout(false); return; }
+          if (gems < 1) return;
+          setGems((g) => g - 1);
+          setShout(true);
+        }} />
       <MenuButton onClick={() => setMenuOpen(true)} />
       <FeedbackButton />
       {menuOpen && <ProfileMenu onClose={() => setMenuOpen(false)} />}
