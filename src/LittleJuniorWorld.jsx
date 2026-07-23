@@ -459,7 +459,7 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
               return (
                 <div key={f.id} style={{ position: "absolute", left: f.x, top: f.y, width: f.w, height: f.h, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
                   <div style={{ filter: active ? `drop-shadow(0 0 4px ${C.gem})` : "none" }}>
-                    <Hero facing={f.facing || 1} moving={false} size={f.spriteSize || 40} />
+                    <Hero facing={f.facing || 1} moving={false} size={f.spriteSize || 40} outfit={f.outfit} />
                   </div>
                   <span style={{ fontSize: 10, color: C.ink, marginTop: 2, fontWeight: "bold", background: C.parch, border: `2px solid ${C.ink}`, padding: "0 5px", whiteSpace: "nowrap" }}>{f.label}</span>
                 </div>
@@ -673,7 +673,7 @@ function GuardGate({ onPass, onClose }) {
     </div>
   );
 }
-function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null }) {
+function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false }) {
   const [songOpen, setSongOpen] = useState(false);
   const vehicleRef = useRef(vehicle);
   vehicleRef.current = vehicle;
@@ -799,7 +799,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
       case "bank": return <PixelBank size={150} />;
       case "board": return <Board size={120} />;
       case "big": return <BigBuilding color={o.meta.color} colorDk={o.meta.colorDk} size={150} />;
-      case "house": return <PixelHouse roof={o.meta.roof} roofDk={o.meta.roofDk} wall={o.meta.wall} size={110} />;
+      case "house": { const mine = isMyHouse(o.meta.name); const sk = mine && houseSkin; return <PixelHouse roof={sk ? sk.roof : o.meta.roof} roofDk={sk ? sk.roof : o.meta.roofDk} wall={sk ? sk.wall : o.meta.wall} size={110} />; }
       case "small": return <SmallHut tint={o.tint} size={100} />;
       case "facility": return <Facility color={o.color} colorDk={o.colorDk} icon={o.icon} size={160} />;
       case "sign": return <Signpost size={100} />;
@@ -1640,11 +1640,11 @@ const LIAR_LINES = [
 ];
 const LIAR_CHAT = ["ㅋㅋㅋㅋ", "아 뭔가 수상한데", "지금 눈 굴렸어 방금", "나 진짜 아님", "얘 말투 이상해", "빨리빨리~", "표정 관리 좀", "오 방금 티났다", "음~ 글쎄요", "저 사람 각인데?"];
 
-function LiarGame({ onClose, onReward }) {
+function LiarGame({ onClose, onReward, myName = "" }) {
   const [phase, setPhase] = useState("lobby");
   const [cat, setCat] = useState("랜덤");
   const [size, setSize] = useState(5);
-  const [players, setPlayers] = useState([{ name: "나", avatar: "🧑‍💻" }]);
+  const [players, setPlayers] = useState([{ name: myName || "나", avatar: "🧑‍💻" }]);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [invited, setInvited] = useState({});
   const [toast, setToast] = useState(null);
@@ -1803,7 +1803,7 @@ function LiarGame({ onClose, onReward }) {
               <PxButton key={n} tone={size === n ? "gold" : "wood"} onClick={() => setSize(n)} style={{ fontSize: 12, padding: "6px 12px" }}>{n}명</PxButton>
             ))}
           </div>
-          <PxButton tone="good" onClick={() => { setPlayers([{ name: "나", avatar: "🧑‍💻" }]); setInvited({}); setPhase("wait"); }} style={{ width: "100%", padding: 11, fontSize: 14 }}>🚪 방 만들기</PxButton>
+          <PxButton tone="good" onClick={() => { setPlayers([{ name: myName || "나", avatar: "🧑‍💻" }]); setInvited({}); setPhase("wait"); }} style={{ width: "100%", padding: 11, fontSize: 14 }}>🚪 방 만들기</PxButton>
         </div>
       )}
 
@@ -1928,7 +1928,7 @@ function LiarGame({ onClose, onReward }) {
     </RoomModal>
   );
 }
-function MiniGameRoom({ onBack, onReward, bubble }) {
+function MiniGameRoom({ onBack, onReward, bubble, myName = "" }) {
   const [game, setGame] = useState(null); // 'reaction' | 'rps' | 'sequence'
   const [contest, setContest] = useState(false);
   const furniture = [
@@ -1943,7 +1943,7 @@ function MiniGameRoom({ onBack, onReward, bubble }) {
       {game === "reaction" && <ReactionGame onClose={() => setGame(null)} onReward={onReward} />}
       {game === "rps" && <RpsGame onClose={() => setGame(null)} onReward={onReward} />}
       {game === "sequence" && <SequenceGame onClose={() => setGame(null)} onReward={onReward} />}
-      {game === "liar" && <LiarGame onClose={() => setGame(null)} onReward={onReward} />}
+      {game === "liar" && <LiarGame onClose={() => setGame(null)} onReward={onReward} myName={myName} />}
       {contest && <ContestModal onClose={() => setContest(false)} onPlay={(g) => { setContest(false); setGame(g); }} />}
     </RoomView>
   );
@@ -2037,13 +2037,13 @@ function SequenceGame({ onClose, onReward }) {
 }
 
 /* ======================= 수영장 / 헬스장 ======================= */
-function SwimRace({ onClose, onReward, scores, onRecord }) {
-  const LANES = ["나", "정인", "호중", "유리"];
+function SwimRace({ onClose, onReward, scores, onRecord, myName = "" }) {
+  const LANES = [myName || "나", "정인", "호중", "유리"];
   const [prog, setProg] = useState([0, 0, 0, 0]);
   const [phase, setPhase] = useState("ready");
   const [count, setCount] = useState(3);
   const [result, setResult] = useState(null);
-  const [nick, setNick] = useState("");
+  const [nick, setNick] = useState(myName);
   const [saved, setSaved] = useState(false);
   const progRef = useRef([0, 0, 0, 0]);
   const iv = useRef(null);
@@ -2093,7 +2093,7 @@ function SwimRace({ onClose, onReward, scores, onRecord }) {
   useEffect(() => () => { if (iv.current) clearInterval(iv.current); }, []);
 
   const ranked = [...scores].sort((a, b) => a.time - b.time).slice(0, 6);
-  const saveRecord = () => { if (!result) return; onRecord(nick.trim() || "나", result.time); setSaved(true); };
+  const saveRecord = () => { if (!result) return; onRecord(nick.trim() || myName || "나", result.time); setSaved(true); };
 
   return (
     <RoomModal title="🏊 수영 대결" onClose={onClose} maxW={520}>
@@ -2165,7 +2165,7 @@ function SwimContest({ onClose }) {
   );
 }
 
-function PoolView({ onBack, onReward, scores, onRecord, bubble }) {
+function PoolView({ onBack, onReward, scores, onRecord, bubble, myName = "" }) {
   const [modal, setModal] = useState(null);
   const furniture = [
     { id: "lane", x: 130, y: 150, w: 380, h: 110, color: "#3aa0c9", emoji: "🏊", label: "수영 레인 (대결)", onInteract: () => setModal("race") },
@@ -2176,7 +2176,7 @@ function PoolView({ onBack, onReward, scores, onRecord, bubble }) {
   ];
   return (
     <RoomView title="수영장" icon="🏊" sub="수영 레인에서 대결! · 📋 대회 안내" bg="#bfe6f2" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!modal} headerBg="#4bb4d8" bubble={bubble}>
-      {modal === "race" && <SwimRace onClose={() => setModal(null)} onReward={onReward} scores={scores} onRecord={onRecord} />}
+      {modal === "race" && <SwimRace onClose={() => setModal(null)} onReward={onReward} scores={scores} onRecord={onRecord} myName={myName} />}
       {modal === "contest" && <SwimContest onClose={() => setModal(null)} />}
     </RoomView>
   );
@@ -2476,15 +2476,15 @@ function playPunch() {
   } catch (e) {}
 }
 
-function SandbagView({ onBack, scores, onEnd }) {
+function SandbagView({ onBack, scores, onEnd, myName = "" }) {
   const [count, setCount] = useState(0);
   const [mode, setMode] = useState("mouse");
   const [fx, setFx] = useState(0);
   const [ending, setEnding] = useState(false);
-  const [nick, setNick] = useState("");
+  function SandbagView({ onBack, scores, onEnd, myName = "" }) {
   const hit = () => { setCount((c) => c + 1); setFx(Date.now()); playPunch(); };
   const finish = () => { if (count <= 0) { onBack(); return; } setEnding(true); };
-  const submit = () => { onEnd(nick.trim() || "익명", count); setCount(0); setNick(""); setEnding(false); };
+  const submit = () => { onEnd(nick.trim() || myName || "익명", count); setCount(0); setNick(myName); setEnding(false); };
   useEffect(() => {
     if (mode !== "keyboard") return;
     const onKey = (e) => { if ((e.code === "Space" || e.key === " ") && !ending) { e.preventDefault(); hit(); } };
@@ -2965,7 +2965,7 @@ function IkeaView({ gems, owned, houseSkin, vehicle, myFurni, onBuy, onBack, bub
     { id: "house", x: 70, y: 120, w: 130, h: 110, color: "#e0a13d", emoji: "🏠", label: "집 외관 코너", onInteract: () => setTab("house") },
     { id: "furni", x: 260, y: 120, w: 130, h: 110, color: "#7bbf8f", emoji: "🛋", label: "가구 코너", onInteract: () => setTab("furni") },
     { id: "vehicle", x: 450, y: 120, w: 130, h: 110, color: "#5b8def", emoji: "🚲", label: "교통수단 코너", onInteract: () => setTab("vehicle") },
-    { id: "staff", x: 270, y: 300, w: 50, h: 82, npc: true, facing: 1, label: "직원 도희", toast: "필요한 거 있으면 말씀하세요! 🛒" },
+    { id: "staff", x: 270, y: 300, w: 50, h: 82, npc: true, facing: 1, label: "직원 제임스", outfit: { top: { color: "#0051ba" }, bottom: { color: "#ffd93b" }, shoes: { color: "#ffffff" } }, toast: "안녕하세요, 제임스입니다! 필요한 거 있으면 말씀하세요 🛒" },
   ];
   const equippedId = (kind) => (kind === "house" ? (houseSkin && houseSkin.id) : kind === "vehicle" ? (vehicle && vehicle.id) : null);
   return (
@@ -3677,6 +3677,10 @@ export default function App() {
   ]);
   const [worries, setWorries] = useState([]);
   const [rented, setRented] = useState({});
+  const [myName, setMyName] = useState("");
+  const [nameOpen, setNameOpen] = useState(true);
+  const [nameInput, setNameInput] = useState("");
+  const isMyHouse = (n) => !!(n && myName && n.replace(/이네$|네$/, "") === myName);
   const [ikeaOwned, setIkeaOwned] = useState({});
   const [houseSkin, setHouseSkin] = useState(null);
   const [vehicle, setVehicle] = useState(null);
@@ -3754,10 +3758,10 @@ export default function App() {
   useEffect(() => () => clearTimeout(bubbleTimer.current), []);
   const postChat = useCallback((text, isShout) => {
     const t = text.trim(); if (!t) return;
-    setChat((c) => [...c, { id: Date.now(), nick: "나", text: t, shout: isShout }].slice(-4));
+    setChat((c) => [...c, { id: Date.now(), nick: myName || "나", text: t, shout: isShout }].slice(-4));
     sayBubble(t);
     if (isShout) setShout(false);
-  }, [sayBubble]);
+  }, [sayBubble, myName]);
   const requestWorldSong = (title) => {
     if (gems < 5) return;
     setGems((g) => g - 5);
@@ -3861,6 +3865,7 @@ export default function App() {
                 </div>
               </div>
             )}
+            <PxButton tone="wood" onClick={() => { setNameInput(myName); setNameOpen(true); }} style={{ fontSize: 11, padding: "5px 9px" }}>🧑 {myName || "이름 설정"}</PxButton>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 11, color: C.inkSoft }}>보유 스타 젬</div>
               <GemBadge amount={gems} big />
@@ -3870,22 +3875,22 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} bubble={bubble} townRain={townRain} cmRain={cmRain} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} />}
         {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
-        {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && <HomeView house={houseMeta} skin={houseSkin} extras={myFurni} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
+        {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && <HomeView house={houseMeta} skin={houseMeta && isMyHouse(houseMeta.name) ? houseSkin : null} extras={houseMeta && isMyHouse(houseMeta.name) ? myFurni : []} extras={myFurni} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />}
         {view === "thanks" && <ThanksView gems={gems} inventory={thanksInv} postits={postits} onBuy={(it) => { setGems((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={(p) => setPostits((v) => [...v, { ...p, id: Date.now() }])} onBack={backToWorld} bubble={bubble} />}
         {view === "heart" && <HeartView gems={gems} worries={worries} onPost={(text, cost, kind) => { setGems((g) => g - cost); setWorries((w) => [{ id: Date.now(), text, kind }, ...w]); }} onBack={backToWorld} bubble={bubble} />}
         {view === "listening" && <ListeningView onBack={backToWorld} gems={gems} onSpend={(n) => setGems((g) => g - n)} bubble={bubble} />}
         {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} />}
-        {view === "minigame" && <MiniGameRoom onBack={backToWorld} onReward={(n) => award(n)} bubble={bubble} />}
-        {view === "pool" && <PoolView onBack={backToWorld} onReward={(n) => award(n)} scores={swimScores} onRecord={(nick, time) => setSwimScores((s) => [...s, { nick, time }])} bubble={bubble} />}
+        {view === "minigame" && <MiniGameRoom myName={myName} onBack={backToWorld} onReward={(n) => award(n)} bubble={bubble} />}
+        {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} scores={swimScores} onRecord={(nick, time) => setSwimScores((s) => [...s, { nick, time }])} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => award(4)} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
         {view === "ikea" && <IkeaView gems={gems} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
         {view === "project" && <BossMapView onBack={backToWorld} onReward={(n) => award(n)} />}
         {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
-        {view === "sandbag" && <SandbagView onBack={backToWorld} scores={boxScores} onEnd={(nick, count) => setBoxScores((s) => [...s, { nick, count }])} />}
+        {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count) => setBoxScores((s) => [...s, { nick, count }])} />}
         {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
         {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} onReward={(n) => award(n)} />}
         {view === "board" && <BoardView onBack={backToWorld} />}
@@ -3898,6 +3903,23 @@ export default function App() {
       </div>
 
       {/* 항상 떠있는 UI: 채팅 / 메뉴 / 피드백 */}
+      {nameOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120, padding: 14 }}>
+          <div style={{ width: "100%", maxWidth: 340 }}>
+            <Panel style={{ padding: 18 }}>
+              <div style={{ textAlign: "center", fontSize: 34 }}>🌱</div>
+              <div style={{ textAlign: "center", fontFamily: "'Press Start 2P', monospace", fontSize: 12, margin: "8px 0" }}>ECHO TOWN</div>
+              <div style={{ fontSize: 13, textAlign: "center", marginBottom: 10 }}>마을에서 사용할 이름을 알려주세요!</div>
+              <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && nameInput.trim()) { setMyName(nameInput.trim()); setNameOpen(false); } }} maxLength={8} autoFocus placeholder="예: 정인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, background: C.white, textAlign: "center" }} />
+              <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center" }}>주민 이름(정인·창민·도희·유리·민지·희정·의준·호종)과 같으면 그 집이 내 집이 돼요!</div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                {myName && <PxButton tone="ink" onClick={() => setNameOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>}
+                <PxButton tone="good" disabled={!nameInput.trim()} onClick={() => { setMyName(nameInput.trim()); setNameOpen(false); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>시작하기</PxButton>
+              </div>
+            </Panel>
+          </div>
+        </div>
+      )}
       <ChatDock messages={chat} shout={shout} gems={gems} onSend={postChat}
         onToggleShout={() => {
           if (shout) { setShout(false); return; }
