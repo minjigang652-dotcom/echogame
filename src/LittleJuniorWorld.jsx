@@ -745,7 +745,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 
   useEffect(() => {
     let raf;
-    const SPEED = 4.2 * (vehicleRef.current ? vehicleRef.current.speed :
+    const SPEED = 4.2 * (vehicleRef.current ? vehicleRef.current.speed : 1);
     const loop = () => {
       const k = keys.current;
       let { x, y } = posRef.current;
