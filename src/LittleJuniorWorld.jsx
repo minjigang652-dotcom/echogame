@@ -812,8 +812,17 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
         ch.on("broadcast", { event: "qlock" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("qlock", payload);
         });
+        ch.on("broadcast", { event: "qleave" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
+        });
         ch.on("broadcast", { event: "pwtry" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("pwtry", payload);
+        });
+        ch.on("broadcast", { event: "invite" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("invite", payload);
+        });
+        ch.on("broadcast", { event: "inviteack" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("inviteack", payload);
         });
         ch.on("broadcast", { event: "door" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("door", payload);
@@ -1451,7 +1460,20 @@ function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble
 }
 
 /* ======================= 회의실(별도 화면, 통화 목업) ======================= */
-function MeetingView({ roomId, room, onUpdate, onBack }) {
+function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite }) {
+  const [invOpen, setInvOpen] = useState(false);
+  const [iDate, setIDate] = useState("");
+  const [iTime, setITime] = useState("");
+  const [iDur, setIDur] = useState("1시간");
+  const [iWho, setIWho] = useState([]);
+  const [iSent, setISent] = useState(false);
+  const toggleWho = (n) => setIWho((v) => (v.includes(n) ? v.filter((x) => x !== n) : [...v, n]));
+  const sendInvite = () => {
+    if (!iDate || !iTime || iWho.length === 0) return;
+    iWho.forEach((n) => onInvite && onInvite({ to: n, when: `${iDate} ${iTime}`, dur: iDur, room: `회의실 ${roomId.replace("m", "")}` }));
+    setISent(true);
+    setTimeout(() => { setISent(false); setInvOpen(false); setIWho([]); }, 1500);
+  };
   const [mic, setMic] = useState(true);
   const [cam, setCam] = useState(true);
   const [share, setShare] = useState(false);
@@ -1462,7 +1484,48 @@ function MeetingView({ roomId, room, onUpdate, onBack }) {
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
       <TitleBar icon="🎥" title={`회의실 ${num}`} sub={room.locked ? "🔒 잠긴 회의실" : "화상 회의 (데모)"} onBack={onBack} bg={C.bankRoof} fg={C.white}
-        right={<span style={{ fontSize: 11, background: room.reserved ? C.gem : "rgba(255,255,255,0.25)", color: room.reserved ? C.ink : C.white, padding: "4px 8px", border: `2px solid ${C.ink}` }}>{room.reserved ? `📌 ${room.by} · ${room.time}` : "예약 없음"}</span>} />
+        right={<div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <PxButton tone="gold" onClick={() => setInvOpen(true)} style={{ fontSize: 11, padding: "5px 9px" }}>📨 초대장</PxButton>
+          <span style={{ fontSize: 11, background: room.reserved ? C.gem : "rgba(255,255,255,0.25)", color: room.reserved ? C.ink : C.white, padding: "4px 8px", border: `2px solid ${C.ink}` }}>{room.reserved ? `📌 ${room.by} · ${room.time}` : "예약 없음"}</span>
+        </div>} />
+      {invOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={() => setInvOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
+            <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: 22 }}>📨</span>
+                <b style={{ flex: 1, fontSize: 14 }}>회의 초대장 보내기</b>
+                <PxButton tone="ink" onClick={() => setInvOpen(false)} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+              </div>
+              <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                <input value={iDate} onChange={(e) => setIDate(e.target.value)} placeholder="7월 23일" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                <input value={iTime} onChange={(e) => setITime(e.target.value)} placeholder="오후 6시" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+              </div>
+              <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 5 }}>⏱ 예상 회의시간</div>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 10 }}>
+                {["30분", "1시간", "2시간", "4시간"].map((d) => (
+                  <PxButton key={d} tone={iDur === d ? "good" : "wood"} onClick={() => setIDur(d)} style={{ fontSize: 11, padding: "6px 10px" }}>{d}</PxButton>
+                ))}
+              </div>
+              <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 5 }}>👥 초대원</div>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap", maxHeight: 110, overflow: "auto", marginBottom: 10 }}>
+                {PROFILES.map((p) => (
+                  <button key={p.name} onClick={() => toggleWho(p.name)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: iWho.includes(p.name) ? C.gem : C.white }}>
+                    {p.avatar} {p.name}
+                  </button>
+                ))}
+              </div>
+              <div style={{ background: C.white, border: `2px dashed ${C.ink}`, borderRadius: 8, padding: 11, fontSize: 12.5, lineHeight: 1.7 }}>
+                <b>📨 회의 초대장</b><br />
+                {iDate || "?월 ?일"} {iTime || "??시"} 회의 / 초대원 : {iWho.join(", ") || "미선택"}<br />
+                예상 회의시간 : {iDur}<br />
+                <span style={{ color: C.inkSoft }}>장소 : 회의실 {roomId.replace("m", "")} · 주최 {myName || "나"}</span>
+              </div>
+              <PxButton tone="gold" disabled={!iDate || !iTime || iWho.length === 0} onClick={sendInvite} style={{ width: "100%", marginTop: 12, padding: 11, fontSize: 13 }}>{iSent ? "보냈어요! ✓" : "📨 초대장 보내기"}</PxButton>
+            </div>
+          </div>
+        </div>
+      )}
       <div style={{ padding: 16, background: "#20303a" }}>
         {/* 화면 공유 영역 */}
         {share && (
@@ -3393,7 +3456,8 @@ const BOSS_MAPS_INIT = [
   },
 ];
 
-function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree }) {
+function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree, onLeave }) {
+  const net = useContext(NetContext);
   const [tMsg, setTMsg] = useState("");
   const [maps, setMaps] = useState(BOSS_MAPS_INIT);
   const [mode, setMode] = useState("easy");
@@ -3423,25 +3487,40 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
   const VIEW_H = 440, MAP_W = 600, STAGE_H = 330, BOSS_H = 300;
 
   const map = maps[mapIdx];
-  const MAP_H = map.stages.length * STAGE_H + BOSS_H;
+  const isPlaza = (map.mode || "easy") === "hard";
+  const MAP_H = isPlaza ? 860 : map.stages.length * STAGE_H + BOSS_H;
   const done = cleared[map.id] || {};
+  const allQuests = map.stages.reduce((acc, st) => acc.concat(st.quests), []);
 
   const nodes = [];
-  map.stages.forEach((st, si) => {
-    const baseY = BOSS_H + (map.stages.length - 1 - si) * STAGE_H;
-    st.quests.forEach((q, qi) => {
-      const col = qi % 3, row = Math.floor(qi / 3);
-      nodes.push({ ...q, stage: st.n, stageName: st.name, x: 110 + col * 190, y: baseY + 130 + row * 120 });
+  if (isPlaza) {
+    const cx = MAP_W / 2, cy = 430;
+    allQuests.forEach((q, i) => {
+      const n = allQuests.length || 1;
+      const ang = (i / n) * Math.PI * 2 - Math.PI / 2;
+      const rad = i % 2 === 0 ? 250 : 330;
+      const st = map.stages.find((x) => x.quests.some((y) => y.id === q.id)) || { n: 1, name: "광장" };
+      nodes.push({ ...q, stage: st.n, stageName: st.name, x: Math.round(cx + Math.cos(ang) * rad * 0.72), y: Math.round(cy + Math.sin(ang) * rad * 0.92) });
     });
-  });
-  nodes.push({ ...map.boss, stage: map.stages.length, stageName: "보스", isBoss: true, x: MAP_W / 2, y: 150 });
+    nodes.push({ ...map.boss, stage: 99, stageName: "보스", isBoss: true, x: cx, y: cy });
+  } else {
+    map.stages.forEach((st, si) => {
+      const baseY = BOSS_H + (map.stages.length - 1 - si) * STAGE_H;
+      st.quests.forEach((q, qi) => {
+        const col = qi % 3, row = Math.floor(qi / 3);
+        nodes.push({ ...q, stage: st.n, stageName: st.name, x: 110 + col * 190, y: baseY + 130 + row * 120 });
+      });
+    });
+    nodes.push({ ...map.boss, stage: map.stages.length, stageName: "보스", isBoss: true, x: MAP_W / 2, y: 150 });
+  }
   nodesRef.current = nodes;
 
   const stageDone = (n) => map.stages.filter((s) => s.n <= n).every((s) => s.quests.every((q) => done[q.id]));
-  const stageOpen = (n) => n === 1 || stageDone(n - 1);
+  const stageOpen = (n) => isPlaza || n === 1 || stageDone(n - 1);
+  const bossReady = isPlaza ? allQuests.every((q) => done[q.id]) : stageDone(map.stages.length);
   const lockReason = (nd) => {
     if (!stageOpen(nd.stage)) return `${nd.stage - 1}스테이지를 먼저 클리어해야 합니다`;
-    if (nd.isBoss && !stageDone(map.stages.length)) return "모든 스테이지를 완료해야 보스에 도전할 수 있습니다";
+    if (nd.isBoss && !bossReady) return isPlaza ? "광장의 모든 퀘스트를 완료해야 보스에 도전할 수 있습니다" : "모든 스테이지를 완료해야 보스에 도전할 수 있습니다";
     if (nd.need && !done[nd.need]) {
       const pq = nodes.find((x) => x.id === nd.need);
       return `「${pq ? pq.title : nd.need}」 완료해야 진행할 수 있습니다`;
@@ -3502,6 +3581,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
           heroElRef.current.style.left = posRef.current.x + "px";
           heroElRef.current.style.top = posRef.current.y + "px";
         }
+        if (net && net.roomPosRef) net.roomPosRef.current = posRef.current;
         const target = Math.max(0, Math.min(MAP_H - VIEW_H, posRef.current.y - VIEW_H / 2));
         camRef.current += (target - camRef.current) * 0.18;
         if (Math.abs(target - camRef.current) < 0.5) camRef.current = target;
@@ -3518,7 +3598,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
   }, [MAP_H]);
 
   useEffect(() => {
-    const y = MAP_H - 70;
+    const y = isPlaza ? MAP_H - 90 : MAP_H - 70;
     posRef.current = { x: 300, y };
     setPos({ x: 300, y });
     const c = Math.max(0, MAP_H - VIEW_H);
@@ -3573,7 +3653,17 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
 
         <div style={{ position: "relative", width: "100%", maxWidth: MAP_W, height: VIEW_H, margin: "0 auto", border: `3px solid ${C.ink}`, borderRadius: 12, overflow: "hidden", boxShadow: "inset 0 0 40px rgba(0,0,0,0.12)" }}>
           <div ref={mapElRef} style={{ position: "absolute", left: 0, top: -cam, width: MAP_W, height: MAP_H, willChange: "top" }}>
-            {map.stages.map((st, si) => {
+            {isPlaza && (
+              <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at 50% 50%, ${map.soft}, #efe7f8 60%, #e2d8ee)` }}>
+                <div style={{ position: "absolute", left: "50%", top: 430, transform: "translate(-50%,-50%)", width: 520, height: 520, borderRadius: "50%", border: `3px dashed rgba(0,0,0,0.18)` }} />
+                <div style={{ position: "absolute", left: "50%", top: 430, transform: "translate(-50%,-50%)", width: 350, height: 350, borderRadius: "50%", background: "rgba(0,0,0,0.05)" }} />
+                <div style={{ position: "absolute", left: 20, top: 14, background: `linear-gradient(90deg,${map.color},${map.deep})`, color: C.white, borderRadius: 20, padding: "5px 14px", fontSize: 12, fontWeight: "bold" }}>🧠 사고의 광장 · 순서 없이 자유롭게</div>
+                <div style={{ position: "absolute", left: 40, top: 120, fontSize: 34, opacity: 0.15 }}>❓</div>
+                <div style={{ position: "absolute", right: 40, top: 700, fontSize: 34, opacity: 0.15 }}>🧩</div>
+                <div style={{ position: "absolute", right: 60, top: 160, fontSize: 30, opacity: 0.13 }}>🌀</div>
+              </div>
+            )}
+            {!isPlaza && map.stages.map((st, si) => {
               const open = stageOpen(st.n);
               const cleared_ = stageDone(st.n);
               return (
@@ -3588,9 +3678,9 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                 </div>
               );
             })}
-            <div style={{ position: "absolute", left: 0, top: 0, width: "100%", height: BOSS_H, background: "radial-gradient(circle at 50% 55%, #4a2f4f, #241c33)" }}>
+            {!isPlaza && <div style={{ position: "absolute", left: 0, top: 0, width: "100%", height: BOSS_H, background: "radial-gradient(circle at 50% 55%, #4a2f4f, #241c33)" }}>
               <div style={{ position: "absolute", left: 14, top: 12, background: "linear-gradient(90deg,#c0563a,#8c2f21)", color: C.white, borderRadius: 20, padding: "5px 14px", fontSize: 12, fontWeight: "bold", boxShadow: "0 2px 4px rgba(0,0,0,0.4)" }}>👑 BOSS</div>
-            </div>
+            </div>}
 
             <svg width={MAP_W} height={MAP_H} style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }}>
               {nodes.map((nd, i) => {
@@ -3622,6 +3712,17 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
               );
             })}
 
+            {net && net.others && Object.values(net.others).filter((o) => o.v === "project").map((o) => (
+              <div key={o.id} style={{ position: "absolute", left: o.rx || 0, top: o.ry || 0, transform: "translate(-50%,-100%)", zIndex: 5, opacity: 0.95, transition: "left .18s linear, top .18s linear", pointerEvents: "none" }}>
+                {o.bubble && (
+                  <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 190, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px" }}>{o.bubble}</div>
+                )}
+                <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
+                <div className={o.dm ? "dance-" + o.dm : ""} style={{ transformOrigin: "bottom center" }}>
+                  <Hero facing={o.f || 1} moving={false} size={32} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
+                </div>
+              </div>
+            ))}
             <div ref={heroElRef} style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-100%)", zIndex: 6, filter: "drop-shadow(0 4px 3px rgba(0,0,0,0.35))", willChange: "left, top" }}>
               <Hero facing={facing} moving={moving} size={38} />
             </div>
@@ -3808,6 +3909,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                             <div style={{ fontSize: 11, color: C.good, textAlign: "center", marginBottom: 6, fontWeight: "bold" }}>🔒 파티 확정 — 더 이상 참여할 수 없어요</div>
                           )}
                           <PxButton tone="good" onClick={() => onStart && onStart(sel.id)} style={{ width: "100%", padding: 10, fontSize: 13 }}>▶ 퀘스트 시작</PxButton>
+                          <PxButton tone="danger" onClick={() => onLeave && onLeave(sel.id)} style={{ width: "100%", padding: 9, fontSize: 12, marginTop: 6 }}>🚪 퀘스트에서 나가기</PxButton>
                         </div>
                       ) : (
                         <div>
@@ -3822,6 +3924,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                             <input value={tMsg} onChange={(e) => setTMsg(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} placeholder="메시지" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
                             <PxButton tone="blue" onClick={() => { if (tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} style={{ fontSize: 11, padding: "7px 10px" }}>➤</PxButton>
                           </div>
+                          <PxButton tone="danger" onClick={() => onLeave && onLeave(sel.id)} style={{ width: "100%", padding: 9, fontSize: 12, marginTop: 8 }}>🚪 퀘스트에서 나가기</PxButton>
                           <div style={{ fontSize: 12, fontWeight: "bold", margin: "10px 0 5px" }}>📓 퀘스트 일지</div>
                           <textarea value={notes[sel.id] || ""} onChange={(e) => onNote && onNote(sel.id, e.target.value)} placeholder="진행 상황·메모를 남겨두세요" style={{ width: "100%", boxSizing: "border-box", height: 70, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, resize: "none", background: C.white }} />
                         </div>
@@ -5129,6 +5232,7 @@ export default function App() {
   const [notice, setNotice] = useState(null);
   const showNotice = (t) => { setNotice(t); setTimeout(() => setNotice(null), 3200); };
   const [visitor, setVisitor] = useState(null);
+  const [invite, setInvite] = useState(null);
   const [stats, setStats] = useState(() => loadStats());
   const [newBadge, setNewBadge] = useState(null);
   const statsRef = useRef(stats);
@@ -5189,14 +5293,26 @@ export default function App() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qlock") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qlock" || kind === "qleave") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
+      if (kind === "invite") { playBell(); setInvite(p); }
+      if (kind === "inviteack") { showNotice(`${p.from}님이 회의에 ${p.ok ? "참석" : "불참"}한다고 답했어요`); }
       if (kind === "qchat") {
         setQThreads((t) => ({ ...t, [p.qid]: [...(t[p.qid] || []), { who: p.who, text: p.text }] }));
         return;
       }
       if (kind === "qparty") {
         setQAccept((a) => (a[p.qid] ? { ...a, [p.qid]: { ...a[p.qid], party: Array.from(new Set([...(a[p.qid].party || []), p.who])) } } : a));
+        return;
+      }
+      if (kind === "qleave") {
+        setQAccept((a) => {
+          const cur = a[p.qid]; if (!cur) return a;
+          const party = (cur.party || []).filter((n) => n !== p.who);
+          const agree = (cur.agree || []).filter((n) => n !== p.who);
+          if (party.length === 0) { const n = { ...a }; delete n[p.qid]; return n; }
+          return { ...a, [p.qid]: { ...cur, party, agree, locked: party.length > 0 && party.every((n) => agree.includes(n)) } };
+        });
         return;
       }
       if (kind === "qlock") {
@@ -5373,7 +5489,14 @@ export default function App() {
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
         {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} onGift={(n) => setGiftTarget(n)} />}
         {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
-        {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
+        {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} myName={myName}
+          onInvite={(p) => {
+            const body = `📨 회의 초대장\n${p.when} 회의 / 초대원 : ${p.to}\n예상 회의시간 : ${p.dur}\n장소 : ${p.room} · 주최 ${myName || "나"}`;
+            if (netSendEvent) netSendEvent("invite", { to: p.to, from: myName || "나", when: p.when, dur: p.dur, room: p.room });
+            dbSendMail(p.to, myName || "나", body, null);
+            showNotice(`📨 ${p.to}님에게 초대장을 보냈어요`);
+          }}
+          onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && (unlocked[houseId] ? (
           <HomeView house={houseMeta} skin={isMyHouse(houseMeta.name) ? houseSkin : null} extras={isMyHouse(houseMeta.name) ? myFurni : []} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />
         ) : (
@@ -5414,6 +5537,18 @@ export default function App() {
               return { ...a, [qid]: { ...cur, agree, locked } };
             });
             if (netSendEvent) netSendEvent("qlock", { qid, who: me });
+          }}
+          onLeave={(qid) => {
+            const me = myName || "나";
+            setQAccept((a) => {
+              const cur = a[qid]; if (!cur) return a;
+              const party = (cur.party || []).filter((n) => n !== me);
+              const agree = (cur.agree || []).filter((n) => n !== me);
+              if (party.length === 0) { const n = { ...a }; delete n[qid]; return n; }
+              return { ...a, [qid]: { ...cur, party, agree, locked: party.length > 0 && party.every((n) => agree.includes(n)) } };
+            });
+            if (netSendEvent) netSendEvent("qleave", { qid, who: me });
+            showNotice("🚪 퀘스트에서 나왔어요");
           }}
           onStart={(qid) => { setQAccept((a) => ({ ...a, [qid]: { ...a[qid], started: true } })); showNotice("▶ 퀘스트를 시작했어요!"); }}
           onShout={(msg) => { postChat(msg, true); showNotice("📢 마을에 알렸어요"); }}
@@ -5479,6 +5614,26 @@ export default function App() {
         }} />
       {mailTarget && <MailboxModal owner={mailTarget} isMine={mailTarget === myName} myName={myName} gems={gems} inventory={thanksInv} mail={mail} onSend={sendMail} onClose={() => setMailTarget(null)} />}
       {giftTarget && <GiftModal target={giftTarget} inventory={thanksInv} myName={myName} onSend={sendGift} onClose={() => setGiftTarget(null)} />}
+      {invite && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150, padding: 14 }}>
+          <div style={{ width: "100%", maxWidth: 330 }}>
+            <div style={{ background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 20, boxShadow: "0 10px 26px rgba(0,0,0,0.5)" }}>
+              <div style={{ textAlign: "center", fontSize: 42 }}>📨</div>
+              <div style={{ textAlign: "center", fontSize: 15, fontWeight: "bold", margin: "8px 0 10px" }}>회의 초대장이 도착했어요</div>
+              <div style={{ background: C.white, border: `2px dashed ${C.ink}`, borderRadius: 8, padding: 12, fontSize: 13, lineHeight: 1.8 }}>
+                <b>{invite.when}</b> 회의<br />
+                초대원 : {myName}<br />
+                예상 회의시간 : {invite.dur}<br />
+                <span style={{ color: C.inkSoft }}>{invite.room} · 주최 {invite.from}</span>
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                <PxButton tone="ink" onClick={() => { if (netSendEvent) netSendEvent("inviteack", { to: invite.from, from: myName, ok: false }); setInvite(null); }} style={{ flex: 1, padding: 11, fontSize: 13 }}>불참</PxButton>
+                <PxButton tone="good" onClick={() => { if (netSendEvent) netSendEvent("inviteack", { to: invite.from, from: myName, ok: true }); setInvite(null); }} style={{ flex: 1, padding: 11, fontSize: 13 }}>참석할게요</PxButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {visitor && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150, padding: 14 }}>
           <div style={{ width: "100%", maxWidth: 320 }}>
