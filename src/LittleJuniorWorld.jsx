@@ -1921,7 +1921,112 @@ const JJEOP_MENU = [
   { name: "제육볶음", emoji: "🍳" },
 ];
 const jjeopPick = () => JJEOP_MENU[Math.floor(Math.random() * JJEOP_MENU.length)];
-
+function JjeopView({ onBack, bubble, onReward }) {
+  const [modal, setModal] = useState(null);
+  const [today, setToday] = useState(null);
+  const [recList, setRecList] = useState([{ nick: "정인", text: "저 오늘 국밥 땡겨요...🍚" }, { nick: "도희", text: "마라탕 각인데?" }]);
+  const [recText, setRecText] = useState("");
+  const [recNick, setRecNick] = useState("");
+  const [step, setStep] = useState(1);
+  const [fMenu, setFMenu] = useState(null);
+  const [proofOpen, setProofOpen] = useState(false);
+  const [proofImg, setProofImg] = useState(null);
+  const [proofDone, setProofDone] = useState(false);
+  const fileRef = useRef(null);
+  const pickProof = (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    setProofImg(URL.createObjectURL(f));
+  };
+  const submitProof = () => {
+    if (!proofImg || proofDone) return;
+    setProofDone(true);
+    onReward && onReward(5);
+  };
+  const postRec = () => {
+    if (!recText.trim()) return;
+    setRecList((v) => [...v, { nick: recNick.trim() || "익명", text: recText.trim() }]);
+    setRecText("");
+  };
+  const furniture = [
+    { id: "table", x: 250, y: 150, w: 140, h: 140, round: true, color: "#caa06a", emoji: "🍽️", label: "원형 테이블 (앉기)", onInteract: () => { setToday(jjeopPick()); setModal("table"); } },
+    { id: "rec", x: 40, y: 180, w: 100, h: 90, color: "#7bbf8f", emoji: "📋", label: "메뉴 추천 테이블", onInteract: () => setModal("rec") },
+    { id: "fortune", x: 500, y: 170, w: 100, h: 100, color: "#8e5a9e", emoji: "🔮", label: "점심술사", onInteract: () => { setStep(1); setFMenu(null); setProofOpen(false); setProofImg(null); setProofDone(false); setModal("fortune"); } },
+  ];
+  const answer = (yes) => {
+    if (!yes) { setStep("bye"); return; }
+    if (step === 4) { setFMenu(jjeopPick()); setStep("result"); return; }
+    setStep((s) => s + 1);
+  };
+  const Q = { 1: "메뉴를 고르지 못하고 있나요?", 2: "제가 골라드릴까요?", 3: "골라준대로 꼭 드셔야됩니다. 꼭 드실건가요?", 4: "진짜로 꼭 드실거죠?" };
+  return (
+    <RoomView title="쩝쩝박사" icon="🍴" sub="가운데 테이블에서 오늘의 메뉴 · 메뉴 추천 · 점심술사" bg="#efe0cf" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!modal} headerBg="#c0563a" bubble={bubble}>
+      {modal === "table" && today && (
+        <RoomModal title="🪑 원형 테이블" onClose={() => setModal(null)} maxW={380}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 13, color: C.inkSoft }}>오늘의 메뉴는 이거~</div>
+            <div style={{ fontSize: 72, margin: "8px 0" }}>{today.emoji}</div>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 16 }}>{today.name}</div>
+            <div style={{ fontSize: 15, marginTop: 12, color: "#c0563a" }}>맛있게 드세요 ~ ♥</div>
+          </div>
+        </RoomModal>
+      )}
+      {modal === "rec" && (
+        <RoomModal title="📋 메뉴 추천 게시판" onClose={() => setModal(null)} maxW={380}>
+          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>먹고 싶은 메뉴를 멘트로 자유롭게 남겨요!</div>
+          <div style={{ height: 180, overflow: "auto", background: C.white, border: `3px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 5 }}>
+            {recList.map((r, i) => (
+              <div key={i} style={{ fontSize: 13, borderBottom: `1px dashed ${C.parchEdge}`, paddingBottom: 4 }}>
+                <b style={{ color: "#5b8def", fontSize: 11 }}>{r.nick}</b> <span>{r.text}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+            <input value={recNick} onChange={(e) => setRecNick(e.target.value)} placeholder="닉네임" style={{ width: 90, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+            <input value={recText} onChange={(e) => setRecText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") postRec(); }} placeholder="멘트 입력 후 Enter" style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+            <PxButton tone="good" onClick={postRec} style={{ fontSize: 12, padding: "8px 12px" }}>등록</PxButton>
+          </div>
+        </RoomModal>
+      )}
+      {modal === "fortune" && (
+        <RoomModal title="🔮 점심술사" onClose={() => setModal(null)} maxW={360}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 56 }}>🧙‍♀️</div>
+            <div className="chat-bubble" style={{ display: "inline-block", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "8px 12px", fontSize: 14, margin: "8px 0" }}>
+              {step === "bye" ? "가세요." : step === "result" ? `오늘은 「${fMenu.name}」 ${fMenu.emoji} 드세요!` : Q[step]}
+            </div>
+            {step !== "bye" && step !== "result" && (
+              <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 8 }}>
+                <PxButton tone="good" onClick={() => answer(true)} style={{ padding: "8px 20px", fontSize: 14 }}>네</PxButton>
+                <PxButton tone="danger" onClick={() => answer(false)} style={{ padding: "8px 20px", fontSize: 14 }}>아니요</PxButton>
+              </div>
+            )}
+            {step === "result" && !proofOpen && (
+              <div style={{ marginTop: 8 }}>
+                <PxButton tone="gold" onClick={() => setProofOpen(true)} style={{ padding: "8px 14px", fontSize: 13 }}>📸 인증샷 보내기</PxButton>
+              </div>
+            )}
+            {step === "result" && proofOpen && (
+              <div style={{ marginTop: 10, background: C.white, border: `3px solid ${C.ink}`, padding: 12, textAlign: "left" }}>
+                <div style={{ fontSize: 13, marginBottom: 8 }}>점심술사가 추천해준 화면 캡처랑, 실제로 먹은 인증샷을 보내봐~ 확인되면 젬을 줄게 ⭐</div>
+                <input ref={fileRef} type="file" accept="image/*" onChange={pickProof} style={{ display: "none" }} />
+                {proofImg && <img src={proofImg} alt="인증샷" style={{ width: "100%", maxHeight: 160, objectFit: "contain", border: `2px solid ${C.ink}`, marginBottom: 8, background: "#eee" }} />}
+                <div style={{ display: "flex", gap: 6 }}>
+                  <PxButton tone="wood" onClick={() => fileRef.current && fileRef.current.click()} style={{ flex: 1, padding: 9, fontSize: 12 }}>📎 사진 업로드</PxButton>
+                  <PxButton tone="good" disabled={!proofImg || proofDone} onClick={submitProof} style={{ flex: 1, padding: 9, fontSize: 12 }}>{proofDone ? "받음 ✓" : "제출하고 젬 받기"}</PxButton>
+                </div>
+                {proofDone && <div style={{ fontSize: 12, color: C.good, marginTop: 8, fontWeight: "bold" }}>맛있게 먹었네! ⭐5 지급 완료 ♥</div>}
+              </div>
+            )}
+            {(step === "bye" || step === "result") && (
+              <PxButton tone="ink" onClick={() => setModal(null)} style={{ marginTop: 8, padding: "8px 16px", fontSize: 13 }}>닫기</PxButton>
+            )}
+          </div>
+        </RoomModal>
+      )}
+    </RoomView>
+  );
+}
 
 /* ======================= 무신사(옷 가게) ======================= */
 const CLOTHES = {
@@ -2505,22 +2610,7 @@ function VapeModal({ onClose }) {
   );
 }
 
-function JjeopView({ onBack, bubble, onReward }) {
-  const [proofOpen, setProofOpen] = useState(false);
-  const [proofImg, setProofImg] = useState(null);
-  const [proofDone, setProofDone] = useState(false);
-  const fileRef = useRef(null);
-  const pickProof = (e) => {
-    const f = e.target.files && e.target.files[0];
-    if (!f) return;
-    const url = URL.createObjectURL(f);
-    setProofImg(url);
-  };
-  const submitProof = () => {
-    if (!proofImg || proofDone) return;
-    setProofDone(true);
-    onReward && onReward(5);
-  };
+function SmokeView({ onBack, bubble }) {
   const [modal, setModal] = useState(null);
   const [winOpen, setWinOpen] = useState(false);
   const furniture = [
