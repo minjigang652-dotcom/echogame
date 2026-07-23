@@ -897,9 +897,10 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
   return { others, count, status, sendChat, sendEvent };
 }
 
-function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null, onGift = null }) {
+function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null, onGift = null, myNick = "" }) {
   const [songOpen, setSongOpen] = useState(false);
   const [teleport, setTeleport] = useState(null);
+  const [whoOpen, setWhoOpen] = useState(false);
   const vehicleRef = useRef(vehicle);
   vehicleRef.current = vehicle;
   const [facing, setFacing] = useState(1);
@@ -1154,7 +1155,18 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
 
         {/* HUD 오버레이: 날짜 */}
         <div style={{ position: "absolute", right: 10, top: 10, display: "flex", gap: 8, alignItems: "center" }}>
-          <span style={{ background: netStatus === "접속됨" ? "#2f9e6e" : C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}` }} title={netStatus}>👥 {netCount}</span>
+          <button onClick={() => setWhoOpen((v) => !v)} title="접속자 보기" style={{ position: "relative", cursor: "pointer", background: netStatus === "접속됨" ? "#2f9e6e" : C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}`, fontFamily: "'DotGothic16', monospace" }}>
+            👥 {netCount}
+            {whoOpen && (
+              <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", right: 0, top: "120%", background: C.parch, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 8, minWidth: 130, zIndex: 40, textAlign: "left", boxShadow: `0 3px 0 ${C.parchEdge}` }}>
+                <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 4 }}>접속 중</div>
+                <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 2 }}>🟢 {myNick || "나"} (나)</div>
+                {Object.values(others).map((o) => (
+                  <div key={o.id} style={{ fontSize: 12, marginBottom: 2 }}>🟢 {o.name}</div>
+                ))}
+              </div>
+            )}
+          </button>
           <span style={{ background: C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}` }}>📅 DAY {day}</span>
           <PxButton tone="blue" onClick={onNextDay} style={{ fontSize: 11, padding: "6px 9px" }}>🌙 다음 날</PxButton>
           <div style={{ position: "relative" }}>
@@ -1425,7 +1437,9 @@ function DrinkStation({ name, color, onClose, onDrink }) {
   );
 }
 
-function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble, onDrink }) {
+function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble, onDrink, meetings = [] }) {
+  const net = useContext(NetContext);
+  const here = net && net.others ? Object.values(net.others).filter((o) => o.v === "center") : [];
   const [showChat, setShowChat] = useState(false);
   const [station, setStation] = useState(null); // {name,color}
   const [text, setText] = useState("");
@@ -1447,6 +1461,9 @@ function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble
       {station && <DrinkStation name={station.name} color={station.color} onClose={() => setStation(null)} onDrink={onDrink} />}
       {showChat && (
         <RoomModal title="🪑 라운지 테이블 채팅" onClose={() => setShowChat(false)}>
+          <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "5px 8px" }}>
+            🪑 지금 테이블에 앉은 사람: <b>나</b>{here.length ? ", " + here.map((o) => o.name).join(", ") : " (혼자예요)"}
+          </div>
           <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>* 데모용 로컬 채팅입니다.</div>
           <div style={{ height: 200, overflow: "auto", background: C.white, border: `3px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
             {chat.map((m, i) => (
@@ -1468,6 +1485,8 @@ function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble
 
 /* ======================= 회의실(별도 화면, 통화 목업) ======================= */
 function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, people = [] }) {
+  const net = useContext(NetContext);
+  const here = net && net.others ? Object.values(net.others).filter((o) => o.v === "meeting") : [];
   const [invOpen, setInvOpen] = useState(false);
   const [iDate, setIDate] = useState("");
   const [iTime, setITime] = useState("");
@@ -1487,7 +1506,7 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
   const [resName, setResName] = useState("");
   const [time, setTime] = useState("");
   const num = roomId.replace("m", "");
-  const participants = [{ name: "나", me: true }, { name: "도희", me: false }, { name: "창민", me: false }];
+  const participants = [{ name: myName || "나", me: true }, ...here.map((o) => ({ name: o.name, me: false }))];
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
       <TitleBar icon="🎥" title={`회의실 ${num}`} sub={room.locked ? "🔒 잠긴 회의실" : "화상 회의 (데모)"} onBack={onBack} bg={C.bankRoof} fg={C.white}
@@ -1495,6 +1514,14 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
           <PxButton tone="gold" onClick={() => setInvOpen(true)} style={{ fontSize: 11, padding: "5px 9px" }}>📨 초대장</PxButton>
           <span style={{ fontSize: 11, background: room.reserved ? C.gem : "rgba(255,255,255,0.25)", color: room.reserved ? C.ink : C.white, padding: "4px 8px", border: `2px solid ${C.ink}` }}>{room.reserved ? `📌 ${room.by} · ${room.time}` : "예약 없음"}</span>
         </div>} />
+      {meetings.length > 0 && (
+        <div style={{ background: "#fff6e8", borderBottom: `3px solid ${C.ink}`, padding: "8px 14px", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 12, fontWeight: "bold" }}>📅 내 회의 일정</span>
+          {meetings.map((m, i2) => (
+            <span key={i2} style={{ fontSize: 11, background: C.gem, border: `2px solid ${C.ink}`, borderRadius: 12, padding: "2px 9px" }}>🎥 {m.room} · {m.when} 방문 ({m.dur})</span>
+          ))}
+        </div>
+      )}
       {invOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={() => setInvOpen(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
@@ -1540,6 +1567,9 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
             🖥 화면 공유 중… (데모)
           </div>
         )}
+        <div style={{ background: "rgba(255,255,255,0.12)", border: `2px solid ${C.gem}`, borderRadius: 8, padding: "7px 10px", marginBottom: 10, color: C.white, fontSize: 12 }}>
+          🪑 대형 테이블 착석: <b>{participants.map((p) => p.name).join(", ")}</b>{participants.length === 1 ? " (혼자예요)" : ` · 총 ${participants.length}명`}
+        </div>
         {/* 참가자 타일 */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
           {participants.map((p) => (
@@ -3661,8 +3691,11 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
       <TitleBar icon="🗺" title="보스맵 도전기" sub="WASD로 이동 · 아래에서 위로 진행 · 퀘스트 앞에서 E" onBack={onBack} bg="#241c33" fg={C.white} />
       <div style={{ padding: 14, background: "linear-gradient(180deg,#f6f2e8,#eae3d4)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: "8px 12px", boxShadow: "0 2px 0 rgba(0,0,0,0.15)" }}>
-          <button onClick={() => setCollOpen(true)} title="보스 도감" style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 8, background: "linear-gradient(180deg,#6b4f8f,#3f2c5c)", color: C.white, fontSize: 16, padding: "4px 8px" }}>👾</button>
-          <button onClick={() => { setDexMode(map.mode || "easy"); setDexOpen(true); }} title="퀘스트 도감" style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 8, background: "linear-gradient(180deg,#4b8f6b,#2c5c3f)", color: C.white, fontSize: 16, padding: "4px 8px" }}>📚</button>
+          {isPlaza ? (
+            <button onClick={() => setDexOpen(true)} title="사고 도감" style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 8, background: "linear-gradient(180deg,#8f4b4b,#5c2c2c)", color: C.white, fontSize: 16, padding: "4px 8px" }}>🧠</button>
+          ) : (
+            <button onClick={() => setCollOpen(true)} title="보스 도감" style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 8, background: "linear-gradient(180deg,#6b4f8f,#3f2c5c)", color: C.white, fontSize: 16, padding: "4px 8px" }}>👾</button>
+          )}
           <span style={{ fontSize: 20 }}>{map.icon}</span>
           <b style={{ fontSize: 14, flex: 1 }}>{map.name}</b>
           <button onClick={() => setAddOpen(true)} title="퀘스트/보스맵 추가" style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 8, background: "linear-gradient(180deg,#e0a13d,#a86e13)", color: C.white, fontSize: 14, padding: "4px 9px", fontWeight: "bold" }}>＋</button>
@@ -3780,16 +3813,12 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440 }}>
             <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16, boxShadow: "0 10px 26px rgba(0,0,0,0.45)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                <span style={{ fontSize: 22 }}>{dexMode === "hard" ? "🧠" : "📚"}</span>
-                <b style={{ flex: 1, fontSize: 15 }}>{dexMode === "hard" ? "사고 도감" : "퀘스트 도감"}</b>
+                <span style={{ fontSize: 22 }}>🧠</span>
+                <b style={{ flex: 1, fontSize: 15 }}>사고 도감</b>
                 <PxButton tone="ink" onClick={() => setDexOpen(false)} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
               </div>
-              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                <PxButton tone={dexMode === "easy" ? "good" : "wood"} onClick={() => setDexMode("easy")} style={{ flex: 1, fontSize: 12, padding: 8 }}>🌱 이지 도감</PxButton>
-                <PxButton tone={dexMode === "hard" ? "danger" : "wood"} onClick={() => setDexMode("hard")} style={{ flex: 1, fontSize: 12, padding: 8 }}>🧠 사고 도감</PxButton>
-              </div>
               <div style={{ maxHeight: 340, overflow: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
-                {maps.filter((m) => (m.mode || "easy") === dexMode).map((m) => {
+                {maps.filter((m) => (m.mode || "easy") === "hard").map((m) => {
                   const qs = m.stages.reduce((a, st) => a.concat(st.quests.map((q) => ({ ...q, stage: st.n, stageName: st.name }))), []);
                   const dn = cleared[m.id] || {};
                   const cnt = qs.filter((q) => dn[q.id]).length;
@@ -4232,6 +4261,8 @@ function SmokeView({ onBack, bubble }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260723k", type: "업데이트", date: "2026-07-23", title: "🔧 편의 개선 모음",
+    body: "· 🏅 이미 받은 뱃지가 반복해서 뜨던 문제 수정\n· 👥 상단 접속자수를 누르면 누가 접속 중인지 목록이 나와요\n· 마을주민들 목록에 🟢 접속 중 / ⚪ 오프라인 표시\n· 📅 회의 초대를 수락하면 주민센터 상단에 내 회의 일정이 떠요\n· 🪑 회의실 대형 테이블·라운지 테이블에 앉은 사람 이름이 보여요\n· 📜 게시판 업데이트 탭 아래에 확인한 업데이트 기록 보관\n· 보스맵 도감 버튼이 모드별 1개로 정리 (이지=보스도감, 하드=사고도감)" },
   { id: "u20260723j", type: "업데이트", date: "2026-07-23", title: "📚 퀘스트 도감 · 🧠 사고 도감 오픈",
     body: "· 보스맵 상단 📚 버튼으로 완료한 퀘스트를 모아볼 수 있어요\n· 🌱 이지 도감 / 🧠 사고 도감(하드) 탭으로 구분\n· 완료한 퀘스트만 아이콘·이름이 공개되고 미완료는 ??? 로 표시\n· 누가 완료했는지도 함께 표시돼요\n· 새 퀘스트는 기존 퀘스트보다 위쪽(보스 방향)에 생성돼요" },
   { id: "u20260723i", type: "업데이트", date: "2026-07-23", title: "👥 주민 목록 = 실제 접속자 기반",
@@ -4345,6 +4376,20 @@ function BoardView({ onBack, myName = "" }) {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {tab === "update" && [...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => seen[n.id]).length > 0 && (
+          <div style={{ marginTop: 14, borderTop: `3px dashed ${C.parchEdge}`, paddingTop: 12 }}>
+            <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 8, color: C.inkSoft }}>📜 확인한 업데이트 기록</div>
+            <div style={{ display: "grid", gap: 6 }}>
+              {[...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => seen[n.id]).map((a) => (
+                <details key={a.id} style={{ background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "7px 10px" }}>
+                  <summary style={{ cursor: "pointer", fontSize: 12, fontWeight: "bold", color: C.inkSoft }}>✓ {a.title} <span style={{ fontSize: 10, fontWeight: "normal" }}>({a.date})</span></summary>
+                  <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 6, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{a.body}</div>
+                </details>
+              ))}
+            </div>
           </div>
         )}
 
@@ -4947,6 +4992,7 @@ const PROFILES = [
 ];
 
 function ProfileDetail({ p, onBack }) {
+  const st = p.online === undefined ? null : (p.online ? "🟢 접속 중" : "⚪ 오프라인");
   const Row = ({ label, children }) => (
     <div style={{ marginTop: 10 }}>
       <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 4 }}>{label}</div>
@@ -4960,7 +5006,7 @@ function ProfileDetail({ p, onBack }) {
         <div style={{ fontSize: 44 }}>{p.avatar}</div>
         <div>
           <div style={{ fontSize: 17, fontWeight: "bold" }}>{p.name}</div>
-          <div style={{ fontSize: 12, color: C.inkSoft }}>💼 {p.job}</div>
+          <div style={{ fontSize: 12, color: C.inkSoft }}>💼 {p.job}{st ? ` · ${st}` : ""}</div>
           <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 2 }}>🏷️ {p.affiliation}</div>
         </div>
       </div>
@@ -5344,17 +5390,25 @@ export default function App() {
   const showNotice = (t) => { setNotice(t); setTimeout(() => setNotice(null), 3200); };
   const [visitor, setVisitor] = useState(null);
   const [invite, setInvite] = useState(null);
+  const [myMeetings, setMyMeetings] = useState([]);
   const [stats, setStats] = useState(() => loadStats());
   const [newBadge, setNewBadge] = useState(null);
   const statsRef = useRef(stats);
   statsRef.current = stats;
+  const gotRef = useRef(loadJSON("echotown_got", {}));
+  const awardBadge = (b) => {
+    if (!b || gotRef.current[b.id]) return;
+    gotRef.current = { ...gotRef.current, [b.id]: true };
+    saveJSON("echotown_got", gotRef.current);
+    setTimeout(() => setNewBadge(b), 300);
+  };
   const bump = useCallback((k, n = 1) => {
     setStats((prev) => {
       const before = prev[k] || 0;
       const next = { ...prev, [k]: before + n };
       saveStats(next);
-      const got = BADGES.find((b) => b.stat === k && before < b.need && next[k] >= b.need);
-      if (got) setTimeout(() => setNewBadge(got), 300);
+      const got = BADGES.filter((b) => b.stat === k && next[k] >= b.need).sort((a, b2) => b2.need - a.need)[0];
+      if (got) awardBadge(got);
       return next;
     });
   }, []);
@@ -5363,8 +5417,8 @@ export default function App() {
     const next = { ...cur, visit: (cur.visit || 0) + 1 };
     saveStats(next);
     setStats(next);
-    const got = [...BADGES].reverse().find((b) => b.stat === "visit" && (cur.visit || 0) < b.need && next.visit >= b.need);
-    if (got) setTimeout(() => setNewBadge(got), 1200);
+    const got = BADGES.filter((b) => b.stat === "visit" && next.visit >= b.need).sort((a, b2) => b2.need - a.need)[0];
+    if (got && !gotRef.current[got.id]) { gotRef.current = { ...gotRef.current, [got.id]: true }; saveJSON("echotown_got", gotRef.current); setTimeout(() => setNewBadge(got), 1200); }
   }, []);
 
   const timers = useRef({});
@@ -5487,7 +5541,8 @@ export default function App() {
   const AVATARS = ["🧑", "👩", "🧑‍💻", "👨‍💼", "👩‍🎨", "🧑‍🍳", "👩‍🔬", "🧑‍🎤", "👨‍🌾", "👩‍🏫"];
   const people = useMemo(() => {
     const online = Object.values(netOthers).map((o) => o.name).filter(Boolean);
-    const names = Array.from(new Set([...(myName ? [myName] : []), ...online, ...dbPlayers])).filter(Boolean);
+    const bad = /[ㄱ-ㅎㅏ-ㅣ]/;
+    const names = Array.from(new Set([...(myName ? [myName] : []), ...online, ...dbPlayers])).filter((n) => n && !bad.test(n));
     return names.map((n, i) => ({
       avatar: AVATARS[(n.charCodeAt(0) + n.length) % AVATARS.length],
       name: n,
@@ -5613,8 +5668,8 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} onGift={(n) => setGiftTarget(n)} />}
-        {view === "center" && <CenterView meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} myNick={myName} onGift={(n) => setGiftTarget(n)} />}
+        {view === "center" && <CenterView meetings={myMeetings} meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} myName={myName} people={people}
           onInvite={(p) => {
             const body = `📨 회의 초대장\n${p.when} 회의 / 초대원 : ${p.to}\n예상 회의시간 : ${p.dur}\n장소 : ${p.room} · 주최 ${myName || "나"}`;
@@ -5754,7 +5809,7 @@ export default function App() {
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
                 <PxButton tone="ink" onClick={() => { if (netSendEvent) netSendEvent("inviteack", { to: invite.from, from: myName, ok: false }); setInvite(null); }} style={{ flex: 1, padding: 11, fontSize: 13 }}>불참</PxButton>
-                <PxButton tone="good" onClick={() => { if (netSendEvent) netSendEvent("inviteack", { to: invite.from, from: myName, ok: true }); setInvite(null); }} style={{ flex: 1, padding: 11, fontSize: 13 }}>참석할게요</PxButton>
+                <PxButton tone="good" onClick={() => { if (netSendEvent) netSendEvent("inviteack", { to: invite.from, from: myName, ok: true }); setMyMeetings((m) => [...m, { when: invite.when, room: invite.room, from: invite.from, dur: invite.dur }]); showNotice(`📅 ${invite.room} ${invite.when} 일정에 추가했어요`); setInvite(null); }} style={{ flex: 1, padding: 11, fontSize: 13 }}>참석할게요</PxButton>
               </div>
             </div>
           </div>
