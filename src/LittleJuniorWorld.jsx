@@ -744,6 +744,9 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
         ch.on("broadcast", { event: "bell" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("bell", payload);
         });
+        ch.on("broadcast", { event: "door" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("door", payload);
+        });
         ch.on("broadcast", { event: "bye" }, ({ payload }) => {
           if (!payload) return;
           setOthers((o) => { const n = { ...o }; delete n[payload.id]; return n; });
@@ -3211,7 +3214,7 @@ const PAST_BOSSES = [
 const FUTURE_BOSSES = 3;
 const BOSS_MAPS_INIT = [
   {
-    id: "bm1", name: "어플", icon: "📱", color: "#2f9e6e", soft: "#e6f4ec", deep: "#1d6b4a",
+    id: "bm1", mode: "easy", name: "어플", icon: "📱", color: "#2f9e6e", soft: "#e6f4ec", deep: "#1d6b4a",
     boss: { id: "b1", title: "버그 로드", icon: "🐛", gem: 30, desc: "잡아도 잡아도 다시 기어나오는 벌레들의 왕.", task: "발견된 버그 전부 처리하고 최종 점검" },
     stages: [
       { n: 1, name: "기획의 숲", deco: "🌲", quests: [
@@ -3237,7 +3240,7 @@ const BOSS_MAPS_INIT = [
     ],
   },
   {
-    id: "bm2", name: "속옷", icon: "🩲", color: "#2e9bc4", soft: "#e4f3fa", deep: "#1d6c8c",
+    id: "bm2", mode: "easy", name: "속옷", icon: "🩲", color: "#2e9bc4", soft: "#e4f3fa", deep: "#1d6c8c",
     boss: { id: "b2", title: "사이즈 마왕", icon: "📏", gem: 28, desc: "누구에게도 딱 맞지 않게 만드는 마왕.", task: "전 사이즈 착용 테스트 통과" },
     stages: [
       { n: 1, name: "원단의 해변", deco: "🏖", quests: [
@@ -3257,7 +3260,7 @@ const BOSS_MAPS_INIT = [
     ],
   },
   {
-    id: "bm3", name: "양말", icon: "🧦", color: "#8a5cc4", soft: "#efe7f8", deep: "#5e3a8c",
+    id: "bm3", mode: "easy", name: "양말", icon: "🧦", color: "#8a5cc4", soft: "#efe7f8", deep: "#5e3a8c",
     boss: { id: "b3", title: "냄새 괴수", icon: "👃", gem: 40, desc: "하루만 신어도 깨어나는 고약한 괴수.", task: "항균 시험 전 항목 통과" },
     stages: [
       { n: 1, name: "소재의 동굴", deco: "🕯", quests: [
@@ -3281,10 +3284,36 @@ const BOSS_MAPS_INIT = [
       ] },
     ],
   },
+  {
+    id: "hm1", mode: "hard", name: "사고력 훈련", icon: "🧠", color: "#c0563a", soft: "#f7e6e0", deep: "#8c2f21",
+    boss: { id: "hb1", title: "고정관념 마왕", icon: "🗿", gem: 45, desc: "\"원래 그런 거야\"라는 말로 모든 생각을 굳혀버리는 마왕.", task: "당연하다고 믿던 것 3가지를 뒤집어 다시 정의하기" },
+    stages: [
+      { n: 1, name: "질문의 골짜기", deco: "❓", quests: [
+        { id: "t11", title: "왜 5번 묻기", icon: "🔁", gem: 8, desc: "표면이 아니라 뿌리를 본다.", task: "최근 결정 하나에 '왜'를 5번 파고들기", level: "숙련자" },
+        { id: "t12", title: "전제 뒤집기", icon: "🔄", gem: 9, desc: "당연한 걸 의심한다.", task: "지금 방식의 숨은 전제 3개 적고 하나 뒤집기", need: "t11", level: "숙련자" },
+        { id: "t13", title: "문제 재정의", icon: "🎯", gem: 8, desc: "문제를 바꾸면 답도 바뀐다.", task: "같은 문제를 다른 문장으로 3번 다시 쓰기", level: "숙련자" },
+      ] },
+      { n: 2, name: "관점의 숲", deco: "🌀", quests: [
+        { id: "t21", title: "반대편 변호", icon: "🪞", gem: 10, desc: "내 의견의 적이 되어본다.", task: "내 주장의 반대 입장을 설득력 있게 3줄로 쓰기", level: "숙련자" },
+        { id: "t22", title: "제3자 시선", icon: "👀", gem: 9, desc: "고객·동료·경쟁자의 눈.", task: "세 사람 입장에서 각각 한 줄 평 쓰기", need: "t21", level: "숙련자" },
+        { id: "t23", title: "10년 뒤 관점", icon: "🔭", gem: 9, desc: "시간 축을 늘려본다.", task: "10년 뒤에도 유효할지 판단해 적기", level: "숙련자" },
+      ] },
+      { n: 3, name: "논리의 탑", deco: "🧩", quests: [
+        { id: "t31", title: "근거 붙이기", icon: "🔢", gem: 10, desc: "느낌을 숫자로.", task: "주장 하나에 지표 2개 붙이기", level: "숙련자" },
+        { id: "t32", title: "반증 찾기", icon: "🧨", gem: 11, desc: "틀릴 조건을 먼저 안다.", task: "내 결론이 틀릴 조건 3개 적기", need: "t31", level: "숙련자" },
+        { id: "t33", title: "압축 설명", icon: "🗜", gem: 10, desc: "이해했으면 짧아진다.", task: "복잡한 내용을 3문장으로 요약", level: "숙련자" },
+      ] },
+      { n: 4, name: "실행의 관문", deco: "🚪", quests: [
+        { id: "t41", title: "가장 작은 실험", icon: "🧪", gem: 10, desc: "생각을 현실에 던진다.", task: "하루 안에 검증할 실험 1개 설계", level: "숙련자" },
+        { id: "t42", title: "회고 쓰기", icon: "📓", gem: 12, desc: "배운 걸 남긴다.", task: "실험 결과와 배운 점 기록", need: "t41", level: "숙련자" },
+      ] },
+    ],
+  },
 ];
 
 function BossMapView({ onBack, onReward, onGoSchool, onClearQuest }) {
   const [maps, setMaps] = useState(BOSS_MAPS_INIT);
+  const [mode, setMode] = useState("easy");
   const [mapIdx, setMapIdx] = useState(0);
   const [collOpen, setCollOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -3430,7 +3459,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest }) {
     if (!fM.name.trim()) return;
     const id = "cm" + Date.now();
     setMaps((ms) => [...ms, {
-      id, name: fM.name.trim(), icon: fM.icon || "🗺", color: "#c07a2f", soft: "#f7ecdc", deep: "#8c5418",
+      id, mode, name: fM.name.trim(), icon: fM.icon || "🗺", color: "#c07a2f", soft: "#f7ecdc", deep: "#8c5418",
       boss: { id: id + "_b", title: fM.boss.trim() || "이름 없는 보스", icon: fM.bossIcon || "👹", gem: 30, desc: "새로 등장한 보스.", task: "모든 스테이지를 클리어하고 격파" },
       stages: [{ n: 1, name: "1 스테이지", deco: "✨", quests: [] }],
     }]);
@@ -3518,8 +3547,16 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest }) {
           <div style={{ position: "absolute", right: 8, top: 8, background: "rgba(0,0,0,0.4)", color: C.white, borderRadius: 12, padding: "3px 9px", fontSize: 10, zIndex: 8 }}>↑ 위로 올라갈수록 보스!</div>
         </div>
 
-        <div style={{ display: "flex", gap: 7, marginTop: 12, flexWrap: "wrap" }}>
-          {maps.map((m, i) => {
+        <div style={{ display: "flex", gap: 7, marginTop: 12 }}>
+          {[["easy", "🌱 이지모드"], ["hard", "🔥 하드모드"]].map(([mo, label]) => (
+            <button key={mo} onClick={() => { setMode(mo); const i = maps.findIndex((m) => (m.mode || "easy") === mo); if (i >= 0) switchMap(i); }}
+              style={{ flex: 1, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 13, padding: "10px 6px", borderRadius: 10, border: `2px solid ${C.ink}`,
+                background: mode === mo ? (mo === "easy" ? "linear-gradient(180deg,#3fa07a,#1d6b4a)" : "linear-gradient(180deg,#c0563a,#8c2f21)") : C.white,
+                color: mode === mo ? C.white : C.ink, fontWeight: "bold", boxShadow: mode === mo ? "0 3px 0 rgba(0,0,0,0.3)" : "0 2px 0 rgba(0,0,0,0.15)" }}>{label}</button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 7, marginTop: 8, flexWrap: "wrap" }}>
+          {maps.map((m, i) => ({ m, i })).filter(({ m }) => (m.mode || "easy") === mode).map(({ m, i }) => {
             const on = i === mapIdx;
             return (
               <button key={m.id} onClick={() => switchMap(i)} style={{ flex: 1, minWidth: 100, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, padding: "9px 6px", borderRadius: 10,
@@ -4599,6 +4636,7 @@ const WORLD_TRACKS = [
 export default function App() {
   const [view, setView] = useState("world");
   const [houseId, setHouseId] = useState(null);
+  const houseIdRef = useRef(null);
   const [bigId, setBigId] = useState(null);
   const [meetingId, setMeetingId] = useState(null);
   const [rentId, setRentId] = useState(null);
@@ -4724,6 +4762,7 @@ export default function App() {
   const [giftTarget, setGiftTarget] = useState(null);
   const [notice, setNotice] = useState(null);
   const showNotice = (t) => { setNotice(t); setTimeout(() => setNotice(null), 3200); };
+  const [visitor, setVisitor] = useState(null);
   const [stats, setStats] = useState(() => loadStats());
   const [newBadge, setNewBadge] = useState(null);
   const statsRef = useRef(stats);
@@ -4784,7 +4823,11 @@ export default function App() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p || p.to !== (myName || "")) return;
-      if (kind === "bell") { playBell(); showNotice(`🔔 손님이 왔습니다! (${p.from}님)`); }
+      if (kind === "bell") { playBell(); setVisitor(p.from); }
+      if (kind === "door") {
+        if (p.ok) { setUnlocked((u) => (houseIdRef.current ? { ...u, [houseIdRef.current]: true } : u)); showNotice("🚪 문이 열렸어요! 들어가세요"); }
+        else showNotice("🚫 지금은 곤란하대요…");
+      }
       if (kind === "mail") {
         const item = { from: p.from, text: p.text, item: p.item, at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
         setMail((v) => { const n = [...v, item]; saveJSON("echotown_mail", n); return n; });
@@ -4858,7 +4901,7 @@ export default function App() {
       case "bank": setView("bank"); break;
       case "board": setView("board"); break;
       case "big": setBigId(o.id); setView("big"); break;
-      case "house": setUnlocked({}); setHouseId(o.id); setView("house"); break;
+      case "house": setUnlocked({}); houseIdRef.current = o.id; setHouseId(o.id); setView("house"); break;
       case "small": if (o.id === "smoke") bump("smoke"); setView(o.id); break; // thanks/heart/listening/reels/smoke
       case "facility": setView(o.id); break; // pool/gym
       case "rent": setRentId(o.id); setView("rent"); break;
@@ -5006,6 +5049,21 @@ export default function App() {
         }} />
       {mailTarget && <MailboxModal owner={mailTarget} isMine={mailTarget === myName} myName={myName} gems={gems} inventory={thanksInv} mail={mail} onSend={sendMail} onClose={() => setMailTarget(null)} />}
       {giftTarget && <GiftModal target={giftTarget} inventory={thanksInv} myName={myName} onSend={sendGift} onClose={() => setGiftTarget(null)} />}
+      {visitor && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150, padding: 14 }}>
+          <div style={{ width: "100%", maxWidth: 320 }}>
+            <div style={{ background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 20, textAlign: "center", boxShadow: "0 10px 26px rgba(0,0,0,0.5)" }}>
+              <div style={{ fontSize: 44 }}>🔔</div>
+              <div style={{ fontSize: 16, fontWeight: "bold", margin: "10px 0 4px" }}>손님이 왔습니다!</div>
+              <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 16 }}><b style={{ color: "#5b8def" }}>{visitor}</b>님이 초인종을 눌렀어요</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <PxButton tone="ink" onClick={() => { if (netSendEvent) netSendEvent("door", { to: visitor, from: myName, ok: false }); setVisitor(null); }} style={{ flex: 1, padding: 11, fontSize: 13 }}>거절하기</PxButton>
+                <PxButton tone="good" onClick={() => { if (netSendEvent) netSendEvent("door", { to: visitor, from: myName, ok: true }); showNotice(`🚪 ${visitor}님에게 문을 열어줬어요`); setVisitor(null); }} style={{ flex: 1, padding: 11, fontSize: 13 }}>문 열어주기</PxButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {notice && (
         <div style={{ position: "fixed", left: "50%", top: 16, transform: "translateX(-50%)", zIndex: 150, background: C.ink, color: C.white, border: `3px solid ${C.gem}`, borderRadius: 10, padding: "10px 18px", fontSize: 13, fontFamily: "'DotGothic16', monospace", boxShadow: "0 6px 16px rgba(0,0,0,0.4)" }}>{notice}</div>
       )}
