@@ -1621,33 +1621,86 @@ const LIAR_TOPICS = {
   "취미": ["넷플릭스", "등산", "캠핑", "게임", "독서", "여행", "사진", "낚시", "홈트", "덕질"],
   "에코타운": ["스타 젬", "치앙마이", "쩝쩝박사", "주민센터", "무신사", "샌드백", "점심술사", "보스맵", "흡연의 방", "네이버스쿨"],
 };
-const LIAR_NPCS = ["정인", "호중", "희정", "유리", "의준", "창민", "도희", "민서"];
 const LIAR_LINES = [
   "음... 저는 꽤 자주 접하는 편이에요.", "생각보다 호불호가 갈리죠.", "저는 좋아하는데 사람마다 다르더라고요.",
   "이건 타이밍이 중요하죠.", "돈이 좀 들긴 해요 ㅋㅋ", "주말에 많이들 하지 않나요?",
   "말 안 해도 다들 알 것 같은데요.", "저는 좀 애매해요 솔직히.", "처음엔 별로였는데 지금은 괜찮아요.",
   "이거 얘기하면 너무 티나려나...", "무난하게 좋아요.", "요즘 특히 많이 하죠.",
 ];
+const LIAR_CHAT = ["ㅋㅋㅋㅋ", "아 뭔가 수상한데", "지금 눈 굴렸어 방금", "나 진짜 아님", "얘 말투 이상해", "빨리빨리~", "표정 관리 좀", "오 방금 티났다", "음~ 글쎄요", "저 사람 각인데?"];
+
 function LiarGame({ onClose, onReward }) {
   const [phase, setPhase] = useState("lobby");
   const [cat, setCat] = useState("랜덤");
   const [size, setSize] = useState(5);
-  const [players, setPlayers] = useState([]);
+  const [players, setPlayers] = useState([{ name: "나", avatar: "🧑‍💻" }]);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [invited, setInvited] = useState({});
+  const [toast, setToast] = useState(null);
   const [word, setWord] = useState("");
   const [usedCat, setUsedCat] = useState("");
   const [liarIdx, setLiarIdx] = useState(0);
-  const [turn, setTurn] = useState(0);
-  const [talks, setTalks] = useState([]);
-  const [myTalk, setMyTalk] = useState("");
+  const [turnIdx, setTurnIdx] = useState(-1);
+  const [bubbles, setBubbles] = useState({});
+  const [log, setLog] = useState([]);
+  const [text, setText] = useState("");
   const [votes, setVotes] = useState(null);
   const [guess, setGuess] = useState("");
   const [outcome, setOutcome] = useState(null);
+  const timers = useRef([]);
+  const logEnd = useRef(null);
+  const iAmLiar = liarIdx === 0;
+  const myTurn = phase === "round" && turnIdx === 0;
 
-  const makeRoom = () => {
-    const names = [...LIAR_NPCS].sort(() => Math.random() - 0.5).slice(0, size - 1);
-    setPlayers(["나", ...names]);
-    setPhase("wait");
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  useEffect(() => { if (logEnd.current) logEnd.current.scrollIntoView({ behavior: "smooth" }); }, [log]);
+
+  const say = (idx, txt, kind) => {
+    const id = Date.now() + Math.random();
+    setBubbles((b) => ({ ...b, [idx]: { text: txt, id } }));
+    setLog((l) => [...l.slice(-40), { who: players[idx] ? players[idx].name : "?", text: txt, kind }]);
+    const t = setTimeout(() => setBubbles((b) => (b[idx] && b[idx].id === id ? { ...b, [idx]: null } : b)), 4200);
+    timers.current.push(t);
   };
+  const showToast = (m) => { setToast(m); const t = setTimeout(() => setToast(null), 1600); timers.current.push(t); };
+
+  useEffect(() => {
+    if (phase !== "round") return;
+    if (turnIdx <= 0 || turnIdx >= players.length) {
+      if (turnIdx >= players.length && players.length > 1) { const t = setTimeout(() => setPhase("vote"), 900); timers.current.push(t); }
+      return;
+    }
+    const t = setTimeout(() => {
+      say(turnIdx, LIAR_LINES[Math.floor(Math.random() * LIAR_LINES.length)], "turn");
+      setTurnIdx((v) => v + 1);
+    }, 1500);
+    timers.current.push(t);
+    return () => clearTimeout(t);
+  }, [phase, turnIdx, players.length]);
+
+  useEffect(() => {
+    if (phase !== "round" && phase !== "vote") return;
+    const iv = setInterval(() => {
+      if (players.length < 2) return;
+      const i = 1 + Math.floor(Math.random() * (players.length - 1));
+      say(i, LIAR_CHAT[Math.floor(Math.random() * LIAR_CHAT.length)], "chat");
+    }, 5200);
+    return () => clearInterval(iv);
+  }, [phase, players.length]);
+
+  const invite = (p) => {
+    if (players.length >= size) { showToast("자리가 가득 찼어요"); return; }
+    if (invited[p.name]) return;
+    setInvited((v) => ({ ...v, [p.name]: "sent" }));
+    showToast(`📨 ${p.name}님에게 초대장을 보냈어요`);
+    const t = setTimeout(() => {
+      setInvited((v) => ({ ...v, [p.name]: "joined" }));
+      setPlayers((ps) => (ps.length < size && !ps.find((x) => x.name === p.name) ? [...ps, { name: p.name, avatar: p.avatar }] : ps));
+      showToast(`✅ ${p.name}님이 입장했어요!`);
+    }, 1300);
+    timers.current.push(t);
+  };
+
   const start = () => {
     const cats = Object.keys(LIAR_TOPICS);
     const useCat = cat === "랜덤" ? cats[Math.floor(Math.random() * cats.length)] : cat;
@@ -1655,21 +1708,19 @@ function LiarGame({ onClose, onReward }) {
     setUsedCat(useCat);
     setWord(list[Math.floor(Math.random() * list.length)]);
     setLiarIdx(Math.floor(Math.random() * players.length));
-    setTalks([]); setTurn(0); setVotes(null); setGuess(""); setOutcome(null);
+    setBubbles({}); setLog([]); setVotes(null); setGuess(""); setOutcome(null); setTurnIdx(-1);
     setPhase("reveal");
   };
-  const iAmLiar = liarIdx === 0;
 
-  const npcTalk = (i) => LIAR_LINES[Math.floor(Math.random() * LIAR_LINES.length)];
-  const nextTurn = (myText) => {
-    const arr = [...talks];
-    if (turn === 0) arr.push({ who: "나", text: myText });
-    for (let i = arr.length; i < players.length; i++) arr.push({ who: players[i], text: npcTalk(i) });
-    setTalks(arr); setTurn(players.length); setPhase("vote");
+  const sendChat = () => {
+    const t = text.trim(); if (!t) return;
+    say(0, t, myTurn ? "turn" : "chat");
+    setText("");
+    if (myTurn) setTurnIdx(1);
   };
+
   const doVote = (targetIdx) => {
-    const tally = {};
-    tally[targetIdx] = 1;
+    const tally = { [targetIdx]: 1 };
     for (let i = 1; i < players.length; i++) {
       let v = Math.floor(Math.random() * players.length);
       if (i === liarIdx && v === liarIdx) v = (v + 1) % players.length;
@@ -1679,7 +1730,7 @@ function LiarGame({ onClose, onReward }) {
     Object.entries(tally).forEach(([k, n]) => { if (n > best) { best = n; top = Number(k); } });
     setVotes({ tally, top });
     if (top === liarIdx) {
-      if (iAmLiar) { setPhase("guess"); }
+      if (iAmLiar) setPhase("guess");
       else { setOutcome("win"); onReward && onReward(8); setPhase("result"); }
     } else {
       setOutcome(iAmLiar ? "liarwin" : "lose");
@@ -1694,11 +1745,41 @@ function LiarGame({ onClose, onReward }) {
     setPhase("result");
   };
 
+  const seatPos = (i, n) => {
+    const ang = (Math.PI / 2) + (i * 2 * Math.PI) / n;
+    return { left: `${50 + 38 * Math.cos(ang)}%`, top: `${50 + 33 * Math.sin(ang)}%` };
+  };
+
+  const Table = () => (
+    <div style={{ position: "relative", width: "100%", height: 230, background: "#2f2440", border: `3px solid ${C.ink}`, overflow: "visible", marginBottom: 8 }}>
+      <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: "44%", height: "42%", borderRadius: "50%", background: "#4a3a63", border: `3px solid ${C.ink}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+        <span style={{ fontSize: 9, color: "#cfc0e8" }}>카테고리</span>
+        <b style={{ fontSize: 12, color: C.white }}>{usedCat || "-"}</b>
+      </div>
+      {players.map((p, i) => {
+        const pos = seatPos(i, players.length);
+        const active = phase === "round" && turnIdx === i;
+        const b = bubbles[i];
+        return (
+          <div key={i} style={{ position: "absolute", ...pos, transform: "translate(-50%,-50%)", textAlign: "center", zIndex: b ? 5 : 2 }}>
+            {b && (
+              <div className="chat-bubble" style={{ position: "absolute", bottom: "108%", left: "50%", transform: "translateX(-50%)", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "3px 7px", fontSize: 11, whiteSpace: "nowrap", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis" }}>{b.text}</div>
+            )}
+            <div style={{ fontSize: 26, filter: active ? "drop-shadow(0 0 6px #ffe680)" : "none" }}>{p.avatar}</div>
+            <div style={{ fontSize: 9, color: C.white, background: active ? "#a86e13" : "rgba(0,0,0,0.55)", border: `1px solid ${C.ink}`, padding: "0 4px", whiteSpace: "nowrap" }}>{p.name}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <RoomModal title="🕵️ 라이어 게임" onClose={onClose} maxW={430}>
+    <RoomModal title="🕵️ 라이어 게임" onClose={onClose} maxW={440}>
+      {toast && <div style={{ position: "absolute", left: "50%", top: 8, transform: "translateX(-50%)", background: C.ink, color: C.white, border: `2px solid ${C.gem}`, padding: "5px 12px", fontSize: 12, zIndex: 50 }}>{toast}</div>}
+
       {phase === "lobby" && (
         <div>
-          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10 }}>방을 만들고 마을 사람들을 모아요. 라이어 한 명만 제시어를 몰라요!</div>
+          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10 }}>방을 만들고 주민들을 초대해요. 라이어 한 명만 제시어를 몰라요!</div>
           <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 5 }}>카테고리</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 12 }}>
             {["랜덤", ...Object.keys(LIAR_TOPICS)].map((c) => (
@@ -1711,7 +1792,7 @@ function LiarGame({ onClose, onReward }) {
               <PxButton key={n} tone={size === n ? "gold" : "wood"} onClick={() => setSize(n)} style={{ fontSize: 12, padding: "6px 12px" }}>{n}명</PxButton>
             ))}
           </div>
-          <PxButton tone="good" onClick={makeRoom} style={{ width: "100%", padding: 11, fontSize: 14 }}>🚪 방 만들기</PxButton>
+          <PxButton tone="good" onClick={() => { setPlayers([{ name: "나", avatar: "🧑‍💻" }]); setInvited({}); setPhase("wait"); }} style={{ width: "100%", padding: 11, fontSize: 14 }}>🚪 방 만들기</PxButton>
         </div>
       )}
 
@@ -1721,20 +1802,35 @@ function LiarGame({ onClose, onReward }) {
             <b style={{ fontSize: 13 }}>대기실 · {cat === "랜덤" ? "🎲 랜덤" : cat}</b>
             <span style={{ fontSize: 11, color: C.inkSoft }}>{players.length}/{size}명</span>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
-            {players.map((p, i) => (
-              <div key={i} style={{ background: p === "나" ? C.gem : C.white, border: `2px solid ${C.ink}`, padding: "7px 9px", fontSize: 12 }}>
-                {p === "나" ? "👤 나 (방장)" : `🧑 ${p}`}
-              </div>
-            ))}
-            {Array.from({ length: Math.max(0, size - players.length) }).map((_, i) => (
-              <div key={"e" + i} style={{ background: "#e7dfcc", border: `2px dashed ${C.ink}`, padding: "7px 9px", fontSize: 11, color: C.inkSoft }}>비어있음</div>
-            ))}
-          </div>
+          <Table />
           <div style={{ display: "flex", gap: 6 }}>
-            <PxButton tone="wood" onClick={() => { if (players.length < size) setPlayers((p) => [...p, LIAR_NPCS.filter((n) => !p.includes(n))[0]]); }} disabled={players.length >= size} style={{ flex: 1, padding: 9, fontSize: 12 }}>➕ 초대하기</PxButton>
-            <PxButton tone="good" onClick={start} disabled={players.length < 4} style={{ flex: 1, padding: 9, fontSize: 12 }}>▶ 게임 시작</PxButton>
+            <PxButton tone="wood" onClick={() => setInviteOpen(true)} disabled={players.length >= size} style={{ flex: 1, padding: 9, fontSize: 12 }}>📨 초대하기</PxButton>
+            <PxButton tone="good" onClick={start} disabled={players.length < 4} style={{ flex: 1, padding: 9, fontSize: 12 }}>▶ 게임 시작 ({players.length}/4~)</PxButton>
           </div>
+          {inviteOpen && (
+            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 95, padding: 14 }} onClick={() => setInviteOpen(false)}>
+              <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340 }}>
+                <Panel style={{ padding: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <b style={{ fontSize: 13 }}>🏘️ 마을 주민 초대</b>
+                    <PxButton tone="ink" onClick={() => setInviteOpen(false)} style={{ fontSize: 11, padding: "4px 8px" }}>✕</PxButton>
+                  </div>
+                  <div style={{ maxHeight: 260, overflow: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+                    {PROFILES.map((p) => {
+                      const st = invited[p.name];
+                      return (
+                        <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `2px solid ${C.ink}`, padding: "6px 8px" }}>
+                          <span style={{ fontSize: 22 }}>{p.avatar}</span>
+                          <span style={{ flex: 1, fontSize: 12 }}><b>{p.name}</b><br /><span style={{ fontSize: 10, color: C.inkSoft }}>{p.job}</span></span>
+                          <PxButton tone={st === "joined" ? "good" : st === "sent" ? "ink" : "blue"} disabled={!!st} onClick={() => invite(p)} style={{ fontSize: 10, padding: "5px 8px" }}>{st === "joined" ? "참가중 ✓" : st === "sent" ? "발송됨…" : "초대장"}</PxButton>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Panel>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1756,31 +1852,40 @@ function LiarGame({ onClose, onReward }) {
               </>
             )}
           </div>
-          <PxButton tone="good" onClick={() => setPhase("talk")} style={{ width: "100%", padding: 10, fontSize: 13 }}>확인했어요 ▶</PxButton>
+          <PxButton tone="good" onClick={() => { setPhase("round"); setTurnIdx(0); }} style={{ width: "100%", padding: 10, fontSize: 13 }}>확인했어요 ▶</PxButton>
         </div>
       )}
 
-      {phase === "talk" && (
+      {(phase === "round" || phase === "vote") && (
         <div>
-          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>내 차례예요. 한 마디로 설명해보세요 (너무 대놓고 말하면 라이어가 눈치채요!)</div>
-          <input value={myTalk} onChange={(e) => setMyTalk(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && myTalk.trim()) nextTurn(myTalk.trim()); }} placeholder="예: 비 오는 날 생각나요" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
-          <PxButton tone="good" disabled={!myTalk.trim()} onClick={() => nextTurn(myTalk.trim())} style={{ width: "100%", marginTop: 10, padding: 10, fontSize: 13 }}>말하기 ▶</PxButton>
-        </div>
-      )}
-
-      {phase === "vote" && (
-        <div>
-          <div style={{ maxHeight: 150, overflow: "auto", background: "#efe6d2", border: `3px solid ${C.ink}`, padding: 8, marginBottom: 10, display: "flex", flexDirection: "column", gap: 5 }}>
-            {talks.map((t, i) => (
-              <div key={i} style={{ fontSize: 12 }}><b style={{ color: "#5b8def" }}>{t.who}</b> · {t.text}</div>
+          <Table />
+          {phase === "round" && (
+            <div style={{ fontSize: 12, textAlign: "center", marginBottom: 6, color: myTurn ? C.danger : C.inkSoft, fontWeight: myTurn ? "bold" : "normal" }}>
+              {myTurn ? "🎤 내 차례! 설명을 입력하세요" : `${players[Math.min(turnIdx, players.length - 1)] ? players[Math.min(turnIdx, players.length - 1)].name : ""} 님이 말하는 중...`}
+            </div>
+          )}
+          <div style={{ height: 92, overflow: "auto", background: "#efe6d2", border: `2px solid ${C.ink}`, padding: 6, marginBottom: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+            {log.map((l, i) => (
+              <div key={i} style={{ fontSize: 11 }}>
+                <b style={{ color: l.kind === "turn" ? "#a86e13" : "#5b8def" }}>{l.who}</b> {l.kind === "turn" ? "🎤" : "💬"} {l.text}
+              </div>
             ))}
+            <div ref={logEnd} />
           </div>
-          <div style={{ fontSize: 13, fontWeight: "bold", marginBottom: 6 }}>🗳 누가 라이어일까요?</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-            {players.map((p, i) => i !== 0 && (
-              <PxButton key={i} tone="wood" onClick={() => doVote(i)} style={{ padding: 9, fontSize: 12 }}>{p}</PxButton>
-            ))}
+          <div style={{ display: "flex", gap: 5, marginBottom: 8 }}>
+            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }} placeholder={myTurn ? "제시어 설명 (내 차례)" : "자유 채팅…"} style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 12, background: C.white }} />
+            <PxButton tone={myTurn ? "gold" : "good"} onClick={sendChat} style={{ fontSize: 12, padding: "7px 11px" }}>{myTurn ? "🎤 설명" : "전송"}</PxButton>
           </div>
+          {phase === "vote" && (
+            <div>
+              <div style={{ fontSize: 13, fontWeight: "bold", marginBottom: 6 }}>🗳 누가 라이어일까요?</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                {players.map((p, i) => i !== 0 && (
+                  <PxButton key={i} tone="wood" onClick={() => doVote(i)} style={{ padding: 9, fontSize: 12 }}>{p.avatar} {p.name}</PxButton>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1799,10 +1904,10 @@ function LiarGame({ onClose, onReward }) {
           <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 14, margin: "8px 0" }}>
             {outcome === "win" ? "라이어 검거 성공!" : outcome === "liarwin" ? "라이어 승리!" : "라이어가 도망쳤다..."}
           </div>
-          <div style={{ fontSize: 13, marginBottom: 6 }}>라이어는 <b style={{ color: C.danger }}>{players[liarIdx]}</b> 였어요</div>
+          <div style={{ fontSize: 13, marginBottom: 6 }}>라이어는 <b style={{ color: C.danger }}>{players[liarIdx] ? players[liarIdx].name : "?"}</b> 였어요</div>
           <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10 }}>제시어 · {word} ({usedCat})</div>
           {outcome === "win" && <div style={{ fontSize: 13, color: C.good, marginBottom: 10 }}>+8 ⭐ 획득!</div>}
-          {outcome === "liarwin" && <div style={{ fontSize: 13, color: C.good, marginBottom: 10 }}>+{iAmLiar ? (votes && votes.top === liarIdx ? 12 : 10) : 0} ⭐ 획득!</div>}
+          {outcome === "liarwin" && <div style={{ fontSize: 13, color: C.good, marginBottom: 10 }}>⭐ 획득!</div>}
           <div style={{ display: "flex", gap: 8 }}>
             <PxButton tone="ink" onClick={onClose} style={{ flex: 1, padding: 10, fontSize: 13 }}>나가기</PxButton>
             <PxButton tone="good" onClick={() => setPhase("lobby")} style={{ flex: 1, padding: 10, fontSize: 13 }}>🔄 다시</PxButton>
@@ -3130,6 +3235,7 @@ function StatCard({ label, value, accent, icon }) {
 /* ===================== 항상 떠있는 UI ===================== */
 function ChatDock({ messages, shout, onToggleShout, onSend, gems = 0 }) {
   const [text, setText] = useState("");
+  const [warn, setWarn] = useState(false);
   const send = () => { if (!text.trim()) return; onSend(text, shout); setText(""); };
   return (
     <div style={{ position: "fixed", left: 12, bottom: 12, width: 250, zIndex: 60, fontFamily: "'DotGothic16', monospace" }}>
@@ -3143,8 +3249,9 @@ function ChatDock({ messages, shout, onToggleShout, onSend, gems = 0 }) {
           ))}
         </div>
       )}
+      {warn && <div style={{ background: C.danger, color: C.white, border: `2px solid ${C.ink}`, padding: "3px 8px", fontSize: 11, marginBottom: 4 }}>⭐ 젬이 부족해요 (확성기 1젬)</div>}
       <div style={{ display: "flex", gap: 4, background: C.parch, border: `3px solid ${C.ink}`, padding: 4 }}>
-        <button onClick={onToggleShout} disabled={!shout && gems < 1} title={shout ? "확성기 ON" : "확성기 켜기 (⭐1)"} style={{ position: "relative", background: shout ? C.gem : C.white, border: `2px solid ${C.ink}`, cursor: !shout && gems < 1 ? "not-allowed" : "pointer", opacity: !shout && gems < 1 ? 0.5 : 1, fontSize: 15, width: 34, flexShrink: 0 }}>
+        <button onClick={() => { if (!shout && gems < 1) { setWarn(true); setTimeout(() => setWarn(false), 1600); return; } onToggleShout(); }} title={shout ? "확성기 ON" : "확성기 켜기 (⭐1)"} style={{ position: "relative", background: shout ? C.gem : C.white, border: `2px solid ${C.ink}`, cursor: "pointer", opacity: !shout && gems < 1 ? 0.6 : 1, fontSize: 15, width: 34, flexShrink: 0 }}>
           📢<span style={{ position: "absolute", right: 1, bottom: 0, fontSize: 8, color: C.ink, background: "#ffe680", border: `1px solid ${C.ink}`, padding: "0 1px", lineHeight: 1.2 }}>{shout ? "ON" : "1"}</span>
         </button>
         <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }}
