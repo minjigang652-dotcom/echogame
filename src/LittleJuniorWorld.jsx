@@ -2475,13 +2475,12 @@ function playPunch() {
     n.buffer = b; n.connect(ng).connect(ctx.destination); n.start(t);
   } catch (e) {}
 }
-
 function SandbagView({ onBack, scores, onEnd, myName = "" }) {
+  const [nick, setNick] = useState(myName);
   const [count, setCount] = useState(0);
   const [mode, setMode] = useState("mouse");
   const [fx, setFx] = useState(0);
   const [ending, setEnding] = useState(false);
-  function SandbagView({ onBack, scores, onEnd, myName = "" }) {
   const hit = () => { setCount((c) => c + 1); setFx(Date.now()); playPunch(); };
   const finish = () => { if (count <= 0) { onBack(); return; } setEnding(true); };
   const submit = () => { onEnd(nick.trim() || myName || "익명", count); setCount(0); setNick(myName); setEnding(false); };
