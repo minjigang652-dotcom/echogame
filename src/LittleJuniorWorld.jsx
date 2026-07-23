@@ -10,6 +10,21 @@ function isTyping(e) {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable === true;
 }
 
+/* 채팅창 자동 스크롤 — 컨테이너에 ref를 걸면 새 메시지마다 맨 아래로 내려갑니다.
+   scrollIntoView 대신 scrollTop을 써서 페이지 전체가 튀지 않아요. */
+function useAutoScroll(dep) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    // 이미지/폰트가 뒤늦게 로드돼 높이가 바뀌는 경우 대비
+    const t = setTimeout(() => { if (ref.current) ref.current.scrollTop = ref.current.scrollHeight; }, 60);
+    return () => clearTimeout(t);
+  }, [dep]);
+  return ref;
+}
+
 /* =============================================================================
    작은 주니어 네이버 : 오픈월드 에디션 (프로토타입)
    - 스타듀밸리풍 16비트 도트. 카메라가 캐릭터를 따라 움직이는 마을.
@@ -1354,6 +1369,7 @@ function albaQuests(idx) {
 }
 function ManagerChat({ name, onClose }) {
   const [msgs, setMsgs] = useState([{ me: false, text: `안녕하세요, 담당자 ${name}입니다. 무엇을 도와드릴까요?` }]);
+  const boxRef = useAutoScroll(msgs);
   const [text, setText] = useState("");
   const replies = ["네 확인했어요!", "그건 이렇게 진행하면 돼요 👍", "잠시만요, 알아볼게요", "오케이 바로 처리할게요", "좋은 질문이에요!", "그 건은 내일까지 부탁해요 🙏"];
   const send = () => { const t = text.trim(); if (!t) return; setMsgs((m) => [...m, { me: true, text: t }]); setText(""); setTimeout(() => setMsgs((m) => [...m, { me: false, text: replies[Math.floor(Math.random() * replies.length)] }]), 700); };
@@ -1365,7 +1381,7 @@ function ManagerChat({ name, onClose }) {
             <span style={{ fontSize: 20 }}>🧑‍💼</span><b style={{ flex: 1 }}>담당자 {name}</b>
             <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
           </div>
-          <div style={{ height: 240, overflow: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 6, background: "#efe6d2" }}>
+          <div ref={boxRef} style={{ height: 240, overflow: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 6, background: "#efe6d2" }}>
             {msgs.map((m, i) => (
               <div key={i} style={{ alignSelf: m.me ? "flex-end" : "flex-start", background: m.me ? C.gem : C.white, border: `2px solid ${C.ink}`, padding: "5px 9px", fontSize: 13, maxWidth: "78%" }}>{m.text}</div>
             ))}
@@ -1542,6 +1558,7 @@ function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble
   const net = useContext(NetContext);
   const here = net && net.others ? Object.values(net.others).filter((o) => o.v === "center") : [];
   const [showChat, setShowChat] = useState(false);
+  const loungeRef = useAutoScroll(chat);
   const [station, setStation] = useState(null); // {name,color}
   const [text, setText] = useState("");
   const roomLabel = (id) => {
@@ -1574,7 +1591,7 @@ function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble
             🪑 지금 테이블에 앉은 사람: <b>나</b>{here.length ? ", " + here.map((o) => o.name).join(", ") : " (혼자예요)"}
           </div>
           <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>* 데모용 로컬 채팅입니다.</div>
-          <div style={{ height: 200, overflow: "auto", background: C.white, border: `3px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+          <div ref={loungeRef} style={{ height: 200, overflow: "auto", background: C.white, border: `3px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
             {chat.map((m, i) => (
               <div key={i} style={{ fontSize: 13, alignSelf: m.me ? "flex-end" : "flex-start", background: m.me ? C.gem : "#eadfc6", border: `2px solid ${C.ink}`, padding: "4px 8px", maxWidth: "80%" }}>
                 <b style={{ fontSize: 10, color: C.inkSoft }}>{m.who}</b><br />{m.text}
@@ -2035,8 +2052,14 @@ function HeartView({ gems, worries, onPost, onBack, bubble }) {
 
 /* ======================= 리스닝 방(디제이 + 관객석 + BGM) ======================= */
 function parseYouTubeId(url) {
-  const m = String(url).match(/(?:youtu\.be\/|[?&]v=|embed\/)([\w-]{11})/);
-  return m ? m[1] : null;
+  const s = String(url || "").trim();
+  if (!s) return null;
+  // youtu.be/ID · watch?v=ID · embed/ID · shorts/ID · live/ID · /v/ID
+  const m = s.match(/(?:youtu\.be\/|[?&]v=|embed\/|shorts\/|live\/|\/v\/)([\w-]{11})/);
+  if (m) return m[1];
+  // 영상 ID만 붙여넣은 경우
+  if (/^[\w-]{11}$/.test(s)) return s;
+  return null;
 }
 function ListeningView({ onBack, gems, onSpend, bubble }) {
   const ytRef = useRef(null);
@@ -2064,15 +2087,39 @@ function ListeningView({ onBack, gems, onSpend, bubble }) {
     const t = reqText.trim();
     if (!t || gems < 5) return;
     onSpend(5);
-    setSongs((v) => [...v, { id: Date.now(), title: t, desc: "신청곡 🎶", videoId: null, q: t }]);
-    setTrack(t); setPlaying(true); setReqText(""); setReqOpen(false);
+    const vid = parseYouTubeId(t);
+    const s = { id: Date.now(), title: vid ? "신청곡 🎶" : t, desc: "신청곡 🎶", videoId: vid, q: t };
+    setSongs((v) => [...v, s]);
+    setTrack(s.title); setPlaying(true); setReqText(""); setReqOpen(false);
+    if (vid) { setSel(s); setOpen(true); }
   };
 
   const pickSong = (s) => { setSel(s); setTrack(s.title); setPlaying(true); };
+
+  /* 유튜브 링크만 붙여넣어도 바로 등록 + 재생 */
+  const [paste, setPaste] = useState("");
+  const playLink = (raw) => {
+    const url = (raw !== undefined ? raw : paste).trim();
+    if (!url) return;
+    const vid = parseYouTubeId(url);
+    if (!vid) { setLinkErr("유튜브 링크를 인식하지 못했어요. 주소를 확인해주세요."); setTimeout(() => setLinkErr(null), 2200); return; }
+    const exist = songs.find((s) => s.videoId === vid);
+    const s = exist || { id: Date.now(), title: "유튜브 영상 🎬", desc: url, videoId: vid, q: url };
+    if (!exist) setSongs((v) => [...v, s]);
+    setPaste(""); setLinkErr(null);
+    setSel(s); setTrack(s.title); setPlaying(true);
+  };
+  const [linkErr, setLinkErr] = useState(null);
+
   const addSong = () => {
-    if (!nt.trim()) return;
-    setSongs((v) => [...v, { id: Date.now(), title: nt.trim(), desc: nd.trim() || "추가한 곡", videoId: parseYouTubeId(nu), q: nt.trim() }]);
+    const vid = parseYouTubeId(nu);
+    const title = nt.trim() || (vid ? "유튜브 영상 🎬" : "");
+    if (!title) return;
+    const s = { id: Date.now(), title, desc: nd.trim() || (vid ? "링크로 추가한 곡" : "추가한 곡"), videoId: vid, q: nt.trim() || nu.trim() };
+    setSongs((v) => [...v, s]);
     setNt(""); setNu(""); setNd(""); setAdding(false);
+    // 링크가 있으면 추가하자마자 바로 재생
+    if (vid) { setSel(s); setTrack(s.title); setPlaying(true); }
   };
 
   const furniture = [
@@ -2097,8 +2144,8 @@ function ListeningView({ onBack, gems, onSpend, bubble }) {
     <RoomView title="리스닝 방" icon="🎵" sub="디제이 부스에서 선곡 · 관객석에서 감상" bg="#2a2140" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={open || reqOpen} headerBg="#5b8def" banner={banner} bubble={bubble}>
       {reqOpen && (
         <RoomModal title="🎵 신청곡" onClose={() => setReqOpen(false)} maxW={360}>
-          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>5젬으로 신청하면 상단 배경음악 제목이 바뀌어요. (보유 {fmt(gems)}⭐)</div>
-          <input value={reqText} onChange={(e) => setReqText(e.target.value)} placeholder="예: NewJeans - Ditto" style={{ ...inp, width: "100%", boxSizing: "border-box", fontSize: 14 }} />
+          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>5젬으로 신청하면 상단 배경음악 제목이 바뀌어요. <b>유튜브 링크를 넣으면 바로 재생</b>됩니다. (보유 {fmt(gems)}⭐)</div>
+          <input value={reqText} onChange={(e) => setReqText(e.target.value)} placeholder="곡 제목 또는 유튜브 링크" style={{ ...inp, width: "100%", boxSizing: "border-box", fontSize: 14 }} />
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <PxButton tone="ink" onClick={() => setReqOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>
             <PxButton tone="gold" disabled={!reqText.trim() || gems < 5} onClick={requestSong} style={{ flex: 1, padding: 10, fontSize: 13 }}>{gems < 5 ? "젬 부족" : "5젬 신청"}</PxButton>
@@ -2109,22 +2156,36 @@ function ListeningView({ onBack, gems, onSpend, bubble }) {
         <RoomModal title="🎧 디제이 · 선곡 리스트" onClose={() => { setOpen(false); setSel(null); setAdding(false); }} maxW={520}>
           {!sel && (
             <>
+              <div style={{ background: "#241a33", border: `3px solid ${C.ink}`, borderRadius: 8, padding: 10, marginBottom: 10 }}>
+                <div style={{ fontSize: 12, color: "#ffe680", fontWeight: "bold", marginBottom: 6 }}>🔗 유튜브 링크 붙여넣기 → 바로 재생</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input value={paste} onChange={(e) => setPaste(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") playLink(); }}
+                    onPaste={(e) => { const v = (e.clipboardData || window.clipboardData).getData("text"); if (parseYouTubeId(v)) { e.preventDefault(); setPaste(v); playLink(v); } }}
+                    placeholder="https://youtu.be/... 또는 https://www.youtube.com/watch?v=..."
+                    style={{ ...inp, flex: 1, minWidth: 0, fontSize: 12 }} />
+                  <PxButton tone="gold" disabled={!paste.trim()} onClick={() => playLink()} style={{ fontSize: 12, padding: "8px 12px" }}>▶ 재생</PxButton>
+                </div>
+                {linkErr && <div style={{ fontSize: 11, color: "#ff9a8a", marginTop: 6 }}>⚠️ {linkErr}</div>}
+                <div style={{ fontSize: 10, color: "#b9a7d6", marginTop: 6 }}>붙여넣으면 자동으로 선곡 리스트에 등록되고 재생돼요</div>
+              </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
                 {songs.map((s) => (
                   <button key={s.id} onClick={() => pickSong(s)} className="px-btn" style={{ textAlign: "left", background: C.white, border: `3px solid ${C.ink}`, padding: "8px 10px", cursor: "pointer", fontFamily: "'DotGothic16', monospace" }}>
-                    <b style={{ fontSize: 13 }}>🎵 {s.title}</b>
-                    <div style={{ fontSize: 11, color: C.inkSoft }}>{s.desc}</div>
+                    <b style={{ fontSize: 13 }}>{s.videoId ? "▶" : "🎵"} {s.title}</b>
+                    {s.videoId && <span style={{ fontSize: 9, background: C.good, color: C.white, borderRadius: 8, padding: "1px 6px", marginLeft: 6 }}>바로재생</span>}
+                    <div style={{ fontSize: 11, color: C.inkSoft, wordBreak: "break-all" }}>{s.desc}</div>
                   </button>
                 ))}
               </div>
               {adding ? (
                 <div style={{ background: C.parch, border: `3px solid ${C.ink}`, padding: 10, display: "grid", gap: 6 }}>
-                  <input value={nt} onChange={(e) => setNt(e.target.value)} placeholder="곡 제목" style={inp} />
+                  <input value={nt} onChange={(e) => setNt(e.target.value)} placeholder="곡 제목 (링크만 넣어도 OK)" style={inp} />
                   <input value={nu} onChange={(e) => setNu(e.target.value)} placeholder="유튜브 링크 (붙여넣으면 바로 재생돼요)" style={inp} />
                   <input value={nd} onChange={(e) => setNd(e.target.value)} placeholder="한 줄 소개" style={inp} />
                   <div style={{ display: "flex", gap: 6 }}>
                     <PxButton tone="ink" onClick={() => setAdding(false)} style={{ flex: 1, fontSize: 12, padding: 8 }}>취소</PxButton>
-                    <PxButton tone="good" disabled={!nt.trim()} onClick={addSong} style={{ flex: 1, fontSize: 12, padding: 8 }}>추가</PxButton>
+                    <PxButton tone="good" disabled={!nt.trim() && !parseYouTubeId(nu)} onClick={addSong} style={{ flex: 1, fontSize: 12, padding: 8 }}>추가</PxButton>
                   </div>
                 </div>
               ) : (
@@ -2302,6 +2363,7 @@ function LiarGame({ onClose, onReward, myName = "", people = [] }) {
   const [turnIdx, setTurnIdx] = useState(-1);
   const [bubbles, setBubbles] = useState({});
   const [log, setLog] = useState([]);
+  const logRef = useAutoScroll(log);
   const [text, setText] = useState("");
   const [votes, setVotes] = useState(null);
   const [guess, setGuess] = useState("");
@@ -2523,7 +2585,7 @@ function LiarGame({ onClose, onReward, myName = "", people = [] }) {
               {myTurn ? "🎤 내 차례! 설명을 입력하세요" : `${players[Math.min(turnIdx, players.length - 1)] ? players[Math.min(turnIdx, players.length - 1)].name : ""} 님이 말하는 중...`}
             </div>
           )}
-          <div style={{ height: 92, overflow: "auto", background: "#efe6d2", border: `2px solid ${C.ink}`, padding: 6, marginBottom: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+          <div ref={logRef} style={{ height: 92, overflow: "auto", background: "#efe6d2", border: `2px solid ${C.ink}`, padding: 6, marginBottom: 6, display: "flex", flexDirection: "column", gap: 3 }}>
             {log.map((l, i) => (
               <div key={i} style={{ fontSize: 11 }}>
                 <b style={{ color: l.kind === "turn" ? "#a86e13" : "#5b8def" }}>{l.who}</b> {l.kind === "turn" ? "🎤" : "💬"} {l.text}
@@ -3293,7 +3355,6 @@ const SCHOOL_HOUSE_POS = [
 function QuestAssistant({ questTitle }) {
   const [msgs, setMsgs] = useState([{ me: false, text: "이 퀘스트 관련해서 훅 변형, 아이디어, 카피 다듬기 등 뭐든 물어보세요 ✍️" }]);
   const [text, setText] = useState("");
-  const endRef = useRef(null);
   const reply = (q) => {
     if (q.includes("후크") || q.includes("훅")) return `「${questTitle}」 후크 변형 3개예요:\n1) 사실 이거 몰라서 3개월 날렸어요\n2) 다들 장비부터 사는데, 순서가 틀렸어요\n3) 조회수 안 나오는 이유, 첫 3초에 있어요`;
     if (q.includes("아이디어") || q.includes("소재")) return "소재 3개: ① 내가 처음에 했던 실수 ② 남들이 안 알려주는 순서 ③ 하루만에 바뀐 결과 비교";
@@ -3306,15 +3367,14 @@ function QuestAssistant({ questTitle }) {
     setMsgs((m) => [...m, { me: true, text: t }]); setText("");
     setTimeout(() => setMsgs((m) => [...m, { me: false, text: reply(t) }]), 600);
   };
-  useEffect(() => { if (endRef.current) endRef.current.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+  const asstRef = useAutoScroll(msgs);
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 6 }}>🤖 어시스턴트</div>
-      <div style={{ flex: 1, minHeight: 150, maxHeight: 220, overflow: "auto", background: "#eef0fb", border: `2px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+      <div ref={asstRef} style={{ flex: 1, minHeight: 150, maxHeight: 220, overflow: "auto", background: "#eef0fb", border: `2px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
         {msgs.map((m, i) => (
           <div key={i} style={{ alignSelf: m.me ? "flex-end" : "flex-start", background: m.me ? C.gem : C.white, border: `2px solid ${C.ink}`, padding: "5px 8px", fontSize: 12, maxWidth: "88%", whiteSpace: "pre-wrap" }}>{m.text}</div>
         ))}
-        <div ref={endRef} />
       </div>
       <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
         <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="예: 이 후크의 다른 버전 3개 만들어줘" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 12, background: C.white }} />
@@ -3607,6 +3667,7 @@ const BOSS_MAPS_INIT = [
 function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree, onLeave }) {
   const net = useContext(NetContext);
   const [tMsg, setTMsg] = useState("");
+  const threadRef = useAutoScroll(JSON.stringify(threads || {}).length);
   const [editing, setEditing] = useState(null);
   const [nowTs, setNowTs] = useState(Date.now());
   useEffect(() => { const iv = setInterval(() => setNowTs(Date.now()), 1000); return () => clearInterval(iv); }, []);
@@ -3819,7 +3880,6 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
           ) : (
             <button onClick={() => setCollOpen(true)} title="보스 도감" style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 8, background: "linear-gradient(180deg,#6b4f8f,#3f2c5c)", color: C.white, fontSize: 16, padding: "4px 8px" }}>👾</button>
           )}
-          <span style={{ fontSize: 20 }}>{map.icon}</span>
           <b style={{ fontSize: 14, flex: 1 }}>{map.name}</b>
           <button onClick={() => setAddOpen(true)} title="퀘스트/보스맵 추가" style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 8, background: "linear-gradient(180deg,#e0a13d,#a86e13)", color: C.white, fontSize: 14, padding: "4px 9px", fontWeight: "bold" }}>＋</button>
           <div style={{ width: 120, height: 10, background: "#e7e2d6", borderRadius: 6, overflow: "hidden" }}>
@@ -3957,23 +4017,28 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                         {qs.map((q) => {
                           const got = !!dn[q.id];
                           return (
-                            <div key={q.id} title={got ? q.task : "미완료"} style={{ background: got ? C.white : "#ddd8cc", border: `2px ${got ? "solid" : "dashed"} ${C.ink}`, borderRadius: 8, padding: "9px 4px", textAlign: "center" }}>
-                              <div style={{ fontSize: 22, filter: got ? "none" : "brightness(0)", opacity: got ? 1 : 0.3 }}>{got ? q.icon : "❔"}</div>
-                              <div style={{ fontSize: 9.5, marginTop: 3, fontWeight: "bold", color: got ? C.ink : C.inkSoft, lineHeight: 1.3, wordBreak: "keep-all" }}>{got ? q.title : "???"}</div>
-                              {got && typeof dn[q.id] === "string" && <div style={{ fontSize: 8, color: C.good, marginTop: 2 }}>{dn[q.id]}</div>}
+                            <div key={q.id} title={q.task} style={{ position: "relative", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "9px 4px", textAlign: "center" }}>
+                              <div style={{ fontSize: 22 }}>{q.icon}</div>
+                              <div style={{ fontSize: 9.5, marginTop: 3, fontWeight: "bold", color: C.ink, lineHeight: 1.3, wordBreak: "keep-all" }}>{q.title}</div>
+                              <div style={{ fontSize: 8, color: C.inkSoft, marginTop: 2 }}>{q.owner ? `🧑 ${q.owner}` : "🏛 기본 퀘스트"}</div>
+                              {got && (
+                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(200,40,40,0.8)", fontSize: 52, fontWeight: "bold", lineHeight: 1, pointerEvents: "none", textShadow: "0 2px 3px rgba(255,255,255,0.7)" }}>✓</div>
+                              )}
                             </div>
                           );
                         })}
-                        <div style={{ background: bossDone ? "#fff1d6" : "#ddd8cc", border: `2px ${bossDone ? "solid" : "dashed"} ${C.ink}`, borderRadius: 8, padding: "9px 4px", textAlign: "center" }}>
-                          <div style={{ fontSize: 22, filter: bossDone ? "none" : "brightness(0)", opacity: bossDone ? 1 : 0.3 }}>{bossDone ? m.boss.icon : "👑"}</div>
-                          <div style={{ fontSize: 9.5, marginTop: 3, fontWeight: "bold", color: bossDone ? C.ink : C.inkSoft }}>{bossDone ? m.boss.title : "???"}</div>
+                        <div style={{ position: "relative", background: "#fff1d6", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "9px 4px", textAlign: "center" }}>
+                          <div style={{ fontSize: 22 }}>{m.boss.icon}</div>
+                          <div style={{ fontSize: 9.5, marginTop: 3, fontWeight: "bold", color: C.ink }}>{m.boss.title}</div>
+                          <div style={{ fontSize: 8, color: C.inkSoft, marginTop: 2 }}>👑 보스</div>
+                          {bossDone && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(200,40,40,0.8)", fontSize: 52, fontWeight: "bold", lineHeight: 1, pointerEvents: "none", textShadow: "0 2px 3px rgba(255,255,255,0.7)" }}>✓</div>}
                         </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
-              <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 10, textAlign: "center" }}>완료한 퀘스트만 이름이 보여요 · 아래 작은 글씨는 완료한 사람</div>
+              <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 10, textAlign: "center" }}>등록된 퀘스트가 모두 보여요 · 작은 글씨는 주최한 사람 · 완료한 건 빨간 ✓ 표시</div>
             </div>
           </div>
         </div>
@@ -4149,7 +4214,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                       ) : (
                         <div>
                           <div style={{ fontSize: 12, fontWeight: "bold", margin: "4px 0 5px" }}>💬 퀘스트 대화방</div>
-                          <div style={{ height: 110, overflow: "auto", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: 7, display: "flex", flexDirection: "column", gap: 4 }}>
+                          <div ref={threadRef} style={{ height: 110, overflow: "auto", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: 7, display: "flex", flexDirection: "column", gap: 4 }}>
                             {(threads[sel.id] || []).length === 0 && <div style={{ fontSize: 11, color: C.inkSoft }}>대화를 시작해보세요</div>}
                             {(threads[sel.id] || []).map((m, i) => (
                               <div key={i} style={{ fontSize: 12 }}><b style={{ color: "#5b8def" }}>{m.who}</b> {m.text}</div>
@@ -4303,61 +4368,226 @@ function BookIcon({ size = 96 }) {
   );
 }
 
+/* ============ 📖 코어사전 (단어 + 갤러리) ============ */
+const DICT_KEY = "echotown_dict_v1";
+const GALLERY_KEY = "echotown_dictgallery_v1";
+
+/* 서버 저장이 실패해도 단어가 사라지지 않도록 로컬 사본을 함께 유지합니다. */
+function mergeDict(dbList, localList) {
+  const byWord = {};
+  [...(dbList || []), ...(localList || [])].forEach((it) => {
+    if (!it || !it.word) return;
+    const prev = byWord[it.word];
+    if (!prev) { byWord[it.word] = it; return; }
+    const a = new Date(prev.updated_at || 0).getTime();
+    const b = new Date(it.updated_at || 0).getTime();
+    if (b >= a) byWord[it.word] = it;
+  });
+  return Object.values(byWord).sort((a, b) => (a.word > b.word ? 1 : -1));
+}
+
+/* 업로드한 사진을 리사이즈·압축해서 용량을 줄입니다 (로컬 저장 한도 대비) */
+function compressImage(file, maxSide = 900, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read fail"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("decode fail"));
+      img.onload = () => {
+        let { width: w, height: h } = img;
+        const scale = Math.min(1, maxSide / Math.max(w, h));
+        w = Math.round(w * scale); h = Math.round(h * scale);
+        const cv = document.createElement("canvas");
+        cv.width = w; cv.height = h;
+        cv.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(cv.toDataURL("image/jpeg", quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function CoreDictView({ onBack, myName = "" }) {
-  const [list, setList] = useState([]);
+  const [tab, setTab] = useState("word");
+  const [list, setList] = useState(() => loadJSON(DICT_KEY, []));
   const [q, setQ] = useState("");
   const [word, setWord] = useState("");
   const [mean, setMean] = useState("");
   const [editing, setEditing] = useState(null);
   const [msg, setMsg] = useState(null);
-  const say = (m) => { setMsg(m); setTimeout(() => setMsg(null), 1800); };
-  const reload = () => dbDictList().then((r) => setList(r || []));
+  const say = (m) => { setMsg(m); setTimeout(() => setMsg(null), 2200); };
+
+  const persist = (v) => { setList(v); saveJSON(DICT_KEY, v); };
+  const reload = () => dbDictList().then((r) => {
+    const merged = mergeDict(r || [], loadJSON(DICT_KEY, []));
+    persist(merged);
+  }).catch(() => {});
   useEffect(() => { reload(); }, []);
+
   const save = () => {
     const w = word.trim(), m = mean.trim();
     if (!w || !m) return;
+    const row = { word: w, meaning: m, updated_by: myName || "익명", updated_at: new Date().toISOString() };
+    const renamedFrom = editing && editing !== w ? editing : null;
+    // 1) 먼저 화면·로컬에 바로 반영 (등록한 단어가 절대 사라지지 않게)
+    persist(mergeDict([row], list.filter((it) => it.word !== w && it.word !== renamedFrom)));
+    setWord(""); setMean(""); setEditing(null);
+    say(editing ? "수정했어요 ✏️" : "등록했어요 📖");
+    // 2) 그다음 서버에도 저장 시도
+    if (renamedFrom) dbDictDelete(renamedFrom);
     dbDictSave(w, m, myName || "익명").then((ok) => {
-      if (ok) { say(editing ? "수정했어요 ✏️" : "등록했어요 📖"); setWord(""); setMean(""); setEditing(null); reload(); }
-      else say("저장 실패 — 사전 테이블을 만들어주세요");
+      if (!ok) say("이 기기에 저장했어요 (서버 연결 대기 중)");
+      else reload();
     });
   };
-  const startEdit = (it) => { setEditing(it.word); setWord(it.word); setMean(it.meaning); };
+  const del = (w) => {
+    if (!window.confirm(`「${w}」를 삭제할까요?`)) return;
+    persist(list.filter((it) => it.word !== w));
+    dbDictDelete(w).then(() => reload());
+  };
+  const startEdit = (it) => { setTab("word"); setEditing(it.word); setWord(it.word); setMean(it.meaning); };
   const shown = list.filter((it) => !q.trim() || it.word.includes(q.trim()) || (it.meaning || "").includes(q.trim()));
+
+  /* ===== 갤러리 ===== */
+  const [photos, setPhotos] = useState(() => loadJSON(GALLERY_KEY, []));
+  const [busy, setBusy] = useState(false);
+  const [zoom, setZoom] = useState(null);
+  const fileRef = useRef(null);
+  const savePhotos = (v) => {
+    try {
+      window.localStorage.setItem(GALLERY_KEY, JSON.stringify(v));
+      setPhotos(v);
+      return true;
+    } catch (e) {
+      say("저장 공간이 가득 찼어요 — 오래된 사진을 지워주세요");
+      return false;
+    }
+  };
+  const onPick = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setBusy(true);
+    const added = [];
+    for (const f of files) {
+      if (!f.type.startsWith("image/")) continue;
+      try {
+        const data = await compressImage(f);
+        added.push({ id: Date.now() + Math.random(), src: data, caption: "", by: myName || "익명",
+          at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) });
+      } catch (err) { /* 개별 파일 실패는 건너뜁니다 */ }
+    }
+    setBusy(false);
+    if (added.length) { savePhotos([...added, ...photos]); say(`사진 ${added.length}장을 올렸어요 🖼`); }
+    else say("이미지 파일을 읽지 못했어요");
+    if (fileRef.current) fileRef.current.value = "";
+  };
+  const setCaption = (id, v) => {
+    const next = photos.map((p) => (p.id === id ? { ...p, caption: v } : p));
+    setPhotos(next);
+  };
+  const commitCaption = () => savePhotos(photos);
+  const delPhoto = (id) => { if (window.confirm("이 사진을 지울까요?")) savePhotos(photos.filter((p) => p.id !== id)); };
+
+  const TabBtn = ({ k, label }) => (
+    <button onClick={() => setTab(k)} style={{ flex: 1, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 13, padding: "9px 6px", borderRadius: 10, border: `2px solid ${C.ink}`,
+      background: tab === k ? "linear-gradient(180deg,#b07a4e,#8a5a3b)" : C.white, color: tab === k ? C.white : C.ink, fontWeight: "bold",
+      boxShadow: tab === k ? "0 3px 0 rgba(0,0,0,0.3)" : "0 2px 0 rgba(0,0,0,0.15)" }}>{label}</button>
+  );
+
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="📖" title="코어사전" sub="누구나 우리만의 단어와 뜻을 등록·수정할 수 있어요" onBack={onBack} bg="#8a5a3b" fg={C.white} />
+      <TitleBar icon="📖" title="코어사전" sub="우리만의 단어와 사진을 함께 모아요" onBack={onBack} bg="#8a5a3b" fg={C.white} />
       <div style={{ padding: 14, background: "#f7efdc" }}>
-        <div style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 7 }}>{editing ? `✏️ 「${editing}」 수정 중` : "✍️ 새 단어 등록"}</div>
-          <input value={word} onChange={(e) => setWord(e.target.value)} placeholder="단어 (예: 쩝쩝박사)" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, marginBottom: 7 }} />
-          <textarea value={mean} onChange={(e) => setMean(e.target.value)} placeholder="뜻 · 설명을 자유롭게 적어주세요" style={{ width: "100%", boxSizing: "border-box", height: 80, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "none" }} />
-          <div style={{ display: "flex", gap: 7, marginTop: 8 }}>
-            {editing && <PxButton tone="ink" onClick={() => { setEditing(null); setWord(""); setMean(""); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>}
-            <PxButton tone="gold" disabled={!word.trim() || !mean.trim()} onClick={save} style={{ flex: 2, padding: 10, fontSize: 13 }}>{editing ? "수정 저장" : "📖 사전에 등록"}</PxButton>
-          </div>
-          {msg && <div style={{ fontSize: 12, color: C.good, textAlign: "center", marginTop: 7, fontWeight: "bold" }}>{msg}</div>}
+        <div style={{ display: "flex", gap: 7, marginBottom: 12 }}>
+          <TabBtn k="word" label={`📗 단어 ${list.length}`} />
+          <TabBtn k="gallery" label={`🖼 갤러리 ${photos.length}`} />
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 단어 검색" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
-          <span style={{ fontSize: 11, color: C.inkSoft }}>{shown.length}개</span>
-        </div>
-        <div style={{ maxHeight: 300, overflow: "auto", display: "flex", flexDirection: "column", gap: 7 }}>
-          {shown.length === 0 ? (
-            <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 24 }}>아직 등록된 단어가 없어요 📖<br />첫 단어를 등록해보세요!</div>
-          ) : shown.map((it) => (
-            <div key={it.word} style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 11 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <b style={{ flex: 1, fontSize: 14 }}>📗 {it.word}</b>
-                <PxButton tone="wood" onClick={() => startEdit(it)} style={{ fontSize: 10, padding: "4px 8px" }}>✏️ 수정</PxButton>
-                <PxButton tone="danger" onClick={() => { if (window.confirm(`「${it.word}」를 삭제할까요?`)) dbDictDelete(it.word).then(reload); }} style={{ fontSize: 10, padding: "4px 8px" }}>🗑</PxButton>
+        {msg && <div style={{ fontSize: 12, color: C.good, textAlign: "center", marginBottom: 8, fontWeight: "bold" }}>{msg}</div>}
+
+        {tab === "word" && (
+          <>
+            <div style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 7 }}>{editing ? `✏️ 「${editing}」 수정 중` : "✍️ 새 단어 등록"}</div>
+              <input value={word} onChange={(e) => setWord(e.target.value)} placeholder="단어 (예: 쩝쩝박사)" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, marginBottom: 7 }} />
+              <textarea value={mean} onChange={(e) => setMean(e.target.value)} placeholder="뜻 · 설명을 자유롭게 적어주세요" style={{ width: "100%", boxSizing: "border-box", height: 80, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "none" }} />
+              <div style={{ display: "flex", gap: 7, marginTop: 8 }}>
+                {editing && <PxButton tone="ink" onClick={() => { setEditing(null); setWord(""); setMean(""); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>}
+                <PxButton tone="gold" disabled={!word.trim() || !mean.trim()} onClick={save} style={{ flex: 2, padding: 10, fontSize: 13 }}>{editing ? "수정 저장" : "📖 사전에 등록"}</PxButton>
               </div>
-              <div style={{ fontSize: 13, lineHeight: 1.7, marginTop: 5, whiteSpace: "pre-wrap" }}>{it.meaning}</div>
-              {it.updated_by && <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 5 }}>✍️ 최근 수정 {it.updated_by}</div>}
             </div>
-          ))}
-        </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 단어 검색" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+              <span style={{ fontSize: 11, color: C.inkSoft }}>{shown.length}개</span>
+            </div>
+            <div style={{ maxHeight: 320, overflow: "auto", display: "flex", flexDirection: "column", gap: 7 }}>
+              {shown.length === 0 ? (
+                <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 24 }}>아직 등록된 단어가 없어요 📖<br />첫 단어를 등록해보세요!</div>
+              ) : shown.map((it) => (
+                <div key={it.word} style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 11 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <b style={{ flex: 1, fontSize: 14 }}>📗 {it.word}</b>
+                    <PxButton tone="wood" onClick={() => startEdit(it)} style={{ fontSize: 10, padding: "4px 8px" }}>✏️ 수정</PxButton>
+                    <PxButton tone="danger" onClick={() => del(it.word)} style={{ fontSize: 10, padding: "4px 8px" }}>🗑</PxButton>
+                  </div>
+                  <div style={{ fontSize: 13, lineHeight: 1.7, marginTop: 5, whiteSpace: "pre-wrap" }}>{it.meaning}</div>
+                  {it.updated_by && <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 5 }}>✍️ 최근 수정 {it.updated_by}</div>}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {tab === "gallery" && (
+          <>
+            <div style={{ background: C.white, border: `3px dashed ${C.ink}`, borderRadius: 10, padding: 16, marginBottom: 12, textAlign: "center" }}>
+              <div style={{ fontSize: 34 }}>🖼</div>
+              <div style={{ fontSize: 13, fontWeight: "bold", margin: "6px 0 4px" }}>사진 올리기</div>
+              <div style={{ fontSize: 11, color: C.inkSoft, lineHeight: 1.7, marginBottom: 10 }}>여러 장 한 번에 선택할 수 있어요.<br />사진 아래에 한 줄 설명을 바로 적을 수 있습니다.</div>
+              <input ref={fileRef} type="file" accept="image/*" multiple onChange={onPick} style={{ display: "none" }} />
+              <PxButton tone="gold" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()} style={{ width: "100%", padding: 12, fontSize: 14 }}>
+                {busy ? "올리는 중… ⏳" : "📷 사진 선택하기"}
+              </PxButton>
+            </div>
+
+            {photos.length === 0 ? (
+              <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 28, lineHeight: 1.8 }}>아직 올라온 사진이 없어요 🖼<br />첫 사진을 올려보세요!</div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10, maxHeight: 420, overflow: "auto" }}>
+                {photos.map((p) => (
+                  <div key={p.id} style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, overflow: "hidden" }}>
+                    <button onClick={() => setZoom(p)} title="크게 보기" style={{ display: "block", width: "100%", padding: 0, border: "none", background: "#e9e3d6", cursor: "zoom-in" }}>
+                      <img src={p.src} alt={p.caption || "사진"} style={{ display: "block", width: "100%", aspectRatio: "1/1", objectFit: "cover" }} />
+                    </button>
+                    <div style={{ padding: 7 }}>
+                      <input value={p.caption} onChange={(e) => setCaption(p.id, e.target.value)} onBlur={commitCaption}
+                        onKeyDown={(e) => { if (e.key === "Enter") { commitCaption(); e.currentTarget.blur(); } }}
+                        placeholder="한 줄 설명을 적어주세요"
+                        style={{ width: "100%", boxSizing: "border-box", padding: "6px 7px", border: `2px solid ${C.ink}`, borderRadius: 5, fontFamily: "'DotGothic16', monospace", fontSize: 12, background: "#fffdf6" }} />
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 5 }}>
+                        <span style={{ flex: 1, fontSize: 9.5, color: C.inkSoft, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🧑 {p.by} · {p.at}</span>
+                        <button onClick={() => delPhoto(p.id)} title="삭제" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: C.inkSoft }}>🗑</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginTop: 10 }}>* 사진은 이 브라우저에 저장돼요 (자동으로 압축됩니다).</div>
+          </>
+        )}
       </div>
+
+      {zoom && (
+        <div onClick={() => setZoom(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 130, padding: 18, cursor: "zoom-out" }}>
+          <img src={zoom.src} alt={zoom.caption || "사진"} style={{ maxWidth: "100%", maxHeight: "78%", objectFit: "contain", border: `3px solid ${C.white}`, borderRadius: 6 }} />
+          <div style={{ color: C.white, fontSize: 14, marginTop: 12, textAlign: "center", fontFamily: "'DotGothic16', monospace" }}>{zoom.caption || "(설명 없음)"}</div>
+          <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginTop: 4 }}>🧑 {zoom.by} · {zoom.at} · 화면을 누르면 닫혀요</div>
+        </div>
+      )}
     </Panel>
   );
 }
@@ -4369,25 +4599,23 @@ const SMOKE_LINES = ["오늘 왜이렇게 춥냐 ㅋㅋ", "커피 한잔 하실�
 function SmokeChat({ onClose }) {
   const [msgs, setMsgs] = useState([{ who: "정인", text: "왔어? 여기 앉아 ㅋㅋ" }]);
   const [text, setText] = useState("");
-  const endRef = useRef(null);
+  const smokeRef = useAutoScroll(msgs);
   useEffect(() => {
     const iv = setInterval(() => {
       setMsgs((m) => [...m.slice(-30), { who: SMOKE_PEOPLE[Math.floor(Math.random() * SMOKE_PEOPLE.length)], text: SMOKE_LINES[Math.floor(Math.random() * SMOKE_LINES.length)] }]);
     }, 2500);
     return () => clearInterval(iv);
   }, []);
-  useEffect(() => { if (endRef.current) endRef.current.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
   const send = () => { const t = text.trim(); if (!t) return; setMsgs((m) => [...m, { who: "나", text: t, me: true }]); setText(""); };
   return (
     <RoomModal title="💬 재떨이 수다방" onClose={onClose} maxW={400}>
-      <div style={{ height: 280, overflow: "auto", background: "#efe6d2", border: `3px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 5 }}>
+      <div ref={smokeRef} style={{ height: 280, overflow: "auto", background: "#efe6d2", border: `3px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 5 }}>
         {msgs.map((m, i) => (
           <div key={i} style={{ alignSelf: m.me ? "flex-end" : "flex-start", maxWidth: "80%" }}>
             {!m.me && <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 1 }}>{m.who}</div>}
             <div style={{ background: m.me ? C.gem : C.white, border: `2px solid ${C.ink}`, padding: "5px 9px", fontSize: 13 }}>{m.text}</div>
           </div>
         ))}
-        <div ref={endRef} />
       </div>
       <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
         <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지 입력 후 Enter" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
@@ -4468,6 +4696,10 @@ function SmokeView({ onBack, bubble }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260723p", type: "업데이트", date: "2026-07-23", title: "📖 코어사전 저장 안정화 · 🖼 갤러리 추가",
+    body: "· 등록한 단어가 서버 저장에 실패해도 사라지지 않게 이 기기에 함께 저장돼요\n· 서버와 로컬 기록을 합쳐서 보여주고, 최근 수정본이 우선됩니다\n· 🖼 갤러리 탭이 생겼어요 — 사진을 여러 장 한 번에 올릴 수 있어요\n· 사진 아래에 한 줄 설명을 바로 적을 수 있고, 사진을 누르면 크게 보여요\n· 업로드한 사진은 자동으로 압축돼요" },
+  { id: "u20260723o", type: "업데이트", date: "2026-07-23", title: "🎵 유튜브 링크 즉시 재생 · 💬 채팅 자동 스크롤",
+    body: "· 리스닝 방 디제이 부스에 「링크 붙여넣기 → 바로 재생」 칸이 생겼어요\n· 붙여넣는 순간 선곡 리스트에 등록되고 바로 재생됩니다\n· youtu.be · watch?v= · shorts · live 주소를 모두 인식해요\n· 신청곡에도 링크를 넣으면 바로 재생돼요\n· 모든 채팅창(주민센터·DM·재떨이 수다방·라이어게임·퀘스트 대화방·담당자·어시스턴트)이 자동으로 맨 아래로 스크롤돼요\n· 🗺 보스맵 상단에서 중복 아이콘을 정리하고 도감 아이콘만 남겼어요\n· 🧠 사고 도감은 등록된 퀘스트를 모두 보여주고, 작은 글씨는 주최한 사람, 완료한 건 빨간 ✓ 로 표시돼요" },
   { id: "u20260723n", type: "업데이트", date: "2026-07-23", title: "🏆 퀘스트 완료의 제단 오픈",
     body: "· 주민센터 남쪽에 신비로운 상징물 「퀘스트 완료의 제단」이 세워졌어요\n· 안에서 [퀘스트 신청 파편] · [퀘스트 수락 파편] 을 봉헌할 수 있어요\n· 항목마다 🛡 GM 검수 완료 / ⭐ 보상 완료 체크 가능\n· 둘 다 체크되면 ✦ 봉인 완료로 바뀌고 상단 봉인도 게이지가 올라가요\n· 신청/수락/미완/완료 필터와 검색 지원" },
   { id: "u20260723m", type: "업데이트", date: "2026-07-23", title: "🧭 우측 하단 버튼 4개로 정리 · ✉️ 메세지함 신설",
@@ -5196,14 +5428,13 @@ function DMChatModal({ person, onClose, onNetSend }) {
   const [msgs, setMsgs] = useState([{ me: false, text: `안녕하세요! ${person.name}이에요 👋 무슨 일이에요?` }]);
   const [text, setText] = useState("");
   const replies = ["오 좋아요!", "ㅋㅋㅋ 그러게요", "저도 그렇게 생각해요 👍", "언제 커피 한잔 해요 ☕", "지금 좀 바빠서요, 이따 봬요!", "헐 대박", "알겠어요, 확인해볼게요 📝"];
-  const endRef = useRef(null);
+  const dmBoxRef = useAutoScroll(msgs);
   const send = () => {
     const t = text.trim(); if (!t) return;
     setMsgs((m) => [...m, { me: true, text: t }]); setText("");
     if (onNetSend) onNetSend(t);
     setTimeout(() => setMsgs((m) => [...m, { me: false, text: replies[Math.floor(Math.random() * replies.length)] }]), 700 + Math.random() * 600);
   };
-  useEffect(() => { if (endRef.current) endRef.current.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 14 }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
@@ -5213,11 +5444,10 @@ function DMChatModal({ person, onClose, onNetSend }) {
             <b style={{ flex: 1 }}>{person.name}</b>
             <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
           </div>
-          <div style={{ height: 260, overflow: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 6, background: "#efe6d2" }}>
+          <div ref={dmBoxRef} style={{ height: 260, overflow: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 6, background: "#efe6d2" }}>
             {msgs.map((m, i) => (
               <div key={i} style={{ alignSelf: m.me ? "flex-end" : "flex-start", background: m.me ? C.gem : C.white, border: `2px solid ${C.ink}`, padding: "5px 9px", fontSize: 13, maxWidth: "78%" }}>{m.text}</div>
             ))}
-            <div ref={endRef} />
           </div>
           <div style={{ display: "flex", gap: 6, padding: 8, borderTop: `3px solid ${C.ink}` }}>
             <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지 입력 후 Enter" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
@@ -5368,6 +5598,7 @@ function GuideSheet({ onClose, onGo }) {
             <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.8 }}>
               에코타운에서 쓰는 우리만의 단어를 모아둔 사전이에요.<br />
               · 누구나 단어를 <b>등록 · 수정 · 삭제</b>할 수 있어요 (나무위키처럼)<br />
+              · 🖼 <b>갤러리</b> 탭에서 사진을 올리고 한 줄 설명을 달 수 있어요<br />
               · 단어 검색과 최근 수정자가 표시돼요<br />
               · 마을 지도에서는 주민센터 왼쪽 위 📖 책 모양 건물이에요
             </div>
