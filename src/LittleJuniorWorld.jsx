@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v15 · 2026-07-24";
+const APP_VERSION = "v16 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -4146,8 +4146,10 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
   const nodes = [];
   if (isPlaza) {
     const cx = MAP_W / 2, cy = 430;
-    allQuests.forEach((q, i) => {
-      const n = allQuests.length || 1;
+    // 완료한 퀘스트는 광장에서 사라지고 🧠 사고 도감에만 남아요
+    const openQuests = allQuests.filter((q) => !done[q.id]);
+    openQuests.forEach((q, i) => {
+      const n = openQuests.length || 1;
       const ang = (i / n) * Math.PI * 2 - Math.PI / 2;
       const rad = i % 2 === 0 ? 250 : 330;
       const st = map.stages.find((x) => x.quests.some((y) => y.id === q.id)) || { n: 1, name: "광장" };
@@ -4181,12 +4183,13 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
   const clear = (nd) => {
     const r = lockReason(nd);
     if (r) { setWarn(r); setTimeout(() => setWarn(null), 2000); return; }
-    if (done[nd.id]) return;
+    if (done[nd.id]) return true;
     setCleared((c) => ({ ...c, [map.id]: { ...(c[map.id] || {}), [nd.id]: myName || true } }));
     dbClearBoss(map.id, nd.id, myName || null);
-    onReward && onReward(nd.reward || { kind: "gem", qty: nd.gem || 0 });
+    // 보스는 즉시 보상, 일반 퀘스트는 제단에서 GM 검수 후 지급
+    if (nd.isBoss) onReward && onReward(nd.reward || { kind: "gem", qty: nd.gem || 0 });
     onClearQuest && onClearQuest(!!nd.isBoss);
-    setSel(null);
+    return true;
   };
 
   useEffect(() => { openRef.current = !!sel; }, [sel]);
@@ -4291,8 +4294,11 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
     setMapIdx(maps.length);
   };
   const bossState = (m) => (cleared[m.id] && cleared[m.id][m.boss.id]) ? "done" : "now";
-  const totalQ = nodes.length;
-  const doneQ = nodes.filter((n) => done[n.id]).length;
+  /* 광장은 완료 퀘스트를 지도에서 빼므로 진행도는 전체 기준으로 계산 */
+  const totalQ = isPlaza ? allQuests.length + 1 : nodes.length;
+  const doneQ = isPlaza
+    ? allQuests.filter((q) => done[q.id]).length + (done[map.boss.id] ? 1 : 0)
+    : nodes.filter((n) => done[n.id]).length;
 
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
@@ -4318,7 +4324,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
               <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at 50% 50%, ${map.soft}, #efe7f8 60%, #e2d8ee)` }}>
                 <div style={{ position: "absolute", left: "50%", top: 430, transform: "translate(-50%,-50%)", width: 520, height: 520, borderRadius: "50%", border: `3px dashed rgba(0,0,0,0.18)` }} />
                 <div style={{ position: "absolute", left: "50%", top: 430, transform: "translate(-50%,-50%)", width: 350, height: 350, borderRadius: "50%", background: "rgba(0,0,0,0.05)" }} />
-                <div style={{ position: "absolute", left: 20, top: 14, background: `linear-gradient(90deg,${map.color},${map.deep})`, color: C.white, borderRadius: 20, padding: "5px 14px", fontSize: 12, fontWeight: "bold" }}>🧠 사고의 광장 · 순서 없이 자유롭게</div>
+                <div style={{ position: "absolute", left: 20, top: 14, background: `linear-gradient(90deg,${map.color},${map.deep})`, color: C.white, borderRadius: 20, padding: "5px 14px", fontSize: 12, fontWeight: "bold" }}>🧠 사고의 광장 · 순서 없이 자유롭게 · 완료한 퀘스트는 🧠 도감으로</div>
                 <div style={{ position: "absolute", left: 40, top: 120, fontSize: 34, opacity: 0.15 }}>❓</div>
                 <div style={{ position: "absolute", right: 40, top: 700, fontSize: 34, opacity: 0.15 }}>🧩</div>
                 <div style={{ position: "absolute", right: 60, top: 160, fontSize: 30, opacity: 0.13 }}>🌀</div>
@@ -4517,7 +4523,9 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
               <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, color: "#ffd75e", margin: "12px 0 8px" }}>QUEST COMPLETE</div>
               <div style={{ fontSize: 15, fontWeight: "bold", color: C.white, marginBottom: 8 }}>{shrineFor.icon} {shrineFor.title}</div>
               <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.8)", lineHeight: 1.9, marginBottom: 14 }}>
-                🏆 <b style={{ color: "#ffd75e" }}>퀘스트 완료의 제단</b>으로 이동해서<br />
+                ✅ 완료 처리됐어요 — 광장에서 사라지고<br />
+                🧠 <b style={{ color: "#7fe3ff" }}>사고 도감</b>에 기록됐습니다<br /><br />
+                🏆 <b style={{ color: "#ffd75e" }}>퀘스트 완료의 제단</b>에<br />
                 <b style={{ color: "#7fe3ff" }}>완료 파편</b>을 올려야<br />
                 🛡 검토 후 보상이 주어집니다
               </div>
@@ -4808,7 +4816,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
               <div style={{ display: "flex", gap: 8 }}>
                 <PxButton tone="ink" onClick={() => { setSel(null); setEditing(null); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>닫기</PxButton>
                 <PxButton tone="gold" disabled={!!done[sel.id] || !!lockReason(sel)}
-                  onClick={() => { if (sel.isBoss) { clear(sel); } else { setShrineFor(sel); } }}
+                  onClick={() => { const q = sel; clear(q); if (q.isBoss) setSel(null); else setShrineFor(q); }}
                   style={{ flex: 1, padding: 10, fontSize: 13 }}>{done[sel.id] ? "완료됨 ✓" : sel.isBoss ? "⚔ 격파!" : "✅ 완료"}</PxButton>
               </div>
             </div>
@@ -5292,6 +5300,8 @@ function SmokeView({ onBack, bubble }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724m", type: "업데이트", date: "2026-07-24", title: "✅ 완료하면 광장에서 사라지고 도감으로",
+    body: "· ✅ 완료를 누르면 바로 완료 처리돼요\n· 하드모드 광장에서는 완료한 퀘스트가 지도에서 사라지고 🧠 사고 도감에만 남아요\n· 진행도(n/n)는 전체 기준으로 계속 정확하게 표시돼요\n· 보상은 즉시 지급되지 않고, 🏆 제단에 완료 파편을 올려 GM 검수를 받아야 지급됩니다\n· ⚔ 보스 격파는 기존처럼 즉시 보상이에요" },
   { id: "u20260724l", type: "업데이트", date: "2026-07-24", title: "🔙 퀘스트 뒤로가기 · 🏆 완료는 제단에서",
     body: "· 하드모드 퀘스트 수락·시작 후 「← 뒤로」 버튼이 생겼어요\n· 닫아도 수락·시작 상태는 그대로 유지돼요 — 마을을 자유롭게 돌아다니다 다시 열면 됩니다\n· ✅ 완료를 누르면 바로 완료되지 않고, 「퀘스트 완료의 제단으로 이동해서 완료 파편을 올려야 검토 후 보상이 주어집니다」 안내가 떠요\n· 🏆 제단으로 바로 이동 버튼을 누르면 즉시 제단으로 가고, 퀘스트 제목·내용·보상이 수락 파편 칸에 자동으로 채워져요\n· GM 검수 완료 + 보상 완료가 체크되면 최종 지급됩니다\n· 보스는 기존처럼 ⚔ 격파 즉시 처리돼요" },
   { id: "u20260724k", type: "업데이트", date: "2026-07-24", title: "🎁 보상 종류 선택 · 👥 참가자 지정",
