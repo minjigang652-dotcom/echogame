@@ -448,11 +448,13 @@ function PxButton({ children, onClick, disabled, tone = "wood", style, title }) 
   );
 }
 
-function GemBadge({ amount, big }) {
+/* 💎 젬 = 퀘스트 보상 · 환전 가능 / 🪙 골드 = 마을 안에서만 쓰는 화폐 */
+function GemBadge({ amount, big, kind = "gem" }) {
+  const gold = kind === "gold";
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
-      <span className="gem-spin" style={{ fontSize: big ? 22 : 15 }}>⭐</span>
-      <b style={{ color: "#a86e13", fontSize: big ? 22 : 15 }}>{fmt(amount)}</b>
+      <span className="gem-spin" style={{ fontSize: big ? 22 : 15 }}>{gold ? "🪙" : "💎"}</span>
+      <b style={{ color: gold ? "#a86e13" : "#2f7fb5", fontSize: big ? 22 : 15 }}>{fmt(amount)}</b>
     </span>
   );
 }
@@ -1181,7 +1183,7 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
           <PxButton tone="gold" onClick={onToggleBgm} style={{ fontSize: 11, padding: "3px 8px" }}>{bgm.playing ? "⏸" : "▶"}</PxButton>
           <span style={{ fontSize: 12 }}>🔊</span>
           <input type="range" min="0" max="100" value={Math.round(bgmVol * 100)} onChange={(e) => onBgmVol && onBgmVol(Number(e.target.value) / 100)} title="배경음 볼륨" style={{ width: 70, accentColor: "#ffe680", cursor: "pointer" }} />
-          <PxButton tone="blue" onClick={() => setReqOpen(true)} style={{ fontSize: 11, padding: "3px 8px" }}>🎵 신청곡(5젬)</PxButton>
+          <PxButton tone="blue" onClick={() => setReqOpen(true)} style={{ fontSize: 11, padding: "3px 8px" }}>🎵 신청곡(🪙5)</PxButton>
         </div>
       </div>
 
@@ -1331,12 +1333,12 @@ function WorldView({ pos, setPos, day, gems, rentedHouses, onEnter, onNextDay, b
             <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 360 }}>
               <Panel style={{ padding: 14 }}>
                 <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 10 }}>🎵 신청곡</div>
-                <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>5젬을 사용해 마을 배경음악을 바꿔요. (보유 {fmt(gems)}⭐)</div>
+                <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>🪙 5골드를 사용해 마을 배경음악을 바꿔요. (보유 {fmt(gems)}🪙)</div>
                 <input value={reqText} onChange={(e) => setReqText(e.target.value)} placeholder="예: NewJeans - Ditto" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: C.white }} />
                 <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                   <PxButton tone="ink" onClick={() => setReqOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>
                   <PxButton tone="gold" disabled={!reqText.trim() || gems < 5} onClick={() => { onRequestSong(reqText.trim()); setReqText(""); setReqOpen(false); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>
-                    {gems < 5 ? "젬 부족" : "5젬 신청"}
+                    {gems < 5 ? "골드 부족" : "🪙5 신청"}
                   </PxButton>
                 </div>
               </Panel>
@@ -1488,7 +1490,7 @@ function BigBuildingView({ b, qs, day, onRun, onBack }) {
           );
         })}
         <div style={{ background: "rgba(255,247,230,0.85)", border: `3px dashed ${C.ink}`, padding: 10, fontSize: 12, color: C.inkSoft }}>
-          💡 획득한 ⭐는 <b>중앙은행</b>에 자동 집계됩니다. 일일 업무는 <b>🌙 다음 날</b>을 누르면 초기화돼요.
+          💡 퀘스트로 얻은 💎 젬은 <b>중앙은행</b>에서 환전할 수 있어요. 일일 업무는 <b>🌙 다음 날</b>을 누르면 초기화돼요.
         </div>
       </div>
     </Panel>
@@ -1802,7 +1804,7 @@ function HouseGate({ house, isMine, myName, hasPw, onSetPw, onEnter, onBell, onM
             <div style={{ fontSize: 13, fontWeight: "bold", marginTop: 4 }}>우체통</div>
           </button>
         </div>
-        <div style={{ fontSize: 11, color: C.inkSoft, textAlign: "center", marginTop: 12 }}>비밀번호를 알면 누구나 입장할 수 있어요 · 우체통 택배비 ⭐0.3</div>
+        <div style={{ fontSize: 11, color: C.inkSoft, textAlign: "center", marginTop: 12 }}>비밀번호를 알면 누구나 입장할 수 있어요 · 우체통 택배비 🪙0.3</div>
       </div>
     </Panel>
   );
@@ -1828,7 +1830,7 @@ function MailboxModal({ owner, isMine, myName, gems, inventory, mail, onSend, on
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
             <span style={{ fontSize: 22 }}>📮</span>
             <b style={{ flex: 1, fontSize: 14 }}>{owner}님의 우체통</b>
-            <GemBadge amount={gems} />
+            <GemBadge kind="gold" amount={gems} />
             <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
           </div>
           {isMine && (
@@ -1873,8 +1875,8 @@ function MailboxModal({ owner, isMine, myName, gems, inventory, mail, onSend, on
                 </div>
               )}
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
-                <span style={{ fontSize: 11, color: C.inkSoft, flex: 1 }}>택배비 ⭐{cost}</span>
-                <PxButton tone="gold" disabled={(!text.trim() && !pick) || gems < cost} onClick={send} style={{ padding: "10px 18px", fontSize: 13 }}>{gems < cost ? "젬 부족" : "📮 보내기"}</PxButton>
+                <span style={{ fontSize: 11, color: C.inkSoft, flex: 1 }}>택배비 🪙{cost}</span>
+                <PxButton tone="gold" disabled={(!text.trim() && !pick) || gems < cost} onClick={send} style={{ padding: "10px 18px", fontSize: 13 }}>{gems < cost ? "골드 부족" : "📮 보내기"}</PxButton>
               </div>
               {done && <div style={{ fontSize: 12, color: C.good, textAlign: "center", marginTop: 8, fontWeight: "bold" }}>보냈어요! 📨</div>}
             </div>
@@ -1966,14 +1968,14 @@ function ThanksView({ gems, inventory, postits, onBuy, onPost, onBack, bubble })
       {shop && (
         <RoomModal title="🛒 감사 선반" onClose={() => setShop(false)}>
           <div style={{ fontSize: 12, marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: C.inkSoft }}>노인 상점 주인이 미소짓는다.</span><GemBadge amount={gems} />
+            <span style={{ color: C.inkSoft }}>노인 상점 주인이 미소짓는다.</span><GemBadge kind="gold" amount={gems} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8 }}>
             {SHOP_ITEMS.map((it) => (
               <div key={it.id} style={{ background: C.white, border: `3px solid ${C.ink}`, padding: 8, textAlign: "center" }}>
                 <div style={{ fontSize: 26 }}>{it.emoji}</div>
                 <div style={{ fontSize: 13, fontWeight: "bold" }}>{it.name}</div>
-                <div style={{ fontSize: 12, color: "#a86e13", margin: "2px 0 6px" }}>⭐ {it.price}</div>
+                <div style={{ fontSize: 12, color: "#a86e13", margin: "2px 0 6px" }}>🪙 {it.price}</div>
                 <PxButton tone={gems >= it.price ? "gold" : "ink"} disabled={gems < it.price} onClick={() => onBuy(it)} style={{ fontSize: 11, padding: "6px 8px", width: "100%" }}>구매</PxButton>
               </div>
             ))}
@@ -2022,17 +2024,17 @@ function HeartView({ gems, worries, onPost, onBack, bubble }) {
       {open && (
         <RoomModal title={isConfess ? "🙏 고해성사함" : "💌 서운함 우체통"} onClose={() => setOpen(null)}>
           <div style={{ fontSize: 12, marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: C.inkSoft }}>익명으로 남겨요. 아무도 누군지 몰라요.</span><GemBadge amount={gems} />
+            <span style={{ color: C.inkSoft }}>익명으로 남겨요. 아무도 누군지 몰라요.</span><GemBadge kind="gold" amount={gems} />
           </div>
           <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
             {[0.5, 1].map((v) => (
-              <PxButton key={v} tone={cost === v ? "gold" : "wood"} onClick={() => setCost(v)} style={{ fontSize: 12, padding: "6px 10px" }}>⭐ {v} 넣기</PxButton>
+              <PxButton key={v} tone={cost === v ? "gold" : "wood"} onClick={() => setCost(v)} style={{ fontSize: 12, padding: "6px 10px" }}>🪙 {v} 넣기</PxButton>
             ))}
           </div>
           <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={isConfess ? "고백할 것을 털어놓아 보세요…" : "서운했던 일을 남겨보세요…"}
             style={{ width: "100%", boxSizing: "border-box", height: 100, padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: "#fffdf5", resize: "none" }} />
           <PxButton tone="good" disabled={!text.trim() || gems < cost} onClick={() => { onPost(text.trim(), cost, open); setText(""); }} style={{ width: "100%", marginTop: 8, padding: 10, fontSize: 13 }}>
-            {gems < cost ? "젬이 부족해요" : `⭐ ${cost} 내고 익명으로 넣기`}
+            {gems < cost ? "골드가 부족해요" : `🪙 ${cost} 내고 익명으로 넣기`}
           </PxButton>
           {list.length > 0 && (
             <div style={{ marginTop: 12 }}>
@@ -2135,8 +2137,8 @@ function ListeningView({ onBack, gems, onSpend, bubble }) {
       <span className={playing ? "gem-spin" : ""} style={{ fontSize: 16 }}>♬</span>
       <b style={{ fontSize: 13 }}>{track}</b>
       <PxButton tone="gold" onClick={() => setPlaying((p) => !p)} style={{ fontSize: 12, padding: "4px 10px", marginLeft: 6 }}>{playing ? "⏸ 일시정지" : "▶ 재생"}</PxButton>
-      <PxButton tone="blue" onClick={() => setReqOpen(true)} style={{ fontSize: 12, padding: "4px 10px" }}>🎵 신청곡(5젬)</PxButton>
-      <span style={{ fontSize: 10, color: "#b9a7d6", marginLeft: "auto" }}>보유 {fmt(gems)}⭐</span>
+      <PxButton tone="blue" onClick={() => setReqOpen(true)} style={{ fontSize: 12, padding: "4px 10px" }}>🎵 신청곡(🪙5)</PxButton>
+      <span style={{ fontSize: 10, color: "#b9a7d6", marginLeft: "auto" }}>보유 {fmt(gems)}🪙</span>
     </div>
   );
 
@@ -2144,11 +2146,11 @@ function ListeningView({ onBack, gems, onSpend, bubble }) {
     <RoomView title="리스닝 방" icon="🎵" sub="디제이 부스에서 선곡 · 관객석에서 감상" bg="#2a2140" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={open || reqOpen} headerBg="#5b8def" banner={banner} bubble={bubble}>
       {reqOpen && (
         <RoomModal title="🎵 신청곡" onClose={() => setReqOpen(false)} maxW={360}>
-          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>5젬으로 신청하면 상단 배경음악 제목이 바뀌어요. <b>유튜브 링크를 넣으면 바로 재생</b>됩니다. (보유 {fmt(gems)}⭐)</div>
+          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>🪙 5골드로 신청하면 상단 배경음악 제목이 바뀌어요. <b>유튜브 링크를 넣으면 바로 재생</b>됩니다. (보유 {fmt(gems)}🪙)</div>
           <input value={reqText} onChange={(e) => setReqText(e.target.value)} placeholder="곡 제목 또는 유튜브 링크" style={{ ...inp, width: "100%", boxSizing: "border-box", fontSize: 14 }} />
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <PxButton tone="ink" onClick={() => setReqOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>
-            <PxButton tone="gold" disabled={!reqText.trim() || gems < 5} onClick={requestSong} style={{ flex: 1, padding: 10, fontSize: 13 }}>{gems < 5 ? "젬 부족" : "5젬 신청"}</PxButton>
+            <PxButton tone="gold" disabled={!reqText.trim() || gems < 5} onClick={requestSong} style={{ flex: 1, padding: 10, fontSize: 13 }}>{gems < 5 ? "골드 부족" : "🪙5 신청"}</PxButton>
           </div>
         </RoomModal>
       )}
@@ -2627,8 +2629,8 @@ function LiarGame({ onClose, onReward, myName = "", people = [] }) {
           </div>
           <div style={{ fontSize: 13, marginBottom: 6 }}>라이어는 <b style={{ color: C.danger }}>{players[liarIdx] ? players[liarIdx].name : "?"}</b> 였어요</div>
           <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10 }}>제시어 · {word} ({usedCat})</div>
-          {outcome === "win" && <div style={{ fontSize: 13, color: C.good, marginBottom: 10 }}>+8 ⭐ 획득!</div>}
-          {outcome === "liarwin" && <div style={{ fontSize: 13, color: C.good, marginBottom: 10 }}>⭐ 획득!</div>}
+          {outcome === "win" && <div style={{ fontSize: 13, color: C.good, marginBottom: 10 }}>+8 🪙 획득!</div>}
+          {outcome === "liarwin" && <div style={{ fontSize: 13, color: C.good, marginBottom: 10 }}>🪙 획득!</div>}
           <div style={{ display: "flex", gap: 8 }}>
             <PxButton tone="ink" onClick={onClose} style={{ flex: 1, padding: 10, fontSize: 13 }}>나가기</PxButton>
             <PxButton tone="good" onClick={() => setPhase("lobby")} style={{ flex: 1, padding: 10, fontSize: 13 }}>🔄 다시</PxButton>
@@ -2682,9 +2684,9 @@ function ReactionGame({ onClose, onReward }) {
         {state === "wait" && "초록색이 되면 클릭!"}
         {state === "go" && "지금 클릭!!"}
         {state === "tooearly" && "너무 빨라요! 다시 클릭"}
-        {state === "result" && `${ms}ms ${ms < 350 ? "⚡ +3⭐" : "😅 조금 느려요"} · 다시하기`}
+        {state === "result" && `${ms}ms ${ms < 350 ? "⚡ +3🪙" : "😅 조금 느려요"} · 다시하기`}
       </button>
-      <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 8, textAlign: "center" }}>350ms 이내면 3젬 획득</div>
+      <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 8, textAlign: "center" }}>350ms 이내면 🪙3 골드 획득</div>
     </RoomModal>
   );
 }
@@ -2697,7 +2699,7 @@ function RpsGame({ onClose, onReward }) {
     let r = "무승부";
     const win = { rock: "scissors", scissors: "paper", paper: "rock" };
     if (me === cpu) r = "무승부";
-    else if (win[me] === cpu) { r = "승리! +2⭐"; onReward(2); }
+    else if (win[me] === cpu) { r = "승리! +2🪙"; onReward(2); }
     else r = "패배";
     const emoji = (k) => hands.find((h) => h[0] === k)[1];
     setResult({ me: emoji(me), cpu: emoji(cpu), r });
@@ -2715,7 +2717,7 @@ function RpsGame({ onClose, onReward }) {
           <b style={{ color: result.r.includes("승리") ? C.good : result.r === "패배" ? C.danger : C.inkSoft }}>{result.r}</b>
         </div>
       )}
-      <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 8, textAlign: "center" }}>이기면 2젬 획득</div>
+      <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 8, textAlign: "center" }}>이기면 🪙2 골드 획득</div>
     </RoomModal>
   );
 }
@@ -2740,7 +2742,7 @@ function SequenceGame({ onClose, onReward }) {
             style={{ aspectRatio: "1/1", fontSize: 22, fontFamily: "'DotGothic16', monospace", background: n < next ? C.good : C.white, color: n < next ? C.white : C.ink, border: `3px solid ${C.ink}`, cursor: n < next ? "default" : "pointer" }}>{n}</button>
         ))}
       </div>
-      {done && <div style={{ textAlign: "center", marginTop: 10, color: C.good, fontWeight: "bold" }}>클리어! +3⭐</div>}
+      {done && <div style={{ textAlign: "center", marginTop: 10, color: C.good, fontWeight: "bold" }}>클리어! +3🪙</div>}
       <PxButton tone="ink" onClick={reset} style={{ width: "100%", marginTop: 10, padding: 8, fontSize: 12 }}>다시 섞기</PxButton>
     </RoomModal>
   );
@@ -2825,7 +2827,7 @@ function SwimRace({ onClose, onReward, scores, onRecord, myName = "" }) {
             {phase === "go" && <div style={{ fontSize: 14, fontWeight: "bold", color: C.danger }}>⌨️ 스페이스바 연타!</div>}
             {phase === "done" && result && (
               <div>
-                <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 6 }}>{result.win ? "🥇 1등! +10⭐" : `${result.place}등 · 아쉽다!`} ({result.time}초)</div>
+                <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 6 }}>{result.win ? "🥇 1등! +10🪙" : `${result.place}등 · 아쉽다!`} ({result.time}초)</div>
                 {result.win && !saved && (
                   <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 6 }}>
                     <input value={nick} onChange={(e) => setNick(e.target.value)} placeholder="닉네임" maxLength={8} style={{ width: 100, padding: 6, border: `2px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", background: C.white }} />
@@ -2857,9 +2859,9 @@ function SwimRace({ onClose, onReward, scores, onRecord, myName = "" }) {
 
 function SwimContest({ onClose }) {
   const list = [
-    { date: "8/3 (일) 15:00", title: "자유형 50m 오픈전", note: "누구나 참가 가능 · 우승 50⭐" },
+    { date: "8/3 (일) 15:00", title: "자유형 50m 오픈전", note: "누구나 참가 가능 · 우승 🪙50" },
     { date: "8/10 (일) 15:00", title: "에코타운 수영 챔피언십", note: "예선 통과자 본선 진출" },
-    { date: "8/17 (일) 15:00", title: "릴레이 단체전", note: "4인 1팀 · 팀 우승 100⭐" },
+    { date: "8/17 (일) 15:00", title: "릴레이 단체전", note: "4인 1팀 · 팀 우승 🪙100" },
   ];
   return (
     <RoomModal title="🏊 수영 대회 안내" onClose={onClose} maxW={400}>
@@ -2896,7 +2898,7 @@ function GymView({ onBack, onWork, bubble }) {
   const [stretch, setStretch] = useState(false);
   const furniture = [
     { id: "tread", x: 45, y: 80, w: 110, h: 90, color: "#5a6b78", emoji: "🏃", label: "러닝머신", toast: "유산소 완료! 심박수 상승 🏃" },
-    { id: "weight", x: 220, y: 110, w: 120, h: 100, color: "#c0563a", emoji: "🏋️", label: "웨이트 존(+4⭐)", onInteract: onWork, toast: "💪 운동하고 +4⭐ 획득!" },
+    { id: "weight", x: 220, y: 110, w: 120, h: 100, color: "#c0563a", emoji: "🏋️", label: "웨이트 존(+4🪙)", onInteract: onWork, toast: "💪 운동하고 +4🪙 골드 획득!" },
     { id: "bench", x: 400, y: 80, w: 120, h: 90, color: "#7a8b99", emoji: "🛋️", label: "벤치프레스", toast: "가슴 운동 3세트 완료 💪" },
     { id: "stretch", x: 130, y: 290, w: 150, h: 70, color: "#7bbf8f", emoji: "🧘", label: "스트레칭 테이블", onInteract: () => setStretch(true) },
   ];
@@ -2926,7 +2928,7 @@ function GymView({ onBack, onWork, bubble }) {
     </div>
   );
   return (
-    <RoomView title="헬스장" icon="💪" sub="러닝머신·웨이트·스트레칭 · 웨이트 존에서 젬 획득" bg="#e6e2da" roomW={640} roomH={400} furniture={furniture} onBack={onBack} headerBg="#c0563a" paused={stretch} bubble={bubble}>
+    <RoomView title="헬스장" icon="💪" sub="러닝머신·웨이트·스트레칭 · 웨이트 존에서 골드 획득" bg="#e6e2da" roomW={640} roomH={400} furniture={furniture} onBack={onBack} headerBg="#c0563a" paused={stretch} bubble={bubble}>
       {stretch && (
         <RoomModal title="🧘 스트레칭 가이드" onClose={() => setStretch(false)} maxW={460}>
           <Steps title="👀 눈 스트레칭" arr={eye} />
@@ -3035,14 +3037,14 @@ function JjeopView({ onBack, bubble, onReward }) {
             )}
             {step === "result" && proofOpen && (
               <div style={{ marginTop: 10, background: C.white, border: `3px solid ${C.ink}`, padding: 12, textAlign: "left" }}>
-                <div style={{ fontSize: 13, marginBottom: 8 }}>점심술사가 추천해준 화면 캡처랑, 실제로 먹은 인증샷을 보내봐~ 확인되면 젬을 줄게 ⭐</div>
+                <div style={{ fontSize: 13, marginBottom: 8 }}>점심술사가 추천해준 화면 캡처랑, 실제로 먹은 인증샷을 보내봐~ 확인되면 골드를 줄게 🪙</div>
                 <input ref={fileRef} type="file" accept="image/*" onChange={pickProof} style={{ display: "none" }} />
                 {proofImg && <img src={proofImg} alt="인증샷" style={{ width: "100%", maxHeight: 160, objectFit: "contain", border: `2px solid ${C.ink}`, marginBottom: 8, background: "#eee" }} />}
                 <div style={{ display: "flex", gap: 6 }}>
                   <PxButton tone="wood" onClick={() => fileRef.current && fileRef.current.click()} style={{ flex: 1, padding: 9, fontSize: 12 }}>📎 사진 업로드</PxButton>
-                  <PxButton tone="good" disabled={!proofImg || proofDone} onClick={submitProof} style={{ flex: 1, padding: 9, fontSize: 12 }}>{proofDone ? "받음 ✓" : "제출하고 젬 받기"}</PxButton>
+                  <PxButton tone="good" disabled={!proofImg || proofDone} onClick={submitProof} style={{ flex: 1, padding: 9, fontSize: 12 }}>{proofDone ? "받음 ✓" : "제출하고 골드 받기"}</PxButton>
                 </div>
-                {proofDone && <div style={{ fontSize: 12, color: C.good, marginTop: 8, fontWeight: "bold" }}>맛있게 먹었네! ⭐5 지급 완료 ♥</div>}
+                {proofDone && <div style={{ fontSize: 12, color: C.good, marginTop: 8, fontWeight: "bold" }}>맛있게 먹었네! 🪙5 골드 지급 완료 ♥</div>}
               </div>
             )}
             {(step === "bye" || step === "result") && (
@@ -3131,7 +3133,7 @@ function MusinsaView({ gems, outfit, owned, onTryOn, onBuy, onBack, bubble }) {
                     <button key={item.id} onClick={() => onTryOn(cat, item)} style={{ cursor: "pointer", background: on ? C.gem : C.white, border: `3px solid ${on ? C.ink : C.parchEdge}`, padding: 6, textAlign: "center" }}>
                       <div style={{ width: "100%", height: 44, background: item.color, border: `2px solid ${C.ink}` }} />
                       <div style={{ fontSize: 10, marginTop: 3 }}>{item.name}</div>
-                      <div style={{ fontSize: 11, fontWeight: "bold", color: has ? C.good : "#a86e13" }}>{has ? "보유중" : `⭐ ${item.price}`}</div>
+                      <div style={{ fontSize: 11, fontWeight: "bold", color: has ? C.good : "#a86e13" }}>{has ? "보유중" : `🪙 ${item.price}`}</div>
                     </button>
                   );
                 })}
@@ -3141,10 +3143,10 @@ function MusinsaView({ gems, outfit, owned, onTryOn, onBuy, onBack, bubble }) {
           {worn && (
             <div style={{ marginTop: 12, background: C.white, border: `3px solid ${C.ink}`, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ flex: 1, fontSize: 13 }}>
-                착용중: <b>{worn.name}</b>{owned[worn.id] ? <span style={{ color: C.good }}> · 보유중 ✓</span> : <span style={{ color: "#a86e13" }}> · ⭐{worn.price} (보유 {fmt(gems)})</span>}
+                착용중: <b>{worn.name}</b>{owned[worn.id] ? <span style={{ color: C.good }}> · 보유중 ✓</span> : <span style={{ color: "#a86e13" }}> · 🪙{worn.price} (보유 {fmt(gems)})</span>}
               </div>
               {!owned[worn.id] && (
-                <PxButton tone="gold" disabled={gems < worn.price} onClick={() => onBuy(cat, worn)} style={{ padding: "8px 14px", fontSize: 13 }}>{gems < worn.price ? "젬 부족" : "구매하기"}</PxButton>
+                <PxButton tone="gold" disabled={gems < worn.price} onClick={() => onBuy(cat, worn)} style={{ padding: "8px 14px", fontSize: 13 }}>{gems < worn.price ? "골드 부족" : "구매하기"}</PxButton>
               )}
             </div>
           )}
@@ -3664,6 +3666,13 @@ const BOSS_MAPS_INIT = [
   },
 ];
 
+/* datetime-local 입력값 포맷 (로컬 시간 기준) */
+function toLocalDT(ms) {
+  const d = new Date(ms);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree, onLeave }) {
   const net = useContext(NetContext);
   const [tMsg, setTMsg] = useState("");
@@ -3881,7 +3890,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
             <button onClick={() => setCollOpen(true)} title="보스 도감" style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 8, background: "linear-gradient(180deg,#6b4f8f,#3f2c5c)", color: C.white, fontSize: 16, padding: "4px 8px" }}>👾</button>
           )}
           <b style={{ fontSize: 14, flex: 1 }}>{map.name}</b>
-          <button onClick={() => setAddOpen(true)} title="퀘스트/보스맵 추가" style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 8, background: "linear-gradient(180deg,#e0a13d,#a86e13)", color: C.white, fontSize: 14, padding: "4px 9px", fontWeight: "bold" }}>＋</button>
+          <button onClick={() => { setAddTab("quest"); setFQ((f) => ({ ...f, stage: isPlaza ? 1 : f.stage, level: isPlaza ? "숙련자" : f.level })); setAddOpen(true); }} title="퀘스트 추가" style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 8, background: "linear-gradient(180deg,#e0a13d,#a86e13)", color: C.white, fontSize: 14, padding: "4px 9px", fontWeight: "bold" }}>＋</button>
           <div style={{ width: 120, height: 10, background: "#e7e2d6", borderRadius: 6, overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${(doneQ / totalQ) * 100}%`, background: `linear-gradient(90deg,${map.color},${map.deep})`, transition: "width .35s" }} />
           </div>
@@ -4090,22 +4099,27 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
             <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16 }}>
               <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-                <PxButton tone={addTab === "quest" ? "good" : "wood"} onClick={() => setAddTab("quest")} style={{ flex: 1, fontSize: 12, padding: 8 }}>🎯 퀘스트 추가</PxButton>
-                <PxButton tone={addTab === "map" ? "good" : "wood"} onClick={() => setAddTab("map")} style={{ flex: 1, fontSize: 12, padding: 8 }}>👹 보스맵 추가</PxButton>
+                <PxButton tone={addTab === "quest" ? "good" : "wood"} onClick={() => setAddTab("quest")} style={{ flex: 2, fontSize: 12, padding: 8 }}>🎯 퀘스트 추가</PxButton>
+                <PxButton tone={addTab === "map" ? "danger" : "wood"} onClick={() => setAddTab("map")} style={{ flex: 1, fontSize: 11, padding: 8 }}>👹 새 보스맵</PxButton>
               </div>
               {addTab === "quest" ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                  <div style={{ fontSize: 11, color: C.inkSoft }}>「{map.icon} {map.name}」{isPlaza ? " 광장" : " 맵"}에 퀘스트를 추가해요</div>
+                  <div style={{ background: "#fff5d6", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "7px 10px", fontSize: 11.5, lineHeight: 1.6 }}>
+                    <b>{map.icon} {map.name}</b> {isPlaza ? "광장" : "맵"} 안에 퀘스트를 추가해요.<br />
+                    <span style={{ color: C.inkSoft }}>새 보스맵이 생기는 게 아니라, 이 보스맵 소속 퀘스트가 됩니다.</span>
+                  </div>
                   {!isPlaza && (
                     <select value={fQ.stage} onChange={(e) => setFQ({ ...fQ, stage: e.target.value })} style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }}>
                       {map.stages.map((st) => <option key={st.n} value={st.n}>{st.n} 스테이지 · {st.name}</option>)}
                     </select>
                   )}
+
+                  <div style={{ fontSize: 11, fontWeight: "bold" }}>🎯 아이콘 · 퀘스트 이름</div>
                   <div style={{ display: "flex", gap: 6 }}>
                     <input value={fQ.icon} onChange={(e) => setFQ({ ...fQ, icon: e.target.value })} maxLength={2} placeholder="🎯" style={{ width: 52, textAlign: "center", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 16 }} />
                     <input value={fQ.title} onChange={(e) => setFQ({ ...fQ, title: e.target.value })} placeholder="퀘스트 이름" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
-                    <input value={fQ.gem} onChange={(e) => setFQ({ ...fQ, gem: e.target.value })} type="number" style={{ width: 60, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 13 }} />
                   </div>
+
                   <div style={{ display: "flex", gap: 5 }}>
                     {["초보자", "숙련자"].map((lv) => (
                       <PxButton key={lv} tone={fQ.level === lv ? (lv === "초보자" ? "good" : "danger") : "wood"} onClick={() => setFQ({ ...fQ, level: lv })} style={{ flex: 1, fontSize: 12, padding: 8 }}>{lv === "초보자" ? "🌱 초보자" : "🔥 숙련자"}</PxButton>
@@ -4117,19 +4131,47 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                       <PxButton tone={fQ.field === "videoschool" ? "good" : "wood"} onClick={() => setFQ({ ...fQ, field: "videoschool" })} style={{ flex: 1, fontSize: 12, padding: 8 }}>🎬 영상</PxButton>
                     </div>
                   )}
-                  <input value={fQ.desc} onChange={(e) => setFQ({ ...fQ, desc: e.target.value })} placeholder="한 줄 설명 (선택)" style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
-                  <input value={fQ.task} onChange={(e) => setFQ({ ...fQ, task: e.target.value })} placeholder="목표 · 무엇을 하면 완료인가요?" style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
-                  <div style={{ fontSize: 11, fontWeight: "bold" }}>⏳ 제한시간 (선택)</div>
+
+                  <div style={{ fontSize: 11, fontWeight: "bold" }}>📝 내용 설명</div>
+                  <textarea value={fQ.desc} onChange={(e) => setFQ({ ...fQ, desc: e.target.value })} rows={3} placeholder="이 퀘스트가 무엇인지, 왜 필요한지 적어주세요"
+                    style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "vertical", boxSizing: "border-box" }} />
+
+                  <div style={{ fontSize: 11, fontWeight: "bold" }}>✅ 완료 조건</div>
+                  <input value={fQ.task} onChange={(e) => setFQ({ ...fQ, task: e.target.value })} placeholder="무엇을 하면 완료인가요?" style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+
+                  <div style={{ fontSize: 11, fontWeight: "bold" }}>⏳ 제한시간 (몇 시까지)</div>
                   <input type="datetime-local" value={fQ.due || ""} onChange={(e) => setFQ({ ...fQ, due: e.target.value })} style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
-                  <div style={{ fontSize: 10, color: C.inkSoft }}>보상은 위 ⭐ 칸에서 정해요 (기본 5젬)</div>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    {[["1시간", 1], ["3시간", 3], ["6시간", 6], ["내일 이맘때", 24], ["3일", 72]].map(([lb, h]) => (
+                      <button key={lb} onClick={() => setFQ({ ...fQ, due: toLocalDT(Date.now() + h * 3600000) })}
+                        style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, padding: "5px 9px", borderRadius: 12, border: `2px solid ${C.ink}`, background: C.white, fontWeight: "bold" }}>+{lb}</button>
+                    ))}
+                    {fQ.due && <button onClick={() => setFQ({ ...fQ, due: "" })} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, padding: "5px 9px", borderRadius: 12, border: `2px solid ${C.ink}`, background: "#f0d4cc", fontWeight: "bold" }}>✕ 해제</button>}
+                  </div>
+                  {fQ.due && (() => {
+                    const d = dueText(fQ.due);
+                    return <div style={{ fontSize: 11.5, fontWeight: "bold", color: d && d.over ? C.danger : C.good, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "6px 9px" }}>
+                      {new Date(fQ.due).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 까지 · {d ? d.txt : ""}
+                    </div>;
+                  })()}
+
+                  <div style={{ fontSize: 11, fontWeight: "bold" }}>💎 보상 (젬)</div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <input value={fQ.gem} onChange={(e) => setFQ({ ...fQ, gem: e.target.value })} type="number" min="0" style={{ width: 80, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 13 }} />
+                    <span style={{ fontSize: 12, color: C.inkSoft }}>💎 젬 · 완료하면 지급돼요</span>
+                  </div>
+
                   <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                     <PxButton tone="ink" onClick={() => setAddOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>
-                    <PxButton tone="gold" disabled={!fQ.title.trim()} onClick={addQuest} style={{ flex: 1, padding: 10, fontSize: 13 }}>추가하기</PxButton>
+                    <PxButton tone="gold" disabled={!fQ.title.trim()} onClick={addQuest} style={{ flex: 1, padding: 10, fontSize: 13 }}>퀘스트 추가</PxButton>
                   </div>
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                  <div style={{ fontSize: 11, color: C.inkSoft }}>새 보스맵(프로젝트)을 만들어요</div>
+                  <div style={{ background: "#fbe4dd", border: `2px solid ${C.danger}`, borderRadius: 8, padding: "7px 10px", fontSize: 11.5, lineHeight: 1.6 }}>
+                    ⚠️ 여기는 <b>완전히 새로운 보스맵(프로젝트)</b>을 만드는 곳이에요.<br />
+                    <span style={{ color: C.inkSoft }}>「{map.name}」 안에 퀘스트만 넣으려면 왼쪽 🎯 퀘스트 추가 탭을 쓰세요.</span>
+                  </div>
                   <div style={{ display: "flex", gap: 6 }}>
                     <input value={fM.icon} onChange={(e) => setFM({ ...fM, icon: e.target.value })} maxLength={2} placeholder="🗺" style={{ width: 52, textAlign: "center", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 16 }} />
                     <input value={fM.name} onChange={(e) => setFM({ ...fM, name: e.target.value })} placeholder="맵 이름 (예: 신발)" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
@@ -4178,7 +4220,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
               </div>
               <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10, textAlign: "center", lineHeight: 1.6 }}>{sel.desc}</div>
               <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: 12, fontSize: 13, lineHeight: 1.6 }}>🎯 {sel.task}</div>
-              <div style={{ fontSize: 12, textAlign: "center", margin: "10px 0", color: "#a86e13", fontWeight: "bold" }}>보상 ⭐ {sel.gem}</div>
+              <div style={{ fontSize: 12, textAlign: "center", margin: "10px 0", color: "#a86e13", fontWeight: "bold" }}>보상 💎 {sel.gem}</div>
               {sel.due && dueText(sel.due) && (
                 <div style={{ fontSize: 13, textAlign: "center", marginBottom: 10, fontWeight: "bold", color: dueText(sel.due).over ? C.danger : "#2f9e6e", background: dueText(sel.due).over ? "#fbe4e0" : "#e6f4ec", border: `2px solid ${dueText(sel.due).over ? C.danger : "#2f9e6e"}`, borderRadius: 8, padding: 8 }}>
                   {dueText(sel.due).txt}<div style={{ fontSize: 10, color: C.inkSoft, fontWeight: "normal", marginTop: 2 }}>마감 {new Date(sel.due).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
@@ -4323,7 +4365,7 @@ function IkeaView({ gems, owned, houseSkin, vehicle, myFurni, onBuy, onBack, bub
             <span style={{ color: C.inkSoft }}>
               {tab === "house" ? "적용하면 내 집 분위기가 바뀌어요" : tab === "furni" ? "구매하면 내 집에 배치돼요" : "타면 마을에서 더 빨리 이동해요"}
             </span>
-            <GemBadge amount={gems} />
+            <GemBadge kind="gold" amount={gems} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, maxHeight: 260, overflow: "auto" }}>
             {IKEA_ITEMS[tab].map((it) => {
@@ -4342,7 +4384,7 @@ function IkeaView({ gems, owned, houseSkin, vehicle, myFurni, onBuy, onBack, bub
                   {tab === "vehicle" && <div style={{ fontSize: 9, color: C.inkSoft }}>속도 x{it.speed}</div>}
                   <PxButton tone={on ? "ink" : has ? "good" : gems < it.price ? "wood" : "gold"} disabled={!has && gems < it.price}
                     onClick={() => onBuy(tab, it)} style={{ marginTop: 5, fontSize: 10, padding: "5px 7px", width: "100%" }}>
-                    {on ? (tab === "furni" ? "배치됨 ✓" : "사용중 ✓") : has ? (tab === "furni" ? "배치하기" : "적용하기") : gems < it.price ? `⭐${it.price} 부족` : `⭐${it.price} 구매`}
+                    {on ? (tab === "furni" ? "배치됨 ✓" : "사용중 ✓") : has ? (tab === "furni" ? "배치하기" : "적용하기") : gems < it.price ? `🪙${it.price} 부족` : `🪙${it.price} 구매`}
                   </PxButton>
                 </div>
               );
@@ -4371,6 +4413,7 @@ function BookIcon({ size = 96 }) {
 /* ============ 📖 코어사전 (단어 + 갤러리) ============ */
 const DICT_KEY = "echotown_dict_v1";
 const GALLERY_KEY = "echotown_dictgallery_v1";
+const SECRET_KEY = "echotown_dictsecret_v1";
 
 /* 서버 저장이 실패해도 단어가 사라지지 않도록 로컬 사본을 함께 유지합니다. */
 function mergeDict(dbList, localList) {
@@ -4490,6 +4533,29 @@ function CoreDictView({ onBack, myName = "" }) {
   const commitCaption = () => savePhotos(photos);
   const delPhoto = (id) => { if (window.confirm("이 사진을 지울까요?")) savePhotos(photos.filter((p) => p.id !== id)); };
 
+  /* ===== 🔒 비밀사전 — 우리끼리 나눈 얘기의 핵심 요약 보관함 ===== */
+  const [secrets, setSecrets] = useState(() => loadJSON(SECRET_KEY, []));
+  const [sTitle, setSTitle] = useState("");
+  const [sBody, setSBody] = useState("");
+  const [sTag, setSTag] = useState("");
+  const [sEdit, setSEdit] = useState(null);
+  const [sQ, setSQ] = useState("");
+  const persistSecrets = (v) => { setSecrets(v); saveJSON(SECRET_KEY, v); };
+  const saveSecret = () => {
+    const t = sTitle.trim(), b = sBody.trim();
+    if (!t || !b) return;
+    if (sEdit) {
+      persistSecrets(secrets.map((x) => (x.id === sEdit ? { ...x, title: t, body: b, tag: sTag.trim(), by: myName || "익명", at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) } : x)));
+      say("수정했어요 ✏️");
+    } else {
+      persistSecrets([{ id: Date.now() + Math.random(), title: t, body: b, tag: sTag.trim(), by: myName || "익명",
+        at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) }, ...secrets]);
+      say("비밀사전에 저장했어요 🔒");
+    }
+    setSTitle(""); setSBody(""); setSTag(""); setSEdit(null);
+  };
+  const shownSecrets = secrets.filter((x) => !sQ.trim() || (x.title + x.body + (x.tag || "")).includes(sQ.trim()));
+
   const TabBtn = ({ k, label }) => (
     <button onClick={() => setTab(k)} style={{ flex: 1, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 13, padding: "9px 6px", borderRadius: 10, border: `2px solid ${C.ink}`,
       background: tab === k ? "linear-gradient(180deg,#b07a4e,#8a5a3b)" : C.white, color: tab === k ? C.white : C.ink, fontWeight: "bold",
@@ -4503,6 +4569,7 @@ function CoreDictView({ onBack, myName = "" }) {
         <div style={{ display: "flex", gap: 7, marginBottom: 12 }}>
           <TabBtn k="word" label={`📗 단어 ${list.length}`} />
           <TabBtn k="gallery" label={`🖼 갤러리 ${photos.length}`} />
+          <TabBtn k="secret" label={`🔒 비밀사전 ${secrets.length}`} />
         </div>
 
         {msg && <div style={{ fontSize: 12, color: C.good, textAlign: "center", marginBottom: 8, fontWeight: "bold" }}>{msg}</div>}
@@ -4577,6 +4644,52 @@ function CoreDictView({ onBack, myName = "" }) {
               </div>
             )}
             <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginTop: 10 }}>* 사진은 이 브라우저에 저장돼요 (자동으로 압축됩니다).</div>
+          </>
+        )}
+
+        {tab === "secret" && (
+          <>
+            <div style={{ background: "linear-gradient(180deg,#2b2455,#170f38)", border: `3px solid ${C.ink}`, borderRadius: 10, padding: 13, marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
+                <span style={{ fontSize: 20 }}>🔒</span>
+                <b style={{ color: "#7fe3ff", fontSize: 14 }}>{sEdit ? "요약 수정 중" : "새 핵심 요약"}</b>
+              </div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.62)", lineHeight: 1.6, marginBottom: 8 }}>
+                우리끼리 나눈 얘기를 핵심만 남겨 보관하는 방이에요. (나중에 AI 자동 요약을 붙일 자리)
+              </div>
+              <input value={sTitle} onChange={(e) => setSTitle(e.target.value)} placeholder="제목 (예: 7월 상품기획 회의)"
+                style={{ width: "100%", boxSizing: "border-box", padding: 9, border: "2px solid #7fe3ff", borderRadius: 7, background: "rgba(255,255,255,0.94)", fontFamily: "'DotGothic16', monospace", fontSize: 13.5, marginBottom: 6 }} />
+              <textarea value={sBody} onChange={(e) => setSBody(e.target.value)} rows={5} placeholder={"핵심 요약을 적어주세요\n· 결론\n· 다음 할 일\n· 기억해둘 것"}
+                style={{ width: "100%", boxSizing: "border-box", padding: 9, border: "2px solid rgba(127,227,255,0.4)", borderRadius: 7, background: "rgba(255,255,255,0.9)", fontFamily: "'DotGothic16', monospace", fontSize: 12.5, resize: "vertical", marginBottom: 6 }} />
+              <input value={sTag} onChange={(e) => setSTag(e.target.value)} placeholder="태그 (선택 · 예: 기획, 디자인)"
+                style={{ width: "100%", boxSizing: "border-box", padding: 8, border: "2px solid rgba(127,227,255,0.4)", borderRadius: 7, background: "rgba(255,255,255,0.9)", fontFamily: "'DotGothic16', monospace", fontSize: 12.5 }} />
+              <div style={{ display: "flex", gap: 7, marginTop: 8 }}>
+                {sEdit && <PxButton tone="ink" onClick={() => { setSEdit(null); setSTitle(""); setSBody(""); setSTag(""); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>}
+                <PxButton tone="blue" disabled={!sTitle.trim() || !sBody.trim()} onClick={saveSecret} style={{ flex: 2, padding: 10, fontSize: 13 }}>{sEdit ? "수정 저장" : "🔒 비밀사전에 저장"}</PxButton>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <input value={sQ} onChange={(e) => setSQ(e.target.value)} placeholder="🔍 요약 검색" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+              <span style={{ fontSize: 11, color: C.inkSoft }}>{shownSecrets.length}개</span>
+            </div>
+            <div style={{ maxHeight: 340, overflow: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+              {shownSecrets.length === 0 ? (
+                <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 26, lineHeight: 1.8 }}>아직 저장된 요약이 없어요 🔒<br />오늘 나눈 얘기의 핵심을 남겨보세요.</div>
+              ) : shownSecrets.map((x) => (
+                <div key={x.id} style={{ background: C.white, border: `2px solid ${C.ink}`, borderLeft: "6px solid #4b3c85", borderRadius: 8, padding: 11 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <b style={{ flex: 1, fontSize: 14, wordBreak: "break-word" }}>🔒 {x.title}</b>
+                    <PxButton tone="wood" onClick={() => { setSEdit(x.id); setSTitle(x.title); setSBody(x.body); setSTag(x.tag || ""); }} style={{ fontSize: 10, padding: "4px 8px" }}>✏️</PxButton>
+                    <PxButton tone="danger" onClick={() => { if (window.confirm(`「${x.title}」 요약을 지울까요?`)) persistSecrets(secrets.filter((y) => y.id !== x.id)); }} style={{ fontSize: 10, padding: "4px 8px" }}>🗑</PxButton>
+                  </div>
+                  {x.tag && <div style={{ marginTop: 4 }}><span style={{ fontSize: 10, background: "#e7e0f5", border: `1px solid ${C.ink}`, borderRadius: 10, padding: "1px 8px" }}>#{x.tag}</span></div>}
+                  <div style={{ fontSize: 12.5, lineHeight: 1.8, marginTop: 6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{x.body}</div>
+                  <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6 }}>✍️ {x.by} · {x.at}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginTop: 10 }}>* 비밀사전은 이 브라우저에 저장돼요. (AI 자동 요약은 다음 단계에서 연결할 예정)</div>
           </>
         )}
       </div>
@@ -4696,6 +4809,10 @@ function SmokeView({ onBack, bubble }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260723s", type: "업데이트", date: "2026-07-23", title: "🪙 골드 · 💎 젬 화폐 분리 · 📊 경험치",
+    body: "· 화폐가 두 종류로 나뉘었어요\n· 💎 젬 — 퀘스트(업무·사고) 보상 전용. 중앙은행에서 환전 가능\n· 🪙 골드 — 마을 안에서만 쓰는 화폐 (미니게임·수영·헬스·쩝쩝박사 보상)\n· 무신사·이케아·감사의 방·마음의 방·렌트·우편·확성기·신청곡은 모두 🪙 골드로 결제해요\n· 상단에 Lv 경험치 게이지가 생겼어요 — 활동할수록 레벨업\n· 웰컴 쿠폰이 💎100 젬 + 🪙200 골드로 바뀌었어요" },
+  { id: "u20260723r", type: "업데이트", date: "2026-07-23", title: "🔐 자동 로그인 · 🔒 비밀사전 · 🎯 퀘스트 추가 개선",
+    body: "· 한 번 이름을 정하면 이 브라우저에서는 다음부터 자동 로그인돼요 (캐시 삭제·시크릿 모드 제외)\n· 이름 창에서 「이 브라우저에서 로그아웃」 가능\n· 📖 코어사전에 🔒 비밀사전 탭 추가 — 나눈 얘기의 핵심 요약을 제목·내용·태그로 보관\n· 🗺 보스맵 ＋ 버튼이 항상 「퀘스트 추가」 탭으로 열려요 (실수로 새 보스맵이 생기던 문제 해결)\n· 퀘스트 추가 창에 📝 내용 설명 · ✅ 완료 조건 · ⏳ 제한시간(실시간 카운트다운) · 💎 보상 입력란 정리\n· 제한시간은 +1시간/+3시간/+6시간/내일/3일 빠른 버튼으로도 정할 수 있어요" },
   { id: "u20260723p", type: "업데이트", date: "2026-07-23", title: "📖 코어사전 저장 안정화 · 🖼 갤러리 추가",
     body: "· 등록한 단어가 서버 저장에 실패해도 사라지지 않게 이 기기에 함께 저장돼요\n· 서버와 로컬 기록을 합쳐서 보여주고, 최근 수정본이 우선됩니다\n· 🖼 갤러리 탭이 생겼어요 — 사진을 여러 장 한 번에 올릴 수 있어요\n· 사진 아래에 한 줄 설명을 바로 적을 수 있고, 사진을 누르면 크게 보여요\n· 업로드한 사진은 자동으로 압축돼요" },
   { id: "u20260723o", type: "업데이트", date: "2026-07-23", title: "🎵 유튜브 링크 즉시 재생 · 💬 채팅 자동 스크롤",
@@ -4719,11 +4836,11 @@ const UPDATE_NOTES = [
   { id: "u20260723h", type: "업데이트", date: "2026-07-23", title: "✏️ 퀘스트 수정·삭제 · 📨 회의 초대장",
     body: "· 퀘스트를 만든 사람이 직접 수정·삭제할 수 있어요 (작성자 표시)\n· 기존 기본 퀘스트는 누구나 수정·삭제 가능\n· 회의실에서 📨 초대장 보내기 추가 — 날짜·시간·예상 회의시간·초대원 선택\n· 받은 사람은 참석/불참으로 답할 수 있고, 초대장은 우체통에도 저장돼요\n· 게시판 🤝 모집 탭에 파티모집 글이 따로 모여요" },
   { id: "u20260723a", type: "업데이트", date: "2026-07-23", title: "🏠 집 시스템 오픈",
-    body: "· 내 집 첫 방문 시 비밀번호 설정 (최초 1회)\n· 현관에서 비밀번호 입력 후 입장 — 비밀번호를 알면 누구나 입장 가능\n· 🔔 초인종: 집주인에게 알림 → 문 열어주기 / 거절하기 선택\n· 📮 우체통: 방명록·편지·선물 전송 (택배비 ⭐0.3), 받은 편지함 확인\n· 🎁 마을에서 다른 사람 캐릭터를 클릭하면 바로 선물 주기" },
+    body: "· 내 집 첫 방문 시 비밀번호 설정 (최초 1회)\n· 현관에서 비밀번호 입력 후 입장 — 비밀번호를 알면 누구나 입장 가능\n· 🔔 초인종: 집주인에게 알림 → 문 열어주기 / 거절하기 선택\n· 📮 우체통: 방명록·편지·선물 전송 (택배비 🪙0.3), 받은 편지함 확인\n· 🎁 마을에서 다른 사람 캐릭터를 클릭하면 바로 선물 주기" },
   { id: "u20260723b", type: "업데이트", date: "2026-07-23", title: "🗺 보스맵 도전기 개편",
     body: "· 🌱 이지모드(어플·속옷·양말) / 🔥 하드모드(사고력 훈련) 분리\n· 아래→위로 올라가는 세로 맵, 스테이지 구역 표시\n· 캐릭터 이동이 부드러워졌어요\n· 👾 보스 도감 추가 (처치 / 진행중 / ??? )\n· ＋ 버튼으로 퀘스트·보스맵 직접 추가 (초보자/숙련자, 네이버/영상 선택)\n· 하드모드 퀘스트: 🤝 수락 → 파티원 모집 → ▶ 시작 → 💬 대화방 · 📓 퀘스트 일지\n· [수정] 잠긴 퀘스트에서 진행되던 문제 해결" },
   { id: "u20260723c", type: "업데이트", date: "2026-07-23", title: "💾 서버 저장 시작",
-    body: "· 이름으로 접속하면 젬·옷·가구·탈것·뱃지·메모가 서버에 저장돼요\n· 새로고침하거나 다른 기기에서도 이어서 플레이 가능\n· 🏆 샌드백·수영 랭킹이 모두에게 공유돼요\n· 📮 편지·선물은 상대가 접속 중이 아니어도 도착해요\n· 🗺 보스맵 진행도는 팀 전체가 함께 봐요" },
+    body: "· 이름으로 접속하면 젬·골드·옷·가구·탈것·뱃지·메모가 서버에 저장돼요\n· 새로고침하거나 다른 기기에서도 이어서 플레이 가능\n· 🏆 샌드백·수영 랭킹이 모두에게 공유돼요\n· 📮 편지·선물은 상대가 접속 중이 아니어도 도착해요\n· 🗺 보스맵 진행도는 팀 전체가 함께 봐요" },
   { id: "u20260723d", type: "업데이트", date: "2026-07-23", title: "📋 게시판 · 🗺 지도 개선",
     body: "· 게시판에 🤝 모집 / 🆕 업데이트 탭 추가\n· ✍️ 글쓰기로 공지·이벤트·모집·업데이트 직접 등록 (코드 수정 불필요)\n· 업데이트 글은 [확인했어요]를 누르면 사라져요\n· 미니맵 구역과 전체지도 건물 이름을 누르면 그곳으로 순간이동 🚀" },
   { id: "u20260723e", type: "업데이트", date: "2026-07-23", title: "👥 멀티플레이 · 편의 기능",
@@ -4900,11 +5017,11 @@ function BoardView({ onBack, myName = "" }) {
 function RentView({ house, gems, rented, onRent, onBack }) {
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="🌴" title={house.name} sub="치앙마이 · 한 달 살기 렌트" onBack={onBack} bg={C.villaDk} fg={C.white} right={<GemBadge amount={gems} />} />
+      <TitleBar icon="🌴" title={house.name} sub="치앙마이 · 한 달 살기 렌트" onBack={onBack} bg={C.villaDk} fg={C.white} right={<GemBadge kind="gold" amount={gems} />} />
       <div style={{ padding: 20, textAlign: "center", background: `repeating-linear-gradient(0deg, ${C.parch} 0 40px, ${C.parchLine} 40px 80px)` }}>
         <div style={{ display: "inline-block" }}><PixelHouse roof={house.roof} roofDk={house.roofDk} wall={house.wall} size={150} /></div>
         <div style={{ fontSize: 15, marginTop: 8 }}>강 건너 치앙마이의 아늑한 숙소</div>
-        <div style={{ fontSize: 14, color: "#a86e13", margin: "8px 0 14px" }}>렌트비 <b>⭐ {house.rent}</b> ({fmt(house.rent * GEM_TO_WON)}원 상당)</div>
+        <div style={{ fontSize: 14, color: "#a86e13", margin: "8px 0 14px" }}>렌트비 <b>🪙 {house.rent}</b> ({fmt(house.rent * GEM_TO_WON)}원 상당)</div>
         {rented ? (
           <div>
             <div style={{ background: C.good, color: C.white, border: `3px solid ${C.ink}`, padding: 12, fontSize: 14 }}>✅ 렌트 완료! 아래 주소로 입주하세요.</div>
@@ -4915,7 +5032,7 @@ function RentView({ house, gems, rented, onRent, onBack }) {
           </div>
         ) : (
           <PxButton tone={gems >= house.rent ? "danger" : "ink"} disabled={gems < house.rent} onClick={onRent} style={{ padding: "12px 22px", fontSize: 15 }}>
-            {gems >= house.rent ? "🔑 렌트 신청하기" : "젬이 부족해요"}
+            {gems >= house.rent ? "🔑 렌트 신청하기" : "골드가 부족해요"}
           </PxButton>
         )}
         <div style={{ marginTop: 14, fontSize: 11, color: "rgba(42,30,20,0.6)" }}>* 렌트/결제는 시뮬레이션입니다.</div>
@@ -4943,7 +5060,7 @@ function BankView({ gems, lifetime, exchanged, history, onExchange, onBack }) {
       <TitleBar icon="🏦" title="SYSTEM CORE BANK" sub="자산 결산 & 환전 게이트" onBack={onBack} bg={C.bankRoof} fg={C.white} />
       <div style={{ padding: 16, background: `repeating-linear-gradient(0deg, ${C.parch} 0 40px, ${C.parchLine} 40px 80px)` }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px,1fr))", gap: 12 }}>
-          <StatCard label="현재 보유 젬" value={gems} accent={C.gem} icon="⭐" />
+          <StatCard label="현재 보유 젬" value={gems} accent={C.gem} icon="💎" />
           <StatCard label="총 채굴량 (누적)" value={lifetime} accent={C.good} icon="⛏" />
           <StatCard label="총 환전 젬" value={exchanged} accent={C.bankRoof} icon="🏦" />
         </div>
@@ -4951,7 +5068,7 @@ function BankView({ gems, lifetime, exchanged, history, onExchange, onBack }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
             <div>
               <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, marginBottom: 8 }}>EXCHANGE GATE</div>
-              <div style={{ fontSize: 13 }}>환율 <b>1 ⭐ = {GEM_TO_WON.toLocaleString()}원</b></div>
+              <div style={{ fontSize: 13 }}>환율 <b>1 💎 = {GEM_TO_WON.toLocaleString()}원</b></div>
               <div style={{ fontSize: 13, marginTop: 4, color: C.inkSoft }}>현재 보유 젬은 최대 <b>{fmt(gems * GEM_TO_WON)}원</b> 상당</div>
             </div>
             <PxButton tone={canWithdraw ? "danger" : "ink"} disabled={!canWithdraw} onClick={() => { setAmount(Math.floor(gems)); setOpen(true); }} style={{ padding: "12px 18px", fontSize: 14 }}>
@@ -4960,12 +5077,12 @@ function BankView({ gems, lifetime, exchanged, history, onExchange, onBack }) {
           </div>
           <div style={{ marginTop: 12, fontSize: 12, background: C.parch, border: `2px solid ${C.ink}`, padding: "8px 10px" }}>
             <b>🎯 리워드 포인트 적립</b>
-            <div style={{ color: C.inkSoft, marginTop: 3 }}>자체 화폐 ⭐ → 실물 리워드 시스템으로 연동되는 정산 채널(시뮬레이션)</div>
+            <div style={{ color: C.inkSoft, marginTop: 3 }}>💎 젬 → 실물 리워드로 연동되는 정산 채널(시뮬레이션) · 🪙 골드는 환전 대상이 아니에요</div>
           </div>
         </div>
         {flash && (
           <div className="gem-pop" style={{ marginTop: 12, background: C.good, color: C.white, border: `3px solid ${C.ink}`, padding: 12, fontSize: 13 }}>
-            ✅ 정산 완료(시뮬레이션): <b>{fmt(flash.amount)} ⭐</b> → <b>{fmt(flash.won)}원</b>
+            ✅ 정산 완료(시뮬레이션): <b>{fmt(flash.amount)} 💎</b> → <b>{fmt(flash.won)}원</b>
           </div>
         )}
         <div style={{ marginTop: 14 }}>
@@ -4977,7 +5094,7 @@ function BankView({ gems, lifetime, exchanged, history, onExchange, onBack }) {
               {history.map((h) => (
                 <div key={h.id} style={{ background: C.parch, border: `2px solid ${C.ink}`, padding: "8px 12px", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, fontSize: 13 }}>
                   <span>🧾 {h.time} · 리워드 포인트 적립</span>
-                  <span><b>{fmt(h.amount)} ⭐</b> → <b style={{ color: C.good }}>{fmt(h.won)}원</b> <span style={{ fontSize: 10, background: C.good, color: C.white, padding: "2px 6px", marginLeft: 6 }}>정산 완료</span></span>
+                  <span><b>{fmt(h.amount)} 💎</b> → <b style={{ color: C.good }}>{fmt(h.won)}원</b> <span style={{ fontSize: 10, background: C.good, color: C.white, padding: "2px 6px", marginLeft: 6 }}>정산 완료</span></span>
                 </div>
               ))}
             </div>
@@ -4997,11 +5114,11 @@ function BankView({ gems, lifetime, exchanged, history, onExchange, onBack }) {
               <input type="number" value={amount} min={1} max={gems} onChange={(e) => setAmount(Math.floor(Number(e.target.value) || 0))}
                 style={{ width: "100%", boxSizing: "border-box", marginTop: 6, padding: 10, fontFamily: "'DotGothic16', monospace", fontSize: 16, border: `3px solid ${C.ink}`, background: C.white }} />
               <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                {[10, 50, 100].map((v) => <PxButton key={v} tone="wood" disabled={v > gems} onClick={() => setAmount(v)} style={{ fontSize: 11, padding: "6px 10px" }}>{v}⭐</PxButton>)}
+                {[10, 50, 100].map((v) => <PxButton key={v} tone="wood" disabled={v > gems} onClick={() => setAmount(v)} style={{ fontSize: 11, padding: "6px 10px" }}>{v}💎</PxButton>)}
                 <PxButton tone="wood" disabled={gems < 1} onClick={() => setAmount(Math.floor(gems))} style={{ fontSize: 11, padding: "6px 10px" }}>전액</PxButton>
               </div>
               <div style={{ marginTop: 12, background: C.white, border: `3px solid ${C.ink}`, padding: 10, fontSize: 14, textAlign: "center" }}>
-                {fmt(amount)} ⭐ → <b style={{ color: C.good }}>{fmt(amount * GEM_TO_WON)}원</b>
+                {fmt(amount)} 💎 → <b style={{ color: C.good }}>{fmt(amount * GEM_TO_WON)}원</b>
               </div>
               {!validAmount && <div style={{ marginTop: 8, fontSize: 12, color: C.danger }}>{amount < 1 ? "1 젬 이상 입력하세요." : "보유 젬을 초과했습니다."}</div>}
               <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
@@ -5044,13 +5161,13 @@ function ChatDock({ messages, shout, onToggleShout, onSend, gems = 0 }) {
           ))}
         </div>
       )}
-      {warn && <div style={{ background: C.danger, color: C.white, border: `2px solid ${C.ink}`, padding: "3px 8px", fontSize: 11, marginBottom: 4 }}>⭐ 젬이 부족해요 (확성기 1젬)</div>}
+      {warn && <div style={{ background: C.danger, color: C.white, border: `2px solid ${C.ink}`, padding: "3px 8px", fontSize: 11, marginBottom: 4 }}>🪙 골드가 부족해요 (확성기 1골드)</div>}
       <div style={{ display: "flex", gap: 4, background: C.parch, border: `3px solid ${C.ink}`, padding: 4 }}>
-        <button onClick={() => { if (!shout && gems < 1) { setWarn(true); setTimeout(() => setWarn(false), 1600); return; } onToggleShout(); }} title={shout ? "확성기 ON" : "확성기 켜기 (⭐1)"} style={{ position: "relative", background: shout ? C.gem : C.white, border: `2px solid ${C.ink}`, cursor: "pointer", opacity: !shout && gems < 1 ? 0.6 : 1, fontSize: 15, width: 34, flexShrink: 0 }}>
+        <button onClick={() => { if (!shout && gems < 1) { setWarn(true); setTimeout(() => setWarn(false), 1600); return; } onToggleShout(); }} title={shout ? "확성기 ON" : "확성기 켜기 (🪙1)"} style={{ position: "relative", background: shout ? C.gem : C.white, border: `2px solid ${C.ink}`, cursor: "pointer", opacity: !shout && gems < 1 ? 0.6 : 1, fontSize: 15, width: 34, flexShrink: 0 }}>
           📢<span style={{ position: "absolute", right: 1, bottom: 0, fontSize: 8, color: C.ink, background: "#ffe680", border: `1px solid ${C.ink}`, padding: "0 1px", lineHeight: 1.2 }}>{shout ? "ON" : "1"}</span>
         </button>
         <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }}
-          placeholder={shout ? "📢 확성기 ON · 크게 외치기" : gems < 1 ? "채팅 입력 (확성기는 ⭐1 필요)" : "채팅 입력 후 Enter"} style={{ flex: 1, minWidth: 0, border: `2px solid ${C.ink}`, padding: "4px 6px", fontSize: 12, background: C.white, fontFamily: "'DotGothic16', monospace" }} />
+          placeholder={shout ? "📢 확성기 ON · 크게 외치기" : gems < 1 ? "채팅 입력 (확성기는 🪙1 필요)" : "채팅 입력 후 Enter"} style={{ flex: 1, minWidth: 0, border: `2px solid ${C.ink}`, padding: "4px 6px", fontSize: 12, background: C.white, fontFamily: "'DotGothic16', monospace" }} />
         <button onClick={send} style={{ background: C.good, color: C.white, border: `2px solid ${C.ink}`, cursor: "pointer", fontSize: 12, padding: "0 8px", flexShrink: 0 }}>▶</button>
       </div>
     </div>
@@ -5105,11 +5222,11 @@ function saveStats(v) {
 }
 
 /* ======================= 도움말 (사용설명서) ======================= */
-const HELP_CATS = ["🌱 시작", "🏢 퀘스트", "🏛 생활", "🎮 놀이", "🏠 집", "👥 소통", "⭐ 젬·뱃지", "❓ FAQ"];
+const HELP_CATS = ["🌱 시작", "🏢 퀘스트", "🏛 생활", "🎮 놀이", "🏠 집", "👥 소통", "💎 젬·🪙 골드", "❓ FAQ"];
 const HELP_DATA = {
   "🌱 시작": [
     { icon: "🧑", title: "이름 정하기", body: "처음 들어오면 이름을 정해요. 이름이 정인·창민·도희·유리·민지·희정·의준·호종 중 하나면 그 집이 내 집이 됩니다. 상단 🧑 버튼으로 언제든 변경 가능해요." },
-    { icon: "🎟️", title: "웰컴 쿠폰", body: "사전예약자 혜택으로 처음 한 번 ⭐100 젬을 드려요." },
+    { icon: "🎟️", title: "웰컴 쿠폰", body: "사전예약자 혜택으로 처음 한 번 💎100 젬을 드려요." },
     { icon: "🎮", title: "조작법", body: "W A S D 또는 방향키로 이동 · Space로 상호작용 · 스쿨/보스맵에서는 E로 퀘스트 열기 · 다른 사람 캐릭터를 클릭하면 선물 주기." },
     { icon: "🗺", title: "길 찾기", body: "우하단 미니맵을 클릭하면 전체 지도가 열려요. 구역과 건물 이름이 모두 표시됩니다." },
   ],
@@ -5123,15 +5240,15 @@ const HELP_DATA = {
     { icon: "🏛", title: "주민센터", body: "회의실 예약, 음료 코너(HP·MP +20), 공지사항과 캘린더.", go: "center", goLabel: "주민센터 가기" },
     { icon: "🛍️", title: "무신사", body: "상의·하의·신발을 무료로 입어보고 마음에 들면 구매. 착용한 옷은 다른 접속자에게도 보여요.", go: "musinsa", goLabel: "무신사 가기" },
     { icon: "🛒", title: "이케아", body: "집 외관 · 가구 · 교통수단 구매. 탈것을 타면 마을에서 더 빨리 이동해요.", go: "ikea", goLabel: "이케아 가기" },
-    { icon: "🍴", title: "쩝쩝박사", body: "원형 테이블에서 오늘의 메뉴 뽑기, 메뉴 추천 게시판, 점심술사(인증샷 제출 시 ⭐5).", go: "jjeop", goLabel: "쩝쩝박사 가기" },
-    { icon: "🏦", title: "중앙은행", body: "모은 젬을 원화로 환전하고 내역을 확인해요.", go: "bank", goLabel: "은행 가기" },
+    { icon: "🍴", title: "쩝쩝박사", body: "원형 테이블에서 오늘의 메뉴 뽑기, 메뉴 추천 게시판, 점심술사(인증샷 제출 시 🪙5).", go: "jjeop", goLabel: "쩝쩝박사 가기" },
+    { icon: "🏦", title: "중앙은행", body: "퀘스트로 모은 💎 젬을 원화로 환전해요. 🪙 골드는 환전할 수 없어요.", go: "bank", goLabel: "은행 가기" },
     { icon: "📋", title: "게시판", body: "공지·이벤트 라벨로 구분된 마을 소식과 캘린더.", go: "board", goLabel: "게시판 가기" },
   ],
   "🎮 놀이": [
     { icon: "🥊", title: "샌드백", body: "마우스/키보드로 타격. 상대 이름을 붙인 샌드백도 만들 수 있고 랭킹에 집계돼요.", go: "sandbag", goLabel: "샌드백 가기" },
     { icon: "🎮", title: "미니게임 방", body: "반응속도 · 가위바위보 · 숫자순서 · 라이어게임 · 대회 코너. 라이어는 방을 만들고 주민을 초대해요.", go: "minigame", goLabel: "미니게임 가기" },
-    { icon: "🏊", title: "수영장", body: "스페이스바 연타로 레인 경주. 1등이면 젬을 받고 기록이 랭킹에 남아요.", go: "pool", goLabel: "수영장 가기" },
-    { icon: "🏋️", title: "헬스장", body: "운동하고 젬 획득. 스트레칭 안내도 있어요.", go: "gym", goLabel: "헬스장 가기" },
+    { icon: "🏊", title: "수영장", body: "스페이스바 연타로 레인 경주. 1등이면 🪙 골드를 받고 기록이 랭킹에 남아요.", go: "pool", goLabel: "수영장 가기" },
+    { icon: "🏋️", title: "헬스장", body: "운동하고 🪙 골드 획득. 스트레칭 안내도 있어요.", go: "gym", goLabel: "헬스장 가기" },
     { icon: "🚬", title: "흡연의 방", body: "재떨이 수다방(티키타카), 담배·전자담배, 창문 환기.", go: "smoke", goLabel: "흡연의 방 가기" },
     { icon: "🎧", title: "리스닝 방", body: "음악 감상과 신청곡. 🔊 슬라이더로 볼륨 조절.", go: "listening", goLabel: "리스닝 방 가기" },
     { icon: "🎬", title: "릴스 방", body: "카테고리별 짧은 영상 모음. 카테고리 추가도 가능해요.", go: "reels", goLabel: "릴스 방 가기" },
@@ -5141,7 +5258,7 @@ const HELP_DATA = {
   "🏠 집": [
     { icon: "🔒", title: "비밀번호", body: "내 집 첫 방문 때 비밀번호를 설정해요(최초 1회). 이후에는 방문할 때마다 현관에서 비밀번호를 입력해 들어갑니다. 비밀번호를 아는 사람은 누구나 들어올 수 있어요." },
     { icon: "🔔", title: "초인종", body: "누르면 딩동 소리와 함께 집주인에게 알림이 갑니다. 주인은 문 열어주기 / 거절하기를 선택할 수 있어요." },
-    { icon: "📮", title: "우체통", body: "방명록·편지를 남기고 선물도 함께 보내요(택배비 ⭐0.3). 보낼 선물은 🙏 감사의 방에서 미리 구매해두면 목록에 나와요. 내 집 우체통에서는 받은 편지함을 확인할 수 있어요.", go: "thanks", goLabel: "감사의 방 가기" },
+    { icon: "📮", title: "우체통", body: "방명록·편지를 남기고 선물도 함께 보내요(택배비 🪙0.3). 보낼 선물은 🙏 감사의 방에서 미리 구매해두면 목록에 나와요. 내 집 우체통에서는 받은 편지함을 확인할 수 있어요.", go: "thanks", goLabel: "감사의 방 가기" },
     { icon: "🛋", title: "집 꾸미기", body: "이케아에서 산 외관과 가구가 내 집에 반영되고, 마을에서도 그 집이 바뀌어 보여요." },
   ],
   "👥 소통": [
@@ -5152,7 +5269,7 @@ const HELP_DATA = {
     { icon: "📞", title: "DM · 페이스톡", body: "메뉴(☰) → 마을주민들에서 1:1 채팅과 영상통화를 할 수 있어요." },
     { icon: "🛂", title: "치앙마이 가는 법", body: "강 건너 다리 앞 🛂 검문소에서 통행코드를 입력해야 건널 수 있어요. 통행코드가 궁금하면 500젬 💰 (…농담이고, 📋 게시판 공지를 확인하거나 마을 주민에게 물어보세요. 확성기로 외쳐보는 것도 방법!)", go: "board", goLabel: "게시판 가기" },
   ],
-  "⭐ 젬·뱃지": [
+  "💎 젬·🪙 골드": [
     { icon: "⭐", title: "젬 얻는 법", body: "퀘스트·보스 클리어, 미니게임 승리, 헬스장 운동, 점심술사 인증샷, 웰컴 쿠폰." },
     { icon: "🛒", title: "젬 쓰는 법", body: "옷·가구·집외관·탈것 구매, 선물 구매, 확성기(1젬), 우체통 택배(0.3젬), 치앙마이 렌트, 환전." },
     { icon: "🏅", title: "뱃지", body: "방문·소통·운동·흡연·샌드백·보스맵·노래 7개 카테고리. 조건을 채우면 축하 팝업이 뜨고 기록은 저장돼요." },
@@ -5264,7 +5381,7 @@ function InventoryBody({ gems, outfit, ownedClothes, ikeaOwned, houseSkin, vehic
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
             <span style={{ fontSize: 22 }}>🎒</span>
             <b style={{ flex: 1, fontSize: 14 }}>인벤토리</b>
-            <GemBadge amount={gems} />
+            <GemBadge kind="gold" amount={gems} />
           </div>
           <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
             {Object.keys(TABS).map((k) => (
@@ -5543,12 +5660,12 @@ function Sheet({ icon, title, onClose, tabs, tab, setTab, maxW = 470, children }
 }
 
 /* 🧑 내 프로필 (프로필 + 인벤토리 + 뱃지) */
-function MyPanel({ onClose, myName, gems, lifetime, hp, mp, stats, outfit, ownedClothes, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, onEquipCloth, onToggleIkea, day }) {
+function MyPanel({ onClose, myName, gems, gold = 0, lifetime, hp, mp, level = 1, stats, outfit, ownedClothes, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, onEquipCloth, onToggleIkea, day }) {
   const [tab, setTab] = useState("me");
   const badgeCount = BADGES.filter((b) => (stats[b.stat] || 0) >= b.need).length;
   const invCount = Object.keys(ownedClothes).length + Object.keys(ikeaOwned).length + thanksInv.length;
   const me = {
-    avatar: "🧑‍💻", name: myName || "나 (플레이어)", job: "에코타운 주민",
+    avatar: "🧑‍💻", name: myName || "나 (플레이어)", job: `에코타운 주민 · Lv.${level}`,
     stats: { 체력: Math.round(hp), 마나: Math.round(mp), 집중: Math.min(99, 50 + (stats.quest || 0) * 3), 친화: Math.min(99, 50 + (stats.chat || 0)) },
     equipment: [outfit.top ? `👕 ${outfit.top.name}` : "👕 기본 상의", outfit.bottom ? `👖 ${outfit.bottom.name}` : "👖 기본 하의", outfit.shoes ? `👟 ${outfit.shoes.name}` : "👟 기본 신발", vehicle ? `${vehicle.emoji} ${vehicle.name}` : "🚶 도보"],
     achievements: BADGES.filter((b) => (stats[b.stat] || 0) >= b.need).slice(-6).map((b) => `${b.icon} ${b.name}`).concat(badgeCount === 0 ? ["아직 뱃지가 없어요"] : []),
@@ -5562,10 +5679,10 @@ function MyPanel({ onClose, myName, gems, lifetime, hp, mp, stats, outfit, owned
         <div>
           <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
             <div style={{ flex: 1, background: C.white, border: `2px solid ${C.ink}`, padding: "7px 9px", textAlign: "center" }}>
-              <div style={{ fontSize: 10, color: C.inkSoft }}>보유 젬</div><div style={{ fontSize: 15, fontWeight: "bold" }}>⭐ {fmt(gems)}</div>
+              <div style={{ fontSize: 10, color: C.inkSoft }}>골드</div><div style={{ fontSize: 15, fontWeight: "bold" }}>🪙 {fmt(gold)}</div>
             </div>
             <div style={{ flex: 1, background: C.white, border: `2px solid ${C.ink}`, padding: "7px 9px", textAlign: "center" }}>
-              <div style={{ fontSize: 10, color: C.inkSoft }}>누적 젬</div><div style={{ fontSize: 15, fontWeight: "bold" }}>📈 {fmt(lifetime)}</div>
+              <div style={{ fontSize: 10, color: C.inkSoft }}>젬</div><div style={{ fontSize: 15, fontWeight: "bold" }}>💎 {fmt(gems)}</div>
             </div>
             <div style={{ flex: 1, background: C.white, border: `2px solid ${C.ink}`, padding: "7px 9px", textAlign: "center" }}>
               <div style={{ fontSize: 10, color: C.inkSoft }}>뱃지</div><div style={{ fontSize: 15, fontWeight: "bold" }}>🏅 {badgeCount}</div>
@@ -5577,7 +5694,7 @@ function MyPanel({ onClose, myName, gems, lifetime, hp, mp, stats, outfit, owned
           <ProfileDetail p={me} />
         </div>
       )}
-      {tab === "inv" && <InventoryBody gems={gems} outfit={outfit} ownedClothes={ownedClothes} ikeaOwned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} thanksInv={thanksInv} onEquipCloth={onEquipCloth} onToggleIkea={onToggleIkea} />}
+      {tab === "inv" && <InventoryBody gems={gold} outfit={outfit} ownedClothes={ownedClothes} ikeaOwned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} thanksInv={thanksInv} onEquipCloth={onEquipCloth} onToggleIkea={onToggleIkea} />}
       {tab === "badge" && <BadgeBody stats={stats} />}
     </Sheet>
   );
@@ -5928,7 +6045,7 @@ function QuestDoneView({ myName = "", onBack, bubble }) {
                   </button>
                   <button onClick={() => toggle(it.id, "reward")} style={{ flex: "1 1 140px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, padding: "9px 11px", borderRadius: 8, border: `2px solid ${it.reward ? "#ffd75e" : "rgba(255,255,255,0.3)"}`, background: it.reward ? "rgba(255,215,94,0.2)" : "rgba(255,255,255,0.05)", color: it.reward ? "#ffeaa8" : "rgba(255,255,255,0.7)", fontWeight: "bold" }}>
                     <span style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${it.reward ? "#ffd75e" : "rgba(255,255,255,0.4)"}`, background: it.reward ? "#ffd75e" : "transparent", color: "#2e1d06", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>{it.reward ? "✔" : ""}</span>
-                    ⭐ 보상 완료
+                    💎 보상 완료
                   </button>
                 </div>
                 {(it.gmBy || it.rewardBy) && (
@@ -5959,6 +6076,8 @@ export default function App() {
   const [rentId, setRentId] = useState(null);
 
   const [gems, setGems] = useState(0);
+  const [gold, setGold] = useState(0);
+  const [exp, setExp] = useState(0);
   const [lifetime, setLifetime] = useState(0);
   const [hp, setHp] = useState(100);
   const [mp, setMp] = useState(100);
@@ -6001,13 +6120,15 @@ export default function App() {
   const netHouseRef = useRef(null);
   const netRoomPosRef = useRef({ x: 0, y: 0 });
   const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat, sendEvent: netSendEvent } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef, netOutfitRef, netViewRef, netRoomPosRef, netDanceRef, netHouseRef);
-  const [nameOpen, setNameOpen] = useState(true);
+  const [nameOpen, setNameOpen] = useState(() => !loadJSON("echotown_myname", ""));
   const [nameInput, setNameInput] = useState("");
   const [couponOpen, setCouponOpen] = useState(false);
   const [couponDone, setCouponDone] = useState(false);
   const applySave = (d) => {
     if (!d) return false;
     if (typeof d.gems === "number") setGems(d.gems);
+    if (typeof d.gold === "number") setGold(d.gold);
+    if (typeof d.exp === "number") setExp(d.exp);
     if (typeof d.lifetime === "number") setLifetime(d.lifetime);
     if (d.outfit) setOutfit(d.outfit);
     if (d.owned) setOwned(d.owned);
@@ -6027,6 +6148,7 @@ export default function App() {
   const confirmName = (nm) => {
     const t = (nm || "").trim(); if (!t) return;
     setMyName(t); setNameOpen(false);
+    saveJSON("echotown_myname", t);
     dbLoadProfile(t).then((d) => {
       if (d) { applySave(d); showNotice(`💾 ${t}님의 저장 데이터를 불러왔어요`); }
       dbLoadMail(t).then((ms) => { if (ms && ms.length) setMail(ms); });
@@ -6037,8 +6159,20 @@ export default function App() {
       shoes: CLOTHES.shoes[Math.floor(Math.random() * CLOTHES.shoes.length)],
     });
     dbLoadProfile(t).then((d) => {
-      if (!d && !couponDone) { setCouponDone(true); setGems((g) => g + 100); setLifetime((l) => l + 100); setCouponOpen(true); }
+      if (!d && !couponDone) { setCouponDone(true); setGems((g) => g + 100); setLifetime((l) => l + 100); setGold((g) => g + 200); setCouponOpen(true); }
     });
+  };
+  /* 이 브라우저에 저장된 이름이 있으면 바로 로그인 (캐시 삭제·시크릿 모드면 다시 물어봐요) */
+  const bootedRef = useRef(false);
+  useEffect(() => {
+    if (bootedRef.current) return;
+    bootedRef.current = true;
+    const saved = loadJSON("echotown_myname", "");
+    if (saved) confirmName(saved);
+  }, []);
+  const forgetName = () => {
+    try { window.localStorage.removeItem("echotown_myname"); } catch (e) {}
+    setMyName(""); setNameInput(""); setNameOpen(true);
   };
   const isMyHouse = (n) => !!(n && myName && n.replace(/이네$|네$/, "") === myName);
   const [ikeaOwned, setIkeaOwned] = useState({});
@@ -6049,8 +6183,8 @@ export default function App() {
   const buyIkea = (kind, item) => {
     const has = !!ikeaOwned[item.id];
     if (!has) {
-      if (gems < item.price) return;
-      setGems((g) => g - item.price);
+      if (gold < item.price) return;
+      setGold((g) => g - item.price);
       setIkeaOwned((v) => ({ ...v, [item.id]: true }));
     }
     if (kind === "house") setHouseSkin((h) => (h && h.id === item.id ? null : item));
@@ -6079,8 +6213,8 @@ export default function App() {
   const tryOnClothing = (catKey, item) => setOutfit((o) => ({ ...o, [catKey]: item }));
   const buyClothing = (catKey, item) => {
     if (owned[item.id]) { setOutfit((o) => ({ ...o, [catKey]: item })); return; }
-    if (gems < item.price) return;
-    setGems((g) => g - item.price);
+    if (gold < item.price) return;
+    setGold((g) => g - item.price);
     setOwned((v) => ({ ...v, [item.id]: true }));
     setOutfit((o) => ({ ...o, [catKey]: item }));
   };
@@ -6229,11 +6363,25 @@ export default function App() {
     return () => { document.head.removeChild(link); };
   }, []);
 
+  const expInfo = useMemo(() => {
+    let lv = 1, rem = Math.max(0, Math.round(exp)), need = 100;
+    while (rem >= need && lv < 99) { rem -= need; lv++; need = Math.round(need * 1.3); }
+    return { lv, rem, need, pct: Math.min(100, Math.round((rem / need) * 100)) };
+  }, [exp]);
+  const lvRef = useRef(null);
+  useEffect(() => {
+    if (lvRef.current !== null && expInfo.lv > lvRef.current) showNotice(`🎉 레벨 업! Lv.${expInfo.lv} 달성`);
+    lvRef.current = expInfo.lv;
+  }, [expInfo.lv]);
+
   const bigMeta = useMemo(() => BIG_BUILDINGS.find((b) => b.id === bigId) || null, [bigId]);
   const houseMeta = useMemo(() => HOUSES.find((h) => h.id === houseId) || null, [houseId]);
   const rentMeta = useMemo(() => RENT_HOUSES.find((h) => h.id === rentId) || null, [rentId]);
 
-  const award = useCallback((n) => { setGems((g) => g + n); setLifetime((l) => l + n); }, []);
+  /* 💎 젬 = 퀘스트(업무·사고) 보상 전용 · 중앙은행에서 실제 화폐로 환전 가능 */
+  const award = useCallback((n) => { setGems((g) => g + n); setLifetime((l) => l + n); setExp((e) => e + Math.max(1, Math.round(n * 3))); }, []);
+  /* 🪙 골드 = 마을 안에서만 쓰는 화폐 (놀이·운동·생활 보상) */
+  const awardGold = useCallback((n) => { setGold((g) => g + n); setExp((e) => e + Math.max(1, Math.round(n))); }, []);
 
   const sayBubble = useCallback((text) => {
     const t = String(text || "");
@@ -6323,8 +6471,8 @@ export default function App() {
     };
   }, []);
   const sendMail = (payload) => {
-    if (gems < 0.3) return;
-    setGems((g) => g - 0.3);
+    if (gold < 0.3) return;
+    setGold((g) => g - 0.3);
     if (payload.item) setThanksInv((v) => v.filter((_, i) => i !== payload.item._i));
     if (netSendEvent) netSendEvent("mail", payload);
     dbSendMail(payload.to, payload.from, payload.text, payload.item || null);
@@ -6342,10 +6490,10 @@ export default function App() {
     if (!myName) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      dbSaveProfile(myName, { gems, lifetime, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept });
+      dbSaveProfile(myName, { gems, gold, exp, lifetime, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept });
     }, 2000);
     return () => clearTimeout(saveTimer.current);
-  }, [myName, gems, lifetime, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept]);
+  }, [myName, gems, gold, exp, lifetime, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept]);
 
   const AVATARS = ["🧑", "👩", "🧑‍💻", "👨‍💼", "👩‍🎨", "🧑‍🍳", "👩‍🔬", "🧑‍🎤", "👨‍🌾", "👩‍🏫"];
   const people = useMemo(() => {
@@ -6364,8 +6512,8 @@ export default function App() {
   }, [netOthers, dbPlayers, myName]);
 
   const requestWorldSong = (title) => {
-    if (gems < 5) return;
-    setGems((g) => g - 5);
+    if (gold < 5) return;
+    setGold((g) => g - 5);
     setWorldBgm((b) => ({ ...b, title, playing: true }));
   };
 
@@ -6441,7 +6589,14 @@ export default function App() {
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 150 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 168 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 10, width: 20, color: C.inkSoft, fontWeight: "bold" }}>Lv{expInfo.lv}</span>
+                <div style={{ flex: 1, height: 9, background: "#e2d3ab", border: `2px solid ${C.ink}`, position: "relative", overflow: "hidden" }} title={`경험치 ${expInfo.rem} / ${expInfo.need}`}>
+                  <div style={{ height: "100%", width: `${expInfo.pct}%`, background: "linear-gradient(90deg,#7fe3ff,#5b8def)", transition: "width .3s" }} />
+                </div>
+                <span style={{ fontSize: 9, color: C.inkSoft, width: 30, textAlign: "right" }}>{expInfo.pct}%</span>
+              </div>
               <VitalBar label="HP" val={hp} color={C.danger} />
               <VitalBar label="MP" val={mp} color="#3a7bd5" />
             </div>
@@ -6470,7 +6625,9 @@ export default function App() {
             )}
             <PxButton tone="wood" onClick={() => { setNameInput(myName); setNameOpen(true); }} style={{ fontSize: 11, padding: "5px 9px" }}>🧑 {myName || "이름 설정"}</PxButton>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 11, color: C.inkSoft }}>보유 스타 젬</div>
+              <div style={{ fontSize: 10, color: C.inkSoft }}>🪙 골드 (마을 전용)</div>
+              <GemBadge kind="gold" amount={gold} big />
+              <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 4 }}>💎 젬 (환전 가능)</div>
               <GemBadge amount={gems} big />
             </div>
           </div>
@@ -6478,7 +6635,7 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gems} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} myNick={myName} onGift={(n) => setGiftTarget(n)} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gold} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} myNick={myName} onGift={(n) => setGiftTarget(n)} />}
         {view === "center" && <CenterView meetings={myMeetings} meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} myName={myName} people={people}
           onInvite={(p) => {
@@ -6505,17 +6662,17 @@ export default function App() {
             }}
             onBell={ringBell} onMail={(owner) => { setMailTarget(owner); if (owner === myName) dbLoadMail(owner).then((ms) => setMail(ms || [])); }} onBack={backToWorld} />
         ))}
-        {view === "thanks" && <ThanksView gems={gems} inventory={thanksInv} postits={postits} onBuy={(it) => { setGems((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={(p) => setPostits((v) => [...v, { ...p, id: Date.now() }])} onBack={backToWorld} bubble={bubble} />}
-        {view === "heart" && <HeartView gems={gems} worries={worries} onPost={(text, cost, kind) => { setGems((g) => g - cost); setWorries((w) => [{ id: Date.now(), text, kind }, ...w]); }} onBack={backToWorld} bubble={bubble} />}
-        {view === "listening" && <ListeningView onBack={backToWorld} gems={gems} onSpend={(n) => setGems((g) => g - n)} bubble={bubble} />}
+        {view === "thanks" && <ThanksView gems={gold} inventory={thanksInv} postits={postits} onBuy={(it) => { setGold((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={(p) => setPostits((v) => [...v, { ...p, id: Date.now() }])} onBack={backToWorld} bubble={bubble} />}
+        {view === "heart" && <HeartView gems={gold} worries={worries} onPost={(text, cost, kind) => { setGold((g) => g - cost); setWorries((w) => [{ id: Date.now(), text, kind }, ...w]); }} onBack={backToWorld} bubble={bubble} />}
+        {view === "listening" && <ListeningView onBack={backToWorld} gems={gold} onSpend={(n) => setGold((g) => g - n)} bubble={bubble} />}
         {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} />}
-        {view === "minigame" && <MiniGameRoom myName={myName} people={people} onBack={backToWorld} onReward={(n) => award(n)} bubble={bubble} />}
-        {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} scores={swimScores} onRecord={(nick, time) => { setSwimScores((s) => [...s, { nick, time }]); bump("swim"); dbAddRank("swim", nick, time, null).then(reloadRanks); }} bubble={bubble} />}
-        {view === "gym" && <GymView onBack={backToWorld} onWork={() => { award(4); bump("gym"); }} bubble={bubble} />}
+        {view === "minigame" && <MiniGameRoom myName={myName} people={people} onBack={backToWorld} onReward={(n) => awardGold(n)} bubble={bubble} />}
+        {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => awardGold(n)} scores={swimScores} onRecord={(nick, time) => { setSwimScores((s) => [...s, { nick, time }]); bump("swim"); dbAddRank("swim", nick, time, null).then(reloadRanks); }} bubble={bubble} />}
+        {view === "gym" && <GymView onBack={backToWorld} onWork={() => { awardGold(4); bump("gym"); }} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
         {view === "coredict" && <CoreDictView myName={myName} onBack={backToWorld} />}
         {view === "questdone" && <QuestDoneView myName={myName} onBack={backToWorld} bubble={bubble} />}
-        {view === "ikea" && <IkeaView gems={gems} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
+        {view === "ikea" && <IkeaView gems={gold} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
         {view === "project" && <BossMapView myName={myName} onBack={backToWorld} onReward={(n) => award(n)} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss) => bump(isBoss ? "boss" : "quest")}
           accepted={qAccept} notes={qNotes} threads={qThreads}
           onAccept={(qid, title) => { setQAccept((a) => (a[qid] && a[qid].locked ? a : { ...a, [qid]: a[qid] ? { ...a[qid], party: Array.from(new Set([...(a[qid].party || []), myName || "나"])) } : { party: [myName || "나"], agree: [], locked: false, started: false, title } })); if (netSendEvent) netSendEvent("qparty", { qid, who: myName || "나" }); showNotice("🤝 퀘스트를 수락했어요"); }}
@@ -6550,11 +6707,11 @@ export default function App() {
           onThreadSend={(qid, text) => { setQThreads((t) => ({ ...t, [qid]: [...(t[qid] || []), { who: myName || "나", text }] })); if (netSendEvent) netSendEvent("qchat", { qid, who: myName || "나", text }); }} />}
         {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
         {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count, target) => { setBoxScores((s) => [...s, { nick, count, target }]); bump("punch", count); dbAddRank("sandbag", nick, count, target).then(reloadRanks); }} />}
-        {view === "musinsa" && <MusinsaView gems={gems} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
-        {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} onReward={(n) => award(n)} />}
+        {view === "musinsa" && <MusinsaView gems={gold} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
+        {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} onReward={(n) => awardGold(n)} />}
         {view === "board" && <BoardView myName={myName} onBack={backToWorld} />}
         {view === "bank" && <BankView gems={gems} lifetime={lifetime} exchanged={exchanged} history={history} onExchange={doExchange} onBack={backToWorld} />}
-        {view === "rent" && rentMeta && <RentView house={rentMeta} gems={gems} rented={!!rented[rentId]} onRent={() => { setGems((g) => g - rentMeta.rent); setRented((r) => ({ ...r, [rentId]: true })); }} onBack={backToWorld} />}
+        {view === "rent" && rentMeta && <RentView house={rentMeta} gems={gold} rented={!!rented[rentId]} onRent={() => { setGold((g) => g - rentMeta.rent); setRented((r) => ({ ...r, [rentId]: true })); }} onBack={backToWorld} />}
       </div>
 
       <div style={{ maxWidth: 960, margin: "14px auto 0", textAlign: "center", fontSize: 11, color: "rgba(42,30,20,0.65)" }}>
@@ -6571,10 +6728,12 @@ export default function App() {
               <div style={{ fontSize: 13, textAlign: "center", marginBottom: 10 }}>마을에서 사용할 이름을 알려주세요!</div>
               <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") confirmName(nameInput); }} maxLength={8} autoFocus placeholder="예: 정인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, background: C.white, textAlign: "center" }} />
               <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center" }}>주민 이름(정인·창민·도희·유리·민지·희정·의준·호종)과 같으면 그 집이 내 집이 돼요!</div>
+              <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 4, textAlign: "center" }}>🔐 한 번 정하면 이 브라우저에서는 다음부터 자동으로 로그인돼요</div>
               <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                 {myName && <PxButton tone="ink" onClick={() => setNameOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>}
                 <PxButton tone="good" disabled={!nameInput.trim()} onClick={() => confirmName(nameInput)} style={{ flex: 1, padding: 10, fontSize: 13 }}>시작하기</PxButton>
               </div>
+              {myName && <PxButton tone="danger" onClick={forgetName} style={{ width: "100%", marginTop: 8, padding: 9, fontSize: 12 }}>🚪 이 브라우저에서 로그아웃</PxButton>}
             </Panel>
           </div>
         </div>
@@ -6591,21 +6750,22 @@ export default function App() {
               </div>
               <div style={{ background: C.white, border: `3px dashed ${C.ink}`, borderRadius: 10, padding: "14px 10px", marginBottom: 14 }}>
                 <div style={{ fontSize: 11, color: C.inkSoft }}>지급 보상</div>
-                <div style={{ fontSize: 26, fontWeight: "bold", color: "#a86e13" }}>⭐ 100 젬</div>
+                <div style={{ fontSize: 22, fontWeight: "bold", color: "#2f7fb5" }}>💎 100 젬</div>
+                <div style={{ fontSize: 22, fontWeight: "bold", color: "#a86e13", marginTop: 4 }}>🪙 200 골드</div>
               </div>
               <PxButton tone="gold" onClick={() => setCouponOpen(false)} style={{ width: "100%", padding: 12, fontSize: 14 }}>받고 시작하기 🌱</PxButton>
             </div>
           </div>
         </div>
       )}
-      <ChatDock messages={chat} shout={shout} gems={gems} onSend={postChat}
+      <ChatDock messages={chat} shout={shout} gems={gold} onSend={postChat}
         onToggleShout={() => {
           if (shout) { setShout(false); return; }
-          if (gems < 1) return;
-          setGems((g) => g - 1);
+          if (gold < 1) return;
+          setGold((g) => g - 1);
           setShout(true);
         }} />
-      {mailTarget && <MailboxModal owner={mailTarget} isMine={mailTarget === myName} myName={myName} gems={gems} inventory={thanksInv} mail={mail} onSend={sendMail} onClose={() => setMailTarget(null)} />}
+      {mailTarget && <MailboxModal owner={mailTarget} isMine={mailTarget === myName} myName={myName} gems={gold} inventory={thanksInv} mail={mail} onSend={sendMail} onClose={() => setMailTarget(null)} />}
       {giftTarget && <GiftModal target={giftTarget} inventory={thanksInv} myName={myName} onSend={sendGift} onClose={() => setGiftTarget(null)} />}
       {invite && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150, padding: 14 }}>
@@ -6656,7 +6816,7 @@ export default function App() {
         onDm={(p) => setDmWith(p)}
         onCall={(p) => { setCallWith(p); if (netSendEvent) netSendEvent("call", { to: p.name, from: myName || "나" }); }} />}
 
-      {profileOpen && <MyPanel onClose={() => setProfileOpen(false)} myName={myName} gems={gems} lifetime={lifetime} hp={hp} mp={mp} day={day}
+      {profileOpen && <MyPanel onClose={() => setProfileOpen(false)} myName={myName} gems={gems} gold={gold} level={expInfo.lv} lifetime={lifetime} hp={hp} mp={mp} day={day}
         stats={stats} outfit={outfit} ownedClothes={owned} ikeaOwned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni}
         thanksInv={thanksInv} onEquipCloth={tryOnClothing} onToggleIkea={buyIkea} />}
 
