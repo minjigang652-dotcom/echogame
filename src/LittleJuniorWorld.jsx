@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v37 · 2026-07-24";
+const APP_VERSION = "v38 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -1587,6 +1587,9 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
         });
         ch.on("broadcast", { event: "dictres" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("dictres", payload);
+        });
+        ch.on("broadcast", { event: "shr" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("shr", payload);
         });
         ch.on("broadcast", { event: "rec" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("rec", payload);
@@ -4119,7 +4122,7 @@ function CopyBox({ sec }) {
     </div>
   );
 }
-function SchoolView({ school, onBack }) {
+function SchoolView({ school, onBack, cleared = {}, onClear }) {
   const s = SCHOOLS[school];
   const MAP_W = 640, MAP_H = 420;
   const [pos, setPos] = useState({ x: MAP_W / 2, y: MAP_H - 50 });
@@ -4127,7 +4130,6 @@ function SchoolView({ school, onBack }) {
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
   const [open, setOpen] = useState(null);
-  const [cleared, setCleared] = useState({});
   const keys = useRef({});
   const posRef = useRef(pos);
   const nearRef = useRef(null);
@@ -4279,7 +4281,7 @@ function SchoolView({ school, onBack }) {
                   ))}
                   <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                     <PxButton tone="ink" onClick={() => setOpen(null)} style={{ flex: 1, padding: 9, fontSize: 13 }}>닫기</PxButton>
-                    <PxButton tone="good" disabled={!!cleared[open.id]} onClick={() => { setCleared((c) => ({ ...c, [open.id]: true })); setOpen(null); }} style={{ flex: 1, padding: 9, fontSize: 13 }}>{cleared[open.id] ? "완료됨" : "✅ 완료"}</PxButton>
+                    <PxButton tone="good" disabled={!!cleared[open.id]} onClick={() => { onClear && onClear(open.id); setOpen(null); }} style={{ flex: 1, padding: 9, fontSize: 13 }}>{cleared[open.id] ? "완료됨" : "✅ 완료"}</PxButton>
                   </div>
                 </div>
                 <div style={{ flex: "1 1 240px", minWidth: 0, borderLeft: `3px solid ${C.parchEdge}`, paddingLeft: 12 }}>
@@ -5754,6 +5756,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724ii", type: "업데이트", date: "2026-07-24", title: "🏆 제단 공유 · 📗 스쿨 진행도 저장",
+    body: "· 🏆 제단에 봉헌한 파편이 접속자 모두에게 공유돼요 — 등록자가 직접 검토하고 체크할 수 있어요\n· 새로 접속하면 지금까지 쌓인 파편을 자동으로 받아옵니다\n· 「🙋 내 관련」 필터로 내가 올렸거나 내가 검토할 파편만 골라볼 수 있어요\n· 🛡 검토 · ⭐ 보상 체크도 실시간으로 모두에게 반영돼요\n· 📗 네이버스쿨 · 🎬 영상스쿨에서 깬 퀘스트가 저장돼요 (방을 나가도 유지)" },
   { id: "u20260724hh", type: "업데이트", date: "2026-07-24", title: "🏃 사람마다 걷는 속도가 다르던 문제 수정",
     body: "· 이동이 「화면이 그려지는 횟수」에 묶여 있어서, 성능이 낮은 기기에서는 절반 속도로 걸렸어요\n· 이제 「초 단위」로 이동해서 어떤 기기에서든 같은 속도가 나옵니다\n· 마을 · 실내 · 스쿨 · 보스맵 이동 전부 적용했어요\n· 🌧 비 효과가 저사양 기기·모바일에서는 자동으로 가벼워져요" },
   { id: "u20260724gg", type: "업데이트", date: "2026-07-24", title: "🏠 다른 집 사람이 보이던 버그 · 🐾 반려동물 돌보기",
@@ -7308,30 +7312,19 @@ function QuestFragmentInput({ tone, icon, title, hint, placeholder, value, onCha
   );
 }
 
-function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed }) {
-  const [items, setItems] = useState(() => loadJSON(QD_KEY, []));
+function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed, items = [], onAdd, onToggle, onDelete }) {
   const [reqT, setReqT] = useState(""); const [reqD, setReqD] = useState("");
   const [accT, setAccT] = useState(""); const [accD, setAccD] = useState("");
   const [filter, setFilter] = useState("all");
   const [q, setQ] = useState("");
   const [toast, setToast] = useState(null);
-  /* 보스맵에서 「완료」를 누르고 넘어오면 수락 파편 칸에 자동으로 채워둡니다 */
+  const ping = (t) => { setToast(t); setTimeout(() => setToast(null), 1800); };
+
+  /* 보스맵에서 답변을 제출하면 파편이 자동으로 봉헌돼요 */
   useEffect(() => {
     if (!draft) return;
     if (draft.autoAdd) {
-      // 보스맵에서 답변을 제출하면 파편이 자동으로 봉헌돼요
-      setItems((cur) => {
-        const it = {
-          id: Date.now() + Math.random(), kind: draft.kind || "acc",
-          text: draft.text, detail: draft.detail || "", who: myName || "익명",
-          reviewer: draft.reviewer || null,
-          at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }),
-          gm: false, reward: false,
-        };
-        const next = [it, ...cur];
-        saveJSON(QD_KEY, next);
-        return next;
-      });
+      onAdd && onAdd({ kind: draft.kind || "acc", text: draft.text, detail: draft.detail || "", reviewer: draft.reviewer || null });
       ping("🏆 완료의 제단에 등록되었습니다!");
     } else {
       setAccT(draft.text || "");
@@ -7339,36 +7332,30 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed 
     }
     onDraftUsed && onDraftUsed();
   }, [draft]);
-  const save = (v) => { setItems(v); saveJSON(QD_KEY, v); };
-  const ping = (t) => { setToast(t); setTimeout(() => setToast(null), 1800); };
 
   const add = (kind) => {
     const text = (kind === "req" ? reqT : accT).trim();
     if (!text) return;
     const detail = (kind === "req" ? reqD : accD).trim();
-    const it = {
-      id: Date.now() + Math.random(), kind, text, detail, who: myName || "익명",
-      at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }),
-      gm: false, reward: false,
-    };
-    save([it, ...items]);
+    onAdd && onAdd({ kind, text, detail });
     if (kind === "req") { setReqT(""); setReqD(""); } else { setAccT(""); setAccD(""); }
     ping(kind === "req" ? "✦ 신청 파편이 제단에 봉헌됐어요" : "✦ 수락 파편이 제단에 봉헌됐어요");
   };
   const toggle = (id, key) => {
-    const next = items.map((it) => (it.id === id ? { ...it, [key]: !it[key], [key + "By"]: !it[key] ? (myName || "익명") : null } : it));
-    save(next);
-    const t = next.find((it) => it.id === id);
-    if (t && t[key]) ping(key === "gm" ? "🛡 등록자 검토 완료로 표시했어요" : "⭐ 보상 완료로 표시했어요");
+    const it = items.find((x) => x.id === id);
+    if (!it) return;
+    onToggle && onToggle(id, key, !it[key]);
+    if (!it[key]) ping(key === "gm" ? "🛡 등록자 검토 완료로 표시했어요" : "⭐ 보상 완료로 표시했어요");
   };
-  const remove = (id) => { if (window.confirm("이 파편을 제단에서 지울까요?")) save(items.filter((it) => it.id !== id)); };
+  const remove = (id) => { if (window.confirm("이 파편을 제단에서 지울까요? 모두에게서 사라져요.")) onDelete && onDelete(id); };
 
   const shown = items.filter((it) => {
     if (filter === "req" && it.kind !== "req") return false;
     if (filter === "acc" && it.kind !== "acc") return false;
+    if (filter === "mine" && it.who !== myName && it.reviewer !== myName) return false;
     if (filter === "wait" && (it.gm && it.reward)) return false;
     if (filter === "done" && !(it.gm && it.reward)) return false;
-    if (q.trim() && !(it.text + it.detail + it.who).includes(q.trim())) return false;
+    if (q.trim() && !((it.text || "") + (it.detail || "") + (it.who || "") + (it.reviewer || "")).includes(q.trim())) return false;
     return true;
   });
   const nGm = items.filter((i) => i.gm).length;
@@ -7415,7 +7402,7 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed 
 
         {/* 필터 */}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
-          <Chip k="all" label="전체" /><Chip k="req" label="🔷 신청" /><Chip k="acc" label="🔶 수락" />
+          <Chip k="all" label="전체" /><Chip k="mine" label="🙋 내 관련" /><Chip k="req" label="🔷 신청" /><Chip k="acc" label="🔶 수락" />
           <Chip k="wait" label="⏳ 미완" /><Chip k="done" label="✅ 완료" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 검색"
             style={{ flex: "1 1 110px", minWidth: 90, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, background: C.white }} />
@@ -7595,6 +7582,30 @@ function EchoTown() {
     else if (!g.caught && iAmLiar) { awardGold(15); showNotice("😈 끝까지 속였어요! 🪙15 획득"); }
   }, [liarGame]);
 
+  /* 🏆 퀘스트 완료의 제단 — 저장 + 모두 공유 (등록자가 검토해야 하므로) */
+  const [shrineItems, setShrineItems] = useState(() => { const v = loadJSON(QD_KEY, []); return Array.isArray(v) ? v : []; });
+  const shrineRef = useRef(shrineItems); shrineRef.current = shrineItems;
+  useEffect(() => { saveJSON(QD_KEY, shrineItems.slice(0, 120)); }, [shrineItems]);
+  const addShrine = (row) => {
+    const it = {
+      id: Date.now() + Math.random(), kind: row.kind || "acc", text: row.text, detail: row.detail || "",
+      who: myName || "익명", reviewer: row.reviewer || null,
+      at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+      gm: false, reward: false,
+    };
+    setShrineItems((v) => [it, ...v].slice(0, 120));
+    if (netSendEvent) netSendEvent("shr", { row: it });
+  };
+  const toggleShrine = (id, key, val) => {
+    const by = val ? (myName || "익명") : null;
+    setShrineItems((v) => v.map((x) => (x.id === id ? { ...x, [key]: val, [key + "By"]: by } : x)));
+    if (netSendEvent) netSendEvent("shr", { patch: { id, key, val, by } });
+  };
+  const delShrine = (id) => {
+    setShrineItems((v) => v.filter((x) => x.id !== id));
+    if (netSendEvent) netSendEvent("shr", { del: id });
+  };
+
   /* 🍴 쩝쩝박사 메뉴 추천 — 저장 + 모두 공유 */
   const REC_KEY = "echotown_recs_v1";
   const [recList, setRecList] = useState(() => {
@@ -7672,6 +7683,7 @@ function EchoTown() {
     if (typeof d.exp === "number") setExp(d.exp);
     if (d.profile) setProfile({ job: "", avatar: "🧑‍💻", ...d.profile, look: { ...DEFAULT_LOOK, ...(d.profile.look || {}) } });
     if (d.townRegion && REGIONS[d.townRegion]) { setTownRegion(d.townRegion); saveJSON("echotown_region", d.townRegion); }
+    if (d.schoolDone) setSchoolDone(d.schoolDone);
     if (d.skills) setSkills(d.skills);
     if (d.pets) setPets(d.pets);
     if (d.activePet !== undefined) setActivePet(d.activePet);
@@ -7885,6 +7897,10 @@ function EchoTown() {
   useEffect(() => { netLookRef.current = myLook; }, [myLook]);
 
   /* 🎁 선물 행동 : 들고다니기 · 집에 두기 · 먹기 · 냉장고 */
+  /* 📗🎬 스쿨 진행도 (저장됨) */
+  const [schoolDone, setSchoolDone] = useState({});
+  const clearSchool = (qid) => setSchoolDone((v) => (v[qid] ? v : { ...v, [qid]: true }));
+
   /* 🧠 배운 사고 스킬 */
   const [skills, setSkills] = useState([]);
   const [skillPop, setSkillPop] = useState(null);
@@ -8249,7 +8265,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qlock" || kind === "qleave" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qlock" || kind === "qleave" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "inviteack") {
@@ -8270,7 +8286,7 @@ function EchoTown() {
       if (kind === "dictreq") {
         if (p.from === (myName || "")) return;
         const mine = dictRef.current || [];
-        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current });
+        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current, shr: shrineRef.current });
         const gs = galRef.current || [];
         gs.slice(0, 12).forEach((ph, i) => setTimeout(() => { if (netSendEvent) netSendEvent("gal", { photo: ph }); }, 350 * (i + 1)));
         return;
@@ -8279,6 +8295,7 @@ function EchoTown() {
         if (p.dict) setDict((v) => mergeDict(p.dict, v));
         if (p.maps) setBossMaps((v) => mergeMaps(BOSS_MAPS_INIT, mergeMaps(v, p.maps)));
         if (Array.isArray(p.fb)) setFeedback((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.fb.filter((x) => !ids.has(x.id))].sort((a, b) => b.id - a.id).slice(0, 60); });
+        if (Array.isArray(p.shr)) setShrineItems((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.shr.filter((x) => !ids.has(x.id))].sort((a, b) => b.id - a.id).slice(0, 120); });
         if (Array.isArray(p.rec)) setRecList((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.rec.filter((x) => !ids.has(x.id))].slice(-60); });
         if (p.reel && typeof p.reel === "object") setReelExtra((v) => ({ ...p.reel, ...v }));
         if (Array.isArray(p.worry)) setWorries((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.worry.filter((x) => !ids.has(x.id))].sort((a, b) => b.id - a.id).slice(0, 80); });
@@ -8295,6 +8312,12 @@ function EchoTown() {
         if (p.state) { setLiarGame(p.state); return; }
         // 호스트만 참가자 요청을 처리합니다
         if (p.req) { const g = lgRef.current; if (g && g.host === (myName || "나")) lgApplyRef.current && lgApplyRef.current(p.req.type, p.req.payload, p.req.from); }
+        return;
+      }
+      if (kind === "shr") {
+        if (p.row) setShrineItems((v) => (v.some((x) => x.id === p.row.id) ? v : [p.row, ...v].slice(0, 120)));
+        else if (p.del) setShrineItems((v) => v.filter((x) => x.id !== p.del));
+        else if (p.patch) setShrineItems((v) => v.map((x) => (x.id === p.patch.id ? { ...x, [p.patch.key]: p.patch.val, [p.patch.key + "By"]: p.patch.by } : x)));
         return;
       }
       if (kind === "rec") { if (p.row) setRecList((v) => (v.some((x) => x.id === p.row.id) ? v : [...v, p.row].slice(-60))); return; }
@@ -8386,7 +8409,7 @@ function EchoTown() {
   const saveTimer = useRef(null);
   /* 현재 저장할 내용을 항상 최신으로 들고 있습니다 */
   const payloadRef = useRef(null);
-  payloadRef.current = { gems, gold, exp, lifetime, townRegion, profile, skills, pets, activePet, fishes, facilities, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept };
+  payloadRef.current = { gems, gold, exp, lifetime, townRegion, profile, skills, schoolDone, pets, activePet, fishes, facilities, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept };
   const flushSaveRef = useRef(null);
   const flushSave = useCallback((name) => {
     const n = name || myNameRef.current;
@@ -8403,7 +8426,7 @@ function EchoTown() {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => flushSave(myName), 800);
     return () => clearTimeout(saveTimer.current);
-  }, [myName, gems, gold, exp, lifetime, townRegion, profile, skills, pets, activePet, fishes, facilities, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept, flushSave]);
+  }, [myName, gems, gold, exp, lifetime, townRegion, profile, skills, schoolDone, pets, activePet, fishes, facilities, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept, flushSave]);
 
   /* 새로고침·탭 닫기·탭 전환 직전에 밀린 저장을 즉시 반영 */
   useEffect(() => {
@@ -8614,7 +8637,8 @@ function EchoTown() {
             if (kind === "pet") { setExp((e) => e + 3); showNotice(`${pt.emoji} ${pt.name}가 기분이 좋아졌어요! (경험치 +3)`); }
             else { awardGold(1); setHp((h) => Math.min(100, h + 3)); showNotice(`🍖 ${pt.name}가 맛있게 먹었어요!`); }
           }} />}
-        {view === "questdone" && <QuestDoneView myName={myName} onBack={backToWorld} bubble={bubble} draft={shrineDraft} onDraftUsed={() => setShrineDraft(null)} />}
+        {view === "questdone" && <QuestDoneView myName={myName} onBack={backToWorld} bubble={bubble} draft={shrineDraft} onDraftUsed={() => setShrineDraft(null)}
+          items={shrineItems} onAdd={addShrine} onToggle={toggleShrine} onDelete={delShrine} />}
         {view === "ikea" && <IkeaView gems={gold} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
         {view === "project" && <BossMapView myName={myName} onBack={backToWorld} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss, mode, title) => { bump(isBoss ? "boss" : "quest"); if (!isBoss && mode === "hard") learnSkill(title); }}
           people={people}
@@ -8680,7 +8704,7 @@ function EchoTown() {
           onBoard={(title) => { dbAddNotice("모집", `[파티모집] ${title}`, `${myName || "익명"}님이 「${title}」 퀘스트 파티원을 찾고 있어요!`); showNotice("📋 게시판에 모집글을 올렸어요"); }}
           onNote={(qid, v) => setQNotes((n) => ({ ...n, [qid]: v }))}
           onThreadSend={(qid, text) => { setQThreads((t) => ({ ...t, [qid]: [...(t[qid] || []), { who: myName || "나", text }] })); if (netSendEvent) netSendEvent("qchat", { qid, who: myName || "나", text }); }} />}
-        {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
+        {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} cleared={schoolDone} onClear={clearSchool} />}
         {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count, target) => { setBoxScores((s) => [...s, { nick, count, target }]); bump("punch", count); dbAddRank("sandbag", nick, count, target).then(reloadRanks); }} />}
         {view === "musinsa" && <MusinsaView gems={gold} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
         {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} onReward={(n) => awardGold(n)} myName={myName} recList={recList} onRec={addRec} />}
