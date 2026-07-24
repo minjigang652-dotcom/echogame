@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v61 · 2026-07-24";
+const APP_VERSION = "v63 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -557,7 +557,7 @@ const ROOM_TIPS = {
   board: ["글을 올리면 모두가 봐요", "내가 쓴 글은 ✏️ 수정·🗑 삭제할 수 있어요", "업데이트 탭에서 새로 바뀐 기능을 확인하세요"],
   thanks: ["칠판에 남긴 쪽지는 모두에게 보여요", "🔒 받는 사람만 보게 할 수도 있어요", "🕶 익명으로 남겨도 내 글은 지울 수 있어요", "선반 상점에서 선물을 사서 우체통으로 보내보세요"],
   heart: ["고민을 익명으로 남기면 모두에게 보여요", "고해성사와 서운 점 중에 골라 넣어요", "글을 넣을 땐 🪙 골드가 필요해요"],
-  listening: ["🎧 디제이 부스에서 🔗 링크·🎤 가수·🎵 제목을 넣어보세요", "등록하면 바로 재생되고 방을 나가도 계속 들려요", "좌측 하단 미니 플레이어로 멈추거나 접을 수 있어요"],
+  listening: ["🪑 관객석을 누르면 앉으면서 📃 선곡 리스트가 열려요", "🎧 디제이 부스에서 🔗 링크·🎤 가수·🎵 제목을 넣어보세요", "등록한 노래는 모두의 리스트에 들어가요", "오른쪽 💬 채팅창에서 같이 들으며 얘기해요", "등록하면 바로 재생되고 방을 나가도 계속 들려요", "좌측 하단 미니 플레이어로 멈추거나 접을 수 있어요"],
   reels: ["핸드폰을 눌러 카테고리별 릴스를 봐요", "카테고리를 추가하면 모두에게 공유돼요"],
   minigame: ["🕵️ 라이어 게임은 실제 접속자 3명부터 시작해요", "방을 만들면 다른 사람에게 참가 버튼이 떠요", "반사신경·가위바위보·순서기억으로 🪙 골드를 모아요"],
   smoke: ["재떨이를 누르면 실제 접속자들과 수다 떨어요", "채팅창 위에 지금 방에 있는 사람이 보여요", "창문을 열면 공기가 맑아져요"],
@@ -632,7 +632,7 @@ function TitleBar({ icon, title, sub, onBack, right, bg = C.parch, fg = C.ink, t
 
 /* ======================= 이동 가능한 룸(내부) ======================= */
 /* furniture: {id,x,y,w,h,label,emoji,color?,onInteract?,toast?} 좌표는 룸 px 기준 */
-function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, start, onBack, paused = false, children, headerBg = C.parch, banner = null, bubble = null, outfit = null, look = null, carry = null, pet = null, tipId = null, editable = false, onMoveFurni }) {
+function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, start, onBack, paused = false, children, headerBg = C.parch, banner = null, bubble = null, outfit = null, look = null, carry = null, pet = null, tipId = null, editable = false, onMoveFurni, side = null, sitAt = null, onStand = null }) {
   const net = useContext(NetContext);
   /* 건물 안에서도 내 옷·외모·반려동물·들고 있는 선물이 그대로 보이도록 */
   const meNet = (net && net.me) || {};
@@ -651,6 +651,11 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
   const nearRef = useRef(null);
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
+  /* 🪑 앉아 있는 동안은 움직이지 않아요 (방향키를 누르면 일어납니다) */
+  const sitRef = useRef(sitAt);
+  sitRef.current = sitAt;
+  const onStandRef = useRef(onStand);
+  onStandRef.current = onStand;
   /* 🚪 나가기 문 — 모든 건물 왼쪽 아래에 하나씩 있어요.
      문 앞에 서서 Space 를 누르면 나갑니다 (눌러서 나가도 돼요). */
   const exitFurniture = (() => {
@@ -673,6 +678,13 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
 
   furRef.current = allFurniture;
 
+  useEffect(() => {
+    if (!sitAt) return;
+    posRef.current = { x: sitAt.x, y: sitAt.y };
+    setPos({ x: sitAt.x, y: sitAt.y });
+    setMoving(false);
+  }, [sitAt && sitAt.x, sitAt && sitAt.y]);
+
   const showToast = useCallback((t) => { setToast(t); window.clearTimeout(showToast._t); showToast._t = window.setTimeout(() => setToast(null), 1600); }, []);
 
   useEffect(() => {
@@ -683,6 +695,10 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
       if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d"].includes(raw)) e.preventDefault();
       if (pausedRef.current) return;
       const k = norm(e.key);
+      if (sitRef.current && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "a", "d", "w", "s"].includes(k)) {
+        if (onStandRef.current) onStandRef.current();
+        return;
+      }
       if (k === " ") {
         const n = nearRef.current;
         if (n) {
@@ -709,7 +725,7 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
       const dt = Math.min(0.1, Math.max(0, (t - last) / 1000));
       last = t;
       const SPEED = PPS * dt;
-      if (!pausedRef.current) {
+      if (!pausedRef.current && !sitRef.current) {
         const k = keys.current;
         let { x, y } = posRef.current;
         let dx = 0, dy = 0;
@@ -764,9 +780,9 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
     <Panel style={{ padding: 0, overflow: "hidden" }}>
       <TitleBar icon={icon} title={title} sub={sub || "⬆⬇⬅➡ 이동 · 가구를 눌러 상호작용"} onBack={onBack} bg={headerBg} tipId={tipId || (net && net.view)} />
       {banner}
-      <div style={{ position: "relative", width: "100%", overflow: "hidden" }}>
+      <div style={{ position: "relative", width: "100%", overflow: "hidden", display: side ? "flex" : "block", justifyContent: "center", alignItems: "flex-start", flexWrap: "wrap" }}>
         <div ref={roomElRef} onPointerMove={editable ? onDragMove : undefined} onPointerUp={editable ? endDrag : undefined} onPointerLeave={editable ? endDrag : undefined}
-          style={{ position: "relative", width: roomW, height: roomH, margin: "0 auto", background: bg, borderBottom: `3px solid ${C.ink}`, touchAction: editable ? "none" : "auto" }}>
+          style={{ position: "relative", width: roomW, height: roomH, margin: side ? 0 : "0 auto", flexShrink: 0, background: bg, borderBottom: `3px solid ${C.ink}`, touchAction: editable ? "none" : "auto" }}>
           {/* 가구 (마지막 항목이 🚪 나가기 문이에요) */}
           {allFurniture.map((f) => {
             const active = f.id === near;
@@ -823,7 +839,14 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
                 Space · {nearFur.label}
               </div>
             )}
-            <Hero facing={facing} moving={moving} size={30} outfit={myOutfit} look={myLookC} carry={myCarry} pet={myPet} />
+            {sitAt && (
+              <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b3f8f", color: "#ffe680", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px", borderRadius: 8 }}>
+                🎶 앉아 있는 중 · 방향키로 일어나기
+              </div>
+            )}
+            <div style={{ transform: sitAt ? "translateY(7px) scaleY(0.84)" : "none", transformOrigin: "bottom center" }}>
+              <Hero facing={facing} moving={moving} size={30} outfit={myOutfit} look={myLookC} carry={myCarry} pet={myPet} />
+            </div>
           </div>
           {/* 토스트 */}
           {toast && (
@@ -832,6 +855,7 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
             </div>
           )}
         </div>
+        {side}
       </div>
       {children /* 패널/모달 오버레이 */}
     </Panel>
@@ -2432,7 +2456,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
         });
         /* ⚠️ 새 이벤트를 만들면 반드시 여기에 이름을 넣어야 상대에게 도착해요 */
-        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr"].forEach((ev) => {
+        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat"].forEach((ev) => {
           ch.on("broadcast", { event: ev }, ({ payload }) => {
             if (onChatRef && onChatRef.net) onChatRef.net(ev, payload);
           });
@@ -2586,12 +2610,14 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
   return { others, count, status, sendChat, sendEvent, reconnect };
 }
 
-function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = null, carry = null, pet = null, shuffle = false, onShuffle, onNextTrack, onPrevTrack, onReconnect, onDismount, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null, onGift = null, myNick = "" }) {
+function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = null, carry = null, pet = null, shuffle = false, onShuffle, onNextTrack, onPrevTrack, onReconnect, onDismount, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null, onGift = null, myNick = "", scales = {} }) {
   const [songOpen, setSongOpen] = useState(false);
   const [teleport, setTeleport] = useState(null);
   const [whoOpen, setWhoOpen] = useState(false);
   const vehicleRef = useRef(vehicle);
   vehicleRef.current = vehicle;
+  const scalesRef = useRef(scales);
+  scalesRef.current = scales;
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
@@ -2727,7 +2753,8 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
       for (const o of WORLD_OBJS) {
         if (!o.r) continue;
         const d = Math.hypot(x - o.x, y - (o.y + 20));
-        const reach = o.r * (vehicleRef.current ? 1.55 : 1);   // 탈것을 타면 조준이 쉽도록 넉넉하게
+        const sc = Number((scalesRef.current || {})[o.id]) || 1;
+      const reach = o.r * (vehicleRef.current ? 1.55 : 1) * Math.max(0.7, Math.min(2, sc));   // 탈것을 타면 조준이 쉽도록 넉넉하게 · 큰 건물은 범위도 넓게
         if (d < reach && d < best) { best = d; found = o; }
       }
       const key = found ? found.id : null;
@@ -2743,6 +2770,8 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
   const camX = Math.max(0, Math.min(WORLD.w - vp.w, pos.x - vp.w / 2));
   const camY = Math.max(0, Math.min(WORLD.h - vp.h, pos.y - vp.h / 2));
 
+  /* 🔍 건물 크기 배율 (모두에게 똑같이 적용돼요) */
+  const scaleOf = (o) => { const v = Number(scales && scales[o.id]); return v > 0 ? Math.max(0.4, Math.min(3, v)) : 1; };
   const spriteFor = (o) => {
     const custom = sprites && sprites[o.id];
     if (custom) {
@@ -2855,7 +2884,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
             <button key={o.id} className={o.r ? "map-obj" : ""} disabled={!o.r}
               onClick={() => o.r && handleObj(o)}
               style={{ position: "absolute", left: o.x, top: o.y, transform: "translate(-50%,-50%)", background: "none", border: "none", cursor: o.r ? "pointer" : "default", textAlign: "center", padding: 0 }}>
-              {spriteFor(o)}
+              <div style={{ transform: `scale(${scaleOf(o)})`, transformOrigin: "bottom center", display: "inline-block" }}>{spriteFor(o)}</div>
               <div style={{ marginTop: -6 }}>
                 <span style={{ display: "inline-block", background: o.kind === "center" ? C.ink : C.parch, color: o.kind === "center" ? C.gem : C.ink, fontSize: 11, padding: "3px 7px", border: `2px solid ${C.ink}`, whiteSpace: "nowrap" }}>
                   {o.label}{o.kind === "rent" && rentedHouses[o.id] ? " ✅" : ""}
@@ -4066,12 +4095,16 @@ function parseYouTubeId(url) {
   if (/^[\w-]{11}$/.test(s)) return s;
   return null;
 }
-function ListeningView({ onBack, gems, onSpend, bubble, songs, setSongs, onPlayYt, ytNow }) {
+function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelSong, onPlayYt, ytNow, myName = "", chat = [], onChat, djNow = null }) {
   const inp = { padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white, boxSizing: "border-box" };
-  const [open, setOpen] = useState(false);
+  const [djOpen, setDjOpen] = useState(false);     // 🎧 디제이 부스 : 등록 · 신청만
+  const [listOpen, setListOpen] = useState(false); // 🪑 관객석 : 선곡 리스트
+  const [seat, setSeat] = useState(null);          // 앉아 있는 의자
   const [reqOpen, setReqOpen] = useState(false);
   const [reqText, setReqText] = useState("");
   const [linkErr, setLinkErr] = useState(null);
+  const [cText, setCText] = useState("");
+  const chatRef = useAutoScroll(chat.length);
   const say = (m) => { setLinkErr(m); setTimeout(() => setLinkErr(null), 2600); };
 
   /* 링크 · 가수 · 제목을 따로 입력 */
@@ -4088,10 +4121,10 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, setSongs, onPlayY
     if (!vid && !title) { say("유튜브 링크 또는 제목 중 하나는 넣어주세요"); return; }
     if (nu.trim() && !vid) { say("유튜브 링크를 인식하지 못했어요. 주소를 확인해주세요"); return; }
     const s = {
-      id: Date.now(), artist, title: title || "유튜브 영상", desc: nd.trim(),
-      videoId: vid, q: [artist, title].filter(Boolean).join(" ") || nu.trim(),
+      id: Date.now() + Math.random(), artist, title: title || "유튜브 영상", desc: nd.trim(),
+      videoId: vid, q: [artist, title].filter(Boolean).join(" ") || nu.trim(), by: myName || "익명",
     };
-    setSongs((v) => [...v, s]);
+    onAddSong && onAddSong(s);
     setNu(""); setNa(""); setNt(""); setNd("");
     if (vid && autoPlay) onPlayYt(s);
   };
@@ -4101,8 +4134,8 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, setSongs, onPlayY
     if (!t || gems < 5) return;
     onSpend(5);
     const vid = parseYouTubeId(t);
-    const s = { id: Date.now(), artist: "", title: vid ? "신청곡 (유튜브)" : t, desc: "신청곡 🎶", videoId: vid, q: t };
-    setSongs((v) => [...v, s]);
+    const s = { id: Date.now() + Math.random(), artist: "", title: vid ? "신청곡 (유튜브)" : t, desc: "신청곡 🎶", videoId: vid, q: t, by: myName || "익명" };
+    onAddSong && onAddSong(s);
     setReqText(""); setReqOpen(false);
     if (vid) onPlayYt(s);
   };
@@ -4112,26 +4145,75 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, setSongs, onPlayY
     window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(s.q || label(s))}`, "_blank", "noopener");
   };
 
+  const SEATS = [
+    { id: "s1", x: 330, y: 110, w: 80, h: 60 },
+    { id: "s2", x: 450, y: 110, w: 80, h: 60 },
+    { id: "s3", x: 330, y: 220, w: 80, h: 60 },
+    { id: "s4", x: 450, y: 220, w: 80, h: 60 },
+  ];
+  const sitDown = (st) => { setSeat(st); setListOpen(true); };
+  const standUp = () => { setSeat(null); setListOpen(false); };
+
   const furniture = [
-    { id: "dj", x: 40, y: 80, w: 175, h: 160, color: "#3a2b52", emoji: "🎧", label: "디제이 부스", onInteract: () => setOpen(true) },
-    { id: "s1", x: 330, y: 110, w: 80, h: 60, color: "#caa06a", emoji: "🪑", label: "관객석", toast: "관객석에서 음악에 몸을 맡긴다 🎶" },
-    { id: "s2", x: 450, y: 110, w: 80, h: 60, color: "#caa06a", emoji: "🪑", label: "관객석", toast: "옆 사람과 리듬을 탄다 🕺" },
-    { id: "s3", x: 330, y: 220, w: 80, h: 60, color: "#caa06a", emoji: "🪑", label: "관객석", toast: "눈을 감고 감상 중… 🎵" },
-    { id: "s4", x: 450, y: 220, w: 80, h: 60, color: "#caa06a", emoji: "🪑", label: "관객석", toast: "앵콜! 👏" },
+    { id: "dj", x: 40, y: 80, w: 175, h: 160, color: "#3a2b52", emoji: "🎧", label: "디제이 부스", onInteract: () => setDjOpen(true) },
+    ...SEATS.map((st, i) => ({
+      id: st.id, x: st.x, y: st.y, w: st.w, h: st.h, color: "#caa06a", emoji: "🪑",
+      label: seat && seat.id === st.id ? "앉는 중 ✓" : "관객석",
+      onInteract: () => sitDown(st),
+      toast: ["여기 앉아서 감상해요 🎶", "옆 사람과 리듬을 탄다 🕺", "눈을 감고 감상 중… 🎵", "앵콜! 👏"][i],
+    })),
   ];
 
   const banner = (
     <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#241a33", color: "#ffe680", borderBottom: `3px solid ${C.ink}`, flexWrap: "wrap" }}>
       <span className={ytNow ? "gem-spin" : ""} style={{ fontSize: 16 }}>♬</span>
       <b style={{ fontSize: 13 }}>{ytNow ? label(ytNow) : "재생 중인 곡 없음"}</b>
-      <PxButton tone="gold" onClick={() => setOpen(true)} style={{ fontSize: 12, padding: "4px 10px", marginLeft: 6 }}>🎧 선곡하기</PxButton>
-      <PxButton tone="blue" onClick={() => setReqOpen(true)} style={{ fontSize: 12, padding: "4px 10px" }}>🎵 신청곡(🪙5)</PxButton>
+      {djNow && (!ytNow || ytNow.id !== djNow.song.id) && (
+        <PxButton tone="good" onClick={() => onPlayYt(djNow.song)} style={{ fontSize: 11, padding: "4px 9px" }}>
+          🎧 {djNow.by}님 선곡 같이 듣기
+        </PxButton>
+      )}
+      <PxButton tone="gold" onClick={() => setDjOpen(true)} style={{ fontSize: 12, padding: "4px 10px", marginLeft: 6 }}>🎧 디제이 부스</PxButton>
+      <PxButton tone="blue" onClick={() => setListOpen(true)} style={{ fontSize: 12, padding: "4px 10px" }}>📃 선곡 리스트 ({songs.length})</PxButton>
+      {seat && <PxButton tone="ink" onClick={standUp} style={{ fontSize: 12, padding: "4px 10px" }}>🧍 일어나기</PxButton>}
       <span style={{ fontSize: 10, color: "#b9a7d6", marginLeft: "auto" }}>보유 {fmt(gems)}🪙</span>
     </div>
   );
 
+  /* 💬 오른쪽 실시간 채팅 */
+  const chatPanel = (
+    <div style={{ width: 250, minWidth: 220, flex: "1 1 220px", maxWidth: 320, display: "flex", flexDirection: "column",
+      background: "#1d1630", borderLeft: `3px solid ${C.ink}`, borderBottom: `3px solid ${C.ink}`, height: 400, boxSizing: "border-box" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", background: "#3a2b52", color: "#ffe680", borderBottom: `3px solid ${C.ink}` }}>
+        <span style={{ fontSize: 15 }}>💬</span>
+        <b style={{ flex: 1, fontSize: 12.5 }}>리스닝 채팅</b>
+        <span style={{ fontSize: 9.5, opacity: 0.8 }}>모두에게 보여요</span>
+      </div>
+      <div ref={chatRef} style={{ flex: 1, overflow: "auto", padding: 8, display: "flex", flexDirection: "column", gap: 5 }}>
+        {chat.length === 0 && <div style={{ fontSize: 11.5, color: "#8f7fb0", textAlign: "center", padding: 16, lineHeight: 1.7 }}>아직 대화가 없어요 🎵<br />지금 듣는 노래 얘기해봐요!</div>}
+        {chat.map((m, i) => (
+          <div key={i} style={{ alignSelf: m.me ? "flex-end" : "flex-start", maxWidth: "88%" }}>
+            {!m.me && <div style={{ fontSize: 9.5, color: "#b9a7d6", marginBottom: 1 }}>{m.who}</div>}
+            <div style={{ background: m.me ? "#ffd75e" : "#3a2b52", color: m.me ? C.ink : "#f3ecff", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "5px 9px", fontSize: 12.5, wordBreak: "break-word", lineHeight: 1.5 }}>{m.text}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 5, padding: 7, borderTop: `3px solid ${C.ink}` }}>
+        <input value={cText} onChange={(e) => setCText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && cText.trim()) { onChat && onChat(cText.trim()); setCText(""); } }}
+          placeholder="메시지 입력"
+          style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, background: C.white }} />
+        <PxButton tone="gold" disabled={!cText.trim()} onClick={() => { onChat && onChat(cText.trim()); setCText(""); }} style={{ fontSize: 11, padding: "7px 9px" }}>➤</PxButton>
+      </div>
+    </div>
+  );
+
   return (
-    <RoomView title="리스닝 방" icon="🎵" sub="디제이 부스에서 선곡 · 관객석에서 감상" bg="#2a2140" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={open || reqOpen} headerBg="#5b8def" banner={banner} bubble={bubble}>
+    <RoomView title="리스닝 방" icon="🎵" sub="🪑 관객석에 앉으면 선곡 리스트 · 🎧 부스에서 등록·신청" bg="#2a2140" roomW={640} roomH={400}
+      furniture={furniture} onBack={onBack} paused={djOpen || reqOpen || listOpen} headerBg="#5b8def" banner={banner} bubble={bubble}
+      side={chatPanel} sitAt={seat ? { x: seat.x + seat.w / 2, y: seat.y + seat.h - 6 } : null} onStand={standUp}>
+
+      {/* 🎵 신청곡 */}
       {reqOpen && (
         <RoomModal title="🎵 신청곡" onClose={() => setReqOpen(false)} maxW={360}>
           <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>🪙 5골드로 신청해요. <b>유튜브 링크</b>를 넣으면 바로 재생됩니다. (보유 {fmt(gems)}🪙)</div>
@@ -4142,11 +4224,12 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, setSongs, onPlayY
           </div>
         </RoomModal>
       )}
-      {open && (
-        <RoomModal title="🎧 디제이 · 선곡 리스트" onClose={() => setOpen(false)} maxW={520}>
-          {/* 링크 · 가수 · 제목 따로 입력 */}
-          <div style={{ background: "#241a33", border: `3px solid ${C.ink}`, borderRadius: 8, padding: 11, marginBottom: 11 }}>
-            <div style={{ fontSize: 12.5, color: "#ffe680", fontWeight: "bold", marginBottom: 7 }}>＋ 노래 등록</div>
+
+      {/* 🎧 디제이 부스 — 등록과 신청만 */}
+      {djOpen && (
+        <RoomModal title="🎧 디제이 부스 · 노래 등록" onClose={() => setDjOpen(false)} maxW={420}>
+          <div style={{ background: "#241a33", border: `3px solid ${C.ink}`, borderRadius: 8, padding: 11 }}>
+            <div style={{ fontSize: 12.5, color: "#ffe680", fontWeight: "bold", marginBottom: 7 }}>＋ 노래 등록 <span style={{ fontSize: 10, color: "#b9a7d6", fontWeight: "normal" }}>· 등록하면 모두의 리스트에 들어가요</span></div>
             <div style={{ display: "grid", gap: 6 }}>
               <input value={nu} onChange={(e) => setNu(e.target.value)}
                 onPaste={(e) => { const v = (e.clipboardData || window.clipboardData).getData("text"); if (parseYouTubeId(v)) { e.preventDefault(); setNu(v); } }}
@@ -4166,11 +4249,25 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, setSongs, onPlayY
               <PxButton tone="wood" onClick={() => addSong(false)} style={{ flex: 1, fontSize: 12, padding: 9 }}>목록에만 추가</PxButton>
               <PxButton tone="gold" onClick={() => addSong(true)} style={{ flex: 1.4, fontSize: 12, padding: 9 }}>▶ 등록하고 재생</PxButton>
             </div>
-            <div style={{ fontSize: 10, color: "#b9a7d6", marginTop: 6 }}>재생하면 방을 나가도 계속 들려요 (좌측 하단 미니 플레이어)</div>
+            <div style={{ fontSize: 10, color: "#b9a7d6", marginTop: 6, lineHeight: 1.6 }}>재생하면 방을 나가도 계속 들려요 (좌측 하단 미니 플레이어)<br />내가 틀면 다른 사람에게 「같이 듣기」 버튼이 떠요</div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 260, overflow: "auto" }}>
-            {songs.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 20 }}>등록된 노래가 없어요 🎵</div>}
+          <PxButton tone="blue" onClick={() => { setDjOpen(false); setReqOpen(true); }} style={{ width: "100%", marginTop: 9, padding: 11, fontSize: 13 }}>🎵 신청곡 넣기 (🪙5)</PxButton>
+          <PxButton tone="ink" onClick={() => { setDjOpen(false); setListOpen(true); }} style={{ width: "100%", marginTop: 7, padding: 10, fontSize: 12.5 }}>📃 선곡 리스트 보기 ({songs.length}곡)</PxButton>
+        </RoomModal>
+      )}
+
+      {/* 📃 선곡 리스트 — 관객석에 앉으면 열려요 */}
+      {listOpen && (
+        <RoomModal title={seat ? "🪑 관객석 · 선곡 리스트" : "📃 선곡 리스트"} onClose={() => setListOpen(false)} maxW={480}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 9, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 11.5, color: C.inkSoft, flex: 1, lineHeight: 1.6 }}>
+              {seat ? "의자에 앉아서 감상 중이에요 🎶 창을 닫아도 계속 앉아 있어요" : "관객석에 앉으면 자동으로 열려요"}
+            </span>
+            <span style={{ fontSize: 11.5, fontWeight: "bold" }}>{songs.length}곡</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 300, overflow: "auto" }}>
+            {songs.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 20, lineHeight: 1.7 }}>등록된 노래가 없어요 🎵<br />🎧 디제이 부스에서 등록해보세요</div>}
             {songs.map((sg) => {
               const on = ytNow && ytNow.id === sg.id;
               return (
@@ -4180,13 +4277,15 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, setSongs, onPlayY
                     <b style={{ fontSize: 13, wordBreak: "break-word" }}>{label(sg)}</b>
                     {sg.videoId && <span style={{ fontSize: 9, background: C.good, color: C.white, borderRadius: 8, padding: "1px 6px", marginLeft: 6 }}>바로재생</span>}
                     {sg.desc && <div style={{ fontSize: 11, color: C.inkSoft, wordBreak: "break-all" }}>{sg.desc}</div>}
+                    <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 1 }}>🎧 {sg.by || "마을"}</div>
                   </div>
                   <PxButton tone={on ? "ink" : "good"} onClick={() => pickSong(sg)} style={{ fontSize: 11, padding: "6px 9px" }}>{on ? "재생 중" : sg.videoId ? "▶ 재생" : "🔍 유튜브"}</PxButton>
-                  <button onClick={() => setSongs((v) => v.filter((x) => x.id !== sg.id))} title="삭제" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: C.inkSoft }}>🗑</button>
+                  <button onClick={() => onDelSong && onDelSong(sg.id)} title="삭제" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: C.inkSoft }}>🗑</button>
                 </div>
               );
             })}
           </div>
+          {seat && <PxButton tone="ink" onClick={standUp} style={{ width: "100%", marginTop: 10, padding: 10, fontSize: 12.5 }}>🧍 자리에서 일어나기</PxButton>}
         </RoomModal>
       )}
     </RoomView>
@@ -7244,6 +7343,10 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n14", type: "업데이트", date: "2026-07-24", title: "🎵 리스닝방 개편 — 관객석 착석 · 공유 선곡 · 실시간 채팅",
+    body: "· 🪑 관객석을 누르면 캐릭터가 의자에 앉아요 (방향키를 누르면 일어납니다)\n· 앉으면 📃 선곡 리스트가 자동으로 열려요\n· 🎧 디제이 부스는 이제 노래 등록과 🎵 신청곡만 담당해요\n· 🌍 부스에서 등록한 노래는 모두의 리스트에 들어가요 (누가 올렸는지도 표시)\n· 누가 노래를 틀면 다른 사람 화면에 「🎧 ○○님 선곡 같이 듣기」 버튼이 떠요\n· 💬 방 오른쪽에 실시간 채팅창이 생겼어요 — 같이 들으면서 수다 떨 수 있어요\n· 선곡 리스트는 새로고침해도 남아 있어요" },
+  { id: "u20260724n13", type: "업데이트", date: "2026-07-24", title: "🔍 건물 크기 조절",
+    body: "· ☰ 메뉴 → 🎨 건물 이미지 에서 건물마다 크기를 조절할 수 있어요\n· 슬라이더를 드래그하면 40%~300% 사이로 바뀌고, 「작게·기본·크게·아주 크게」 버튼도 있어요\n· 그림을 안 올린 기본 도트 건물도 크기를 바꿀 수 있어요\n· 🌍 크기도 모두에게 똑같이 보여요 (서버에 보관 + 실시간 반영)\n· 건물이 커지면 들어가는 범위(Space 인식 거리)도 함께 넓어져요" },
   { id: "u20260724n12", type: "업데이트", date: "2026-07-24", title: "🌍 건물 이미지를 모두가 함께 보기",
     body: "· ☰ 메뉴 → 🎨 건물 이미지 에서 바꾼 그림이 이제 모두에게 보여요\n· 올리는 즉시 접속 중인 사람 화면이 바뀌고, 「○○님이 건물 이미지를 바꿨어요」 알림이 떠요\n· 서버에도 보관돼서 아무도 접속해 있지 않아도 다음에 들어오면 그대로 보여요\n· ↩ 되돌리기를 누르면 모두에게서 원래 그림으로 돌아가요\n· 전달을 위해 이미지 용량을 자동으로 줄여요\n· ✂️ 누끼 강도만 각자 따로 조절돼요 (사람마다 화면이 달라도 되는 부분)" },
   { id: "u20260724n11", type: "수정", date: "2026-07-24", title: "👥 접속자 수와 목록이 다르던 문제 정리",
@@ -8561,13 +8664,13 @@ function GuideSheet({ onClose, onGo }) {
 }
 
 /* ☰ 메뉴 (마을주민들 + 피드백) */
-function MenuSheet({ onClose, people, onDm, onCall, sprites, userSprites, cutCfg, onSetCut, onSetSprite, onClearSprite, onClearSprites, myName, myUid, feedback = [], onFeedback, onDelFeedback, onCheckFeedback }) {
+function MenuSheet({ onClose, people, onDm, onCall, sprites, userSprites, cutCfg, onSetCut, onSetSprite, onClearSprite, onClearSprites, myName, myUid, feedback = [], onFeedback, onDelFeedback, onCheckFeedback, scales = {}, onSetScale }) {
   const [tab, setTab] = useState("villagers");
   return (
     <Sheet icon="☰" title="메뉴" onClose={onClose} tab={tab} setTab={setTab}
       tabs={[{ k: "villagers", label: "🏘️ 마을주민들" }, { k: "skin", label: "🎨 건물 이미지" }, { k: "fb", label: "⚙️ 피드백" }]}>
       {tab === "villagers" && <VillagersBody people={people} onDm={onDm} onCall={onCall} />}
-      {tab === "skin" && <SpriteSkinBody sprites={sprites} userSprites={userSprites} cutCfg={cutCfg} onSetCut={onSetCut} onSet={onSetSprite} onClear={onClearSprite} onClearAll={onClearSprites} />}
+      {tab === "skin" && <SpriteSkinBody sprites={sprites} userSprites={userSprites} cutCfg={cutCfg} onSetCut={onSetCut} onSet={onSetSprite} onClear={onClearSprite} onClearAll={onClearSprites} scales={scales} onSetScale={onSetScale} />}
       {tab === "fb" && <FeedbackBody onDone={onClose} myName={myName} myUid={myUid} list={feedback} onSend={onFeedback} onDelete={onDelFeedback} onCheck={onCheckFeedback} />}
     </Sheet>
   );
@@ -8778,7 +8881,7 @@ function CornerDock({ onMenu, onProfile, onBag, onGuide, onMsg, msgCount, badgeC
 }
 
 /* 🎨 건물 이미지 바꾸기 */
-function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSet, onClear, onClearAll }) {
+function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSet, onClear, onClearAll, scales = {}, onSetScale }) {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(null);
   const [err, setErr] = useState(null);
@@ -8844,6 +8947,7 @@ function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSe
           const cfg = cutCfg[s.id] || {};
           const cut = cfg.cut !== undefined ? cfg.cut : true;
           const tol = cfg.tol !== undefined ? cfg.tol : 32;
+          const sc = Number(scales[s.id]) > 0 ? Number(scales[s.id]) : 1;
           return (
             <div key={s.id} style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 9 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
@@ -8866,6 +8970,27 @@ function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSe
                 </div>
                 {userSprites[s.id] && <PxButton tone="ink" onClick={() => onClear(s.id)} style={{ fontSize: 10, padding: "5px 7px" }}>↩</PxButton>}
               </div>
+
+              {/* 🔍 건물 크기 — 그림이 없어도 조절할 수 있어요 */}
+              {onSetScale && (
+                <div style={{ marginTop: 8, background: "#eef4f7", border: `2px solid ${C.ink}`, borderRadius: 6, padding: "7px 9px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: "bold", whiteSpace: "nowrap" }}>🔍 크기</span>
+                    <input type="range" min="40" max="300" step="5" value={Math.round(sc * 100)}
+                      onChange={(e) => onSetScale(s.id, Number(e.target.value) / 100)}
+                      style={{ flex: 1, accentColor: "#2f7fb5", cursor: "pointer" }} />
+                    <b style={{ fontSize: 11.5, width: 42, textAlign: "right" }}>{Math.round(sc * 100)}%</b>
+                  </div>
+                  <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
+                    {[["작게", 0.7], ["기본", 1], ["크게", 1.4], ["아주 크게", 2]].map(([lb, v]) => (
+                      <button key={lb} type="button" onClick={() => onSetScale(s.id, v)}
+                        style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10, padding: "4px 9px", borderRadius: 10,
+                          border: `2px solid ${C.ink}`, background: Math.abs(sc - v) < 0.001 ? C.gem : C.white, fontWeight: "bold" }}>{lb}</button>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 4 }}>🌍 크기도 모두에게 똑같이 보여요 · 커질수록 들어가는 범위도 넓어져요</div>
+                </div>
+              )}
 
               {cur && (
                 <div style={{ marginTop: 8, background: "#f7efdc", border: `2px solid ${C.ink}`, borderRadius: 6, padding: "7px 9px" }}>
@@ -9717,7 +9842,28 @@ function EchoTown() {
   const [sharedSprites, setSharedSprites] = useState({});
   const sharedSprRef = useRef({});
   sharedSprRef.current = sharedSprites;
-  useEffect(() => { dbSprites().then((d) => { if (d && Object.keys(d).length) setSharedSprites((v) => ({ ...d, ...v })); }); }, []);
+  const [spriteScale, setSpriteScale] = useState(() => loadJSON("echotown_spritescale_v1", {}) || {});
+  const scaleRef = useRef({});
+  scaleRef.current = spriteScale;
+  useEffect(() => {
+    dbSprites().then((d) => {
+      if (!d || !Object.keys(d).length) return;
+      const imgs = {}, scl = {};
+      Object.keys(d).forEach((k) => {
+        if (k.endsWith("|s")) { const n = Number(d[k]); if (n > 0) scl[k.slice(0, -2)] = n; }
+        else imgs[k] = d[k];
+      });
+      if (Object.keys(imgs).length) setSharedSprites((v) => ({ ...imgs, ...v }));
+      if (Object.keys(scl).length) setSpriteScale((v) => ({ ...scl, ...v }));
+    });
+  }, []);
+  /* 🔍 건물 크기 — 모두에게 똑같이 보이도록 공유돼요 */
+  const publishScale = (id, v) => {
+    const n = Math.max(0.4, Math.min(3, Number(v) || 1));
+    setSpriteScale((m) => { const o = { ...m, [id]: n }; saveJSON("echotown_spritescale_v1", o); return o; });
+    if (netSendEventRef.current) netSendEventRef.current("spr", { id, scale: n, by: myNameRef.current || "익명" });
+    dbSaveSprite(id + "|s", String(n), myUid);
+  };
   const [cutCfg, setCutCfg] = useState(() => loadJSON(SPRITE_CUT_KEY, {}) || {});
   const allSprites = useMemo(() => ({ ...fileSprites, ...sharedSprites, ...sprites }), [fileSprites, sharedSprites, sprites]);
   const writeSprites = (v) => {
@@ -10087,16 +10233,33 @@ function EchoTown() {
     setGallery((v) => v.filter((x) => x.id !== id));
     if (netSendEvent) netSendEvent("gal", { del: id });
   };
-  const [songs, setSongs] = useState(() => [
+  const songsRef = useRef([]);
+  const [songs, setSongs] = useState(() => loadJSON("echotown_songs_v1", null) || [
     { id: 1, artist: "Bazzi", title: "Mine", desc: "요즘 즐겨듣는 노래에요", videoId: null, q: "Bazzi Mine" },
     { id: 2, artist: "LANY", title: "ILYSB", desc: "드라이브할 때 최고 🚗", videoId: null, q: "LANY ILYSB" },
     { id: 3, artist: "아이유", title: "밤편지", desc: "자기 전에 듣기 좋아요 🌙", videoId: null, q: "아이유 밤편지" },
   ]);
-  const playYt = (s) => {
+  songsRef.current = songs;
+  useEffect(() => { saveJSON("echotown_songs_v1", songs.slice(-80)); }, [songs]);
+  const playYt = (s, share = true) => {
     setYtNow(s); setYtOpen(true);
     setWorldBgm((b) => ({ ...b, playing: false }));   // 마을 BGM 은 잠시 멈춤
     showNotice(`▶ ${s.artist ? s.artist + " - " : ""}${s.title} 재생 중`);
+    if (share && s.videoId && netSendEventRef.current) netSendEventRef.current("ytplay", { song: s, by: myNameRef.current || "익명" });
   };
+  /* 🎵 선곡 리스트 공유 — 누가 등록해도 모두의 목록에 들어가요 */
+  const addSong = (row) => {
+    setSongs((v) => (v.some((x) => x.id === row.id) ? v : [...v, row].slice(-80)));
+    if (netSendEventRef.current) netSendEventRef.current("song", { row });
+  };
+  const delSong = (id) => {
+    setSongs((v) => v.filter((x) => x.id !== id));
+    if (netSendEventRef.current) netSendEventRef.current("song", { del: id });
+  };
+  /* 🎧 지금 다른 사람이 틀고 있는 곡 */
+  const [djNow, setDjNow] = useState(null);
+  /* 💬 리스닝방 실시간 채팅 */
+  const [musicChat, setMusicChat] = useState([]);
   const [profileTab, setProfileTab] = useState(null);
   const [notice, setNotice] = useState(null);
   const showNotice = (t) => { setNotice(t); setTimeout(() => setNotice(null), 3200); };
@@ -10186,7 +10349,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "qcallack") {
@@ -10213,7 +10376,7 @@ function EchoTown() {
       if (kind === "dictreq") {
         if (p.from === (myName || "")) return;
         const mine = dictRef.current || [];
-        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current, shr: shrineRef.current, thx: thxRef.current, qacc: qAccRef.current, qth: qThRef.current, qlg: qLgRef.current, spr: sharedSprRef.current });
+        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current, shr: shrineRef.current, thx: thxRef.current, qacc: qAccRef.current, qth: qThRef.current, qlg: qLgRef.current, spr: sharedSprRef.current, sscale: scaleRef.current, sng: songsRef.current });
         const gs = galRef.current || [];
         gs.slice(0, 12).forEach((ph, i) => setTimeout(() => { if (netSendEvent) netSendEvent("gal", { photo: ph }); }, 350 * (i + 1)));
         return;
@@ -10231,6 +10394,8 @@ function EchoTown() {
         if (p.qth && typeof p.qth === "object") setQThreads((v) => mergeQList(v, p.qth, "at", 200));
         if (p.qlg && typeof p.qlg === "object") setQLogs((v) => mergeQList(v, p.qlg, "id", 100));
         if (p.spr && typeof p.spr === "object") setSharedSprites((v) => ({ ...p.spr, ...v }));
+        if (Array.isArray(p.sng)) setSongs((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.sng.filter((x) => x && !ids.has(x.id))].slice(-80); });
+        if (p.sscale && typeof p.sscale === "object") setSpriteScale((v) => { const o = { ...p.sscale, ...v }; saveJSON("echotown_spritescale_v1", o); return o; });
         return;
       }
       if (kind === "bmap") { applyBossOp(p); return; }
@@ -10285,8 +10450,31 @@ function EchoTown() {
         pushMsg("call", { from: p.from, reason: `「${p.title}」 퀘스트 대화방으로 불렀어요` });
         return;
       }
+      if (kind === "song") {
+        if (p.row) setSongs((v) => (v.some((x) => x.id === p.row.id) ? v : [...v, p.row].slice(-80)));
+        else if (p.del != null) setSongs((v) => v.filter((x) => x.id !== p.del));
+        return;
+      }
+      if (kind === "ytplay") {
+        if (p.by === (myName || "나")) return;
+        if (p.song) {
+          setSongs((v) => (v.some((x) => x.id === p.song.id) ? v : [...v, p.song].slice(-80)));
+          setDjNow({ song: p.song, by: p.by || "누군가" });
+          showNotice(`🎧 ${p.by || "누군가"}님이 「${p.song.artist ? p.song.artist + " - " : ""}${p.song.title}」를 틀었어요`);
+        }
+        return;
+      }
+      if (kind === "lchat") {
+        if (p.who !== (myName || "나")) setMusicChat((v) => [...v, { who: p.who, text: p.text, me: false }].slice(-80));
+        return;
+      }
       if (kind === "spr") {
         if (!p.id) return;
+        if (p.scale != null) {
+          const n = Math.max(0.4, Math.min(3, Number(p.scale) || 1));
+          setSpriteScale((m) => { const o = { ...m, [p.id]: n }; saveJSON("echotown_spritescale_v1", o); return o; });
+          return;
+        }
         setSharedSprites((v) => { const n = { ...v }; if (p.src) n[p.id] = p.src; else delete n[p.id]; return n; });
         showNotice(p.src ? `🎨 ${p.by || "누군가"}님이 건물 이미지를 바꿨어요` : `🎨 ${p.by || "누군가"}님이 건물 이미지를 되돌렸어요`);
         return;
@@ -10562,7 +10750,7 @@ function EchoTown() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gold} sprites={allSprites} cutCfg={cutCfg} look={myLook} carry={carrying} pet={petEmoji} shuffle={shuffle} onShuffle={toggleShuffle} onNextTrack={() => stepTrack(1)} onPrevTrack={() => stepTrack(-1)} onReconnect={netReconnect} onDismount={() => { setVehicle(null); showNotice("🚶 탈것에서 내렸어요"); }} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} myNick={myName} onGift={(n) => setGiftTarget(n)} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gold} sprites={allSprites} cutCfg={cutCfg} scales={spriteScale} look={myLook} carry={carrying} pet={petEmoji} shuffle={shuffle} onShuffle={toggleShuffle} onNextTrack={() => stepTrack(1)} onPrevTrack={() => stepTrack(-1)} onReconnect={netReconnect} onDismount={() => { setVehicle(null); showNotice("🚶 탈것에서 내렸어요"); }} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} myNick={myName} onGift={(n) => setGiftTarget(n)} />}
         {view === "center" && <CenterView meetings={myMeetings} meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} myName={myName} people={people}
           chat={meetingChat[meetingId] || []}
@@ -10606,7 +10794,9 @@ function EchoTown() {
         ))}
         {view === "thanks" && <ThanksView gems={gold} inventory={thanksInv} postits={postits} myName={myName} myUid={myUid} people={people} onDelPost={delPostit} onBuy={(it) => { setGold((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={addPostit} onBack={backToWorld} bubble={bubble} />}
         {view === "heart" && <HeartView gems={gold} worries={worries} onPost={(text, cost, kind) => { setGold((g) => g - cost); addWorry(text, kind); }} onBack={backToWorld} bubble={bubble} />}
-        {view === "listening" && <ListeningView onBack={backToWorld} gems={gold} onSpend={(n) => setGold((g) => g - n)} bubble={bubble} songs={songs} setSongs={setSongs} onPlayYt={playYt} ytNow={ytNow} />}
+        {view === "listening" && <ListeningView onBack={backToWorld} gems={gold} onSpend={(n) => setGold((g) => g - n)} bubble={bubble}
+          songs={songs} onAddSong={addSong} onDelSong={delSong} onPlayYt={playYt} ytNow={ytNow} myName={myName} djNow={djNow}
+          chat={musicChat} onChat={(t) => { setMusicChat((v) => [...v, { who: myName || "나", text: t, me: true }].slice(-80)); if (netSendEvent) netSendEvent("lchat", { who: myName || "나", text: t }); }} />}
         {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} extraCats={reelExtra} onAddCat={addReel} />}
         {view === "minigame" && <MiniGameRoom myName={myName} people={people} onBack={backToWorld} onReward={(n) => awardGold(n)} bubble={bubble} liarGame={liarGame} onLiarAction={lgAction} />}
         {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => awardGold(n)} scores={swimScores} onRecord={(nick, time) => { setSwimScores((s) => [...s, { nick, time }]); bump("swim"); dbAddRank("swim", nick, time, null).then(reloadRanks); }} bubble={bubble} />}
@@ -10952,7 +11142,7 @@ function EchoTown() {
         onMsg={() => setMsgOpen(true)} />
 
       {menuOpen && <MenuSheet people={people} onClose={() => setMenuOpen(false)} myName={myName} myUid={myUid} feedback={feedback} onFeedback={addFeedback} onDelFeedback={delFeedback} onCheckFeedback={checkFeedback}
-        sprites={allSprites} userSprites={sprites} cutCfg={cutCfg} onSetCut={setCut}
+        sprites={allSprites} userSprites={sprites} cutCfg={cutCfg} onSetCut={setCut} scales={spriteScale} onSetScale={publishScale}
         onSetSprite={setSprite} onClearSprite={clearSprite} onClearSprites={clearAllSprites}
         onDm={(p) => setDmWith(p)}
         onCall={(p) => { setCallWith(p); if (netSendEvent) netSendEvent("call", { to: p.name, from: myName || "나" }); }} />}
