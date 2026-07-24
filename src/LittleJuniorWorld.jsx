@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v57 · 2026-07-24";
+const APP_VERSION = "v58 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -653,9 +653,20 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
   pausedRef.current = paused;
   /* 🚪 나가기 문 — 모든 건물 왼쪽 아래에 하나씩 있어요.
      문 앞에 서서 Space 를 누르면 나갑니다 (눌러서 나가도 돼요). */
-  const exitFurniture = onBack
-    ? { id: "__exit", x: 18, y: roomH - 88, w: 76, h: 76, color: "#8b5a2b", emoji: "🚪", label: "나가기", onInteract: onBack, fixed: true }
-    : null;
+  const exitFurniture = (() => {
+    if (!onBack) return null;
+    const W = 76, H = 76, PAD = 22;
+    /* 다른 가구와 겹치지 않는 자리를 순서대로 찾아요 (왼쪽아래 → 오른쪽아래 → 왼쪽중간 …) */
+    const spots = [
+      [18, roomH - 88], [roomW - 94, roomH - 88], [18, Math.round(roomH / 2) - 38],
+      [roomW - 94, Math.round(roomH / 2) - 38], [Math.round(roomW / 2) - 38, roomH - 88],
+      [18, 18], [roomW - 94, 18],
+    ];
+    const hits = (x, y) => (furniture || []).some((f) =>
+      x < f.x + f.w + PAD && x + W + PAD > f.x && y < f.y + f.h + PAD && y + H + PAD > f.y);
+    const free = spots.find(([x, y]) => !hits(x, y)) || spots[0];
+    return { id: "__exit", x: free[0], y: free[1], w: W, h: H, color: "#8b5a2b", emoji: "🚪", label: "나가기", onInteract: onBack, fixed: true };
+  })();
   /* 기존 가구를 먼저 두고 문을 마지막에 넣어요 — 가구와 겹쳐도 가구가 우선 인식됩니다 */
   const allFurniture = exitFurniture ? [...(furniture || []), exitFurniture] : (furniture || []);
   const furRef = useRef([]);
@@ -931,55 +942,74 @@ function spriteFileUrl(id) {
    네 모서리 색을 배경색으로 보고, 가장자리에서 안쪽으로 번져 들어가며 비슷한 색을 지웁니다.
    → 흰 배경·단색 배경엔 잘 먹고, 그라데이션이나 배경과 비슷한 색의 피사체엔 약합니다. */
 function cutBackground(img, tol = 32) {
-  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
-  if (!w || !h) return null;
+  const sw = img.naturalWidth || img.width, sh = img.naturalHeight || img.height;
+  if (!sw || !sh) return null;
+
+  /* 너무 큰 사진은 줄여서 처리해요 — 예전엔 큰 이미지에서 계산이 중간에 멈춰
+     배경이 그대로 남는 문제가 있었습니다 */
+  const MAX = 800;
+  const scale = Math.min(1, MAX / Math.max(sw, sh));
+  const w = Math.max(1, Math.round(sw * scale));
+  const h = Math.max(1, Math.round(sh * scale));
+
   const cv = document.createElement("canvas");
   cv.width = w; cv.height = h;
   const ctx = cv.getContext("2d", { willReadFrequently: true });
-  ctx.drawImage(img, 0, 0);
+  ctx.drawImage(img, 0, 0, w, h);
   const id = ctx.getImageData(0, 0, w, h);
   const d = id.data;
 
-  // 배경색 = 네 모서리 평균
-  const corners = [[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1]];
-  let br = 0, bg = 0, bb = 0;
-  corners.forEach(([x, y]) => { const i = (y * w + x) * 4; br += d[i]; bg += d[i + 1]; bb += d[i + 2]; });
-  br /= 4; bg /= 4; bb /= 4;
-  const dist = (i) => { const a = d[i] - br, b = d[i + 1] - bg, c = d[i + 2] - bb; return Math.sqrt(a * a + b * b + c * c); };
+  /* 배경색 정하기 : 네 모서리만 보지 않고 테두리 전체에서
+     가장 많이 나오는 색을 배경으로 봅니다 (모서리에 물체가 걸쳐 있어도 잘 잡혀요) */
+  const bucket = new Map();
+  const addEdge = (x, y) => {
+    const i2 = (y * w + x) * 4;
+    const key = ((d[i2] >> 4) << 8) | ((d[i2 + 1] >> 4) << 4) | (d[i2 + 2] >> 4);
+    const cur = bucket.get(key) || { n: 0, r: 0, g: 0, b: 0 };
+    cur.n++; cur.r += d[i2]; cur.g += d[i2 + 1]; cur.b += d[i2 + 2];
+    bucket.set(key, cur);
+  };
+  for (let x = 0; x < w; x++) { addEdge(x, 0); addEdge(x, h - 1); }
+  for (let y = 0; y < h; y++) { addEdge(0, y); addEdge(w - 1, y); }
+  let best = null;
+  bucket.forEach((v) => { if (!best || v.n > best.n) best = v; });
+  if (!best) return null;
+  const br = best.r / best.n, bg = best.g / best.n, bb = best.b / best.n;
+  const dist = (i2) => { const a = d[i2] - br, b = d[i2 + 1] - bg, c = d[i2 + 2] - bb; return Math.sqrt(a * a + b * b + c * c); };
 
-  // 가장자리에서 flood fill (스택 방식, 좌표를 정수 하나로 눌러 담아 빠르게)
-  const seen = new Uint8Array(w * h);
+  /* 가장자리에서 시작하는 flood fill.
+     한 번 넣은 픽셀은 다시 넣지 않아서 계산이 중간에 끊기지 않아요. */
+  const queued = new Uint8Array(w * h);
+  const cleared = new Uint8Array(w * h);
   const stack = new Int32Array(w * h);
   let sp = 0;
-  const push = (p) => { if (!seen[p]) stack[sp++] = p; };
+  const push = (p) => { if (!queued[p]) { queued[p] = 1; stack[sp++] = p; } };
   for (let x = 0; x < w; x++) { push(x); push((h - 1) * w + x); }
   for (let y = 0; y < h; y++) { push(y * w); push(y * w + w - 1); }
   while (sp > 0) {
     const p = stack[--sp];
-    if (seen[p]) continue;
-    const i = p * 4;
-    if (dist(i) > tol) continue;
-    seen[p] = 1;
-    d[i + 3] = 0;
+    const i2 = p * 4;
+    if (dist(i2) > tol) continue;      // 배경색과 다르면 물체 → 여기서 멈춤
+    cleared[p] = 1;
+    d[i2 + 3] = 0;
     const x = p % w, y = (p / w) | 0;
     if (x > 0) push(p - 1);
     if (x < w - 1) push(p + 1);
     if (y > 0) push(p - w);
     if (y < h - 1) push(p + w);
-    if (sp > w * h - 8) break; // 안전장치
   }
 
-  // 경계 헤일로(흰 테두리) 완화 : 지워진 픽셀과 맞닿은 애매한 색은 반투명 처리
+  /* 경계 헤일로(흰 테두리) 완화 : 지워진 픽셀과 맞닿은 애매한 색은 반투명 처리 */
   const soft = tol * 1.7;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const p = y * w + x;
-      if (seen[p]) continue;
-      const i = p * 4;
-      const touching = (x > 0 && seen[p - 1]) || (x < w - 1 && seen[p + 1]) || (y > 0 && seen[p - w]) || (y < h - 1 && seen[p + w]);
+      if (cleared[p]) continue;
+      const i2 = p * 4;
+      const touching = (x > 0 && cleared[p - 1]) || (x < w - 1 && cleared[p + 1]) || (y > 0 && cleared[p - w]) || (y < h - 1 && cleared[p + w]);
       if (!touching) continue;
-      const dd = dist(i);
-      if (dd < soft) d[i + 3] = Math.round(255 * Math.min(1, dd / soft));
+      const dd = dist(i2);
+      if (dd < soft) d[i2 + 3] = Math.round(255 * Math.min(1, dd / soft));
     }
   }
 
@@ -7066,6 +7096,10 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n9", type: "수정", date: "2026-07-24", title: "✂️ 건물 이미지 누끼(배경 제거) 개선",
+    body: "· [원인] 큰 이미지에서 배경 지우기 계산이 중간에 멈춰 흰 배경이 그대로 남았어요\n· 계산 방식을 고쳐서 이제 큰 사진도 끝까지 지워져요\n· 배경색을 네 모서리 대신 테두리 전체에서 가장 많은 색으로 잡아요 (모서리에 건물이 걸쳐 있어도 잘 됩니다)\n· ☰ 메뉴 → 🎨 건물 이미지 에서 「약하게 · 보통 · 세게 · 아주 세게」 버튼으로 바로 조절할 수 있어요\n· 흰 배경 사진은 「세게」부터 눌러보세요" },
+  { id: "u20260724n9", type: "수정", date: "2026-07-24", title: "🚪 나가기 문이 다른 가구와 겹치지 않게",
+    body: "· 주민센터 ☕ 커피포트처럼 이미 가구가 있는 자리에 나가기 문이 겹쳐 있었어요\n· 이제 방마다 빈 자리를 자동으로 찾아 문을 놓아요 (왼쪽아래 → 오른쪽아래 → 왼쪽중간 순서)\n· 어느 방이든 🚪 나가기 문 앞에서 Space 를 누르면 나갑니다" },
   { id: "u20260724n8", type: "업데이트", date: "2026-07-24", title: "🚪 모든 건물에 나가기 문 (Space)",
     body: "· 걸어가면 자동으로 나가지던 방식을 없앴어요 (제대로 동작하지 않았고 나가기 버튼과 겹쳤어요)\n· 대신 모든 건물 왼쪽 아래에 🚪 나가기 문이 하나씩 생겼어요\n· 문 앞에 서면 「Space · 나가기」가 뜨고, Space 를 누르면 나갑니다 (마우스로 눌러도 돼요)\n· 다른 가구와 겹쳐도 가구가 우선 인식돼서 실수로 나가지지 않아요\n· 🔧 가구 배치 모드에서도 문은 움직이지 않고 그대로 있어요\n· [수정] 방 안에서 움직이는 동안 가구 안내(Space 표시)가 늦게 뜨던 문제도 함께 고쳤어요" },
   { id: "u20260724n7", type: "수정", date: "2026-07-24", title: "🛠 모두 부르기 팝업이 안 뜨던 문제 수정",
@@ -8688,7 +8722,16 @@ function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSe
                       <span style={{ fontSize: 10.5, width: 24, textAlign: "right" }}>{tol}</span>
                     </div>
                   )}
-                  {cut && <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 4 }}>배경이 덜 지워지면 강도를 올리고, 건물까지 파이면 내려주세요</div>}
+                  {cut && (
+                    <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
+                      {[["약하게", 18], ["보통", 32], ["세게", 55], ["아주 세게", 80]].map(([lb, v]) => (
+                        <button key={lb} type="button" onClick={() => onSetCut(s.id, { cut: true, tol: v })}
+                          style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10, padding: "4px 9px", borderRadius: 10,
+                            border: `2px solid ${C.ink}`, background: tol === v ? C.gem : C.white, fontWeight: "bold" }}>{lb}</button>
+                      ))}
+                    </div>
+                  )}
+                  {cut && <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 4, lineHeight: 1.6 }}>배경이 덜 지워지면 강도를 올리고, 건물까지 파이면 내려주세요<br />흰 배경 사진은 「세게」부터 눌러보세요</div>}
                 </div>
               )}
 
