@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v75 · 2026-07-24";
+const APP_VERSION = "v76 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -549,7 +549,7 @@ function GemBadge({ amount, big, kind = "gem" }) {
 const ROOM_TIPS = {
   world: ["⬆⬇⬅➡ 또는 화면을 눌러 이동해요", "우측 하단 🗺 퀘스트함에서 진행중·미참여 퀘스트를 한눈에 봐요", "☰ 메뉴 → 🎨 건물 이미지 에서 바꾸면 모두에게 똑같이 보여요", "건물 안 왼쪽 아래 🚪 문 앞에서 Space 를 누르면 나와요", "건물 앞에서 Space 를 누르면 들어가요", "탈것을 타면 빨라지고 입장 범위도 넘어져요", "다른 사람 캐릭터를 누르면 따라가기·찾아가기·선물하기를 고를 수 있어요", "우측 상단 접속자 버튼 → 🏃 을 누르면 그 사람 옆으로 바로 가요", "좌측 하단 채팅은 5초 뒤 사라져요 · 확성기(🪙2)는 계속 남아요"],
   center: ["테이블을 눌러 주민들과 대화해요", "회의실 안에서 📋 회의 안건을 적고 완료 체크할 수 있어요", "회의실 3곳은 예약하고 채팅도 할 수 있어요", "회의실 안 📨 초대장으로 날짜·시간을 정해 보내보세요", "커피·자판기·정수기로 HP·MP 를 채워요"],
-  house: ["🖥️ 책상에 메모를 여러 장 붙여둘 수 있어요 · 눌러서 자세히 보기", "🚪 현관문을 누르면 바로 나가요", "🔧 가구 배치를 켜고 가구를 끌어서 옮겨보세요", "집에 둔 선물을 누르면 🎒 가방에 넣거나 🗑 버릴 수 있어요", "🌳 마당과 🐟 수족관은 형욱이네에서 사야 생겨요", "집에 둔 선물을 누르면 누가 줌는지 보여요"],
+  house: ["📺 티비를 누르면 「요즘 보는 작품」을 올리고 서로 댓글을 달 수 있어요", "🖥️ 책상에 메모를 여러 장 붙여둘 수 있어요 · 눌러서 자세히 보기", "🚪 현관문을 누르면 바로 나가요", "🔧 가구 배치를 켜고 가구를 끌어서 옮겨보세요", "집에 둔 선물을 누르면 🎒 가방에 넣거나 🗑 버릴 수 있어요", "🌳 마당과 🐟 수족관은 형욱이네에서 사야 생겨요", "집에 둔 선물을 누르면 누가 줌는지 보여요"],
   sea: ["🚏 위쪽 정류장으로 가면 마을로 돌아가요", "모래사장이 넓어졌어요 — 바위·조개·표류목 사이를 걸어보세요", "🧔 어부 아저씨에게 미끼와 낚싯대를 사세요", "📖 바다 도감에서 뭐가 잡히는지 볼 수 있어요", "선착장 끝 🎣 낚시터에서 낚시를 해보세요", "잡은 건 어부 아저씨에게 팔 수 있어요"],
   fishing: ["🎣 던지려면 🪱 미끼가 1개씩 필요해요", "❗ 입질이 오면 1.4초 안에 당기세요", "💎 젬과 💠 다이아는 잡는 즉시 들어와요", "🎁 비밀 상자는 어부에게 열어달라고 하세요", "낚싯대를 업그레이드하면 귀한 게 잘 걸려요"],
   petshop: ["🏗 시설 · 🐾 입양 · 🐠 수조 세 코너 앞에서 눌러 열어요", "아직 없는 동물·물고기는 ❓ 로 보이고 누르면 설명이 나와요", "먼저 🏗 시설에서 🌳 마당·🐟 수족관을 사세요", "마당이 있어야 반려동물을, 수족관이 있어야 물고기를 데려올 수 있어요", "데려나가기를 누르면 마을에서 나를 따라다니고 다른 사람에게도 보여요", "🤲 쓰다듬기·🍖 밥주기로 친밀도를 쌓아보세요"],
@@ -2460,7 +2460,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
         });
         /* ⚠️ 새 이벤트를 만들면 반드시 여기에 이름을 넣어야 상대에게 도착해요 */
-        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant"].forEach((ev) => {
+        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch"].forEach((ev) => {
           ch.on("broadcast", { event: ev }, ({ payload }) => {
             if (onChatRef && onChatRef.net) onChatRef.net(ev, payload);
           });
@@ -3822,8 +3822,28 @@ function GiftModal({ target, inventory, myName, onSend, onClose }) {
   );
 }
 
-function HomeView({ house, notes = [], onSaveMemo, onDelMemo, onBack, bubble, skin = null, extras = [], gifts = [], fridge = [], fishes = [], hasAquarium = false, hasYard = false, petsAtHome = [], onOpenAqua, onOpenYard, isMine = false, layout = {}, onMoveFurni, onResetLayout, onGiftHome }) {
+function HomeView({ house, notes = [], onSaveMemo, onDelMemo, onBack, bubble, skin = null, extras = [], gifts = [], fridge = [], fishes = [], hasAquarium = false, hasYard = false, petsAtHome = [], onOpenAqua, onOpenYard, isMine = false, layout = {}, onMoveFurni, onResetLayout, onGiftHome, myName = "", watch = [], onWatchAdd, onWatchDel, onWatchReply, onWatchDelReply }) {
   const [arrange, setArrange] = useState(false);
+  /* 📺 지금 보는 작품 */
+  const [tvOpen, setTvOpen] = useState(false);
+  const [wT, setWT] = useState("");
+  const [wC, setWC] = useState("");
+  const [wImg, setWImg] = useState(null);
+  const [wBusy, setWBusy] = useState(false);
+  const [wZoom, setWZoom] = useState(null);
+  const [reply, setReply] = useState({});
+  const wFileRef = useRef(null);
+  const pickPoster = async (f) => {
+    if (!f || !/^image\//.test(f.type)) return;
+    setWBusy(true);
+    try { setWImg(await compressImage(f, 480, 0.7)); } catch (e) {}
+    finally { setWBusy(false); if (wFileRef.current) wFileRef.current.value = ""; }
+  };
+  const addWatch = () => {
+    const t = wT.trim(); if (!t) return;
+    onWatchAdd && onWatchAdd({ title: t, comment: wC.trim(), img: wImg || null });
+    setWT(""); setWC(""); setWImg(null);
+  };
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [noteView, setNoteView] = useState(null);
@@ -3831,7 +3851,7 @@ function HomeView({ house, notes = [], onSaveMemo, onDelMemo, onBack, bubble, sk
   const furniture = [
     { id: "bed", x: 40, y: 60, w: 150, h: 90, color: "#c98ba0", emoji: "🛏️", label: "침대", toast: "잠깐 누워 쉬었다 😌" },
     { id: "sofa", x: 40, y: 260, w: 130, h: 70, color: "#8ea9c9", emoji: "🛋️", label: "쇼파", toast: "쇼파에 앉아 한숨 돌린다 🛋️" },
-    { id: "tv", x: 250, y: 280, w: 120, h: 56, color: "#3a3a3a", emoji: "📺", label: "티비", toast: "TV를 켰다 📺 예능이 나온다" },
+    { id: "tv", x: 250, y: 280, w: 120, h: 56, color: "#3a3a3a", emoji: "📺", label: "티비", onInteract: () => setTvOpen(true) },
     { id: "desk", x: 430, y: 90, w: 150, h: 90, color: "#a9814a", emoji: "🖥️", label: "책상(메모)", onInteract: () => { setNoteView(null); setOpen(true); } },
   ];
   furniture.push({ id: "door", x: 285, y: 355, w: 70, h: 45, color: "#7a5230", emoji: "🚪", label: "나가기", onInteract: () => onBack && onBack() });
@@ -3875,7 +3895,7 @@ function HomeView({ house, notes = [], onSaveMemo, onDelMemo, onBack, bubble, sk
   ) : null;
 
   return (
-    <RoomView title={house.name} icon="🏠" sub={skin ? `내 집 · ${skin.name} 스타일` : "침대·쇼파·티비·책상 · 책상에서 메모 작성"} bg={skin ? skin.bg : "#efe6d2"} roomW={640} roomH={400} furniture={placed} onBack={onBack} paused={open || !!giftPick} headerBg={skin ? skin.roof : house.wall} bubble={bubble}
+    <RoomView title={house.name} icon="🏠" sub={skin ? `내 집 · ${skin.name} 스타일` : "침대·쇼파·티비·책상 · 책상에서 메모 작성"} bg={skin ? skin.bg : "#efe6d2"} roomW={640} roomH={400} furniture={placed} onBack={onBack} paused={open || tvOpen || !!giftPick} headerBg={skin ? skin.roof : house.wall} bubble={bubble}
       banner={arrangeBar} editable={arrange} onMoveFurni={onMoveFurni} tipId="house">
       {giftPick && (
         <RoomModal title={`${giftPick.emoji || "🎁"} ${giftPick.name}`} onClose={() => setGiftPick(null)} maxW={320}>
@@ -3891,6 +3911,89 @@ function HomeView({ house, notes = [], onSaveMemo, onDelMemo, onBack, bubble, sk
           </div>
         </RoomModal>
       )}
+      {tvOpen && (
+        <RoomModal title={`📺 ${house.name} · 요즘 보는 작품`} onClose={() => setTvOpen(false)} maxW={480}>
+          <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 9, lineHeight: 1.7 }}>
+            지금 보고 있는 드라마·영화·책·유튜브를 올려보세요 · 누구나 💬 댓글을 달 수 있어요
+          </div>
+
+          {isMine && (
+            <div style={{ background: "#f7efdc", border: `3px solid ${C.ink}`, borderRadius: 10, padding: 11, marginBottom: 11 }}>
+              <div style={{ display: "flex", gap: 9 }}>
+                <button type="button" onClick={() => wFileRef.current && wFileRef.current.click()} disabled={wBusy}
+                  style={{ width: 74, height: 96, flexShrink: 0, cursor: "pointer", borderRadius: 8, overflow: "hidden",
+                    border: `2px dashed ${C.ink}`, background: C.white, fontFamily: "'DotGothic16', monospace", fontSize: 10, color: C.inkSoft, padding: 0 }}>
+                  {wImg ? <img src={wImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : (wBusy ? "…" : "🖼 포스터")}
+                </button>
+                <input ref={wFileRef} type="file" accept="image/*" onChange={(e) => pickPoster(e.target.files && e.target.files[0])} style={{ display: "none" }} />
+                <div style={{ flex: 1, minWidth: 0, display: "grid", gap: 6 }}>
+                  <input value={wT} onChange={(e) => setWT(e.target.value)} placeholder="작품 제목"
+                    style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                  <textarea value={wC} onChange={(e) => setWC(e.target.value)} rows={2} placeholder="한 줄 감상 (선택)"
+                    style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, resize: "vertical" }} />
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {wImg && <PxButton tone="ink" onClick={() => setWImg(null)} style={{ fontSize: 11, padding: 8 }}>사진 빼기</PxButton>}
+                    <PxButton tone="gold" disabled={!wT.trim()} onClick={addWatch} style={{ flex: 1, fontSize: 12.5, padding: 9 }}>＋ 올리기</PxButton>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 9, maxHeight: 340, overflow: "auto" }}>
+            {watch.length === 0 && (
+              <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 26, lineHeight: 1.8, border: `2px dashed ${C.parchEdge}`, borderRadius: 10 }}>
+                아직 올라온 작품이 없어요 📺{isMine ? " · 위에서 올려보세요!" : " · 집주인이 올리면 여기에 보여요"}
+              </div>
+            )}
+            {watch.map((w) => (
+              <div key={w.id} style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 11 }}>
+                <div style={{ display: "flex", gap: 10 }}>
+                  {w.img && <img src={w.img} alt="" onClick={() => setWZoom(w.img)} style={{ width: 72, height: 96, objectFit: "cover", border: `2px solid ${C.ink}`, borderRadius: 6, cursor: "zoom-in", flexShrink: 0 }} />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: "bold", wordBreak: "keep-all" }}>{w.title}</div>
+                    {w.comment && <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 3, lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{w.comment}</div>}
+                    <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 4 }}>🧑 {w.by} · {w.at}</div>
+                  </div>
+                  {(w.by === myName || isMine) && (
+                    <button type="button" onClick={() => { if (window.confirm("이 작품을 지울까요?")) onWatchDel && onWatchDel(w.id); }}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: C.inkSoft, padding: 0, alignSelf: "flex-start" }}>🗑</button>
+                  )}
+                </div>
+
+                <div style={{ borderTop: `2px dashed ${C.parchEdge}`, marginTop: 9, paddingTop: 8 }}>
+                  {(w.replies || []).map((r) => (
+                    <div key={r.id} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, marginBottom: 4, lineHeight: 1.6 }}>
+                      <b style={{ color: r.by === myName ? C.good : "#5b8def", flexShrink: 0 }}>{r.by}</b>
+                      <span style={{ flex: 1, minWidth: 0, wordBreak: "break-word" }}>{r.text}</span>
+                      {r.by === myName && (
+                        <button type="button" onClick={() => onWatchDelReply && onWatchDelReply(w.id, r.id)}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: C.inkSoft, padding: 0 }}>✕</button>
+                      )}
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
+                    <input value={reply[w.id] || ""} onChange={(e) => setReply({ ...reply, [w.id]: e.target.value })}
+                      onKeyDown={(e) => { if (e.key === "Enter" && (reply[w.id] || "").trim()) { onWatchReply && onWatchReply(w.id, reply[w.id].trim()); setReply({ ...reply, [w.id]: "" }); } }}
+                      placeholder="💬 댓글 달기"
+                      style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
+                    <PxButton tone="blue" disabled={!(reply[w.id] || "").trim()}
+                      onClick={() => { onWatchReply && onWatchReply(w.id, (reply[w.id] || "").trim()); setReply({ ...reply, [w.id]: "" }); }}
+                      style={{ fontSize: 11, padding: "7px 10px" }}>➤</PxButton>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {wZoom && (
+            <div onClick={() => setWZoom(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16, cursor: "zoom-out" }}>
+              <img src={wZoom} alt="" style={{ maxWidth: "100%", maxHeight: "100%", border: `3px solid ${C.white}`, borderRadius: 8 }} />
+            </div>
+          )}
+        </RoomModal>
+      )}
+
       {open && (
         <RoomModal title="📝 개인 메모장" onClose={() => { setOpen(false); setNoteView(null); }} maxW={480}>
           {noteView ? (
@@ -6885,8 +6988,12 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                         </button>
                       ))}
                     </div>
-                    <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 4 }}>
-                      바꾸면 <b style={{ color: C.ink }}>{editing.registrar || "미지정"}</b> 님이 검토하고, 파편이 올라오면 그분 퀘스트함에 알림이 가요
+                    <input value={editing.registrar || ""} onChange={(e) => setEditing({ ...editing, registrar: e.target.value })}
+                      placeholder="이름 직접 입력 (예: 창민)"
+                      style={{ width: "100%", boxSizing: "border-box", marginTop: 6, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                    <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 4, lineHeight: 1.6 }}>
+                      바꾸면 <b style={{ color: C.ink }}>{editing.registrar || "미지정"}</b> 님이 검토하고, 파편이 올라오면 그분 퀘스트함에 알림이 가요<br />
+                      접속하지 않은 사람도 이름을 직접 적으면 지정할 수 있어요
                     </div>
                   </div>
                   <div style={{ marginTop: 8 }}>
@@ -7427,6 +7534,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n27", type: "업데이트", date: "2026-07-24", title: "📺 집 티비 「요즘 보는 작품」 · 제단 필터 수정",
+    body: "· 🏠 집 안 📺 티비를 누르면 지금 보는 드라마·영화·책·유튜브를 올릴 수 있어요\n· 포스터 사진 + 한 줄 감상을 함께 남겨요 (사진은 눌러서 크게 보기)\n· 집에 놀러 온 누구나 💬 댓글을 달 수 있고, 댓글이 달리면 알림이 떠요\n· 올린 사람과 집주인만 글을 지울 수 있어요\n· [수정] 🏆 제단의 필터 버튼이 눌리지 않던 문제를 고쳤어요 (버튼이 매번 새로 그려지면서 클릭이 씹히고 있었어요)\n· 필터 옆에 지금 보이는 건수가 표시돼요\n· 퀘스트 ✏️ 수정에서 등록자 이름을 직접 입력할 수 있어요 (접속하지 않은 사람도 지정 가능)" },
   { id: "u20260724n26", type: "수정", date: "2026-07-24", title: "🎨 남이 바꾼 건물 이미지가 안 보이던 문제",
     body: "· [원인] 접속할 때 주고받는 데이터 한 덩어리에 건물 이미지까지 넣다 보니 용량이 넘쳐서, 전송이 통째로 실패하고 있었어요\n· 건물 이미지는 이제 한 장씩 따로 전달돼요 (제단 사진도 최근 것만 함께 보내요)\n· 그래서 참가 명단·대화·일지 같은 다른 동기화도 더 안정적으로 도착합니다\n· ☰ 메뉴 → 🎨 건물 이미지 에 「🔄 다시 불러오기」 버튼이 생겼어요\n· 눌러보면 서버에서 몇 개를 받아왔는지, 서버 보관이 되고 있는지 바로 알려줘요" },
   { id: "u20260724n25", type: "업데이트", date: "2026-07-24", title: "📋 등록자 변경 · 접속 알림 팝업 · 제단 필터 수정",
@@ -9548,6 +9657,18 @@ function QuestFragmentInput({ tone, icon, title, hint, placeholder, value, onCha
   );
 }
 
+/* 제단 필터 칩 — 컴포넌트 안에서 만들면 새로 그릴 때마다 버튼이 교체돼서
+   클릭이 씹히는 일이 있어서 바깥으로 빼뒀어요 */
+function ShrineChip({ k, label, on, onPick }) {
+  return (
+    <button type="button" onClick={() => onPick(k)}
+      style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "6px 11px", borderRadius: 16,
+        border: `2px solid ${C.ink}`, background: on ? "linear-gradient(180deg,#9a86d8,#4b3c85)" : C.white, color: on ? C.white : C.ink, fontWeight: "bold" }}>
+      {label}
+    </button>
+  );
+}
+
 function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed, items = [], onAdd, onToggle, onDelete }) {
   const [reqT, setReqT] = useState(""); const [reqD, setReqD] = useState("");
   const [accT, setAccT] = useState(""); const [accD, setAccD] = useState("");
@@ -9600,9 +9721,6 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed,
   const nRw = items.filter((i) => i.rw).length;
   const pct = items.length ? Math.round(((nGm + nRw) / (items.length * 2)) * 100) : 0;
 
-  const Chip = ({ k, label }) => (
-    <button onClick={() => setFilter(k)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: filter === k ? "linear-gradient(180deg,#9a86d8,#4b3c85)" : C.white, color: filter === k ? C.white : C.ink, fontWeight: "bold" }}>{label}</button>
-  );
 
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
@@ -9640,8 +9758,10 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed,
 
         {/* 필터 */}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
-          <Chip k="all" label="전체" /><Chip k="mine" label="🙋 내 관련" /><Chip k="req" label="🔷 신청" /><Chip k="acc" label="🔶 수락" />
-          <Chip k="wait" label="⏳ 미완" /><Chip k="done" label="✅ 완료" />
+          {[["all", "전체"], ["mine", "🙋 내 관련"], ["req", "🔷 신청"], ["acc", "🔶 수락"], ["wait", "⏳ 미완"], ["done", "✅ 완료"]].map(([k, label]) => (
+            <ShrineChip key={k} k={k} label={label} on={filter === k} onPick={setFilter} />
+          ))}
+          <span style={{ fontSize: 11, color: "#b9a7d6", fontWeight: "bold" }}>{shown.length}건</span>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 검색"
             style={{ flex: "1 1 110px", minWidth: 90, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, background: C.white }} />
         </div>
@@ -10355,6 +10475,31 @@ function EchoTown() {
   useEffect(() => { netNowRef.current = ytNow && ytNow.videoId ? { t: String(ytNow.artist ? ytNow.artist + " - " + ytNow.title : ytNow.title).slice(0, 28), v: ytNow.videoId, i: ytNow.id } : null; }, [ytNow]);
 
   const [carrying, setCarrying] = useState(null);        // { ...item, _i }
+  /* 📺 집 티비 「요즘 보는 작품」 — 집(houseId)별로 모두에게 공유돼요 */
+  const WATCH_KEY = "echotown_watch_v1";
+  const [watchBoard, setWatchBoard] = useState(() => loadJSON(WATCH_KEY, null) || {});
+  const watchRef = useRef({});
+  watchRef.current = watchBoard;
+  const saveWatch = (next) => { try { saveJSON(WATCH_KEY, next); } catch (e) {} return next; };
+  const addWatch = (hid, row) => {
+    const it = { id: Date.now() + Math.random(), by: myName || "익명", replies: [], ...row,
+      at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
+    setWatchBoard((v) => saveWatch({ ...v, [hid]: [it, ...(v[hid] || [])].slice(0, 30) }));
+    if (netSendEventRef.current) netSendEventRef.current("watch", { hid, row: it });
+  };
+  const delWatch = (hid, id) => {
+    setWatchBoard((v) => saveWatch({ ...v, [hid]: (v[hid] || []).filter((x) => x.id !== id) }));
+    if (netSendEventRef.current) netSendEventRef.current("watch", { hid, del: id });
+  };
+  const replyWatch = (hid, id, text) => {
+    const r = { id: Date.now() + Math.random(), by: myName || "익명", text };
+    setWatchBoard((v) => saveWatch({ ...v, [hid]: (v[hid] || []).map((x) => (x.id === id ? { ...x, replies: [...(x.replies || []), r] } : x)) }));
+    if (netSendEventRef.current) netSendEventRef.current("watch", { hid, id, reply: r });
+  };
+  const delReplyWatch = (hid, id, rid) => {
+    setWatchBoard((v) => saveWatch({ ...v, [hid]: (v[hid] || []).map((x) => (x.id === id ? { ...x, replies: (x.replies || []).filter((y) => y.id !== rid) } : x)) }));
+    if (netSendEventRef.current) netSendEventRef.current("watch", { hid, id, delReply: rid });
+  };
   const [homeGifts, setHomeGifts] = useState([]);        // 집에 둔 선물
   const [homeLayout, setHomeLayout] = useState({});      // 집 가구 배치
   const [fridge, setFridge] = useState([]);              // 냉장고에 넣은 음식
@@ -10888,7 +11033,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "qcallack") {
@@ -10918,7 +11063,7 @@ function EchoTown() {
         /* ⚠️ 한 번에 보낼 수 있는 크기가 정해져 있어서, 사진처럼 큰 건 따로 나눠 보내요.
            예전엔 건물 이미지까지 한 덩어리로 보내다가 전체가 통째로 실패했어요. */
         const lightShr = (shrineRef.current || []).map((x, i) => (i < 4 ? x : { ...x, imgs: [] }));
-        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current, shr: lightShr, thx: thxRef.current, qacc: qAccRef.current, qth: qThRef.current, qlg: qLgRef.current, sscale: scaleRef.current, sng: songsRef.current });
+        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current, shr: lightShr, thx: thxRef.current, qacc: qAccRef.current, qth: qThRef.current, qlg: qLgRef.current, sscale: scaleRef.current, sng: songsRef.current, wtc: watchRef.current });
         const gs = galRef.current || [];
         gs.slice(0, 12).forEach((ph, i) => setTimeout(() => { if (netSendEvent) netSendEvent("gal", { photo: ph }); }, 350 * (i + 1)));
         /* 🎨 건물 이미지는 한 장씩 따로 전달 */
@@ -10940,6 +11085,7 @@ function EchoTown() {
         if (p.qacc && typeof p.qacc === "object") setQAccept((v) => mergeQAccept(v, p.qacc));
         if (p.qth && typeof p.qth === "object") setQThreads((v) => mergeQList(v, p.qth, "at", 200));
         if (p.qlg && typeof p.qlg === "object") setQLogs((v) => mergeQList(v, p.qlg, "id", 100));
+        if (p.wtc && typeof p.wtc === "object") setWatchBoard((v) => { const o = { ...v }; Object.keys(p.wtc).forEach((k) => { const ids = new Set((o[k] || []).map((x) => x.id)); o[k] = [...(o[k] || []), ...(p.wtc[k] || []).filter((x) => x && !ids.has(x.id))].slice(0, 30); }); try { saveJSON("echotown_watch_v1", o); } catch (e) {} return o; });
         if (Array.isArray(p.sng)) setSongs((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.sng.filter((x) => x && !ids.has(x.id))].slice(-80); });
         if (p.sscale && typeof p.sscale === "object") setSpriteScale((v) => { const o = { ...p.sscale, ...v }; saveJSON("echotown_spritescale_v1", o); return o; });
         return;
@@ -11037,6 +11183,22 @@ function EchoTown() {
         playBell();
         pushGrant({ grantId: p.shrId, rewards: p.rewards, title: p.title, who: p.by });
         showNotice(`🎁 「${p.title}」 보상이 도착했어요 · 퀘스트함에서 받아가세요!`);
+        return;
+      }
+      if (kind === "watch") {
+        const hid = p.hid;
+        setWatchBoard((v) => {
+          const cur = v[hid] || [];
+          let next = cur;
+          if (p.row) next = cur.some((x) => x.id === p.row.id) ? cur : [p.row, ...cur].slice(0, 30);
+          else if (p.del != null) next = cur.filter((x) => x.id !== p.del);
+          else if (p.reply) next = cur.map((x) => (x.id === p.id ? { ...x, replies: (x.replies || []).some((y) => y.id === p.reply.id) ? x.replies : [...(x.replies || []), p.reply] } : x));
+          else if (p.delReply != null) next = cur.map((x) => (x.id === p.id ? { ...x, replies: (x.replies || []).filter((y) => y.id !== p.delReply) } : x));
+          const out = { ...v, [hid]: next };
+          try { saveJSON("echotown_watch_v1", out); } catch (e) {}
+          return out;
+        });
+        if (p.reply && p.reply.by !== (myName || "나")) showNotice(`💬 ${p.reply.by}님이 📺 작품에 댓글을 남겼어요`);
         return;
       }
       if (kind === "follow") {
@@ -11351,7 +11513,12 @@ function EchoTown() {
           }}
           onUpdate={(id, patch) => { setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } })); if (netSendEvent) netSendEvent("mroom", { id, patch }); }} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && (unlocked[houseId] ? (
-          <HomeView isMine={isMyHouse(houseMeta.name)}
+          <HomeView isMine={isMyHouse(houseMeta.name)} myName={myName}
+            watch={watchBoard[houseId] || []}
+            onWatchAdd={(row) => addWatch(houseId, row)}
+            onWatchDel={(id) => delWatch(houseId, id)}
+            onWatchReply={(id, t) => replyWatch(houseId, id, t)}
+            onWatchDelReply={(id, rid) => delReplyWatch(houseId, id, rid)}
             layout={isMyHouse(houseMeta.name) ? homeLayout : {}}
             onMoveFurni={(id, x, y) => setHomeLayout((v) => ({ ...v, [id]: { x, y } }))}
             onResetLayout={() => { setHomeLayout({}); showNotice("↩ 가구를 처음 배치로 되돌렸어요"); }}
