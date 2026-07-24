@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v50 · 2026-07-24";
+const APP_VERSION = "v52 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -547,8 +547,8 @@ function GemBadge({ amount, big, kind = "gem" }) {
 /* ===== ❓ 방별 팁 =====
    기능을 추가하거나 바꿀 때마다 여기에도 한 줄씩 넣어주세요. */
 const ROOM_TIPS = {
-  world: ["⬆⬇⬅➡ 또는 화면을 눌러 이동해요", "건물 앞에서 Space 를 누르면 들어가요", "탈것을 타면 빨라지고 입장 범위도 넘어져요", "다른 사람 캐릭터를 누르면 따라가기·찾아가기·선물하기를 고를 수 있어요", "우측 상단 접속자 버튼 → 🏃 을 누르면 그 사람 옆으로 바로 가요", "좌측 하단 채팅은 5초 뒤 사라져요 · 확성기(🪙2)는 계속 남아요"],
-  center: ["테이블을 눌러 주민들과 대화해요", "회의실 3곳은 예약하고 채팅도 할 수 있어요", "회의실 안 📨 초대장으로 날짜·시간을 정해 보내보세요", "커피·자판기·정수기로 HP·MP 를 채워요"],
+  world: ["⬆⬇⬅➡ 또는 화면을 눌러 이동해요", "건물 안에서는 아래쪽 🚪 문으로 걸어 내려가면 바로 나와요", "건물 앞에서 Space 를 누르면 들어가요", "탈것을 타면 빨라지고 입장 범위도 넘어져요", "다른 사람 캐릭터를 누르면 따라가기·찾아가기·선물하기를 고를 수 있어요", "우측 상단 접속자 버튼 → 🏃 을 누르면 그 사람 옆으로 바로 가요", "좌측 하단 채팅은 5초 뒤 사라져요 · 확성기(🪙2)는 계속 남아요"],
+  center: ["테이블을 눌러 주민들과 대화해요", "회의실 안에서 📋 회의 안건을 적고 완료 체크할 수 있어요", "회의실 3곳은 예약하고 채팅도 할 수 있어요", "회의실 안 📨 초대장으로 날짜·시간을 정해 보내보세요", "커피·자판기·정수기로 HP·MP 를 채워요"],
   house: ["🖥️ 책상에 메모를 여러 장 붙여둘 수 있어요 · 눌러서 자세히 보기", "🚪 현관문을 누르면 바로 나가요", "🔧 가구 배치를 켜고 가구를 끌어서 옮겨보세요", "집에 둔 선물을 누르면 🎒 가방에 넣거나 🗑 버릴 수 있어요", "🌳 마당과 🐟 수족관은 형욱이네에서 사야 생겨요", "집에 둔 선물을 누르면 누가 줌는지 보여요"],
   sea: ["🚏 위쪽 정류장으로 가면 마을로 돌아가요", "🧔 어부 아저씨에게 미끼와 낚싯대를 사세요", "📖 바다 도감에서 뭐가 잡히는지 볼 수 있어요", "선착장 끝 🎣 낚시터에서 낚시를 해보세요", "잡은 건 어부 아저씨에게 팔 수 있어요"],
   fishing: ["🎣 던지려면 🪱 미끼가 1개씩 필요해요", "❗ 입질이 오면 1.4초 안에 당기세요", "💎 젬과 💠 다이아는 잡는 즉시 들어와요", "🎁 비밀 상자는 어부에게 열어달라고 하세요", "낚싯대를 업그레이드하면 귀한 게 잘 걸려요"],
@@ -567,10 +567,10 @@ const ROOM_TIPS = {
   jjeop: ["📋 메뉴 추천에 한 마디 남기면 모두에게 보여요", "🔮 점심술사가 오늘 메뉴를 골라줘요", "인증샷을 제출하면 🪙5 를 받아요"],
   musinsa: ["상의·하의·신발을 입어보고 살 수 있어요", "입은 옷은 마을과 건물 안 모두에서 보여요"],
   ikea: ["집 외관·가구·탈것을 살 수 있어요", "가구를 사면 내 집에 배치돼요", "탈것은 빠를수록 비싸지만 입장 조준도 쉬워져요"],
-  project: ["이지모드는 순서대로, 하드모드는 광장에서 자유롭게", "＋ 버튼으로 퀘스트를 추가할 때 ⭐ 경험치를 꼭 정해야 해요", "보상은 💎 젬·🪙 골드·🏆 아이템·🧠 스킬 여러 개를 걸 수 있어요", "다 했으면 📮 제출 → 답변과 📷 인증 사진(최대 3장)을 올려요", "수락한 퀘스트는 모집 화면 ↔ 진행 화면을 자유롭게 오갈 수 있어요", "하드모드 퀘스트를 깨면 🧠 사고 스킬을 배워요", "상단 🧠 도감을 누르고, 항목을 다시 누르면 완료한 사람이 보여요"],
+  project: ["이지모드는 순서대로, 하드모드는 광장에서 자유롭게", "＋ 버튼으로 퀘스트를 추가할 때 ⭐ 경험치를 꼭 정해야 해요", "보상은 💎 젬·🪙 골드·🏆 아이템·🧠 스킬 여러 개를 걸 수 있어요", "다 했으면 📮 제출 → 답변과 📷 인증 사진(최대 3장)을 올려요", "수락해야 💬 대화창이 열려요 · 수락 후엔 모집 화면과 자유롭게 오갈 수 있어요", "대화방의 📣 모두 부르기를 누르면 파티원 화면에 팝업이 떠요", "하드모드 퀘스트를 깨면 🧠 사고 스킬을 배워요", "상단 🧠 도감을 누르고, 항목을 다시 누르면 완료한 사람이 보여요"],
   questdone: ["퀴스트 신청·수락 파편을 봉헌해요", "등록자가 🛡 검토하고 ⭐ 보상을 체크하면 지급돼요", "「🙋 내 관련」 필터로 내가 처리할 것만 볼 수 있어요"],
   coredict: ["우리만의 단어를 등록하고 가나다 순으로 찾아봐요", "🖼 갤러리에 사진을 올리고 한 줄 설명을 달 수 있어요", "🔒 비밀사전은 나만 보는 핵심 요약 보관함이에요", "상단 🔄 동기화로 다른 사람 기록을 받아와요"],
-  meeting: ["채팅으로 같은 회의실 사람들과 대화해요", "📨 초대장을 보내면 상대 메세지함으로 가요", "예약해두면 주민센터에 표시돼요"],
+  meeting: ["📋 회의 안건을 추가하면 같은 회의실 사람 모두에게 보여요", "채팅으로 같은 회의실 사람들과 대화해요", "📨 초대장을 보내면 상대 메세지함으로 가요", "예약해두면 주민센터에 표시돼요"],
   naverschool: ["집을 하나씩 들러 퀴스트를 깨요", "앞 집을 깨야 다음 집이 열려요", "깨난 기록은 저장돼서 나갔다 와도 그대로예요"],
   videoschool: ["집을 하나씩 들러 퀴스트를 깨요", "앞 집을 깨야 다음 집이 열려요", "깨난 기록은 저장돼서 나갔다 와도 그대로예요"],
   rent: ["치앙마이 집을 한 달 빌려볼 수 있어요", "렌트비는 🪙 골드로 내요"],
@@ -705,6 +705,13 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
           y = Math.max(30, Math.min(roomH - 24, y));
           posRef.current = { x, y }; setPos({ x, y });
           if (dx < 0) setFacing(-1); else if (dx > 0) setFacing(1);
+          /* 🚪 문 안으로 계속 걸어 내려가면 자동으로 나가요 */
+          if (!exitLockRef.current && dy > 0 && onBackRef.current
+              && y >= roomH - 25 && Math.abs(x - roomW / 2) <= 46) {
+            exitLockRef.current = true;
+            const go = onBackRef.current;
+            setTimeout(() => go(), 0);
+          }
         }
         setMoving(Boolean(dx || dy));
         // 근접 판정 (가구 사각형과의 거리)
@@ -748,6 +755,17 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
       <div style={{ position: "relative", width: "100%", overflow: "hidden" }}>
         <div ref={roomElRef} onPointerMove={editable ? onDragMove : undefined} onPointerUp={editable ? endDrag : undefined} onPointerLeave={editable ? endDrag : undefined}
           style={{ position: "relative", width: roomW, height: roomH, margin: "0 auto", background: bg, borderBottom: `3px solid ${C.ink}`, touchAction: editable ? "none" : "auto" }}>
+          {/* 🚪 출구 — 여기로 걸어 내려가면 자동으로 나가요 */}
+          {onBack && (
+            <div onClick={onBack} title="여기로 걸어 내려가면 나가요"
+              style={{ position: "absolute", left: roomW / 2 - 46, top: roomH - 34, width: 92, height: 34, cursor: "pointer",
+                background: "linear-gradient(180deg, rgba(139,90,43,0.25), rgba(139,90,43,0.55))",
+                border: `3px solid ${C.ink}`, borderBottom: "none", borderTopLeftRadius: 10, borderTopRightRadius: 10,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 4, zIndex: 1 }}>
+              <span style={{ fontSize: 15 }}>🚪</span>
+              <span style={{ fontSize: 10, fontWeight: "bold", color: C.ink, background: "rgba(255,253,246,0.9)", border: `1.5px solid ${C.ink}`, borderRadius: 8, padding: "0 6px", whiteSpace: "nowrap" }}>나가기</span>
+            </div>
+          )}
           {/* 가구 */}
           {furniture.map((f) => {
             const active = f.id === near;
@@ -785,8 +803,9 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
                 <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 190, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px" }}>{o.bubble}</div>
               )}
               <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
-              <div className={o.dm ? "dance-" + o.dm : ""} style={{ transformOrigin: "bottom center" }}>
+              <div className={o.dm ? "dance-" + o.dm : ""} style={{ position: "relative", transformOrigin: "bottom center" }}>
                 <Hero facing={o.f || 1} moving={false} size={30} look={o.lk} pet={o.pt} carry={o.cy ? { emoji: o.cy } : null} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
+                {o.vh && <div style={{ position: "absolute", left: "50%", bottom: -5, transform: "translateX(-50%)", fontSize: 16 }}>{o.vh}</div>}
               </div>
             </div>
           ))}
@@ -2205,7 +2224,7 @@ async function dbDelNotice(id) {
   try { const s = await getSupa(); await s.from("notices").delete().eq("id", id); return true; } catch (e) { return false; }
 }
 
-function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef, roomPosRef, danceRef, houseRef, lookRef, carryRef, petRef, roomIdRef) {
+function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef, roomPosRef, danceRef, houseRef, lookRef, carryRef, petRef, roomIdRef, vehicleRef) {
   const [retry, setRetry] = useState(0);          // 연결이 끊기면 올라가며 재접속을 유발
   const [others, setOthers] = useState({});
   const [count, setCount] = useState(1);
@@ -2348,6 +2367,8 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
                   lk: (lookRef && lookRef.current) || null,
                   cy: (carryRef && carryRef.current) ? (carryRef.current.emoji || "🎁") : null,
                   pt: (petRef && petRef.current) || null,
+                  vh: (vehicleRef && vehicleRef.current) ? (vehicleRef.current.emoji || "🛵") : null,
+                  vn: (vehicleRef && vehicleRef.current) ? (vehicleRef.current.name || "") : null,
                   rm: (roomIdRef && roomIdRef.current) || null,
                   oc: [of.top ? of.top.color : null, of.bottom ? of.bottom.color : null, of.shoes ? of.shoes.color : null] };
               })() });
@@ -2687,8 +2708,9 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
                 <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 190, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>{o.bubble}</div>
               )}
               <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
-              <div className={o.dm ? "dance-" + o.dm : ""} style={{ transformOrigin: "bottom center" }}>
+              <div className={o.dm ? "dance-" + o.dm : ""} style={{ position: "relative", transformOrigin: "bottom center" }}>
                 <Hero facing={o.f || 1} moving={false} size={34} look={o.lk} pet={o.pt} carry={o.cy ? { emoji: o.cy } : null} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
+                {o.vh && <div title={o.vn || "탈것"} style={{ position: "absolute", left: "50%", bottom: -6, transform: "translateX(-50%)", fontSize: 19 }}>{o.vh}</div>}
               </div>
             </div>
           ))}
@@ -2757,7 +2779,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
                 <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 2 }}>🟢 {myNick || "나"} (나)</div>
                 {Object.values(others).map((o) => (
                   <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                    <span style={{ flex: 1, fontSize: 12, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🟢 {o.name}</span>
+                    <span style={{ flex: 1, fontSize: 12, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={o.vh ? `${o.vn || "탈것"} 탑승 중` : "걷는 중"}>🟢 {o.name} {o.vh || "🚶"}</span>
                     <button onClick={() => goTo(o)} title={`${o.name}님에게 찾아가기`}
                       style={{ cursor: "pointer", background: C.gem, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 15, padding: "2px 8px", lineHeight: 1.4 }}>🏃</button>
                   </div>
@@ -3138,6 +3160,18 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
   const [mic, setMic] = useState(true);
   const [cam, setCam] = useState(true);
   const [share, setShare] = useState(false);
+  /* 📋 회의 안건 — 같은 회의실 사람들과 공유돼요 */
+  const agenda = (room && room.agenda) || [];
+  const [agTxt, setAgTxt] = useState("");
+  const addAgenda = () => {
+    const t = agTxt.trim(); if (!t) return;
+    const row = { id: Date.now() + Math.random(), text: t, by: myName || "익명", done: false,
+      at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
+    onUpdate(roomId, { agenda: [...agenda, row] });
+    setAgTxt("");
+  };
+  const toggleAgenda = (id) => onUpdate(roomId, { agenda: agenda.map((a) => (a.id === id ? { ...a, done: !a.done } : a)) });
+  const delAgenda = (id) => { if (window.confirm("이 안건을 지울까요?")) onUpdate(roomId, { agenda: agenda.filter((a) => a.id !== id) }); };
   const [resName, setResName] = useState("");
   const [time, setTime] = useState("");
   const num = roomId.replace("m", "");
@@ -3223,6 +3257,41 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
           <PxButton tone={share ? "gold" : "blue"} onClick={() => setShare((v) => !v)} style={{ fontSize: 12, padding: "10px 12px" }}>{share ? "🖥 공유 중지" : "🖥 화면 공유"}</PxButton>
           <PxButton tone={room.locked ? "gold" : "ink"} onClick={() => onUpdate(roomId, { locked: !room.locked })} style={{ fontSize: 12, padding: "10px 12px" }}>{room.locked ? "🔓 방 잠금 해제" : "🔒 방 잠그기"}</PxButton>
         </div>
+        {/* 📋 회의 안건 */}
+        <div style={{ marginTop: 14, background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 8, padding: 12, color: C.ink }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 9 }}>
+            <span style={{ fontSize: 18 }}>📋</span>
+            <b style={{ flex: 1, fontSize: 14 }}>회의 안건</b>
+            <span style={{ fontSize: 11, color: C.inkSoft }}>{agenda.filter((a) => a.done).length}/{agenda.length} 완료</span>
+          </div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 9 }}>
+            <input value={agTxt} onChange={(e) => setAgTxt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addAgenda(); }}
+              placeholder="안건을 적고 Enter (예: 7월 리텐션 리뷰)"
+              style={{ flex: 1, minWidth: 0, padding: 9, border: `3px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+            <PxButton tone="gold" disabled={!agTxt.trim()} onClick={addAgenda} style={{ fontSize: 12, padding: "9px 13px", whiteSpace: "nowrap" }}>＋ 추가</PxButton>
+          </div>
+          {agenda.length === 0 ? (
+            <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 16, lineHeight: 1.7, border: `2px dashed ${C.parchEdge}`, borderRadius: 8 }}>
+              아직 안건이 없어요 📋<br />회의 전에 이야기할 것을 적어두면 모두가 볼 수 있어요
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 220, overflow: "auto" }}>
+              {agenda.map((a, i) => (
+                <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, background: a.done ? "#e6f4ec" : C.white, border: `2px solid ${a.done ? C.good : C.ink}`, borderRadius: 8, padding: "8px 10px" }}>
+                  <button type="button" onClick={() => toggleAgenda(a.id)} title="완료 표시"
+                    style={{ cursor: "pointer", width: 22, height: 22, flexShrink: 0, borderRadius: 5, border: `2px solid ${a.done ? C.good : C.ink}`, background: a.done ? C.good : C.white, color: C.white, fontSize: 13, lineHeight: 1, padding: 0 }}>{a.done ? "✔" : ""}</button>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: "bold", wordBreak: "break-word", textDecoration: a.done ? "line-through" : "none", color: a.done ? C.inkSoft : C.ink }}>{i + 1}. {a.text}</div>
+                    <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 2 }}>🧑 {a.by || "익명"}{a.at ? ` · ${a.at}` : ""}</div>
+                  </div>
+                  <button type="button" onClick={() => delAgenda(a.id)} title="삭제"
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, color: C.inkSoft, padding: 0 }}>🗑</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* 예약 */}
         <div style={{ marginTop: 14, background: C.parch, border: `3px solid ${C.ink}`, padding: 12 }}>
           <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, marginBottom: 8, color: C.ink }}>RESERVATION</div>
@@ -5286,7 +5355,7 @@ function mergeMaps(base, saved) {
   return out;
 }
 
-function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree, onLeave, maps = [], people = [], onAddQuest, onEditQuest, onDelQuest, onAddMap, onGoShrine, onSubmitAnswer, onGainExp }) {
+function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree, onLeave, maps = [], people = [], onAddQuest, onEditQuest, onDelQuest, onAddMap, onGoShrine, onSubmitAnswer, onGainExp, onCallParty, jumpTo = null, onJumpUsed }) {
   const net = useContext(NetContext);
   const meNet = (net && net.me) || {};
   const [tMsg, setTMsg] = useState("");
@@ -5443,8 +5512,21 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
 
   useEffect(() => { openRef.current = !!sel; }, [sel]);
   useEffect(() => { setQView(null); }, [sel && sel.id]);
-  /* 퀘스트에서 나가면 원래 화면(보스맵)으로 돌아가요 */
-  const leaveQuest = (qid) => { onLeave && onLeave(qid); setQView(null); setEditing(null); setSel(null); };
+  /* 📣 「모두 부르기」로 불려왔을 때 해당 퀘스트 대화방을 바로 열어줘요 */
+  const [pendingQ, setPendingQ] = useState(null);
+  useEffect(() => {
+    if (!jumpTo || !jumpTo.qid) return;
+    const i = maps.findIndex((m) => m.id === jumpTo.mapId);
+    if (i >= 0) { setMode(maps[i].mode || "easy"); setMapIdx(i); }
+    setPendingQ(jumpTo.qid);
+    onJumpUsed && onJumpUsed();
+  }, [jumpTo]);
+  useEffect(() => {
+    if (!pendingQ) return;
+    const nd = (nodesRef.current || []).find((x) => x.id === pendingQ);
+    if (nd) { setSel(nd); setQView("run"); }
+    setPendingQ(null);
+  }, [pendingQ, mapIdx]);
   useEffect(() => {
     const down = (e) => {
       if (isTyping(e)) return;
@@ -6235,82 +6317,124 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
               )}
               {done[sel.id] && typeof done[sel.id] === "string" && <div style={{ fontSize: 11, textAlign: "center", color: C.good, marginBottom: 8 }}>✅ {done[sel.id]}님이 완료했어요</div>}
               {lockReason(sel) && <div style={{ background: "#fbe4e0", border: `2px solid ${C.danger}`, borderRadius: 8, color: C.danger, padding: 9, fontSize: 12, margin: "10px 0", textAlign: "center", fontWeight: "bold" }}>🔒 {lockReason(sel)}</div>}
-              {map.mode === "hard" && !done[sel.id] && !sel.isBoss && !lockReason(sel) && (
-                <div style={{ background: "#fff6e8", border: `2px solid ${C.ink}`, borderRadius: 10, padding: 11, marginBottom: 10 }}>
-                  {done[sel.id] ? (
-                    <div style={{ fontSize: 12.5, color: C.good, textAlign: "center", padding: 10, fontWeight: "bold", background: "#e6f4ec", border: `2px solid ${C.good}`, borderRadius: 8 }}>
-                      ✅ 이미 완료된 퀘스트예요<br /><span style={{ fontSize: 11, fontWeight: "normal", color: C.inkSoft }}>수락할 수 없어요</span>
-                    </div>
-                  ) : !accepted[sel.id] ? (
-                    canJoin(sel)
-                      ? <PxButton tone="gold" onClick={() => onAccept && onAccept(sel.id, sel.title)} style={{ width: "100%", padding: 11, fontSize: 13 }}>🤝 퀘스트 수락하기</PxButton>
-                      : <div style={{ fontSize: 12, color: C.danger, textAlign: "center", padding: 8, fontWeight: "bold" }}>지정된 참가자만 수락할 수 있어요</div>
-                  ) : (accepted[sel.id].locked && !(accepted[sel.id].party || []).includes(myName)) ? (
-                    <div style={{ fontSize: 12, color: C.danger, textAlign: "center", padding: 8, fontWeight: "bold" }}>🔒 파티가 확정된 퀘스트예요. 참여할 수 없어요.</div>
-                  ) : (
-                    <div>
-                      {((qView || (accepted[sel.id].started ? "run" : "party")) === "party") ? (
-                        <div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                            <PxButton tone="ink" onClick={() => { setSel(null); setEditing(null); setQView(null); }} style={{ fontSize: 11, padding: "6px 10px" }}>← 뒤로</PxButton>
-                            <span style={{ flex: 1, fontSize: 10.5, color: C.good, fontWeight: "bold" }}>
-                              {accepted[sel.id].started ? "🤝 모집 화면 — 진행 중에도 모집할 수 있어요" : "🤝 수락됨 — 닫아도 유지돼요"}
-                            </span>
-                            {accepted[sel.id].started && (
-                              <PxButton tone="good" onClick={() => setQView("run")} style={{ fontSize: 11, padding: "6px 10px", whiteSpace: "nowrap" }}>진행 화면 →</PxButton>
-                            )}
-                          </div>
-                          <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 6 }}>{accepted[sel.id].started ? "진행 중이어도 확성기·게시판으로 파티원을 더 모을 수 있어요" : "파티원을 모집한 뒤 시작하세요"}</div>
-                          <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-                            <PxButton tone="wood" onClick={() => onShout && onShout(`📢 「${sel.title}」 퀘스트 같이 하실 분!`)} style={{ flex: 1, fontSize: 11, padding: 8 }}>📢 확성기 모집</PxButton>
-                            <PxButton tone="wood" onClick={() => onBoard && onBoard(sel.title)} style={{ flex: 1, fontSize: 11, padding: 8 }}>📋 게시판 모집</PxButton>
-                          </div>
-                          {!accepted[sel.id].locked ? (
-                            <PxButton tone={(accepted[sel.id].agree || []).includes(myName) ? "ink" : "danger"} onClick={() => onAgree && onAgree(sel.id)} style={{ width: "100%", padding: 9, fontSize: 12, marginBottom: 6 }}>
-                              🔒 퀘스트 잠금 동의 ({(accepted[sel.id].agree || []).length}/{(accepted[sel.id].party || []).length})
-                            </PxButton>
-                          ) : (
-                            <div style={{ fontSize: 11, color: C.good, textAlign: "center", marginBottom: 6, fontWeight: "bold" }}>🔒 파티 확정 — 더 이상 참여할 수 없어요</div>
+              {map.mode === "hard" && !done[sel.id] && !sel.isBoss && !lockReason(sel) && (() => {
+                /* 🤝 내가 이 퀘스트의 파티원인지에 따라 화면이 달라져요
+                   · 수락 전 : 모집 화면만 볼 수 있고 「퀘스트 수락하기」가 보여요
+                   · 수락 후 : 모집 화면 ↔ 💬 대화창을 자유롭게 오갈 수 있어요
+                   · 나가기  : 대화창이 잠기고 모집 화면으로 돌아와요 */
+                const acc = accepted[sel.id] || null;
+                const party = (acc && acc.party) || [];
+                const agree = (acc && acc.agree) || [];
+                const isMember = party.includes(myName);
+                const started = !!(acc && acc.started);
+                const canTalk = isMember && started;              // 대화창에 들어갈 수 있는 조건
+                const panel = canTalk && qView !== "party" ? "run" : "party";
+                const shoutBtns = (
+                  <div style={{ display: "flex", gap: 6, marginBottom: 7 }}>
+                    <PxButton tone="wood" onClick={() => onShout && onShout(`📢 「${sel.title}」 퀘스트 같이 하실 분!`)} style={{ flex: 1, fontSize: 11, padding: 8 }}>📢 확성기 모집</PxButton>
+                    <PxButton tone="wood" onClick={() => onBoard && onBoard(sel.title)} style={{ flex: 1, fontSize: 11, padding: 8 }}>📋 게시판 모집</PxButton>
+                  </div>
+                );
+
+                return (
+                  <div style={{ background: "#fff6e8", border: `2px solid ${C.ink}`, borderRadius: 10, padding: 11, marginBottom: 10 }}>
+                    {/* 🔒 파티가 확정됐는데 내가 없으면 참여 불가 */}
+                    {acc && acc.locked && !isMember ? (
+                      <div style={{ fontSize: 12, color: C.danger, textAlign: "center", padding: 8, fontWeight: "bold" }}>🔒 파티가 확정된 퀘스트예요. 참여할 수 없어요.</div>
+                    ) : panel === "party" ? (
+                      /* ===== 🤝 모집 화면 (첫 화면) ===== */
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                          <PxButton tone="ink" onClick={() => { setSel(null); setEditing(null); setQView(null); }} style={{ fontSize: 11, padding: "6px 10px", whiteSpace: "nowrap" }}>← 뒤로</PxButton>
+                          <span style={{ flex: 1, fontSize: 10.5, fontWeight: "bold", color: isMember ? C.good : C.inkSoft }}>
+                            {isMember ? (started ? "🤝 모집 화면 — 진행 중에도 모집할 수 있어요" : "🤝 수락됨 — 닫아도 유지돼요") : "🤝 아직 수락하지 않았어요"}
+                          </span>
+                          {canTalk && (
+                            <PxButton tone="good" onClick={() => setQView("run")} style={{ fontSize: 11, padding: "6px 10px", whiteSpace: "nowrap" }}>💬 대화창 →</PxButton>
                           )}
-                          {accepted[sel.id].started ? (
-                            <PxButton tone="good" onClick={() => setQView("run")} style={{ width: "100%", padding: 10, fontSize: 13 }}>▶ 진행 화면으로 돌아가기</PxButton>
-                          ) : (
-                            <PxButton tone="good" onClick={() => { onStart && onStart(sel.id); setQView("run"); }} style={{ width: "100%", padding: 10, fontSize: 13 }}>▶ 퀘스트 시작</PxButton>
-                          )}
-                          <PxButton tone="danger" onClick={() => leaveQuest(sel.id)} style={{ width: "100%", padding: 9, fontSize: 12, marginTop: 6 }}>🚪 퀘스트에서 나가기</PxButton>
                         </div>
-                      ) : (
-                        <div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "2px 0 8px" }}>
-                            <PxButton tone="ink" onClick={() => setQView("party")} style={{ fontSize: 11, padding: "6px 10px", whiteSpace: "nowrap" }}>← 모집 화면</PxButton>
-                            <span style={{ flex: 1, fontSize: 10.5, color: C.good, fontWeight: "bold" }}>▶ 진행 중 — 닫아도 계속 유지돼요</span>
-                            <PxButton tone="ink" onClick={() => { setSel(null); setEditing(null); setQView(null); }} style={{ fontSize: 11, padding: "6px 10px" }}>✕</PxButton>
-                          </div>
-                          {/* 진행 중에도 바로 모집할 수 있게 */}
-                          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                            <PxButton tone="wood" onClick={() => onShout && onShout(`📢 「${sel.title}」 퀘스트 같이 하실 분!`)} style={{ flex: 1, fontSize: 11, padding: 8 }}>📢 확성기 모집</PxButton>
-                            <PxButton tone="wood" onClick={() => onBoard && onBoard(sel.title)} style={{ flex: 1, fontSize: 11, padding: 8 }}>📋 게시판 모집</PxButton>
-                          </div>
-                          <div style={{ fontSize: 12, fontWeight: "bold", margin: "4px 0 5px" }}>💬 퀘스트 대화방</div>
-                          <div ref={threadRef} style={{ height: 110, overflow: "auto", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: 7, display: "flex", flexDirection: "column", gap: 4 }}>
-                            {(threads[sel.id] || []).length === 0 && <div style={{ fontSize: 11, color: C.inkSoft }}>대화를 시작해보세요</div>}
-                            {(threads[sel.id] || []).map((m, i) => (
-                              <div key={i} style={{ fontSize: 12 }}><b style={{ color: "#5b8def" }}>{m.who}</b> {m.text}</div>
+
+                        {/* 👥 지금 참가 중인 사람 */}
+                        <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "7px 9px", marginBottom: 8 }}>
+                          <div style={{ fontSize: 10.5, color: C.inkSoft, marginBottom: 4 }}>👥 지금 참가 중 ({party.length}명)</div>
+                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                            {party.length === 0 && <span style={{ fontSize: 11, color: C.inkSoft }}>아직 아무도 없어요 — 가장 먼저 수락해보세요!</span>}
+                            {party.map((n) => (
+                              <span key={n} style={{ fontSize: 10.5, fontWeight: "bold", color: C.white, background: agree.includes(n) ? "#2f9e6e" : "#5b8def", borderRadius: 10, padding: "2px 9px" }}>
+                                {n === myName ? `🙋 ${n} (나)` : `🧑 ${n}`}{agree.includes(n) ? " ✓" : ""}
+                              </span>
                             ))}
                           </div>
-                          <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
-                            <input value={tMsg} onChange={(e) => setTMsg(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} placeholder="메시지" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
-                            <PxButton tone="blue" onClick={() => { if (tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} style={{ fontSize: 11, padding: "7px 10px" }}>➤</PxButton>
-                          </div>
-                          <PxButton tone="danger" onClick={() => leaveQuest(sel.id)} style={{ width: "100%", padding: 9, fontSize: 12, marginTop: 8 }}>🚪 퀘스트에서 나가기</PxButton>
-                          <div style={{ fontSize: 12, fontWeight: "bold", margin: "10px 0 5px" }}>📓 퀘스트 일지</div>
-                          <textarea value={notes[sel.id] || ""} onChange={(e) => onNote && onNote(sel.id, e.target.value)} placeholder="진행 상황·메모를 남겨두세요" style={{ width: "100%", boxSizing: "border-box", height: 70, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, resize: "none", background: C.white }} />
                         </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+
+                        {!isMember ? (
+                          /* --- 아직 수락하지 않음 --- */
+                          canJoin(sel) ? (
+                            <>
+                              <PxButton tone="gold" onClick={() => { onAccept && onAccept(sel.id, sel.title); setQView("party"); }} style={{ width: "100%", padding: 11, fontSize: 13 }}>🤝 퀘스트 수락하기</PxButton>
+                              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 6, lineHeight: 1.6 }}>
+                                수락해야 💬 퀘스트 대화창에 들어갈 수 있어요
+                              </div>
+                            </>
+                          ) : (
+                            <div style={{ fontSize: 12, color: C.danger, textAlign: "center", padding: 8, fontWeight: "bold" }}>지정된 참가자만 수락할 수 있어요</div>
+                          )
+                        ) : (
+                          /* --- 수락한 파티원 --- */
+                          <>
+                            <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 6 }}>{started ? "진행 중이어도 확성기·게시판으로 파티원을 더 모을 수 있어요" : "파티원을 모집한 뒤 시작하세요"}</div>
+                            {shoutBtns}
+                            {!(acc && acc.locked) ? (
+                              <PxButton tone={agree.includes(myName) ? "ink" : "danger"} onClick={() => onAgree && onAgree(sel.id)} style={{ width: "100%", padding: 9, fontSize: 12, marginBottom: 6 }}>
+                                🔒 퀘스트 잠금 동의 ({agree.length}/{party.length})
+                              </PxButton>
+                            ) : (
+                              <div style={{ fontSize: 11, color: C.good, textAlign: "center", marginBottom: 6, fontWeight: "bold" }}>🔒 파티 확정 — 더 이상 참여할 수 없어요</div>
+                            )}
+                            {started ? (
+                              <PxButton tone="good" onClick={() => setQView("run")} style={{ width: "100%", padding: 10, fontSize: 13 }}>💬 대화창으로 들어가기</PxButton>
+                            ) : (
+                              <PxButton tone="good" onClick={() => { onStart && onStart(sel.id); setQView("run"); }} style={{ width: "100%", padding: 10, fontSize: 13 }}>▶ 퀘스트 시작</PxButton>
+                            )}
+                            <PxButton tone="danger" onClick={() => { onLeave && onLeave(sel.id); setQView("party"); }} style={{ width: "100%", padding: 9, fontSize: 12, marginTop: 6 }}>🚪 퀘스트에서 나가기</PxButton>
+                            <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginTop: 5 }}>나가면 대화창이 닫히고 이 모집 화면으로 돌아와요</div>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      /* ===== 💬 대화창 (진행 화면) ===== */
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "2px 0 8px" }}>
+                          <PxButton tone="ink" onClick={() => setQView("party")} style={{ fontSize: 11, padding: "6px 10px", whiteSpace: "nowrap" }}>← 모집 화면</PxButton>
+                          <span style={{ flex: 1, fontSize: 10.5, color: C.good, fontWeight: "bold" }}>▶ 진행 중 — 닫아도 계속 유지돼요</span>
+                          <PxButton tone="ink" onClick={() => { setSel(null); setEditing(null); setQView(null); }} style={{ fontSize: 11, padding: "6px 10px" }}>✕</PxButton>
+                        </div>
+                        {shoutBtns}
+                        <PxButton tone="blue" disabled={party.length <= 1}
+                          onClick={() => { onCallParty && onCallParty(map.id, sel, party); }}
+                          style={{ width: "100%", padding: 9, fontSize: 12, marginBottom: 8 }}>
+                          📣 파티원 모두 부르기 {party.length > 1 ? `(${party.length - 1}명)` : "(혼자예요)"}
+                        </PxButton>
+                        <div style={{ fontSize: 12, fontWeight: "bold", margin: "4px 0 5px" }}>💬 퀘스트 대화방 <span style={{ fontSize: 10, color: C.inkSoft, fontWeight: "normal" }}>· 파티원 {party.length}명</span></div>
+                        <div ref={threadRef} style={{ height: 110, overflow: "auto", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: 7, display: "flex", flexDirection: "column", gap: 4 }}>
+                          {(threads[sel.id] || []).length === 0 && <div style={{ fontSize: 11, color: C.inkSoft }}>대화를 시작해보세요</div>}
+                          {(threads[sel.id] || []).map((m, i) => (
+                            <div key={i} style={{ fontSize: 12 }}><b style={{ color: "#5b8def" }}>{m.who}</b> {m.text}</div>
+                          ))}
+                        </div>
+                        <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
+                          <input value={tMsg} onChange={(e) => setTMsg(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} placeholder="메시지" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
+                          <PxButton tone="blue" onClick={() => { if (tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} style={{ fontSize: 11, padding: "7px 10px" }}>➤</PxButton>
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: "bold", margin: "10px 0 5px" }}>📓 퀘스트 일지</div>
+                        <textarea value={notes[sel.id] || ""} onChange={(e) => onNote && onNote(sel.id, e.target.value)} placeholder="진행 상황·메모를 남겨두세요" style={{ width: "100%", boxSizing: "border-box", height: 70, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, resize: "none", background: C.white }} />
+                        <PxButton tone="danger" onClick={() => { onLeave && onLeave(sel.id); setQView("party"); }} style={{ width: "100%", padding: 9, fontSize: 12, marginTop: 8 }}>🚪 퀘스트에서 나가기</PxButton>
+                        <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginTop: 5 }}>나가면 대화창이 닫히고 🤝 모집 화면으로 돌아가요</div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
               {sel.level === "초보자" && sel.field && onGoSchool && !lockReason(sel) && (
                 <PxButton tone="blue" onClick={() => onGoSchool(sel.field)} style={{ width: "100%", padding: 10, fontSize: 13, marginBottom: 10 }}>
                   {sel.field === "naverschool" ? "📗 네이버스쿨로 가서 배우기 →" : "🎬 영상스쿨로 가서 배우기 →"}
@@ -6860,10 +6984,12 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n3", type: "업데이트", date: "2026-07-24", title: "🚪 걸어서 나가기 · 📣 모두 부르기 · 📋 회의 안건 · 🛵 남의 탈것",
+    body: "· 🚪 모든 건물 아래쪽 가운데에 문이 생겼어요 — 문 쪽으로 계속 걸어 내려가면 자동으로 나가요 (눌러서 나가도 돼요)\n· 📣 퀘스트 대화방에 「파티원 모두 부르기」가 생겼어요\n· 부르면 파티원 화면에 팝업이 뜨고 「🏃 바로 이동하기」로 그 대화방까지 한 번에 이동해요\n· 🆕 게시판 업데이트 탭에 「✅ 전체 확인」 버튼이 생겼어요\n· 📜 확인한 업데이트 기록은 접혀 있고, 누르면 목록이 펼쳐져요\n· 📋 주민센터 회의실에 회의 안건을 추가·완료체크·삭제할 수 있어요 (같은 회의실 사람들과 공유)\n· 🛵 다른 사람이 어떤 탈것을 타고 있는지 마을·건물 안·접속자 목록에서 보여요" },
   { id: "u20260724n1", type: "업데이트", date: "2026-07-24", title: "⭐ 퀘스트 경험치 · 📷 인증 이미지 · 📖 도감 상세",
     body: "· 퀘스트를 추가할 때 ⭐ 경험치를 반드시 정해야 해요 (빠른 선택 5·10·20·30·50·100)\n· 경험치는 검수와 상관없이 완료 즉시 지급돼요\n· 📮 제출할 때 인증 사진을 최대 3장 붙일 수 있어요 — 제단에도 함께 올라가요\n· 🧠 사고 도감에서 항목을 누르면 자세한 내용과 완료한 사람 이름이 나와요\n· 🏆 아이템도 스킬처럼 미보유는 ❓ 로 보이고, 누르면 설명·얻는 방법이 나와요\n· 🐾 형욱이네가 무신사·이케아처럼 코너를 돌아다니는 구조로 바뀌었어요\n· 🧑 프로필 꾸미기의 「닫기」가 「💾 저장」으로 바뀌었어요" },
-  { id: "u20260724n2", type: "업데이트", date: "2026-07-24", title: "🤝 퀘스트 모집 화면 ↔ 진행 화면 자유 이동",
-    body: "· 진행 중에도 「← 모집 화면」으로 돌아가 📢 확성기 · 📋 게시판 모집을 할 수 있어요\n· 진행 화면 위쪽에도 모집 버튼을 바로 넣었어요\n· 모집 화면에서 「진행 화면 →」 으로 언제든 다시 돌아와요\n· 🚪 퀘스트에서 나가기를 누르면 창이 닫히고 보스맵으로 돌아가요\n· 퀘스트 창이 길어지면 스크롤할 수 있어요",
+  { id: "u20260724n2", type: "업데이트", date: "2026-07-24", title: "🤝 퀘스트 모집 화면 ↔ 💬 대화창 정리",
+    body: "· [수정] 다른 사람이 먼저 수락하면 나는 수락 버튼이 사라지던 문제를 고쳤어요 — 이제 내가 파티원이 아니면 언제나 「🤝 퀘스트 수락하기」가 보여요\n· 👥 지금 참가 중 명단이 모집 화면에 항상 보이고, 내 이름은 🙋 (나) 로 표시돼요\n· 수락 전에는 모집 화면만 볼 수 있어요 (대화창 잠김)\n· 수락하면 모집 화면 ↔ 💬 대화창을 자유롭게 오갈 수 있어요\n· 진행 중에도 📢 확성기 · 📋 게시판 모집을 두 화면 모두에서 할 수 있어요\n· 🚪 퀘스트에서 나가기를 누르면 창이 닫히지 않고 🤝 모집 화면으로 돌아와요 (대화창은 다시 잠겨요)\n· 퀘스트 창이 길어지면 스크롤할 수 있어요",
   },
   { id: "u20260724tt", type: "업데이트", date: "2026-07-24", title: "🎣 낚시 대개편 · 🧔 어부 아저씨 · 📖 바다 도감",
     body: "· 낚시로 13가지를 건질 수 있어요 — 🐟 물고기 7종 · 🗑 쓰레기 3종 · 💎 젬 · 💠 다이아 · 🎁 비밀 상자\n· 💎 젬(1) 💠 다이아(5)는 잡는 즉시 들어와요\n· 🎁 비밀 상자를 열면 랜덤 선물과 골드가 나와요\n· 🪱 미끼가 있어야 낚싯대를 던질 수 있어요 (한 번에 1개)\n· 🧔 어부 아저씨가 생겼어요 — 미끼·낚싯대를 팔고 잡은 것을 사줘요\n· 🎣 낚싯대 3종 — 등급이 높을수록 귀한 게 훨씬 잘 걸려요\n· 📖 바다 도감에서 확률과 파는 값을 볼 수 있어요 (바다에서만)" },
@@ -7010,6 +7136,8 @@ function BoardView({ onBack, myName = "", myUid = "" }) {
   const [wBody, setWBody] = useState("");
   const [seen, setSeen] = useState(() => loadJSON("echotown_seen_updates", {}));
   const markSeen = (id) => setSeen((v) => { const n = { ...v, [id]: true }; saveJSON("echotown_seen_updates", n); return n; });
+  const markAllSeen = (ids) => setSeen((v) => { const n = { ...v }; ids.forEach((i) => { n[i] = true; }); saveJSON("echotown_seen_updates", n); return n; });
+  const [logOpen, setLogOpen] = useState(false);   // 📜 확인한 기록 접기/펼치기
   const reload = () => dbNotices().then((r) => setDbList(r || []));
   useEffect(() => { reload(); }, []);
   const post = () => {
@@ -7095,6 +7223,17 @@ function BoardView({ onBack, myName = "", myUid = "" }) {
           </div>
         )}
 
+        {tab === "update" && (() => {
+          const un = [...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => !seen[n.id]);
+          if (!un.length) return null;
+          return (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fffbe8", border: `3px solid ${C.ink}`, borderRadius: 8, padding: "9px 11px", marginBottom: 10 }}>
+              <span style={{ flex: 1, fontSize: 12, fontWeight: "bold" }}>🆕 확인하지 않은 업데이트 {un.length}개</span>
+              <PxButton tone="good" onClick={() => markAllSeen(un.map((x) => x.id))} style={{ fontSize: 11.5, padding: "7px 12px", whiteSpace: "nowrap" }}>✅ 전체 확인</PxButton>
+            </div>
+          );
+        })()}
+
         {tab === "update" && (
           <div style={{ display: "grid", gap: 8 }}>
             {[...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => !seen[n.id]).length === 0 ? (
@@ -7117,8 +7256,17 @@ function BoardView({ onBack, myName = "", myUid = "" }) {
 
         {tab === "update" && [...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => seen[n.id]).length > 0 && (
           <div style={{ marginTop: 14, borderTop: `3px dashed ${C.parchEdge}`, paddingTop: 12 }}>
-            <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 8, color: C.inkSoft }}>📜 확인한 업데이트 기록</div>
-            <div style={{ display: "grid", gap: 6 }}>
+            <button type="button" onClick={() => setLogOpen((v) => !v)}
+              style={{ width: "100%", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontFamily: "'DotGothic16', monospace",
+                background: C.white, border: `3px solid ${C.ink}`, borderRadius: 8, padding: "10px 12px", marginBottom: logOpen ? 8 : 0 }}>
+              <span style={{ fontSize: 16 }}>📜</span>
+              <span style={{ flex: 1, textAlign: "left", fontSize: 12.5, fontWeight: "bold" }}>확인한 업데이트 기록</span>
+              <span style={{ fontSize: 11, color: C.white, background: C.inkSoft, borderRadius: 10, padding: "2px 9px", fontWeight: "bold" }}>
+                {[...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => seen[n.id]).length}개
+              </span>
+              <span style={{ fontSize: 13, fontWeight: "bold" }}>{logOpen ? "▲" : "▼"}</span>
+            </button>
+            <div style={{ display: logOpen ? "grid" : "none", gap: 6, maxHeight: 340, overflow: "auto" }}>
               {[...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => seen[n.id]).map((a) => (
                 <details key={a.id} style={{ background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "7px 10px" }}>
                   <summary style={{ cursor: "pointer", fontSize: 12, fontWeight: "bold", color: C.inkSoft }}>✓ {a.title} <span style={{ fontSize: 10, fontWeight: "normal" }}>({a.date})</span></summary>
@@ -8865,9 +9013,9 @@ function EchoTown() {
   });
   const delNote = (hid, id) => setMemos((m) => ({ ...m, [hid]: (Array.isArray(m[hid]) ? m[hid] : []).filter((x) => x.id !== id) }));
   const [meetingRooms, setMeetingRooms] = useState({
-    m1: { reserved: false, by: "", time: "", locked: false },
-    m2: { reserved: true, by: "도희", time: "14:00", locked: false },
-    m3: { reserved: false, by: "", time: "", locked: true },
+    m1: { reserved: false, by: "", time: "", locked: false, agenda: [] },
+    m2: { reserved: true, by: "도희", time: "14:00", locked: false, agenda: [] },
+    m3: { reserved: false, by: "", time: "", locked: true, agenda: [] },
   });
   const [centerChat, setCenterChat] = useState([
     { who: "도희", text: "다들 점심 뭐 먹었어요?", me: false },
@@ -9072,11 +9220,15 @@ function EchoTown() {
   const myNameRef = useRef("");
   const netCarryRef = useRef(null);
   const netPetRef = useRef(null);
+  const netVehicleRef = useRef(null);
   const netRoomIdRef = useRef(null);   // 같은 집·회의실에 있는 사람만 보이게
   const netRoomPosRef = useRef({ x: 0, y: 0 });
-  const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat, sendEvent: netSendEvent, reconnect: netReconnect } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef, netOutfitRef, netViewRef, netRoomPosRef, netDanceRef, netHouseRef, netLookRef, netCarryRef, netPetRef, netRoomIdRef);
+  const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat, sendEvent: netSendEvent, reconnect: netReconnect } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef, netOutfitRef, netViewRef, netRoomPosRef, netDanceRef, netHouseRef, netLookRef, netCarryRef, netPetRef, netRoomIdRef, netVehicleRef);
   useEffect(() => { netSendEventRef.current = netSendEvent; }, [netSendEvent]);
   useEffect(() => { myNameRef.current = myName; }, [myName]);
+  /* 📣 퀘스트 「모두 부르기」 */
+  const [questCall, setQuestCall] = useState(null);   // 받은 호출
+  const [questJump, setQuestJump] = useState(null);   // 바로 이동할 퀘스트
   const [nameOpen, setNameOpen] = useState(() => !loadJSON("echotown_myname", ""));
   const [nameInput, setNameInput] = useState("");
   const [couponOpen, setCouponOpen] = useState(false);
@@ -9336,6 +9488,7 @@ function EchoTown() {
   const [yardOpen, setYardOpen] = useState(false);
   const petEmoji = useMemo(() => { const p = PETS.find((x) => x.id === activePet); return p ? p.emoji : null; }, [activePet]);
   useEffect(() => { netPetRef.current = petEmoji; }, [petEmoji]);
+  useEffect(() => { netVehicleRef.current = vehicle; }, [vehicle]);
 
   const [carrying, setCarrying] = useState(null);        // { ...item, _i }
   const [homeGifts, setHomeGifts] = useState([]);        // 집에 둔 선물
@@ -9746,6 +9899,7 @@ function EchoTown() {
       if (kind === "reel") { if (p.key) setReelExtra((v) => ({ ...v, [p.key]: p.data })); return; }
       if (kind === "worry") { if (p.row) setWorries((v) => (v.some((x) => x.id === p.row.id) ? v : [p.row, ...v].slice(0, 80))); return; }
       if (kind === "mchat") { if (p.who !== (myName || "나")) pushMeetingChat(p.room, { who: p.who, text: p.text, me: false }); return; }
+      if (kind === "mroom") { if (p.id && p.patch) setMeetingRooms((m) => ({ ...m, [p.id]: { ...m[p.id], ...p.patch } })); return; }
       if (kind === "schat") { if (p.who !== (myName || "나")) pushSmoke({ who: p.who, text: p.text, me: false, at: p.at }); return; }
       if (kind === "dm") { pushDm(p.from, { me: false, text: p.text }); pushMsg("dm", { from: p.from, text: p.text }); showNotice(`💬 ${p.from}님: ${String(p.text).slice(0, 20)}`); }
       if (kind === "call") {
@@ -9758,6 +9912,15 @@ function EchoTown() {
             return c;
           });
         }, 15000);
+      }
+      if (kind === "qcall") {
+        const me = myName || "나";
+        if (p.from === me) return;
+        if (Array.isArray(p.party) && p.party.length && !p.party.includes(me)) return;
+        playBell();
+        setQuestCall(p);
+        pushMsg("call", { from: p.from, reason: `「${p.title}」 퀘스트 대화방으로 불렀어요` });
+        return;
       }
       if (kind === "qchat") {
         setQThreads((t) => ({ ...t, [p.qid]: [...(t[p.qid] || []), { who: p.who, text: p.text }] }));
@@ -10017,7 +10180,7 @@ function EchoTown() {
             dbSendMail(p.to, myName || "나", body, null);
             showNotice(`📨 ${p.to}님에게 초대장을 보냈어요`);
           }}
-          onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
+          onUpdate={(id, patch) => { setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } })); if (netSendEvent) netSendEvent("mroom", { id, patch }); }} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && (unlocked[houseId] ? (
           <HomeView isMine={isMyHouse(houseMeta.name)}
             layout={isMyHouse(houseMeta.name) ? homeLayout : {}}
@@ -10104,6 +10267,13 @@ function EchoTown() {
             if (said.length) showNotice(`🎁 ${said.join(" · ")} 획득!`);
           }}
           onGainExp={(n, title) => { if (n > 0) { setExp((e) => e + n); showNotice(`⭐ 「${title}」 완료 · 경험치 +${n}`); } }}
+          jumpTo={questJump} onJumpUsed={() => setQuestJump(null)}
+          onCallParty={(mapId, q, party) => {
+            const others_ = (party || []).filter((n) => n !== (myName || "나"));
+            if (netSendEvent) netSendEvent("qcall", { mapId, qid: q.id, title: q.title, icon: q.icon || "🎯", from: myName || "나", party: party || [] });
+            postChat(`📣 「${q.title}」 퀘스트 대화방으로 모여주세요!`, true);
+            showNotice(others_.length ? `📣 ${others_.join(", ")} 님을 불렀어요` : "📣 파티원을 불렀어요");
+          }}
           onSubmitAnswer={(q, ans, imgs) => {
             const reward = q.reward
               ? (q.reward.kind === "gold" ? `🪙 골드 ${q.reward.qty}` : q.reward.kind === "item" ? `${q.reward.emoji || "🎁"} ${q.reward.name} ${q.reward.qty}개` : `💎 젬 ${q.reward.qty}`)
@@ -10424,6 +10594,24 @@ function EchoTown() {
         online={Object.values(netOthers).some((o) => o.name === dmWith.name)}
         onSend={(text) => { pushDm(dmWith.name, { me: true, text }); if (netSendEvent) netSendEvent("dm", { to: dmWith.name, from: myName || "나", text }); }} />}
       {callWith && <FaceTalkModal person={callWith} onClose={() => setCallWith(null)} />}
+
+      {questCall && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 210, padding: 16 }}>
+          <div style={{ width: "100%", maxWidth: 330 }}>
+            <div style={{ background: "radial-gradient(circle at 50% 0%, #3a2e6b, #1a1436 75%)", border: `4px solid ${C.ink}`, borderRadius: 14, padding: 22, textAlign: "center", boxShadow: "0 12px 30px rgba(0,0,0,0.6)" }}>
+              <div className="gem-pop" style={{ fontSize: 46 }}>📣</div>
+              <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, color: "#ffd75e", margin: "10px 0 8px" }}>PARTY CALL</div>
+              <div style={{ fontSize: 14, color: C.white, fontWeight: "bold", lineHeight: 1.7 }}>
+                <b style={{ color: "#7fe3ff" }}>{questCall.from}</b> 님이 불렀어요
+              </div>
+              <div style={{ fontSize: 15, color: "#ffd75e", fontWeight: "bold", margin: "8px 0 4px" }}>{questCall.icon || "🎯"} {questCall.title}</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", lineHeight: 1.7, marginBottom: 16 }}>퀘스트 대화방으로 모여달래요!</div>
+              <PxButton tone="gold" onClick={() => { setQuestJump({ mapId: questCall.mapId, qid: questCall.qid }); setQuestCall(null); setView("project"); }} style={{ width: "100%", padding: 13, fontSize: 14 }}>🏃 바로 이동하기</PxButton>
+              <PxButton tone="ink" onClick={() => setQuestCall(null)} style={{ width: "100%", padding: 10, fontSize: 12, marginTop: 8 }}>나중에</PxButton>
+            </div>
+          </div>
+        </div>
+      )}
 
       {incomingCall && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 155, padding: 14 }}>
