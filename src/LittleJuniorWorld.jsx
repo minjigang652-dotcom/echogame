@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v26 · 2026-07-24";
+const APP_VERSION = "v28 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -1253,8 +1253,8 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
         });
         ch.on("broadcast", { event: "chat" }, ({ payload }) => {
           if (!payload) return;
+          if (payload.id === MY_ID) return;   // 내가 보낸 건 이미 화면에 있어요 (중복 방지)
           if (onChatRef && onChatRef.current) onChatRef.current(payload);
-          if (payload.id === MY_ID) return;
           const bid = Date.now() + Math.random();
           setOthers((o) => ({ ...o, [payload.id]: { ...(o[payload.id] || { id: payload.id, name: payload.name, x: 0, y: 0 }), bubble: String(payload.text || "").slice(0, 50), bubbleId: bid, ts: Date.now() } }));
           setTimeout(() => setOthers((o) => (o[payload.id] && o[payload.id].bubbleId === bid ? { ...o, [payload.id]: { ...o[payload.id], bubble: null } } : o)), 3600);
@@ -1294,6 +1294,9 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
         });
         ch.on("broadcast", { event: "dictres" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("dictres", payload);
+        });
+        ch.on("broadcast", { event: "schat" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("schat", payload);
         });
         ch.on("broadcast", { event: "worry" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("worry", payload);
@@ -1423,6 +1426,9 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
   passRef.current = passed;  // NPC 대화 {label,lines,shown}
   const [hint, setHint] = useState(true);        // "클릭하면 이동" 안내
   const [danceMove, setDanceMove] = useState(null);
+  const [followId, setFollowId] = useState(null);        // 🏃 따라갈 친구
+  const followRef = useRef(null);
+  followRef.current = followId ? (others[followId] || null) : null;
   useEffect(() => { if (danceRef) danceRef.current = danceMove; }, [danceMove, danceRef]);
   const [danceMenu, setDanceMenu] = useState(false);
   const DANCE_MOVES = [
@@ -1487,7 +1493,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
     let raf;
     const loop = () => {
       try {
-      const SPEED = 4.2 * (vehicleRef.current ? vehicleRef.current.speed : 1);
+      const SPEED = 3.5 * (vehicleRef.current ? vehicleRef.current.speed : 1);
       const k = keys.current;
       let { x, y } = posRef.current;
       let dx = 0, dy = 0;
@@ -1495,6 +1501,13 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
       if (k["ArrowRight"] || k["d"]) dx += 1;
       if (k["ArrowUp"] || k["w"]) dy -= 1;
       if (k["ArrowDown"] || k["s"]) dy += 1;
+      // 🏃 따라가기 : 키 입력이 없으면 친구 쪽으로 자동 이동 (70px 이내면 멈춤)
+      const fo = followRef.current;
+      if (!dx && !dy && fo && fo.v === "world") {
+        const gx = fo.x - x, gy = fo.y - y;
+        const gd = Math.hypot(gx, gy);
+        if (gd > 70) { dx = gx / gd; dy = gy / gd; }
+      }
       if (dx || dy) {
         const px = posRef.current.x;
         const len = Math.hypot(dx, dy) || 1;
@@ -1515,7 +1528,8 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
       for (const o of WORLD_OBJS) {
         if (!o.r) continue;
         const d = Math.hypot(x - o.x, y - (o.y + 20));
-        if (d < o.r && d < best) { best = d; found = o; }
+        const reach = o.r * (vehicleRef.current ? 1.55 : 1);   // 탈것을 타면 조준이 쉽도록 넉넉하게
+        if (d < reach && d < best) { best = d; found = o; }
       }
       const key = found ? found.id : null;
       const prev = nearRef.current ? nearRef.current.id : null;
@@ -1679,6 +1693,13 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
           </div>
         </div>
 
+        {followId && others[followId] && (
+          <div style={{ position: "absolute", left: "50%", top: 56, transform: "translateX(-50%)", zIndex: 26, background: C.ink, color: C.gem, border: `2px solid ${C.gem}`, borderRadius: 20, padding: "6px 14px", fontSize: 12, fontFamily: "'DotGothic16', monospace", display: "flex", alignItems: "center", gap: 8 }}>
+            🏃 {others[followId].name} 따라가는 중
+            <button onClick={() => setFollowId(null)} style={{ background: C.danger, color: C.white, border: `2px solid ${C.gem}`, borderRadius: 10, cursor: "pointer", fontSize: 10.5, padding: "2px 8px", fontFamily: "inherit" }}>멈춤</button>
+          </div>
+        )}
+
         {/* 🌧 내가 있는 지역에 비가 오면 화면 위에 빗줄기 */}
         {(pos.x >= RIVER_X ? cmRain : townRain) && <RainLayer height={480} />}
 
@@ -1697,9 +1718,18 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
               <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", right: 0, top: "120%", background: C.parch, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 8, minWidth: 130, zIndex: 40, textAlign: "left", boxShadow: `0 3px 0 ${C.parchEdge}` }}>
                 <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 4 }}>접속 중</div>
                 <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 2 }}>🟢 {myNick || "나"} (나)</div>
-                {Object.values(others).map((o) => (
-                  <div key={o.id} style={{ fontSize: 12, marginBottom: 2 }}>🟢 {o.name}</div>
-                ))}
+                {Object.values(others).map((o) => {
+                  const on = followId === o.id;
+                  return (
+                    <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                      <span style={{ flex: 1, fontSize: 12, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🟢 {o.name}</span>
+                      <PxButton tone={on ? "danger" : "blue"} onClick={() => setFollowId(on ? null : o.id)} style={{ fontSize: 10, padding: "4px 7px" }}>
+                        {on ? "멈춤" : "🏃 따라가기"}
+                      </PxButton>
+                    </div>
+                  );
+                })}
+                {Object.keys(others).length === 0 && <div style={{ fontSize: 11, color: C.inkSoft }}>아직 다른 주민이 없어요</div>}
                 <div style={{ borderTop: `2px solid ${C.parchEdge}`, marginTop: 6, paddingTop: 6 }}>
                   <div style={{ fontSize: 10.5, color: netStatus === "접속됨" ? C.good : C.danger, fontWeight: "bold", marginBottom: 5 }}>
                     {netStatus === "접속됨" ? "🟢 연결됨" : `🔴 ${netStatus || "연결 안 됨"}`}
@@ -5129,31 +5159,48 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
 const SMOKE_PEOPLE = ["정인", "호중", "희정", "유리", "의준"];
 const SMOKE_LINES = ["오늘 왜이렇게 춥냐 ㅋㅋ", "커피 한잔 하실분~", "아 마감 언제끝나ㅠ", "날씨 좋다 그치", "점심 뭐먹지", "주말에 뭐함?", "일 너무 많아 진짜", "ㅋㅋㅋㅋㅋㅋ", "맞아맞아", "와 대박", "나 이제 끊을거야 (3일째)", "치앙마이 가고싶다", "한 대 피우고 가자", "오늘도 화이팅~"];
 
-function SmokeChat({ onClose }) {
-  const [msgs, setMsgs] = useState([{ who: "정인", text: "왔어? 여기 앉아 ㅋㅋ" }]);
+function SmokeChat({ onClose, myName = "", msgs = [], onSend }) {
   const [text, setText] = useState("");
-  const smokeRef = useAutoScroll(msgs);
-  useEffect(() => {
-    const iv = setInterval(() => {
-      setMsgs((m) => [...m.slice(-30), { who: SMOKE_PEOPLE[Math.floor(Math.random() * SMOKE_PEOPLE.length)], text: SMOKE_LINES[Math.floor(Math.random() * SMOKE_LINES.length)] }]);
-    }, 2500);
-    return () => clearInterval(iv);
-  }, []);
-  const send = () => { const t = text.trim(); if (!t) return; setMsgs((m) => [...m, { who: "나", text: t, me: true }]); setText(""); };
+  const smokeRef = useAutoScroll(msgs.length);
+  const net = useContext(NetContext);
+  /* 지금 흡연의 방에 있는 사람들 */
+  const here = net && net.others ? Object.values(net.others).filter((o) => o.v === "smoke") : [];
+  const send = () => { const t = text.trim(); if (!t) return; onSend && onSend(t); setText(""); };
+  const me = myName || "나";
   return (
-    <RoomModal title="💬 재떨이 수다방" onClose={onClose} maxW={400}>
-      <div ref={smokeRef} style={{ height: 280, overflow: "auto", background: "#efe6d2", border: `3px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 5 }}>
+    <RoomModal title="💬 재떨이 수다방" onClose={onClose} maxW={420}>
+      {/* 접속자 목록 */}
+      <div style={{ background: "#2a2420", border: `3px solid ${C.ink}`, borderRadius: 8, padding: "8px 10px", marginBottom: 8 }}>
+        <div style={{ fontSize: 10.5, color: "#c9b8a4", marginBottom: 5 }}>🚬 지금 여기 있는 사람 {here.length + 1}명</div>
+        <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11.5, background: C.gem, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 12, padding: "3px 9px", fontWeight: "bold" }}>🧑 {me} (나)</span>
+          {here.map((o) => (
+            <span key={o.id} style={{ fontSize: 11.5, background: "#4a3f36", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 12, padding: "3px 9px" }}>🟢 {o.name}</span>
+          ))}
+          {here.length === 0 && <span style={{ fontSize: 11, color: "#8a7a6a", alignSelf: "center" }}>아직 혼자예요… 담배 한 대 태우며 기다려볼까요 🚬</span>}
+        </div>
+      </div>
+
+      <div ref={smokeRef} style={{ height: 260, overflow: "auto", background: "#efe6d2", border: `3px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 5 }}>
+        {msgs.length === 0 && (
+          <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 26, lineHeight: 1.8 }}>
+            아직 대화가 없어요 💬<br />먼저 말을 걸어보세요!
+          </div>
+        )}
         {msgs.map((m, i) => (
           <div key={i} style={{ alignSelf: m.me ? "flex-end" : "flex-start", maxWidth: "80%" }}>
             {!m.me && <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 1 }}>{m.who}</div>}
-            <div style={{ background: m.me ? C.gem : C.white, border: `2px solid ${C.ink}`, padding: "5px 9px", fontSize: 13 }}>{m.text}</div>
+            <div style={{ background: m.me ? C.gem : C.white, border: `2px solid ${C.ink}`, padding: "5px 9px", fontSize: 13, wordBreak: "break-word" }}>{m.text}</div>
+            <div style={{ fontSize: 9, color: C.inkSoft, textAlign: m.me ? "right" : "left", marginTop: 1 }}>{m.at}</div>
           </div>
         ))}
       </div>
       <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-        <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지 입력 후 Enter" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
-        <PxButton tone="good" onClick={send} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
+        <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지 입력 후 Enter"
+          style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+        <PxButton tone="good" disabled={!text.trim()} onClick={send} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
       </div>
+      <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginTop: 7 }}>흡연의 방에 있는 사람들과 실시간으로 대화해요</div>
     </RoomModal>
   );
 }
@@ -5209,7 +5256,7 @@ function VapeModal({ onClose }) {
   );
 }
 
-function SmokeView({ onBack, bubble }) {
+function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
   const [modal, setModal] = useState(null);
   const [winOpen, setWinOpen] = useState(false);
   const furniture = [
@@ -5220,7 +5267,7 @@ function SmokeView({ onBack, bubble }) {
   ];
   return (
     <RoomView title="흡연의 방" icon="🚬" sub="재떨이 수다방 · 담배/전자담배 · 창문 환기" bg={winOpen ? "#eef6f8" : "#dfe3e6"} roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!modal} headerBg="#7a8b99" bubble={bubble}>
-      {modal === "chat" && <SmokeChat onClose={() => setModal(null)} />}
+      {modal === "chat" && <SmokeChat onClose={() => setModal(null)} myName={myName} msgs={chat} onSend={onChat} />}
       {modal === "cig" && <CigaretteModal onClose={() => setModal(null)} />}
       {modal === "vape" && <VapeModal onClose={() => setModal(null)} />}
     </RoomView>
@@ -5229,6 +5276,10 @@ function SmokeView({ onBack, bubble }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724y", type: "업데이트", date: "2026-07-24", title: "🏃 친구 따라가기 · 🛵 탈것 조준 개선 · 💬 채팅 중복 수정",
+    body: "· 우측 상단 접속자 목록에서 「🏃 따라가기」 를 누르면 그 친구를 자동으로 쫓아가요 (70px 이내면 멈춤)\n· 방향키를 누르면 내 조작이 우선이고, 상단 배너의 「멈춤」 으로 해제합니다\n· 🛵 탈것을 타면 건물 입장 판정 범위가 1.55배 넓어져 조준이 쉬워요\n· 기본 걷기 속도를 4.2 → 3.5 로 살짝 줄였어요 (탈것 속도는 그대로 배율 적용)\n· 💬 내가 보낸 채팅이 한 번 더 뜨던 중복 문제를 고쳤어요" },
+  { id: "u20260724x", type: "업데이트", date: "2026-07-24", title: "🚬 재떨이 수다방 실시간 채팅",
+    body: "· 자동으로 흘러가던 NPC 대화를 없애고, 실제 접속자들끼리 대화하도록 바꿨어요\n· 채팅창 위에 지금 흡연의 방에 있는 사람 목록이 나와요 (나는 노란색, 다른 사람은 🟢)\n· 보낸 시각도 함께 표시됩니다\n· 혼자면 「아직 혼자예요… 담배 한 대 태우며 기다려볼까요 🚬」 라고 알려줘요" },
   { id: "u20260724w", type: "업데이트", date: "2026-07-24", title: "🏠 슬이네·상하네 입주 안 되던 문제 수정",
     body: "· 현관 비밀번호가 브라우저에 하나만 저장돼서, 이름을 바꿔 접속하면 「이미 비번 있음」으로 처리돼 환영 화면이 안 뜨던 문제를 고쳤어요\n· 이제 비밀번호를 이름별로 따로 저장합니다\n· 집 주인 판정을 넓혔어요 — 「슬이네」는 슬이·슬, 「정인이네」는 정인·정인이 모두 주인으로 인정해요\n· 남의 집 방문 시 표시되는 주인 이름도 정확해졌어요" },
   { id: "u20260724v", type: "업데이트", date: "2026-07-24", title: "📮 피드백 익명 · 삭제 · 확인 체크",
@@ -7192,6 +7243,10 @@ function EchoTown() {
     setCutCfg(n); saveJSON(SPRITE_CUT_KEY, n);
   };
 
+  /* 🚬 흡연의 방 수다방 (실시간) */
+  const [smokeChat, setSmokeChat] = useState([]);
+  const pushSmoke = useCallback((row) => setSmokeChat((v) => [...v, row].slice(-80)), []);
+
   /* 💬 회의실 채팅 */
   const [meetingChat, setMeetingChat] = useState({});
   const pushMeetingChat = useCallback((room, row) => {
@@ -7561,7 +7616,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qlock" || kind === "qleave" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qlock" || kind === "qleave" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "inviteack") {
@@ -7609,6 +7664,7 @@ function EchoTown() {
       }
       if (kind === "worry") { if (p.row) setWorries((v) => (v.some((x) => x.id === p.row.id) ? v : [p.row, ...v].slice(0, 80))); return; }
       if (kind === "mchat") { if (p.who !== (myName || "나")) pushMeetingChat(p.room, { who: p.who, text: p.text, me: false }); return; }
+      if (kind === "schat") { if (p.who !== (myName || "나")) pushSmoke({ who: p.who, text: p.text, me: false, at: p.at }); return; }
       if (kind === "dm") { pushDm(p.from, { me: false, text: p.text }); pushMsg("dm", { from: p.from, text: p.text }); showNotice(`💬 ${p.from}님: ${String(p.text).slice(0, 20)}`); }
       if (kind === "call") {
         playBell();
@@ -7903,7 +7959,12 @@ function EchoTown() {
         {view === "minigame" && <MiniGameRoom myName={myName} people={people} onBack={backToWorld} onReward={(n) => awardGold(n)} bubble={bubble} liarGame={liarGame} onLiarAction={lgAction} />}
         {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => awardGold(n)} scores={swimScores} onRecord={(nick, time) => { setSwimScores((s) => [...s, { nick, time }]); bump("swim"); dbAddRank("swim", nick, time, null).then(reloadRanks); }} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => { awardGold(4); bump("gym"); }} bubble={bubble} />}
-        {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
+        {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} myName={myName} chat={smokeChat}
+          onChat={(t) => {
+            const at = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+            pushSmoke({ who: myName || "나", text: t, me: true, at });
+            if (netSendEvent) netSendEvent("schat", { who: myName || "나", text: t, at });
+          }} />}
         {view === "coredict" && <CoreDictView myName={myName} onBack={backToWorld} netCount={netCount}
           dict={dict} gallery={gallery} onSaveWord={saveWord} onDelWord={delWord}
           onAddPhotos={addPhotos} onCaption={setCaption} onDelPhoto={delPhoto} onSync={askSync} />}
