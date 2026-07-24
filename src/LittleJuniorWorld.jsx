@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v34 · 2026-07-24";
+const APP_VERSION = "v35 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -1474,14 +1474,20 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,created_at").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
-      .map((n) => ({ id: "db" + n.id, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
+      .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
   } catch (e) { return []; }
 }
-async function dbAddNotice(type, title, body) {
-  try { const s = await getSupa(); await s.from("notices").insert({ type, title, body: body || null }); } catch (e) {}
+async function dbAddNotice(type, title, body, uid) {
+  try { const s = await getSupa(); await s.from("notices").insert({ type, title, body: body || null, uid: uid || null }); } catch (e) {}
+}
+async function dbEditNotice(id, title, body) {
+  try { const s = await getSupa(); await s.from("notices").update({ title, body: body || null }).eq("id", id); return true; } catch (e) { return false; }
+}
+async function dbDelNotice(id) {
+  try { const s = await getSupa(); await s.from("notices").delete().eq("id", id); return true; } catch (e) { return false; }
 }
 
 function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef, roomPosRef, danceRef, houseRef, lookRef, carryRef, petRef) {
@@ -1554,6 +1560,12 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
         });
         ch.on("broadcast", { event: "dictres" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("dictres", payload);
+        });
+        ch.on("broadcast", { event: "rec" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("rec", payload);
+        });
+        ch.on("broadcast", { event: "reel" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("reel", payload);
         });
         ch.on("broadcast", { event: "schat" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("schat", payload);
@@ -3031,7 +3043,7 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, setSongs, onPlayY
 }
 
 /* ======================= 릴스방(핸드폰 · 동물/쾌감/밈 + 카테고리 추가) ======================= */
-function ReelsView({ onBack, bubble }) {
+function ReelsView({ onBack, bubble, extraCats = {}, onAddCat }) {
   const [open, setOpen] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addText, setAddText] = useState("");
@@ -3055,15 +3067,16 @@ function ReelsView({ onBack, bubble }) {
     if (!name) return;
     const key = "c" + Date.now();
     const palette = ["#bfe3c8", "#f6d8e5", "#cdeaf4", "#f1e2b0", "#e7cfe9", "#dfe3e6"];
-    setReels((r) => ({ ...r, [key]: { label: name, bg: palette[Object.keys(r).length % palette.length], title: `${name} 릴스 🎬`, content: <div style={{ fontSize: 46 }}>🎬✨</div> } }));
+    onAddCat && onAddCat(key, { label: name, bg: palette[Object.keys(reels).length % palette.length], title: `${name} 릴스 🎬` });
     setAddText(""); setAddOpen(false);
   };
 
   const phoneColors = ["#3fa07a", "#5b8def", "#e0a13d", "#d76b96", "#8e5a9e", "#c0563a"];
-  const cats = Object.keys(reels);
+  const merged = useMemo(() => ({ ...reels, ...Object.fromEntries(Object.entries(extraCats).map(([k, v]) => [k, { ...v, content: <div style={{ fontSize: 46 }}>🎬✨</div> }])) }), [reels, extraCats]);
+  const cats = Object.keys(merged);
   const furniture = cats.map((key, i) => {
     const col = i % 4, row = Math.floor(i / 4);
-    return { id: key, x: 40 + col * 150, y: 90 + row * 170, w: 90, h: 150, color: phoneColors[i % phoneColors.length], emoji: "📱", label: reels[key].label, onInteract: () => setOpen(key) };
+    return { id: key, x: 40 + col * 150, y: 90 + row * 170, w: 90, h: 150, color: phoneColors[i % phoneColors.length], emoji: "📱", label: merged[key].label, onInteract: () => setOpen(key) };
   });
 
   const banner = (
@@ -3085,12 +3098,12 @@ function ReelsView({ onBack, bubble }) {
         </RoomModal>
       )}
       {open && (
-        <RoomModal title={`📱 릴스 · ${reels[open].label}`} onClose={() => setOpen(null)} maxW={320}>
+        <RoomModal title={`📱 릴스 · ${merged[open].label}`} onClose={() => setOpen(null)} maxW={320}>
           <div style={{ margin: "0 auto", width: 230, background: "#111", border: "6px solid #000", borderRadius: 24, padding: "12px 10px" }}>
             <div style={{ width: 56, height: 6, background: "#333", borderRadius: 6, margin: "0 auto 8px" }} />
-            <div style={{ aspectRatio: "9/16", background: reels[open].bg, border: "2px solid #000", borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-              {reels[open].content}
-              <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, color: "#fff", fontSize: 12, textShadow: "1px 1px 0 #000" }}>{reels[open].title}</div>
+            <div style={{ aspectRatio: "9/16", background: merged[open].bg, border: "2px solid #000", borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+              {merged[open].content}
+              <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, color: "#fff", fontSize: 12, textShadow: "1px 1px 0 #000" }}>{merged[open].title}</div>
             </div>
             <div style={{ display: "flex", justifyContent: "space-around", marginTop: 8, fontSize: 18 }}><span>❤️</span><span>💬</span><span>🔁</span><span>🔖</span></div>
           </div>
@@ -3618,10 +3631,10 @@ const JJEOP_MENU = [
   { name: "제육볶음", emoji: "🍳" },
 ];
 const jjeopPick = () => JJEOP_MENU[Math.floor(Math.random() * JJEOP_MENU.length)];
-function JjeopView({ onBack, bubble, onReward }) {
+function JjeopView({ onBack, bubble, onReward, myName = "", recList = [], onRec }) {
   const [modal, setModal] = useState(null);
   const [today, setToday] = useState(null);
-  const [recList, setRecList] = useState([{ nick: "정인", text: "저 오늘 국밥 땡겨요...🍚" }, { nick: "도희", text: "마라탕 각인데?" }]);
+  
   const [recText, setRecText] = useState("");
   const [recNick, setRecNick] = useState("");
   const [step, setStep] = useState(1);
@@ -3642,7 +3655,7 @@ function JjeopView({ onBack, bubble, onReward }) {
   };
   const postRec = () => {
     if (!recText.trim()) return;
-    setRecList((v) => [...v, { nick: recNick.trim() || "익명", text: recText.trim() }]);
+    onRec && onRec(recNick.trim() || myName || "익명", recText.trim());
     setRecText("");
   };
   const furniture = [
@@ -5675,6 +5688,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724ff", type: "업데이트", date: "2026-07-24", title: "🌐 공유 안 되던 것들 정리",
+    body: "· 📋 게시판 글은 이제 쓴 사람만 ✏️ 수정 · 🗑 삭제 할 수 있어요 (내 글에는 「✍️ 내가 쓴 글」 표시)\n· 🍴 쩝쩝박사 메뉴 추천이 저장되고 모두에게 공유돼요 (예전엔 새로고침하면 사라졌어요)\n· 📱 릴스방에서 추가한 카테고리도 저장되고 공유됩니다\n· 새로 접속하면 지금까지 쌓인 추천·카테고리를 자동으로 받아와요" },
   { id: "u20260724ee", type: "업데이트", date: "2026-07-24", title: "🖱 가구 클릭 · 🐟 수족관 일원화",
     body: "· 가구를 마우스로 눌러도 작동해요 — 예전엔 다가가서 스페이스바를 눌러야만 했어요\n· 수족관 · 메모장 · 냉장고 · 마당 · 회의실 등 모든 가구에 적용됩니다\n· 🛒 이케아에서 팔던 수족관을 없앴어요\n· 이미 이케아에서 산 수족관도 자동으로 정리됩니다\n· 이제 수족관은 🐾 형욱이네에서만 살 수 있어요" },
   { id: "u20260724dd", type: "업데이트", date: "2026-07-24", title: "🐾 형욱이네 · 📜 팝업 스크롤 · 📋 게시판 정리",
@@ -5781,8 +5796,9 @@ const UPDATE_NOTES = [
     body: "· 같은 방 안에서도 서로 보여요\n· 채팅·말풍선·춤·옷·집 외관이 실시간으로 공유돼요\n· 말풍선이 50자까지 줄바꿈돼요\n· 🔊 배경음악·리스닝방 볼륨 조절\n· 🏅 뱃지 시스템 (방문·소통·운동·흡연·샌드백·보스맵·노래)\n· 📖 게임 내 사용설명서 추가 (장소 바로가기 포함)\n· 입력창에서 방향키·스페이스가 막히던 문제 해결" },
 ];
 
-function BoardView({ onBack, myName = "" }) {
+function BoardView({ onBack, myName = "", myUid = "" }) {
   const [dbList, setDbList] = useState([]);
+  const [edit, setEdit] = useState(null);   // 내가 쓴 글 수정
   const [wOpen, setWOpen] = useState(false);
   const [wType, setWType] = useState("공지");
   const [wTitle, setWTitle] = useState("");
@@ -5793,7 +5809,7 @@ function BoardView({ onBack, myName = "" }) {
   useEffect(() => { reload(); }, []);
   const post = () => {
     if (!wTitle.trim()) return;
-    dbAddNotice(wType, wTitle.trim(), wBody.trim()).then(() => { setWTitle(""); setWBody(""); setWOpen(false); reload(); });
+    dbAddNotice(wType, wTitle.trim(), wBody.trim(), myUid).then(() => { setWTitle(""); setWBody(""); setWOpen(false); reload(); });
   };
   const [tab, setTab] = useState("notice");
   const [openDoc, setOpenDoc] = useState(null);
@@ -5808,6 +5824,25 @@ function BoardView({ onBack, myName = "" }) {
     <Panel style={{ padding: 0, overflow: "hidden" }}>
       <TitleBar icon="📋" title="게시판" sub="공지사항 · 2026년 7월 캘린더" onBack={onBack} bg={C.wood} fg={C.white}
         right={<PxButton tone="gold" onClick={() => setWOpen(true)} style={{ fontSize: 11, padding: "5px 10px" }}>✍️ 글쓰기</PxButton>} />
+      {edit && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120, padding: 14 }} onClick={() => setEdit(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 400, maxHeight: "calc(100vh - 28px)", overflowY: "auto" }}>
+            <Panel style={{ padding: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 22 }}>✏️</span>
+                <b style={{ flex: 1, fontSize: 15 }}>내 글 수정</b>
+                <PxButton tone="ink" onClick={() => setEdit(null)} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+              </div>
+              <input value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} placeholder="제목"
+                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, marginBottom: 8 }} />
+              <textarea value={edit.body} onChange={(e) => setEdit({ ...edit, body: e.target.value })} rows={6} placeholder="내용"
+                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "vertical" }} />
+              <PxButton tone="gold" disabled={!edit.title.trim()} onClick={() => dbEditNotice(edit.id, edit.title.trim(), edit.body.trim()).then(() => { setEdit(null); reload(); })}
+                style={{ width: "100%", marginTop: 10, padding: 12, fontSize: 14 }}>수정 저장</PxButton>
+            </Panel>
+          </div>
+        </div>
+      )}
       {wOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={() => setWOpen(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 360 }}>
@@ -5892,13 +5927,22 @@ function BoardView({ onBack, myName = "" }) {
         {tab === "notice" && (
           <div style={{ display: "grid", gap: 8 }}>
             {[...dbList.filter((n) => n.type !== "모집" && n.type !== "업데이트" && !String(n.title || "").startsWith("[파티모집]")), ...ANNOUNCEMENTS].map((a) => (
-              <button key={a.id} onClick={() => setOpenDoc(a)} className="px-btn" style={{ textAlign: "left", background: C.white, border: `3px solid ${C.ink}`, padding: "10px 12px", cursor: "pointer", fontFamily: "'DotGothic16', monospace" }}>
-                <div style={{ fontSize: 14, fontWeight: "bold", display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 10, color: "#fff", background: a.type === "이벤트" ? "#d76b96" : "#5b8def", padding: "2px 6px", whiteSpace: "nowrap" }}>{a.type || "공지"}</span>
-                  {a.title}
-                </div>
-                <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 2 }}>{a.date} · 눌러서 열기</div>
-              </button>
+              <div key={a.id} style={{ background: C.white, border: `3px solid ${C.ink}`, padding: "10px 12px", fontFamily: "'DotGothic16', monospace" }}>
+                <button onClick={() => setOpenDoc(a)} style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+                  <div style={{ fontSize: 14, fontWeight: "bold", display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 10, color: "#fff", background: a.type === "이벤트" ? "#d76b96" : "#5b8def", padding: "2px 6px", whiteSpace: "nowrap" }}>{a.type || "공지"}</span>
+                    {a.title}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 2 }}>{a.date} · 눌러서 열기</div>
+                </button>
+                {a.rawId && myUid && a.uid === myUid && (
+                  <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                    <span style={{ flex: 1, fontSize: 10, color: C.good, alignSelf: "center", fontWeight: "bold" }}>✍️ 내가 쓴 글</span>
+                    <PxButton tone="wood" onClick={() => setEdit({ id: a.rawId, title: a.title, body: a.body || "" })} style={{ fontSize: 10, padding: "4px 8px" }}>✏️ 수정</PxButton>
+                    <PxButton tone="danger" onClick={() => { if (window.confirm("이 글을 삭제할까요?")) dbDelNotice(a.rawId).then(reload); }} style={{ fontSize: 10, padding: "4px 8px" }}>🗑</PxButton>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}
@@ -7481,6 +7525,30 @@ function EchoTown() {
     else if (!g.caught && iAmLiar) { awardGold(15); showNotice("😈 끝까지 속였어요! 🪙15 획득"); }
   }, [liarGame]);
 
+  /* 🍴 쩝쩝박사 메뉴 추천 — 저장 + 모두 공유 */
+  const REC_KEY = "echotown_recs_v1";
+  const [recList, setRecList] = useState(() => {
+    const v = loadJSON(REC_KEY, null);
+    return Array.isArray(v) ? v : [{ id: 1, nick: "정인", text: "저 오늘 국밥 땡겨요...🍚" }, { id: 2, nick: "도희", text: "마라탕 각인데?" }];
+  });
+  const recRef = useRef(recList); recRef.current = recList;
+  useEffect(() => { saveJSON(REC_KEY, recList.slice(-60)); }, [recList]);
+  const addRec = (nick, text) => {
+    const row = { id: Date.now() + Math.random(), nick, text };
+    setRecList((v) => [...v, row].slice(-60));
+    if (netSendEvent) netSendEvent("rec", { row });
+  };
+
+  /* 📱 릴스 카테고리 — 저장 + 모두 공유 */
+  const REEL_KEY = "echotown_reels_v1";
+  const [reelExtra, setReelExtra] = useState(() => { const v = loadJSON(REEL_KEY, null); return (v && typeof v === "object") ? v : {}; });
+  const reelRef = useRef(reelExtra); reelRef.current = reelExtra;
+  useEffect(() => { saveJSON(REEL_KEY, reelExtra); }, [reelExtra]);
+  const addReel = (key, data) => {
+    setReelExtra((v) => ({ ...v, [key]: data }));
+    if (netSendEvent) netSendEvent("reel", { key, data });
+  };
+
   /* 💌 마음의 방 — 저장 + 접속자 모두와 공유 (익명) */
   const WORRY_KEY = "echotown_worries_v1";
   const [worries, setWorries] = useState(() => { const v = loadJSON(WORRY_KEY, []); return Array.isArray(v) ? v : []; });
@@ -8101,7 +8169,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qlock" || kind === "qleave" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qlock" || kind === "qleave" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "inviteack") {
@@ -8122,7 +8190,7 @@ function EchoTown() {
       if (kind === "dictreq") {
         if (p.from === (myName || "")) return;
         const mine = dictRef.current || [];
-        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current });
+        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current });
         const gs = galRef.current || [];
         gs.slice(0, 12).forEach((ph, i) => setTimeout(() => { if (netSendEvent) netSendEvent("gal", { photo: ph }); }, 350 * (i + 1)));
         return;
@@ -8131,6 +8199,8 @@ function EchoTown() {
         if (p.dict) setDict((v) => mergeDict(p.dict, v));
         if (p.maps) setBossMaps((v) => mergeMaps(BOSS_MAPS_INIT, mergeMaps(v, p.maps)));
         if (Array.isArray(p.fb)) setFeedback((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.fb.filter((x) => !ids.has(x.id))].sort((a, b) => b.id - a.id).slice(0, 60); });
+        if (Array.isArray(p.rec)) setRecList((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.rec.filter((x) => !ids.has(x.id))].slice(-60); });
+        if (p.reel && typeof p.reel === "object") setReelExtra((v) => ({ ...p.reel, ...v }));
         if (Array.isArray(p.worry)) setWorries((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.worry.filter((x) => !ids.has(x.id))].sort((a, b) => b.id - a.id).slice(0, 80); });
         return;
       }
@@ -8147,6 +8217,8 @@ function EchoTown() {
         if (p.req) { const g = lgRef.current; if (g && g.host === (myName || "나")) lgApplyRef.current && lgApplyRef.current(p.req.type, p.req.payload, p.req.from); }
         return;
       }
+      if (kind === "rec") { if (p.row) setRecList((v) => (v.some((x) => x.id === p.row.id) ? v : [...v, p.row].slice(-60))); return; }
+      if (kind === "reel") { if (p.key) setReelExtra((v) => ({ ...v, [p.key]: p.data })); return; }
       if (kind === "worry") { if (p.row) setWorries((v) => (v.some((x) => x.id === p.row.id) ? v : [p.row, ...v].slice(0, 80))); return; }
       if (kind === "mchat") { if (p.who !== (myName || "나")) pushMeetingChat(p.room, { who: p.who, text: p.text, me: false }); return; }
       if (kind === "schat") { if (p.who !== (myName || "나")) pushSmoke({ who: p.who, text: p.text, me: false, at: p.at }); return; }
@@ -8440,7 +8512,7 @@ function EchoTown() {
         {view === "thanks" && <ThanksView gems={gold} inventory={thanksInv} postits={postits} onBuy={(it) => { setGold((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={(p) => setPostits((v) => [...v, { ...p, id: Date.now() }])} onBack={backToWorld} bubble={bubble} />}
         {view === "heart" && <HeartView gems={gold} worries={worries} onPost={(text, cost, kind) => { setGold((g) => g - cost); addWorry(text, kind); }} onBack={backToWorld} bubble={bubble} />}
         {view === "listening" && <ListeningView onBack={backToWorld} gems={gold} onSpend={(n) => setGold((g) => g - n)} bubble={bubble} songs={songs} setSongs={setSongs} onPlayYt={playYt} ytNow={ytNow} />}
-        {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} />}
+        {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} extraCats={reelExtra} onAddCat={addReel} />}
         {view === "minigame" && <MiniGameRoom myName={myName} people={people} onBack={backToWorld} onReward={(n) => awardGold(n)} bubble={bubble} liarGame={liarGame} onLiarAction={lgAction} />}
         {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => awardGold(n)} scores={swimScores} onRecord={(nick, time) => { setSwimScores((s) => [...s, { nick, time }]); bump("swim"); dbAddRank("swim", nick, time, null).then(reloadRanks); }} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => { awardGold(4); bump("gym"); }} bubble={bubble} />}
@@ -8527,7 +8599,7 @@ function EchoTown() {
         {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} />}
         {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count, target) => { setBoxScores((s) => [...s, { nick, count, target }]); bump("punch", count); dbAddRank("sandbag", nick, count, target).then(reloadRanks); }} />}
         {view === "musinsa" && <MusinsaView gems={gold} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
-        {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} onReward={(n) => awardGold(n)} />}
+        {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} onReward={(n) => awardGold(n)} myName={myName} recList={recList} onRec={addRec} />}
         {view === "board" && <BoardView myName={myName} onBack={backToWorld} />}
         {view === "bank" && <BankView gems={gems} lifetime={lifetime} exchanged={exchanged} history={history} onExchange={doExchange} onBack={backToWorld} />}
         {view === "rent" && rentMeta && <RentView house={rentMeta} gems={gold} rented={!!rented[rentId]} onRent={() => { setGold((g) => g - rentMeta.rent); setRented((r) => ({ ...r, [rentId]: true })); }} onBack={backToWorld} />}
