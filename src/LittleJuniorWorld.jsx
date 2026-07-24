@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v23 · 2026-07-24";
+const APP_VERSION = "v26 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -79,6 +79,17 @@ const HOUSES = [
   { id: "h9", name: "슬이네", owner: "슬이", roof: "#7bbf8f", roofDk: "#4f8f66", wall: "#dff0e2" },
   { id: "h10", name: "상하네", owner: "상하", roof: "#e08a5a", roofDk: "#b96a3e", wall: "#f7ddc9" },
 ];
+/* 이 집의 주인으로 인정하는 이름들.
+   「슬이네」는 슬이·슬 둘 다, 「정인이네」는 정인·정인이 둘 다 주인으로 봅니다. */
+function houseOwnerNames(h) {
+  const out = new Set();
+  const add = (v) => { if (v && v.trim()) out.add(v.trim()); };
+  if (h.owner) { add(h.owner); add(h.owner.replace(/이$/, "")); }
+  const n = h.name || "";
+  if (/이네$/.test(n)) { add(n.slice(0, -2)); add(n.slice(0, -1)); }   // 「정인이네」 → 정인 · 정인이
+  else if (/네$/.test(n)) { add(n.slice(0, -1)); }                     // 「상하네」 → 상하
+  return [...out];
+}
 
 /* 선물 종류별로 할 수 있는 행동이 달라요.
    carry(들고다니기) · home(집에 두기) · eat(먹기) · fridge(냉장고 보관) */
@@ -1284,6 +1295,12 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
         ch.on("broadcast", { event: "dictres" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("dictres", payload);
         });
+        ch.on("broadcast", { event: "worry" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("worry", payload);
+        });
+        ch.on("broadcast", { event: "lg" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("lg", payload);
+        });
         ch.on("broadcast", { event: "fb" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("fb", payload);
         });
@@ -2208,7 +2225,7 @@ function HouseGate({ house, isMine, myName, hasPw, onSetPw, onEnter, onBell, onM
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [msg, setMsg] = useState(null);
-  const owner = (house.name || "").replace(/이네$|네$/, "");
+  const owner = house.owner || (house.name || "").replace(/이네$|네$/, "");
   const say = (m) => { setMsg(m); setTimeout(() => setMsg(null), 1800); };
 
   if (isMine && !hasPw) {
@@ -2772,295 +2789,157 @@ const LIAR_LINES = [
 ];
 const LIAR_CHAT = ["ㅋㅋㅋㅋ", "아 뭔가 수상한데", "지금 눈 굴렸어 방금", "나 진짜 아님", "얘 말투 이상해", "빨리빨리~", "표정 관리 좀", "오 방금 티났다", "음~ 글쎄요", "저 사람 각인데?"];
 
-function LiarGame({ onClose, onReward, myName = "", people = [] }) {
-  const [phase, setPhase] = useState("lobby");
-  const [cat, setCat] = useState("랜덤");
-  const [size, setSize] = useState(5);
-  const [players, setPlayers] = useState([{ name: myName || "나", avatar: "🧑‍💻" }]);
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [invited, setInvited] = useState({});
-  const [toast, setToast] = useState(null);
-  const [word, setWord] = useState("");
-  const [usedCat, setUsedCat] = useState("");
-  const [liarIdx, setLiarIdx] = useState(0);
-  const [turnIdx, setTurnIdx] = useState(-1);
-  const [bubbles, setBubbles] = useState({});
-  const [log, setLog] = useState([]);
-  const logRef = useAutoScroll(log);
+/* ===== 🕵️ 라이어 게임 (실제 접속자 멀티플레이) =====
+   방을 만든 사람이 호스트가 되어 상태를 관리하고, 나머지는 행동만 보냅니다.
+   호스트가 계산한 결과를 모두에게 방송해 화면을 맞춥니다. */
+function LiarGame({ onClose, onReward, myName = "", people = [], game, onAction }) {
   const [text, setText] = useState("");
-  const [votes, setVotes] = useState(null);
-  const [guess, setGuess] = useState("");
-  const [outcome, setOutcome] = useState(null);
-  const timers = useRef([]);
-  const logEnd = useRef(null);
-  const iAmLiar = liarIdx === 0;
-  const myTurn = phase === "round" && turnIdx === 0;
+  const [cat, setCat] = useState("랜덤");
+  const logRef = useAutoScroll(game && game.log ? game.log.length : 0);
+  const me = myName || "나";
+  const g = game || null;
+  const inRoom = !!(g && g.players && g.players.includes(me));
+  const isHost = !!(g && g.host === me);
+  const iAmLiar = !!(g && g.liar === me);
+  const myTurn = !!(g && g.phase === "hint" && g.players[g.turn] === me);
+  const alive = (g && g.players) || [];
 
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-  useEffect(() => { if (logEnd.current) logEnd.current.scrollIntoView({ behavior: "smooth" }); }, [log]);
+  const send = (type, payload) => onAction && onAction(type, payload || {});
 
-  const say = (idx, txt, kind) => {
-    const id = Date.now() + Math.random();
-    setBubbles((b) => ({ ...b, [idx]: { text: txt, id } }));
-    setLog((l) => [...l.slice(-40), { who: players[idx] ? players[idx].name : "?", text: txt, kind }]);
-    const t = setTimeout(() => setBubbles((b) => (b[idx] && b[idx].id === id ? { ...b, [idx]: null } : b)), 4200);
-    timers.current.push(t);
-  };
-  const showToast = (m) => { setToast(m); const t = setTimeout(() => setToast(null), 1600); timers.current.push(t); };
-
-  useEffect(() => {
-    if (phase !== "round") return;
-    if (turnIdx <= 0 || turnIdx >= players.length) {
-      if (turnIdx >= players.length && players.length > 1) { const t = setTimeout(() => setPhase("vote"), 900); timers.current.push(t); }
-      return;
-    }
-    const t = setTimeout(() => {
-      say(turnIdx, LIAR_LINES[Math.floor(Math.random() * LIAR_LINES.length)], "turn");
-      setTurnIdx((v) => v + 1);
-    }, 1500);
-    timers.current.push(t);
-    return () => clearTimeout(t);
-  }, [phase, turnIdx, players.length]);
-
-  useEffect(() => {
-    if (phase !== "round" && phase !== "vote") return;
-    const iv = setInterval(() => {
-      if (players.length < 2) return;
-      const i = 1 + Math.floor(Math.random() * (players.length - 1));
-      say(i, LIAR_CHAT[Math.floor(Math.random() * LIAR_CHAT.length)], "chat");
-    }, 5200);
-    return () => clearInterval(iv);
-  }, [phase, players.length]);
-
-  const invite = (p) => {
-    if (players.length >= size) { showToast("자리가 가득 찼어요"); return; }
-    if (invited[p.name]) return;
-    setInvited((v) => ({ ...v, [p.name]: "sent" }));
-    showToast(`📨 ${p.name}님에게 초대장을 보냈어요`);
-    const t = setTimeout(() => {
-      setInvited((v) => ({ ...v, [p.name]: "joined" }));
-      setPlayers((ps) => (ps.length < size && !ps.find((x) => x.name === p.name) ? [...ps, { name: p.name, avatar: p.avatar }] : ps));
-      showToast(`✅ ${p.name}님이 입장했어요!`);
-    }, 1300);
-    timers.current.push(t);
-  };
-
-  const start = () => {
-    const cats = Object.keys(LIAR_TOPICS);
-    const useCat = cat === "랜덤" ? cats[Math.floor(Math.random() * cats.length)] : cat;
-    const list = LIAR_TOPICS[useCat];
-    setUsedCat(useCat);
-    setWord(list[Math.floor(Math.random() * list.length)]);
-    setLiarIdx(Math.floor(Math.random() * players.length));
-    setBubbles({}); setLog([]); setVotes(null); setGuess(""); setOutcome(null); setTurnIdx(-1);
-    setPhase("reveal");
-  };
-
-  const sendChat = () => {
-    const t = text.trim(); if (!t) return;
-    say(0, t, myTurn ? "turn" : "chat");
-    setText("");
-    if (myTurn) setTurnIdx(1);
-  };
-
-  const doVote = (targetIdx) => {
-    const tally = { [targetIdx]: 1 };
-    for (let i = 1; i < players.length; i++) {
-      let v = Math.floor(Math.random() * players.length);
-      if (i === liarIdx && v === liarIdx) v = (v + 1) % players.length;
-      tally[v] = (tally[v] || 0) + 1;
-    }
-    let top = 0, best = -1;
-    Object.entries(tally).forEach(([k, n]) => { if (n > best) { best = n; top = Number(k); } });
-    setVotes({ tally, top });
-    if (top === liarIdx) {
-      if (iAmLiar) setPhase("guess");
-      else { setOutcome("win"); onReward && onReward(8); setPhase("result"); }
-    } else {
-      setOutcome(iAmLiar ? "liarwin" : "lose");
-      if (iAmLiar) onReward && onReward(10);
-      setPhase("result");
-    }
-  };
-  const submitGuess = () => {
-    const ok = guess.trim() === word;
-    setOutcome(ok ? "liarwin" : "lose");
-    if (ok) onReward && onReward(12);
-    setPhase("result");
-  };
-
-  const seatPos = (i, n) => {
-    const ang = (Math.PI / 2) + (i * 2 * Math.PI) / n;
-    return { left: `${50 + 38 * Math.cos(ang)}%`, top: `${50 + 33 * Math.sin(ang)}%` };
-  };
-
-  const Table = () => (
-    <div style={{ position: "relative", width: "100%", height: 230, background: "#2f2440", border: `3px solid ${C.ink}`, overflow: "visible", marginBottom: 8 }}>
-      <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: "44%", height: "42%", borderRadius: "50%", background: "#4a3a63", border: `3px solid ${C.ink}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ fontSize: 9, color: "#cfc0e8" }}>카테고리</span>
-        <b style={{ fontSize: 12, color: C.white }}>{usedCat || "-"}</b>
-      </div>
-      {players.map((p, i) => {
-        const pos = seatPos(i, players.length);
-        const active = phase === "round" && turnIdx === i;
-        const b = bubbles[i];
-        return (
-          <div key={i} style={{ position: "absolute", ...pos, transform: "translate(-50%,-50%)", textAlign: "center", zIndex: b ? 5 : 2 }}>
-            {b && (
-              <div className="chat-bubble" style={{ position: "absolute", bottom: "108%", left: "50%", transform: "translateX(-50%)", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "3px 7px", fontSize: 11, whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 150, lineHeight: 1.35, textAlign: "center" }}>{b.text}</div>
-            )}
-            <div style={{ fontSize: 26, filter: active ? "drop-shadow(0 0 6px #ffe680)" : "none" }}>{p.avatar}</div>
-            <div style={{ fontSize: 9, color: C.white, background: active ? "#a86e13" : "rgba(0,0,0,0.55)", border: `1px solid ${C.ink}`, padding: "0 4px", whiteSpace: "nowrap" }}>{p.name}</div>
-          </div>
-        );
-      })}
-    </div>
+  const Card = ({ children, tone }) => (
+    <div style={{ background: tone || C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 12, marginBottom: 10 }}>{children}</div>
   );
 
   return (
-    <RoomModal title="🕵️ 라이어 게임" onClose={onClose} maxW={440}>
-      {toast && <div style={{ position: "absolute", left: "50%", top: 8, transform: "translateX(-50%)", background: C.ink, color: C.white, border: `2px solid ${C.gem}`, padding: "5px 12px", fontSize: 12, zIndex: 50 }}>{toast}</div>}
-
-      {phase === "lobby" && (
+    <RoomModal title="🕵️ 라이어 게임" onClose={onClose} maxW={470}>
+      {/* ── 대기실 ── */}
+      {(!g || g.phase === "idle") && (
         <div>
-          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10 }}>방을 만들고 주민들을 초대해요. 라이어 한 명만 제시어를 몰라요!</div>
-          <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 5 }}>카테고리</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 12 }}>
+          <Card>
+            <div style={{ fontSize: 13, lineHeight: 1.9 }}>
+              제시어를 아는 <b>시민들</b> 사이에 <b style={{ color: C.danger }}>라이어</b> 한 명이 숨어 있어요.<br />
+              돌아가며 힌트를 말하고, 누가 라이어인지 투표로 찾아냅니다.
+            </div>
+            <div style={{ fontSize: 11.5, color: C.inkSoft, marginTop: 8, lineHeight: 1.7 }}>
+              · 3명 이상이면 시작할 수 있어요<br />
+              · 라이어는 제시어를 모른 채 아는 척해야 해요<br />
+              · 라이어를 잡으면 시민 🪙10, 라이어가 살아남으면 라이어 🪙15
+            </div>
+          </Card>
+          <PxButton tone="gold" onClick={() => send("create", { cat })} style={{ width: "100%", padding: 13, fontSize: 14 }}>🎮 방 만들기</PxButton>
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 8 }}>
             {["랜덤", ...Object.keys(LIAR_TOPICS)].map((c) => (
-              <PxButton key={c} tone={cat === c ? "good" : "wood"} onClick={() => setCat(c)} style={{ fontSize: 11, padding: "5px 9px" }}>{c === "랜덤" ? "🎲 랜덤" : c}</PxButton>
+              <PxButton key={c} tone={cat === c ? "good" : "wood"} onClick={() => setCat(c)} style={{ flex: "1 1 70px", fontSize: 11, padding: 7 }}>{c}</PxButton>
             ))}
           </div>
-          <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 5 }}>인원</div>
-          <div style={{ display: "flex", gap: 5, marginBottom: 14 }}>
-            {[4, 5, 6, 7].map((n) => (
-              <PxButton key={n} tone={size === n ? "gold" : "wood"} onClick={() => setSize(n)} style={{ fontSize: 12, padding: "6px 12px" }}>{n}명</PxButton>
-            ))}
+          <div style={{ fontSize: 11, color: C.inkSoft, textAlign: "center", marginTop: 10 }}>
+            누군가 방을 만들면 여기에 참가 버튼이 떠요 · 접속자 {people.length}명
           </div>
-          <PxButton tone="good" onClick={() => { setPlayers([{ name: myName || "나", avatar: "🧑‍💻" }]); setInvited({}); setPhase("wait"); }} style={{ width: "100%", padding: 11, fontSize: 14 }}>🚪 방 만들기</PxButton>
         </div>
       )}
 
-      {phase === "wait" && (
+      {/* ── 모집 중 ── */}
+      {g && g.phase === "lobby" && (
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <b style={{ fontSize: 13 }}>대기실 · {cat === "랜덤" ? "🎲 랜덤" : cat}</b>
-            <span style={{ fontSize: 11, color: C.inkSoft }}>{players.length}/{size}명</span>
-          </div>
-          <Table />
-          <div style={{ display: "flex", gap: 6 }}>
-            <PxButton tone="wood" onClick={() => setInviteOpen(true)} disabled={players.length >= size} style={{ flex: 1, padding: 9, fontSize: 12 }}>📨 초대하기</PxButton>
-            <PxButton tone="good" onClick={start} disabled={players.length < 4} style={{ flex: 1, padding: 9, fontSize: 12 }}>▶ 게임 시작 ({players.length}/4~)</PxButton>
-          </div>
-          {inviteOpen && (
-            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 95, padding: 14 }} onClick={() => setInviteOpen(false)}>
-              <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340 }}>
-                <Panel style={{ padding: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <b style={{ fontSize: 13 }}>🏘️ 마을 주민 초대</b>
-                    <PxButton tone="ink" onClick={() => setInviteOpen(false)} style={{ fontSize: 11, padding: "4px 8px" }}>✕</PxButton>
-                  </div>
-                  <div style={{ maxHeight: 260, overflow: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
-                    {(people.length ? people.filter((p) => !p.me) : PROFILES).map((p) => {
-                      const st = invited[p.name];
-                      return (
-                        <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `2px solid ${C.ink}`, padding: "6px 8px" }}>
-                          <span style={{ fontSize: 22 }}>{p.avatar}</span>
-                          <span style={{ flex: 1, fontSize: 12 }}><b>{p.name}</b><br /><span style={{ fontSize: 10, color: C.inkSoft }}>{p.job}</span></span>
-                          <PxButton tone={st === "joined" ? "good" : st === "sent" ? "ink" : "blue"} disabled={!!st} onClick={() => invite(p)} style={{ fontSize: 10, padding: "5px 8px" }}>{st === "joined" ? "참가중 ✓" : st === "sent" ? "발송됨…" : "초대장"}</PxButton>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Panel>
+          <Card tone="#fff5d6">
+            <div style={{ fontSize: 13, fontWeight: "bold" }}>🎮 {g.host}님의 방 · 주제 {g.cat}</div>
+            <div style={{ fontSize: 11.5, color: C.inkSoft, marginTop: 4 }}>3명 이상 모이면 시작할 수 있어요</div>
+          </Card>
+          <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>참가자 {alive.length}명</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 10, maxHeight: 150, overflow: "auto" }}>
+            {alive.map((n) => (
+              <div key={n} style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "7px 10px", fontSize: 13 }}>
+                🧑 {n}{n === g.host ? " 👑" : ""}{n === me ? " (나)" : ""}
               </div>
-            </div>
-          )}
+            ))}
+          </div>
+          {!inRoom
+            ? <PxButton tone="good" onClick={() => send("join")} style={{ width: "100%", padding: 12, fontSize: 14 }}>🙋 참가하기</PxButton>
+            : isHost
+              ? <PxButton tone="gold" disabled={alive.length < 3} onClick={() => send("start")} style={{ width: "100%", padding: 12, fontSize: 14 }}>
+                  {alive.length < 3 ? `${3 - alive.length}명 더 필요해요` : "▶ 게임 시작"}
+                </PxButton>
+              : <div style={{ fontSize: 12.5, color: C.inkSoft, textAlign: "center", padding: 10 }}>호스트가 시작하기를 기다리는 중… ⏳</div>}
+          {inRoom && <PxButton tone="ink" onClick={() => send("leave")} style={{ width: "100%", padding: 9, fontSize: 12, marginTop: 8 }}>나가기</PxButton>}
         </div>
       )}
 
-      {phase === "reveal" && (
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 6 }}>카테고리 · {usedCat}</div>
-          <div style={{ background: iAmLiar ? "#c0563a" : C.white, color: iAmLiar ? C.white : C.ink, border: `4px solid ${C.ink}`, padding: "22px 12px", marginBottom: 12 }}>
-            {iAmLiar ? (
-              <>
-                <div style={{ fontSize: 34 }}>🤫</div>
-                <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 14, marginTop: 8 }}>당신은 라이어!</div>
-                <div style={{ fontSize: 12, marginTop: 6 }}>제시어를 모르는 척 티 안 나게 말해보세요</div>
-              </>
+      {/* ── 힌트 / 투표 / 결과 ── */}
+      {g && (g.phase === "hint" || g.phase === "vote" || g.phase === "result") && (
+        <div>
+          <Card tone={iAmLiar ? "#fbe4e0" : "#e6f4ec"}>
+            <div style={{ fontSize: 11, color: C.inkSoft }}>주제 · {g.cat}</div>
+            {g.phase === "result" ? (
+              <div style={{ fontSize: 16, fontWeight: "bold", marginTop: 4 }}>제시어는 「{g.word}」 였어요</div>
+            ) : iAmLiar ? (
+              <div style={{ fontSize: 16, fontWeight: "bold", marginTop: 4, color: C.danger }}>🤫 당신은 라이어! 제시어를 몰라요</div>
             ) : (
-              <>
-                <div style={{ fontSize: 11, color: C.inkSoft }}>제시어</div>
-                <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 18, margin: "10px 0" }}>{word}</div>
-                <div style={{ fontSize: 12, color: C.inkSoft }}>라이어가 눈치채지 못하게 설명하세요</div>
-              </>
+              <div style={{ fontSize: 18, fontWeight: "bold", marginTop: 4 }}>제시어 · {g.word}</div>
             )}
-          </div>
-          <PxButton tone="good" onClick={() => { setPhase("round"); setTurnIdx(0); }} style={{ width: "100%", padding: 10, fontSize: 13 }}>확인했어요 ▶</PxButton>
-        </div>
-      )}
+          </Card>
 
-      {(phase === "round" || phase === "vote") && (
-        <div>
-          <Table />
-          {phase === "round" && (
-            <div style={{ fontSize: 12, textAlign: "center", marginBottom: 6, color: myTurn ? C.danger : C.inkSoft, fontWeight: myTurn ? "bold" : "normal" }}>
-              {myTurn ? "🎤 내 차례! 설명을 입력하세요" : `${players[Math.min(turnIdx, players.length - 1)] ? players[Math.min(turnIdx, players.length - 1)].name : ""} 님이 말하는 중...`}
-            </div>
-          )}
-          <div ref={logRef} style={{ height: 92, overflow: "auto", background: "#efe6d2", border: `2px solid ${C.ink}`, padding: 6, marginBottom: 6, display: "flex", flexDirection: "column", gap: 3 }}>
-            {log.map((l, i) => (
-              <div key={i} style={{ fontSize: 11 }}>
-                <b style={{ color: l.kind === "turn" ? "#a86e13" : "#5b8def" }}>{l.who}</b> {l.kind === "turn" ? "🎤" : "💬"} {l.text}
-              </div>
+          <div ref={logRef} style={{ height: 150, overflow: "auto", background: "#efe6d2", border: `2px solid ${C.ink}`, borderRadius: 6, padding: 8, marginBottom: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+            {(g.log || []).length === 0 && <div style={{ fontSize: 11.5, color: C.inkSoft }}>첫 힌트를 기다리는 중…</div>}
+            {(g.log || []).map((l, i) => (
+              <div key={i} style={{ fontSize: 12.5 }}><b style={{ color: "#5b8def" }}>{l.who}</b> {l.text}</div>
             ))}
-            <div ref={logEnd} />
           </div>
-          <div style={{ display: "flex", gap: 5, marginBottom: 8 }}>
-            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }} placeholder={myTurn ? "제시어 설명 (내 차례)" : "자유 채팅…"} style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 12, background: C.white }} />
-            <PxButton tone={myTurn ? "gold" : "good"} onClick={sendChat} style={{ fontSize: 12, padding: "7px 11px" }}>{myTurn ? "🎤 설명" : "전송"}</PxButton>
-          </div>
-          {phase === "vote" && (
+
+          {g.phase === "hint" && (
+            myTurn ? (
+              <div style={{ display: "flex", gap: 6 }}>
+                <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) { send("hint", { text: text.trim() }); setText(""); } }}
+                  autoFocus placeholder="한 마디로 힌트를 주세요" style={{ flex: 1, minWidth: 0, padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+                <PxButton tone="good" disabled={!text.trim()} onClick={() => { send("hint", { text: text.trim() }); setText(""); }} style={{ fontSize: 12, padding: "9px 12px" }}>말하기</PxButton>
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, textAlign: "center", padding: 10, color: C.inkSoft }}>
+                <b style={{ color: C.ink }}>{alive[g.turn]}</b> 님의 차례예요 ⏳
+              </div>
+            )
+          )}
+
+          {g.phase === "vote" && (
             <div>
-              <div style={{ fontSize: 13, fontWeight: "bold", marginBottom: 6 }}>🗳 누가 라이어일까요?</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                {players.map((p, i) => i !== 0 && (
-                  <PxButton key={i} tone="wood" onClick={() => doVote(i)} style={{ padding: 9, fontSize: 12 }}>{p.avatar} {p.name}</PxButton>
+              <div style={{ fontSize: 12.5, fontWeight: "bold", marginBottom: 6 }}>🗳 누가 라이어일까요?</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                {alive.filter((n) => n !== me).map((n) => (
+                  <PxButton key={n} tone={g.votes && g.votes[me] === n ? "good" : "wood"} onClick={() => send("vote", { target: n })} style={{ padding: 10, fontSize: 13 }}>
+                    🧑 {n}{g.votes && g.votes[me] === n ? " ✓" : ""}
+                  </PxButton>
                 ))}
               </div>
+              <div style={{ fontSize: 11, color: C.inkSoft, textAlign: "center", marginTop: 8 }}>
+                {Object.keys(g.votes || {}).length} / {alive.length} 명 투표함
+              </div>
             </div>
           )}
-        </div>
-      )}
 
-      {phase === "guess" && (
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 34 }}>😱</div>
-          <div style={{ fontSize: 14, margin: "8px 0" }}>들켰어요! 마지막 기회 — 제시어를 맞히면 역전승!</div>
-          <input value={guess} onChange={(e) => setGuess(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submitGuess(); }} placeholder="제시어는?" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: C.white }} />
-          <PxButton tone="gold" onClick={submitGuess} style={{ width: "100%", marginTop: 10, padding: 10, fontSize: 13 }}>정답 제출</PxButton>
-        </div>
-      )}
+          {g.phase === "result" && (
+            <div>
+              <Card tone={g.caught ? "#e6f4ec" : "#fbe4e0"}>
+                <div style={{ fontSize: 15, fontWeight: "bold", textAlign: "center" }}>
+                  {g.caught ? "🎉 라이어를 잡았어요!" : "😈 라이어가 살아남았어요!"}
+                </div>
+                <div style={{ fontSize: 13, textAlign: "center", marginTop: 6 }}>라이어는 <b style={{ color: C.danger }}>{g.liar}</b> 였습니다</div>
+                <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", marginTop: 6 }}>
+                  최다 득표 · {g.topVoted || "없음"}
+                </div>
+              </Card>
+              {isHost && <PxButton tone="gold" onClick={() => send("again")} style={{ width: "100%", padding: 12, fontSize: 14 }}>🔁 한 판 더</PxButton>}
+              <PxButton tone="ink" onClick={() => send("leave")} style={{ width: "100%", padding: 10, fontSize: 12, marginTop: 8 }}>나가기</PxButton>
+            </div>
+          )}
 
-      {phase === "result" && (
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 40 }}>{outcome === "win" ? "🎉" : outcome === "liarwin" ? "🕵️" : "😵"}</div>
-          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 14, margin: "8px 0" }}>
-            {outcome === "win" ? "라이어 검거 성공!" : outcome === "liarwin" ? "라이어 승리!" : "라이어가 도망쳤다..."}
-          </div>
-          <div style={{ fontSize: 13, marginBottom: 6 }}>라이어는 <b style={{ color: C.danger }}>{players[liarIdx] ? players[liarIdx].name : "?"}</b> 였어요</div>
-          <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10 }}>제시어 · {word} ({usedCat})</div>
-          {outcome === "win" && <div style={{ fontSize: 13, color: C.good, marginBottom: 10 }}>+8 🪙 획득!</div>}
-          {outcome === "liarwin" && <div style={{ fontSize: 13, color: C.good, marginBottom: 10 }}>🪙 획득!</div>}
-          <div style={{ display: "flex", gap: 8 }}>
-            <PxButton tone="ink" onClick={onClose} style={{ flex: 1, padding: 10, fontSize: 13 }}>나가기</PxButton>
-            <PxButton tone="good" onClick={() => setPhase("lobby")} style={{ flex: 1, padding: 10, fontSize: 13 }}>🔄 다시</PxButton>
+          <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 10 }}>
+            참가자 {alive.join(" · ")}
           </div>
         </div>
       )}
     </RoomModal>
   );
 }
+
 function MiniGameRoom({ onBack, onReward, bubble, myName = "", people = [] }) {
   const [game, setGame] = useState(null); // 'reaction' | 'rps' | 'sequence'
   const [contest, setContest] = useState(false);
@@ -3076,7 +2955,7 @@ function MiniGameRoom({ onBack, onReward, bubble, myName = "", people = [] }) {
       {game === "reaction" && <ReactionGame onClose={() => setGame(null)} onReward={onReward} />}
       {game === "rps" && <RpsGame onClose={() => setGame(null)} onReward={onReward} />}
       {game === "sequence" && <SequenceGame onClose={() => setGame(null)} onReward={onReward} />}
-      {game === "liar" && <LiarGame onClose={() => setGame(null)} onReward={onReward} myName={myName} people={people} />}
+      {game === "liar" && <LiarGame onClose={() => setGame(null)} onReward={onReward} myName={myName} people={people} game={liarGame} onAction={onLiarAction} />}
       {contest && <ContestModal onClose={() => setContest(false)} onPlay={(g) => { setContest(false); setGame(g); }} />}
     </RoomView>
   );
@@ -5350,6 +5229,12 @@ function SmokeView({ onBack, bubble }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724w", type: "업데이트", date: "2026-07-24", title: "🏠 슬이네·상하네 입주 안 되던 문제 수정",
+    body: "· 현관 비밀번호가 브라우저에 하나만 저장돼서, 이름을 바꿔 접속하면 「이미 비번 있음」으로 처리돼 환영 화면이 안 뜨던 문제를 고쳤어요\n· 이제 비밀번호를 이름별로 따로 저장합니다\n· 집 주인 판정을 넓혔어요 — 「슬이네」는 슬이·슬, 「정인이네」는 정인·정인이 모두 주인으로 인정해요\n· 남의 집 방문 시 표시되는 주인 이름도 정확해졌어요" },
+  { id: "u20260724v", type: "업데이트", date: "2026-07-24", title: "📮 피드백 익명 · 삭제 · 확인 체크",
+    body: "· 🕶 익명 체크박스가 생겼어요 — 체크하면 작성자가 「익명」으로 표시됩니다\n· 익명으로 올려도 본인 글은 지울 수 있어요 (이름 대신 브라우저 고유 ID로 판별)\n· 🗑 삭제는 작성자 본인만 가능해요\n· ✅ 확인 체크박스는 누구나 누를 수 있어요 — 누가 확인했는지도 표시됩니다\n· 전체 / 미확인 / 확인됨 으로 걸러볼 수 있어요" },
+  { id: "u20260724u", type: "업데이트", date: "2026-07-24", title: "🕵️ 라이어게임 실제 멀티플레이 · 💌 마음 우체통 공유",
+    body: "· 🕵️ 라이어 게임이 AI 상대가 아니라 실제 접속자들끼리 하는 게임이 됐어요\n· 방 만들기 → 다른 사람이 참가 → 3명 이상이면 호스트가 시작\n· 라이어 한 명만 제시어를 모른 채, 돌아가며 힌트를 말합니다\n· 모두 힌트를 말하면 투표 → 최다 득표자 공개\n· 라이어를 잡으면 시민 🪙10, 라이어가 살아남으면 라이어 🪙15\n· 💌 마음의 방에 올린 고민이 이제 모두에게 익명으로 보여요 (예전엔 본인만 보였어요)\n· 마음의 방 글도 저장되고 새로 접속한 사람에게 동기화됩니다" },
   { id: "u20260724t", type: "업데이트", date: "2026-07-24", title: "🏠 슬이네 · 상하네 입주",
     body: "· 주택가에 🏠 슬이네와 🏠 상하네가 새로 생겼어요 (총 10채)\n· 기존 집들과 규칙은 똑같아요 — 이름을 「슬이」 또는 「상하」로 정하면 그 집이 내 집이 됩니다\n· 현관 비밀번호 설정, 가구 배치, 지붕·벽 색 변경, 방명록 모두 동일하게 쓸 수 있어요\n· 집 주인 판정 방식을 이름 규칙에서 명시적인 주인 정보로 바꿔 더 정확해졌어요" },
   { id: "u20260724s", type: "업데이트", date: "2026-07-24", title: "💾 쿠폰 골드 저장 안 되던 문제 수정",
@@ -6089,15 +5974,20 @@ function InventoryBody({ gems, outfit, ownedClothes, ikeaOwned, houseSkin, vehic
   );
 }
 
-function FeedbackBody({ onDone, myName = "", list = [], onSend }) {
+function FeedbackBody({ onDone, myName = "", myUid = "", list = [], onSend, onDelete, onCheck }) {
   const [text, setText] = useState("");
+  const [anon, setAnon] = useState(false);
   const [sent, setSent] = useState(false);
+  const [filter, setFilter] = useState("all");
   const submit = () => {
     const t = text.trim(); if (!t) return;
-    onSend && onSend(t);
+    onSend && onSend(t, anon);
     setText(""); setSent(true);
     setTimeout(() => setSent(false), 1600);
   };
+  const shown = list.filter((f) => filter === "all" || (filter === "todo" ? !f.done : !!f.done));
+  const doneCount = list.filter((f) => f.done).length;
+
   return (
     <div>
       <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8, lineHeight: 1.7 }}>
@@ -6106,21 +5996,56 @@ function FeedbackBody({ onDone, myName = "", list = [], onSend }) {
       </div>
       <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="예: 회의실 초대장이 안 보여요" rows={3}
         style={{ width: "100%", boxSizing: "border-box", border: `3px solid ${C.ink}`, padding: 9, fontSize: 13, background: C.white, fontFamily: "'DotGothic16', monospace", resize: "vertical" }} />
+
+      <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, cursor: "pointer", fontSize: 12.5, fontWeight: "bold" }}>
+        <input type="checkbox" checked={anon} onChange={(e) => setAnon(e.target.checked)} style={{ width: 17, height: 17, cursor: "pointer" }} />
+        🕶 익명으로 올리기
+        <span style={{ fontWeight: "normal", color: C.inkSoft, fontSize: 11 }}>
+          — 작성자가 「{anon ? "익명" : (myName || "나")}」 으로 표시돼요
+        </span>
+      </label>
+
       <PxButton tone="good" disabled={!text.trim()} onClick={submit} style={{ width: "100%", marginTop: 8, padding: 11, fontSize: 13 }}>
         {sent ? "올렸어요! 감사합니다 ✨" : "📮 모두에게 올리기"}
       </PxButton>
 
-      <div style={{ fontSize: 11.5, fontWeight: "bold", margin: "14px 0 7px" }}>📋 올라온 피드백 {list.length}개</div>
-      <div style={{ maxHeight: 260, overflow: "auto", display: "flex", flexDirection: "column", gap: 7 }}>
-        {list.length === 0 ? (
-          <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 22, lineHeight: 1.8 }}>아직 올라온 피드백이 없어요 📭<br />첫 의견을 남겨보세요!</div>
-        ) : list.map((f) => (
-          <div key={f.id} style={{ background: C.white, border: `2px solid ${C.ink}`, borderLeft: `6px solid ${C.gem}`, borderRadius: 8, padding: 10 }}>
-            <div style={{ fontSize: 12.5, lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{f.text}</div>
-            <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 5 }}>✍️ {f.by} · {f.at}</div>
-          </div>
-        ))}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "14px 0 7px", flexWrap: "wrap" }}>
+        <b style={{ fontSize: 11.5 }}>📋 올라온 피드백 {list.length}개</b>
+        <span style={{ fontSize: 10.5, color: C.good }}>· 확인 {doneCount}</span>
+        <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+          {[["all", "전체"], ["todo", "미확인"], ["done", "확인됨"]].map(([k, lb]) => (
+            <button key={k} type="button" onClick={() => setFilter(k)}
+              style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, padding: "4px 9px", borderRadius: 12, border: `2px solid ${C.ink}`, background: filter === k ? C.gem : C.white, fontWeight: "bold" }}>{lb}</button>
+          ))}
+        </div>
       </div>
+
+      <div style={{ maxHeight: 250, overflow: "auto", display: "flex", flexDirection: "column", gap: 7 }}>
+        {shown.length === 0 ? (
+          <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 22, lineHeight: 1.8 }}>
+            {list.length === 0 ? <>아직 올라온 피드백이 없어요 📭<br />첫 의견을 남겨보세요!</> : "해당하는 피드백이 없어요"}
+          </div>
+        ) : shown.map((f) => {
+          const mine = !!myUid && f.uid === myUid;
+          return (
+            <div key={f.id} style={{ background: f.done ? "#eef6ef" : C.white, border: `2px solid ${C.ink}`, borderLeft: `6px solid ${f.done ? C.good : C.gem}`, borderRadius: 8, padding: 10 }}>
+              <div style={{ fontSize: 12.5, lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word", textDecoration: f.done ? "line-through" : "none", color: f.done ? C.inkSoft : C.ink }}>{f.text}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 7, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 10, color: C.inkSoft }}>{f.by === "익명" ? "🕶" : "✍️"} {f.by} · {f.at}</span>
+                {mine && <span style={{ fontSize: 9, background: C.gem, border: `1px solid ${C.ink}`, borderRadius: 8, padding: "0 5px" }}>내 글</span>}
+                <label style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5, cursor: "pointer", fontSize: 11, fontWeight: "bold", color: f.done ? C.good : C.inkSoft }}>
+                  <input type="checkbox" checked={!!f.done} onChange={(e) => onCheck && onCheck(f.id, e.target.checked)} style={{ width: 15, height: 15, cursor: "pointer" }} />
+                  확인
+                </label>
+                {mine && <button type="button" onClick={() => { if (window.confirm("내 피드백을 삭제할까요?")) onDelete && onDelete(f.id); }}
+                  title="삭제" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: C.inkSoft }}>🗑</button>}
+              </div>
+              {f.done && f.doneBy && <div style={{ fontSize: 9.5, color: C.good, marginTop: 3 }}>✓ {f.doneBy} 님이 확인함</div>}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginTop: 9 }}>확인 체크는 누구나 할 수 있고, 삭제는 작성자만 가능해요</div>
     </div>
   );
 }
@@ -6443,14 +6368,14 @@ function GuideSheet({ onClose, onGo }) {
 }
 
 /* ☰ 메뉴 (마을주민들 + 피드백) */
-function MenuSheet({ onClose, people, onDm, onCall, sprites, userSprites, cutCfg, onSetCut, onSetSprite, onClearSprite, onClearSprites, myName, feedback = [], onFeedback }) {
+function MenuSheet({ onClose, people, onDm, onCall, sprites, userSprites, cutCfg, onSetCut, onSetSprite, onClearSprite, onClearSprites, myName, myUid, feedback = [], onFeedback, onDelFeedback, onCheckFeedback }) {
   const [tab, setTab] = useState("villagers");
   return (
     <Sheet icon="☰" title="메뉴" onClose={onClose} tab={tab} setTab={setTab}
       tabs={[{ k: "villagers", label: "🏘️ 마을주민들" }, { k: "skin", label: "🎨 건물 이미지" }, { k: "fb", label: "⚙️ 피드백" }]}>
       {tab === "villagers" && <VillagersBody people={people} onDm={onDm} onCall={onCall} />}
       {tab === "skin" && <SpriteSkinBody sprites={sprites} userSprites={userSprites} cutCfg={cutCfg} onSetCut={onSetCut} onSet={onSetSprite} onClear={onClearSprite} onClearAll={onClearSprites} />}
-      {tab === "fb" && <FeedbackBody onDone={onClose} myName={myName} list={feedback} onSend={onFeedback} />}
+      {tab === "fb" && <FeedbackBody onDone={onClose} myName={myName} myUid={myUid} list={feedback} onSend={onFeedback} onDelete={onDelFeedback} onCheck={onCheckFeedback} />}
     </Sheet>
   );
 }
@@ -6973,7 +6898,98 @@ function EchoTown() {
   const [postits, setPostits] = useState([
     { id: 1, to: "정인", from: "창민", msg: "저번에 도와줘서 고마워요!", color: "#ffe680" },
   ]);
-  const [worries, setWorries] = useState([]);
+  /* 🕵️ 라이어 게임 — 호스트가 상태를 계산하고 모두에게 방송 */
+  const [liarGame, setLiarGame] = useState(null);
+  const lgRef = useRef(null); lgRef.current = liarGame;
+  const lgBroadcast = (next) => { setLiarGame(next); if (netSendEvent) netSendEvent("lg", { state: next }); };
+  const lgAction = (type, payload) => {
+    const me = myName || "나";
+    const g = lgRef.current;
+    // 방 만들기는 누구나 (호스트가 됨)
+    if (type === "create") {
+      const cats = Object.keys(LIAR_TOPICS);
+      const cat = payload.cat && payload.cat !== "랜덤" ? payload.cat : cats[Math.floor(Math.random() * cats.length)];
+      lgBroadcast({ phase: "lobby", host: me, cat, players: [me], log: [], votes: {} });
+      return;
+    }
+    if (!g) return;
+    // 호스트가 아니면 요청만 보냄
+    if (g.host !== me) { if (netSendEvent) netSendEvent("lg", { req: { type, payload, from: me } }); return; }
+    lgApply(type, payload, me);
+  };
+  /* 호스트에서만 실행되는 실제 규칙 처리 */
+  const lgApply = (type, payload, who) => {
+    const g = lgRef.current;
+    if (!g) return;
+    const P = g.players || [];
+    if (type === "join") {
+      if (P.includes(who) || g.phase !== "lobby") return;
+      lgBroadcast({ ...g, players: [...P, who] });
+      return;
+    }
+    if (type === "leave") {
+      const rest = P.filter((n) => n !== who);
+      if (!rest.length || who === g.host) { lgBroadcast({ phase: "idle" }); return; }
+      lgBroadcast({ ...g, players: rest, phase: g.phase === "lobby" ? "lobby" : "lobby" });
+      return;
+    }
+    if (type === "start") {
+      if (P.length < 3) return;
+      const words = LIAR_TOPICS[g.cat] || LIAR_TOPICS["음식"];
+      const word = words[Math.floor(Math.random() * words.length)];
+      const liar = P[Math.floor(Math.random() * P.length)];
+      lgBroadcast({ ...g, phase: "hint", word, liar, turn: 0, log: [], votes: {} });
+      return;
+    }
+    if (type === "hint") {
+      if (g.phase !== "hint" || P[g.turn] !== who) return;
+      const log = [...(g.log || []), { who, text: payload.text }].slice(-40);
+      const next = g.turn + 1;
+      if (next >= P.length) lgBroadcast({ ...g, log, phase: "vote", votes: {} });
+      else lgBroadcast({ ...g, log, turn: next });
+      return;
+    }
+    if (type === "vote") {
+      if (g.phase !== "vote") return;
+      const votes = { ...(g.votes || {}), [who]: payload.target };
+      if (Object.keys(votes).length < P.length) { lgBroadcast({ ...g, votes }); return; }
+      const tally = {};
+      Object.values(votes).forEach((t) => { tally[t] = (tally[t] || 0) + 1; });
+      let topVoted = null, best = -1;
+      Object.entries(tally).forEach(([n, c]) => { if (c > best) { best = c; topVoted = n; } });
+      lgBroadcast({ ...g, votes, phase: "result", topVoted, caught: topVoted === g.liar });
+      return;
+    }
+    if (type === "again") { lgBroadcast({ ...g, phase: "lobby", log: [], votes: {}, word: null, liar: null }); return; }
+  };
+  /* 결과가 나오면 각자 자기 보상을 받습니다 */
+  const lgApplyRef = useRef(null);
+  lgApplyRef.current = lgApply;
+  const lgPaidRef = useRef(null);
+  useEffect(() => {
+    const g = liarGame;
+    if (!g || g.phase !== "result") { return; }
+    const key = `${g.host}_${g.word}_${g.liar}`;
+    if (lgPaidRef.current === key) return;
+    lgPaidRef.current = key;
+    const me = myName || "나";
+    if (!(g.players || []).includes(me)) return;
+    const iAmLiar = g.liar === me;
+    if (g.caught && !iAmLiar) { awardGold(10); showNotice("🎉 라이어를 잡았어요! 🪙10 획득"); }
+    else if (!g.caught && iAmLiar) { awardGold(15); showNotice("😈 끝까지 속였어요! 🪙15 획득"); }
+  }, [liarGame]);
+
+  /* 💌 마음의 방 — 저장 + 접속자 모두와 공유 (익명) */
+  const WORRY_KEY = "echotown_worries_v1";
+  const [worries, setWorries] = useState(() => { const v = loadJSON(WORRY_KEY, []); return Array.isArray(v) ? v : []; });
+  const worryRef = useRef(worries); worryRef.current = worries;
+  useEffect(() => { saveJSON(WORRY_KEY, worries.slice(0, 80)); }, [worries]);
+  const addWorry = (text, kind) => {
+    const row = { id: Date.now() + Math.random(), text, kind,
+      at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
+    setWorries((w) => [row, ...w].slice(0, 80));
+    if (netSendEvent) netSendEvent("worry", { row });
+  };
   const [rented, setRented] = useState({});
   const [myName, setMyName] = useState("");
   const netPosRef = useRef({ x: 1300, y: 950 });
@@ -7017,7 +7033,7 @@ function EchoTown() {
     if (d.thanksInv) setThanksInv(d.thanksInv);
     if (d.memos) setMemos(d.memos);
     if (d.stats) { setStats(d.stats); saveJSON("echotown_stats", d.stats); }
-    if (d.housePw) { setHousePw(d.housePw); saveJSON("echotown_pw", d.housePw); }
+    if (d.housePw) setPwMap((m) => { const n = { ...m, [d.owner || myNameRef.current || "__legacy"]: d.housePw }; saveJSON("echotown_pw_v2", n); return n; });
     if (d.couponDone) setCouponDone(true);
     if (d.qNotes) setQNotes(d.qNotes);
     if (d.qAccept) setQAccept(d.qAccept);
@@ -7065,8 +7081,7 @@ function EchoTown() {
   const isMyHouse = (n) => {
     if (!n || !myName) return false;
     const h = HOUSES.find((x) => x.name === n);
-    if (h && h.owner) return h.owner === myName;       // 「슬이네」 같은 이름도 정확히 판정
-    return n.replace(/이네$|네$/, "") === myName;
+    return houseOwnerNames(h || { name: n }).includes(myName.trim());
   };
   const [ikeaOwned, setIkeaOwned] = useState({});
   const [houseSkin, setHouseSkin] = useState(null);
@@ -7324,7 +7339,20 @@ function EchoTown() {
   const [qAccept, setQAccept] = useState({});
   const [qNotes, setQNotes] = useState({});
   const [qThreads, setQThreads] = useState({});
-  const [housePw, setHousePw] = useState(() => loadJSON("echotown_pw", null));
+  /* 현관 비밀번호는 이름(집주인)별로 따로 저장합니다.
+     예전엔 브라우저에 하나만 저장돼서, 다른 이름으로 접속해도 「비번 있음」으로 처리됐어요. */
+  const [pwMap, setPwMap] = useState(() => {
+    const m = loadJSON("echotown_pw_v2", null);
+    if (m && typeof m === "object") return m;
+    const legacy = loadJSON("echotown_pw", null);   // 예전 형식 이어받기
+    return legacy ? { __legacy: legacy } : {};
+  });
+  const housePw = (myName && pwMap[myName]) || null;
+  const setHousePw = (pw) => setPwMap((m) => {
+    const n = { ...m, [myName || "__legacy"]: pw };
+    saveJSON("echotown_pw_v2", n);
+    return n;
+  });
   const [mail, setMail] = useState(() => loadJSON("echotown_mail", []));
   const [unlocked, setUnlocked] = useState({});
   const [mailTarget, setMailTarget] = useState(null);
@@ -7337,12 +7365,27 @@ function EchoTown() {
   const [feedback, setFeedback] = useState(() => { const v = loadJSON(FB_KEY, []); return Array.isArray(v) ? v : []; });
   const fbRef = useRef(feedback); fbRef.current = feedback;
   useEffect(() => { saveJSON(FB_KEY, feedback.slice(0, 60)); }, [feedback]);
-  const addFeedback = (text) => {
-    const row = { id: Date.now() + Math.random(), text, by: myName || "익명",
+  /* 이 브라우저의 고유 ID — 익명으로 올려도 본인 글은 지울 수 있게 (이름은 안 남겨요) */
+  const myUid = useMemo(() => {
+    let u = loadJSON("echotown_uid", "");
+    if (!u) { u = "u" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); saveJSON("echotown_uid", u); }
+    return u;
+  }, []);
+  const addFeedback = (text, anon) => {
+    const row = { id: Date.now() + Math.random(), text, by: anon ? "익명" : (myName || "익명"), uid: myUid, done: false, doneBy: null,
       at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
     setFeedback((v) => [row, ...v].slice(0, 60));
     if (netSendEvent) netSendEvent("fb", { row });
     dbAddNotice("건의", `${row.by}님의 피드백`, text);   // 게시판에도 남겨요
+  };
+  const delFeedback = (id) => {
+    setFeedback((v) => v.filter((x) => !(x.id === id && x.uid === myUid)));
+    if (netSendEvent) netSendEvent("fb", { del: id, uid: myUid });
+  };
+  const checkFeedback = (id, done) => {
+    const by = done ? (myName || "익명") : null;
+    setFeedback((v) => v.map((x) => (x.id === id ? { ...x, done, doneBy: by } : x)));
+    if (netSendEvent) netSendEvent("fb", { check: { id, done, by } });
   };
 
   /* 🗺 보스맵 퀘스트 — 저장 + 접속자 모두와 공유 */
@@ -7518,7 +7561,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qlock" || kind === "qleave" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qlock" || kind === "qleave" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "inviteack") {
@@ -7539,7 +7582,7 @@ function EchoTown() {
       if (kind === "dictreq") {
         if (p.from === (myName || "")) return;
         const mine = dictRef.current || [];
-        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current });
+        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current });
         const gs = galRef.current || [];
         gs.slice(0, 12).forEach((ph, i) => setTimeout(() => { if (netSendEvent) netSendEvent("gal", { photo: ph }); }, 350 * (i + 1)));
         return;
@@ -7548,10 +7591,23 @@ function EchoTown() {
         if (p.dict) setDict((v) => mergeDict(p.dict, v));
         if (p.maps) setBossMaps((v) => mergeMaps(BOSS_MAPS_INIT, mergeMaps(v, p.maps)));
         if (Array.isArray(p.fb)) setFeedback((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.fb.filter((x) => !ids.has(x.id))].sort((a, b) => b.id - a.id).slice(0, 60); });
+        if (Array.isArray(p.worry)) setWorries((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.worry.filter((x) => !ids.has(x.id))].sort((a, b) => b.id - a.id).slice(0, 80); });
         return;
       }
       if (kind === "bmap") { applyBossOp(p); return; }
-      if (kind === "fb") { if (p.row) setFeedback((v) => (v.some((x) => x.id === p.row.id) ? v : [p.row, ...v].slice(0, 60))); return; }
+      if (kind === "fb") {
+        if (p.row) setFeedback((v) => (v.some((x) => x.id === p.row.id) ? v : [p.row, ...v].slice(0, 60)));
+        else if (p.del) setFeedback((v) => v.filter((x) => !(x.id === p.del && x.uid === p.uid)));   // 작성자 본인만 삭제
+        else if (p.check) setFeedback((v) => v.map((x) => (x.id === p.check.id ? { ...x, done: p.check.done, doneBy: p.check.by } : x)));
+        return;
+      }
+      if (kind === "lg") {
+        if (p.state) { setLiarGame(p.state); return; }
+        // 호스트만 참가자 요청을 처리합니다
+        if (p.req) { const g = lgRef.current; if (g && g.host === (myName || "나")) lgApplyRef.current && lgApplyRef.current(p.req.type, p.req.payload, p.req.from); }
+        return;
+      }
+      if (kind === "worry") { if (p.row) setWorries((v) => (v.some((x) => x.id === p.row.id) ? v : [p.row, ...v].slice(0, 80))); return; }
       if (kind === "mchat") { if (p.who !== (myName || "나")) pushMeetingChat(p.room, { who: p.who, text: p.text, me: false }); return; }
       if (kind === "dm") { pushDm(p.from, { me: false, text: p.text }); pushMsg("dm", { from: p.from, text: p.text }); showNotice(`💬 ${p.from}님: ${String(p.text).slice(0, 20)}`); }
       if (kind === "call") {
@@ -7827,7 +7883,7 @@ function EchoTown() {
           <HomeView gifts={isMyHouse(houseMeta.name) ? homeGifts : []} fridge={isMyHouse(houseMeta.name) ? fridge : []} house={houseMeta} skin={isMyHouse(houseMeta.name) ? houseSkin : null} extras={isMyHouse(houseMeta.name) ? myFurni : []} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />
         ) : (
           <HouseGate house={houseMeta} isMine={isMyHouse(houseMeta.name)} myName={myName} hasPw={!!housePw}
-            onSetPw={(p) => { setHousePw(p); saveJSON("echotown_pw", p); }}
+            onSetPw={(p) => { setHousePw(p); }}
             onEnter={(p) => {
               if (!p) return false;
               if (isMyHouse(houseMeta.name)) {
@@ -7841,10 +7897,10 @@ function EchoTown() {
             onBell={ringBell} onMail={(owner) => { setMailTarget(owner); if (owner === myName) dbLoadMail(owner).then((ms) => setMail(ms || [])); }} onBack={backToWorld} />
         ))}
         {view === "thanks" && <ThanksView gems={gold} inventory={thanksInv} postits={postits} onBuy={(it) => { setGold((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={(p) => setPostits((v) => [...v, { ...p, id: Date.now() }])} onBack={backToWorld} bubble={bubble} />}
-        {view === "heart" && <HeartView gems={gold} worries={worries} onPost={(text, cost, kind) => { setGold((g) => g - cost); setWorries((w) => [{ id: Date.now(), text, kind }, ...w]); }} onBack={backToWorld} bubble={bubble} />}
+        {view === "heart" && <HeartView gems={gold} worries={worries} onPost={(text, cost, kind) => { setGold((g) => g - cost); addWorry(text, kind); }} onBack={backToWorld} bubble={bubble} />}
         {view === "listening" && <ListeningView onBack={backToWorld} gems={gold} onSpend={(n) => setGold((g) => g - n)} bubble={bubble} songs={songs} setSongs={setSongs} onPlayYt={playYt} ytNow={ytNow} />}
         {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} />}
-        {view === "minigame" && <MiniGameRoom myName={myName} people={people} onBack={backToWorld} onReward={(n) => awardGold(n)} bubble={bubble} />}
+        {view === "minigame" && <MiniGameRoom myName={myName} people={people} onBack={backToWorld} onReward={(n) => awardGold(n)} bubble={bubble} liarGame={liarGame} onLiarAction={lgAction} />}
         {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => awardGold(n)} scores={swimScores} onRecord={(nick, time) => { setSwimScores((s) => [...s, { nick, time }]); bump("swim"); dbAddRank("swim", nick, time, null).then(reloadRanks); }} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => { awardGold(4); bump("gym"); }} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} />}
@@ -8095,7 +8151,7 @@ function EchoTown() {
         onGuide={() => setGuideOpen(true)}
         onMsg={() => setMsgOpen(true)} />
 
-      {menuOpen && <MenuSheet people={people} onClose={() => setMenuOpen(false)} myName={myName} feedback={feedback} onFeedback={addFeedback}
+      {menuOpen && <MenuSheet people={people} onClose={() => setMenuOpen(false)} myName={myName} myUid={myUid} feedback={feedback} onFeedback={addFeedback} onDelFeedback={delFeedback} onCheckFeedback={checkFeedback}
         sprites={allSprites} userSprites={sprites} cutCfg={cutCfg} onSetCut={setCut}
         onSetSprite={setSprite} onClearSprite={clearSprite} onClearSprites={clearAllSprites}
         onDm={(p) => setDmWith(p)}
