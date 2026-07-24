@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v40 · 2026-07-24";
+const APP_VERSION = "v41 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -1089,10 +1089,13 @@ function Aquarium({ fishes = [], onClose, onFeed }) {
     const f = FISHES.find((x) => x.id === id);
     return f ? {
       key: i, emoji: f.emoji, name: f.name,
-      top: 14 + ((i * 37) % 62),                 // 깊이
-      dur: 7 + ((i * 3) % 7),                    // 헤엄 속도
+      top: 14 + ((i * 37) % 62),
+      dur: 7 + ((i * 3) % 7),
       delay: -((i * 1.7) % 8),
       size: 20 + ((i * 5) % 14),
+      bob: 2.2 + ((i * 0.7) % 2.4),
+      drift: f.id === "f6" ? 22 : 10,
+      still: f.id === "f6",
     } : null;
   }).filter(Boolean), [fishes]);
   const bubbles = [12, 30, 48, 66, 84];
@@ -1131,7 +1134,11 @@ function Aquarium({ fishes = [], onClose, onFeed }) {
             {list.map((f) => (
               <span key={f.key} className="aq-swim" title={f.name}
                 style={{ position: "absolute", top: `${f.top}%`, fontSize: f.size, zIndex: 3, animationDuration: `${f.dur}s`, animationDelay: `${f.delay}s` }}>
-                <span className="aq-flip" style={{ display: "inline-block", animationDuration: `${f.dur}s`, animationDelay: `${f.delay}s` }}>{f.emoji}</span>
+                <span className="aq-bob" style={{ display: "inline-block", animationDuration: `${f.bob}s`, animationDelay: `${f.delay}s`, "--drift": `${f.drift}px` }}>
+                  {f.still
+                    ? <span className="aq-pulse" style={{ display: "inline-block", animationDuration: `${f.bob * 1.3}s` }}>{f.emoji}</span>
+                    : <span className="aq-flip" style={{ display: "inline-block", animationDuration: `${f.dur}s`, animationDelay: `${f.delay}s` }}>{f.emoji}</span>}
+                </span>
               </span>
             ))}
 
@@ -1157,6 +1164,94 @@ function Aquarium({ fishes = [], onClose, onFeed }) {
               })}
             </div>
           )}
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+/* 🌳 마당 — 데리고 나가지 않은 반려동물들이 놀고 있어요 */
+function Yard({ pets = [], activePet = null, onClose, onCare }) {
+  const [fed, setFed] = useState(false);
+  const [heart, setHeart] = useState(null);
+  const list = useMemo(() => PETS.filter((p) => pets.includes(p.id)).map((p, i) => ({
+    ...p,
+    left: 10 + ((i * 23) % 72),
+    dur: 9 + ((i * 4) % 8),
+    delay: -((i * 2.1) % 9),
+    bob: 0.5 + ((i * 0.13) % 0.35),
+    away: p.id === activePet,
+  })), [pets, activePet]);
+  const home = list.filter((p) => !p.away);
+
+  const pat = (p) => {
+    setHeart(p.id);
+    setTimeout(() => setHeart(null), 1200);
+    onCare && onCare(p, "pet");
+  };
+  const feed = () => {
+    setFed(true);
+    setTimeout(() => setFed(false), 2600);
+    onCare && onCare(home[0] || PETS[0], "feedAll");
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 130, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, maxHeight: "calc(100vh - 28px)", overflowY: "auto" }}>
+        <Panel style={{ padding: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 22 }}>🌳</span>
+            <b style={{ flex: 1, fontSize: 15 }}>우리 집 마당</b>
+            <span style={{ fontSize: 12, color: C.inkSoft }}>{home.length}마리</span>
+            {home.length > 0 && <PxButton tone="gold" onClick={feed} style={{ fontSize: 11, padding: "5px 9px" }}>🍖 밥주기</PxButton>}
+            <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+          </div>
+
+          <div style={{ position: "relative", height: 230, borderRadius: 10, overflow: "hidden",
+            border: "6px solid #8a6b3f", boxShadow: "inset 0 0 30px rgba(60,90,40,0.35), 0 6px 16px rgba(0,0,0,0.3)",
+            background: "linear-gradient(180deg,#bfe3f7 0%,#d9f0d2 42%,#8fc47a 100%)" }}>
+            <span style={{ position: "absolute", left: "8%", top: 10, fontSize: 26 }}>☀️</span>
+            <span className="yd-cloud" style={{ position: "absolute", top: 16, fontSize: 24 }}>☁️</span>
+            <span style={{ position: "absolute", right: "6%", bottom: 44, fontSize: 40 }}>🌳</span>
+            <span style={{ position: "absolute", left: "4%", bottom: 40, fontSize: 30 }}>🌿</span>
+            <span style={{ position: "absolute", left: "44%", bottom: 38, fontSize: 22 }}>🌸</span>
+            <span style={{ position: "absolute", right: "30%", bottom: 42, fontSize: 20 }}>🌼</span>
+
+            {fed && [16, 34, 52, 70, 86].map((x, i) => (
+              <span key={"bowl" + i} style={{ position: "absolute", left: `${x}%`, bottom: 26, fontSize: 16 }} className="yd-pop">🍖</span>
+            ))}
+
+            {home.length === 0 && (
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#4a6b3a", fontSize: 13, fontFamily: "'DotGothic16', monospace", textAlign: "center", lineHeight: 1.9 }}>
+                마당이 텍 비었어요 🍃<br />🐾 형욱이네에서 반려동물을 입양해보세요
+              </div>
+            )}
+            {home.map((p) => (
+              <button key={p.id} onClick={() => pat(p)} title={`${p.name} 쓰다듬기`}
+                className="yd-walk"
+                style={{ position: "absolute", left: `${p.left}%`, bottom: 24, background: "none", border: "none", cursor: "pointer", padding: 0, zIndex: 3, animationDuration: `${p.dur}s`, animationDelay: `${p.delay}s` }}>
+                <span className="pet-trot" style={{ display: "inline-block", fontSize: 30, animationDuration: `${p.bob}s` }}>{p.emoji}</span>
+                {heart === p.id && <span className="yd-heart" style={{ position: "absolute", left: "50%", bottom: "100%", fontSize: 18 }}>💖</span>}
+              </button>
+            ))}
+            <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 22, background: "linear-gradient(180deg,#7fb069,#5d8f4c)", borderTop: "3px solid #4d7a3f" }} />
+          </div>
+
+          <div style={{ fontSize: 11, color: C.inkSoft, textAlign: "center", margin: "9px 0" }}>동물을 누르면 🤲 쓰다듬을 수 있어요</div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 7 }}>
+            {list.map((p) => (
+              <div key={p.id} style={{ background: p.away ? "#efe6d2" : C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 8, textAlign: "center" }}>
+                <div style={{ fontSize: 24 }}>{p.emoji}</div>
+                <div style={{ fontSize: 12, fontWeight: "bold" }}>{p.name}</div>
+                <div style={{ fontSize: 10, color: p.away ? C.good : C.inkSoft, marginBottom: 5 }}>{p.away ? "🚶 데리고 나감" : "🌳 마당에서 놀음"}</div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <PxButton tone="blue" onClick={() => pat(p)} style={{ flex: 1, fontSize: 10, padding: 6 }}>🤲</PxButton>
+                  <PxButton tone="gold" onClick={() => onCare && onCare(p, "feed")} style={{ flex: 1, fontSize: 10, padding: 6 }}>🍖</PxButton>
+                </div>
+              </div>
+            ))}
+          </div>
         </Panel>
       </div>
     </div>
@@ -2798,7 +2893,7 @@ function GiftModal({ target, inventory, myName, onSend, onClose }) {
   );
 }
 
-function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras = [], gifts = [], fridge = [], fishes = [], hasAquarium = false, hasYard = false, petsAtHome = [], onOpenAqua }) {
+function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras = [], gifts = [], fridge = [], fishes = [], hasAquarium = false, hasYard = false, petsAtHome = [], onOpenAqua, onOpenYard }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(memo || "");
   const furniture = [
@@ -2829,7 +2924,7 @@ function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras
   /* 🌳 마당 (구입했을 때만) */
   if (hasYard) {
     furniture.push({ id: "yard", x: 40, y: 330, w: 120, h: 60, color: "#a8d5a2", emoji: "🌳", label: "마당",
-      toast: petsAtHome.length ? `🌳 마당에서 ${petsAtHome.join(", ")} 이(가) 놀고 있어요` : "🌳 마당 · 반려동물이 뛰어놀아요" });
+      onInteract: () => onOpenYard && onOpenYard() });
   }
   /* 🧊 냉장고 */
   furniture.push({ id: "fridge", x: 552, y: 285, w: 58, h: 80, color: "#dfe7ea", emoji: "🧊", label: `냉장고 (${fridge.length})`,
@@ -3734,7 +3829,6 @@ const JJEOP_MENU = [
 const jjeopPick = () => JJEOP_MENU[Math.floor(Math.random() * JJEOP_MENU.length)];
 function JjeopView({ onBack, bubble, onReward, myName = "", recList = [], onRec }) {
   const [modal, setModal] = useState(null);
-  const [today, setToday] = useState(null);
   
   const [recText, setRecText] = useState("");
   const [recNick, setRecNick] = useState("");
@@ -3760,9 +3854,8 @@ function JjeopView({ onBack, bubble, onReward, myName = "", recList = [], onRec 
     setRecText("");
   };
   const furniture = [
-    { id: "table", x: 250, y: 150, w: 140, h: 140, round: true, color: "#caa06a", emoji: "🍽️", label: "원형 테이블 (앉기)", onInteract: () => { setToday(jjeopPick()); setModal("table"); } },
-    { id: "rec", x: 40, y: 180, w: 100, h: 90, color: "#7bbf8f", emoji: "📋", label: "메뉴 추천 테이블", onInteract: () => setModal("rec") },
-    { id: "fortune", x: 500, y: 170, w: 100, h: 100, color: "#8e5a9e", emoji: "🔮", label: "점심술사", onInteract: () => { setStep(1); setFMenu(null); setProofOpen(false); setProofImg(null); setProofDone(false); setModal("fortune"); } },
+    { id: "rec", x: 150, y: 160, w: 130, h: 110, color: "#7bbf8f", emoji: "📋", label: "메뉴 추천 테이블", onInteract: () => setModal("rec") },
+    { id: "fortune", x: 380, y: 160, w: 130, h: 110, color: "#8e5a9e", emoji: "🔮", label: "점심술사", onInteract: () => { setStep(1); setFMenu(null); setProofOpen(false); setProofImg(null); setProofDone(false); setModal("fortune"); } },
   ];
   const answer = (yes) => {
     if (!yes) { setStep("bye"); return; }
@@ -3772,17 +3865,7 @@ function JjeopView({ onBack, bubble, onReward, myName = "", recList = [], onRec 
   const Q = { 1: "메뉴를 고르지 못하고 있나요?", 2: "제가 골라드릴까요?", 3: "골라준대로 꼭 드셔야됩니다. 꼭 드실건가요?", 4: "진짜로 꼭 드실거죠?" };
   return (
     <RoomView title="쩝쩝박사" icon="🍴" sub="가운데 테이블에서 오늘의 메뉴 · 메뉴 추천 · 점심술사" bg="#efe0cf" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!modal} headerBg="#c0563a" bubble={bubble}>
-      {modal === "table" && today && (
-        <RoomModal title="🪑 원형 테이블" onClose={() => setModal(null)} maxW={380}>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 13, color: C.inkSoft }}>오늘의 메뉴는 이거~</div>
-            <div style={{ fontSize: 72, margin: "8px 0" }}>{today.emoji}</div>
-            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 16 }}>{today.name}</div>
-            <div style={{ fontSize: 15, marginTop: 12, color: "#c0563a" }}>맛있게 드세요 ~ ♥</div>
-          </div>
-        </RoomModal>
-      )}
-      {modal === "rec" && (
+            {modal === "rec" && (
         <RoomModal title="📋 메뉴 추천 게시판" onClose={() => setModal(null)} maxW={380}>
           <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>먹고 싶은 메뉴를 멘트로 자유롭게 남겨요!</div>
           <div style={{ height: 180, overflow: "auto", background: C.white, border: `3px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 5 }}>
@@ -5825,6 +5908,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724ll", type: "업데이트", date: "2026-07-24", title: "🌳 마당 시각화 · 🪼 해파리 · 🍽 원형 테이블 정리",
+    body: "· 🌳 집에서 마당을 누르면 진짜 마당처럼 보여요 — 해·구름·나무·꽃, 뛰노는 반려동물\n· 동물을 누르면 🤲 쓰다듬기(💖 하트가 떠요), 상단 🍖 밥주기로 다 같이 먹여요\n· 데리고 나간 동물은 「🚶 데리고 나감」으로 따로 표시돼요\n· 🪼 해파리가 안 움직이던 문제 수정 — 이제 둥실둥실 떠다니며 갓이 오므라들어요\n· 다른 물고기들도 위아래로 자연스럽게 움직여요\n· 🍴 쩝쩝박사의 원형 테이블을 없애고 남은 두 곳을 보기 좋게 재배치했어요" },
   { id: "u20260724kk", type: "업데이트", date: "2026-07-24", title: "🖊 감사 칠판 공유 · 비공개 · 익명",
     body: "· 감사 칠판에 남긴 쪽지가 모두에게 공유돼요 (예전엔 본인만 보였어요)\n· 받는 사람을 주민 목록에서 고르거나 직접 입력할 수 있어요\n· 👀 공개 범위 선택 — 🌍 모두에게 공개 / 🔒 받는 사람만\n· 🕶 익명으로 남기기 체크하면 From. 익명 으로 표시돼요\n· 익명으로 남겨도 내가 쓴 쪽지는 지울 수 있어요 (이름 대신 브라우저 ID로 판별)\n· 전체 / 💝 내가 받은 / ✍️ 내가 쓴 으로 걸러볼 수 있어요\n· 새로 접속하면 지금까지 쌓인 쪽지를 자동으로 받아옵니다" },
   { id: "u20260724jj", type: "업데이트", date: "2026-07-24", title: "🏎 탈것 속도가 사람마다 다르던 문제 수정",
@@ -6376,7 +6461,7 @@ const HELP_DATA = {
     { icon: "🏛", title: "주민센터", body: "회의실 예약, 음료 코너(HP·MP +20), 공지사항과 캘린더.", go: "center", goLabel: "주민센터 가기" },
     { icon: "🛍️", title: "무신사", body: "상의·하의·신발을 무료로 입어보고 마음에 들면 구매. 착용한 옷은 다른 접속자에게도 보여요.", go: "musinsa", goLabel: "무신사 가기" },
     { icon: "🛒", title: "이케아", body: "집 외관 · 가구 · 교통수단 구매. 탈것을 타면 마을에서 더 빨리 이동해요.", go: "ikea", goLabel: "이케아 가기" },
-    { icon: "🍴", title: "쩝쩝박사", body: "원형 테이블에서 오늘의 메뉴 뽑기, 메뉴 추천 게시판, 점심술사(인증샷 제출 시 🪙5).", go: "jjeop", goLabel: "쩝쩝박사 가기" },
+    { icon: "🍴", title: "쩝쩝박사", body: "메뉴 추천 게시판에 한 마디 남기고, 점심술사에게 오늘 뭐 먹을지 물어보세요(인증샷 제출 시 🪙5).", go: "jjeop", goLabel: "쩝쩝박사 가기" },
     { icon: "🏦", title: "중앙은행", body: "퀘스트로 모은 💎 젬을 원화로 환전해요. 🪙 골드는 환전할 수 없어요.", go: "bank", goLabel: "은행 가기" },
     { icon: "📋", title: "게시판", body: "공지·이벤트 라벨로 구분된 마을 소식과 캘린더.", go: "board", goLabel: "게시판 가기" },
   ],
@@ -8017,6 +8102,7 @@ function EchoTown() {
   const [fishes, setFishes] = useState([]);
   const [facilities, setFacilities] = useState([]);
   const [aquaOpen, setAquaOpen] = useState(false);
+  const [yardOpen, setYardOpen] = useState(false);
   const petEmoji = useMemo(() => { const p = PETS.find((x) => x.id === activePet); return p ? p.emoji : null; }, [activePet]);
   useEffect(() => { netPetRef.current = petEmoji; }, [petEmoji]);
 
@@ -8698,7 +8784,7 @@ function EchoTown() {
           }}
           onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && (unlocked[houseId] ? (
-          <HomeView fishes={isMyHouse(houseMeta.name) ? fishes : []} hasAquarium={isMyHouse(houseMeta.name) && facilities.includes("aquarium")} hasYard={isMyHouse(houseMeta.name) && facilities.includes("yard")} petsAtHome={isMyHouse(houseMeta.name) ? PETS.filter((x) => pets.includes(x.id) && x.id !== activePet).map((x) => `${x.emoji} ${x.name}`) : []} onOpenAqua={() => setAquaOpen(true)} gifts={isMyHouse(houseMeta.name) ? homeGifts : []} fridge={isMyHouse(houseMeta.name) ? fridge : []} house={houseMeta} skin={isMyHouse(houseMeta.name) ? houseSkin : null} extras={isMyHouse(houseMeta.name) ? myFurni : []} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />
+          <HomeView fishes={isMyHouse(houseMeta.name) ? fishes : []} hasAquarium={isMyHouse(houseMeta.name) && facilities.includes("aquarium")} hasYard={isMyHouse(houseMeta.name) && facilities.includes("yard")} petsAtHome={isMyHouse(houseMeta.name) ? PETS.filter((x) => pets.includes(x.id) && x.id !== activePet).map((x) => `${x.emoji} ${x.name}`) : []} onOpenAqua={() => setAquaOpen(true)} onOpenYard={() => setYardOpen(true)} gifts={isMyHouse(houseMeta.name) ? homeGifts : []} fridge={isMyHouse(houseMeta.name) ? fridge : []} house={houseMeta} skin={isMyHouse(houseMeta.name) ? houseSkin : null} extras={isMyHouse(houseMeta.name) ? myFurni : []} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />
         ) : (
           <HouseGate house={houseMeta} isMine={isMyHouse(houseMeta.name)} myName={myName} hasPw={!!housePw}
             onSetPw={(p) => { setHousePw(p); }}
@@ -8941,6 +9027,12 @@ function EchoTown() {
           </div>
         </div>
       )}
+      {yardOpen && <Yard pets={pets} activePet={activePet} onClose={() => setYardOpen(false)}
+        onCare={(pt, kind) => {
+          if (kind === "pet") { setExp((e) => e + 3); showNotice(`${pt.emoji} ${pt.name}가 기분이 좋아졌어요! (경험치 +3)`); }
+          else if (kind === "feedAll") { awardGold(2); setHp((h) => Math.min(100, h + 4)); showNotice("🍖 마당 친구들이 다 같이 먹었어요!"); }
+          else { awardGold(1); setHp((h) => Math.min(100, h + 3)); showNotice(`🍖 ${pt.name}가 맛있게 먹었어요!`); }
+        }} />}
       {aquaOpen && <Aquarium fishes={fishes} onClose={() => setAquaOpen(false)} onFeed={() => { awardGold(1); showNotice("🍤 물고기들이 신나게 먹어요!"); }} />}
       {skillPop && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 153, padding: 14 }} onClick={() => setSkillPop(null)}>
@@ -9198,6 +9290,18 @@ function StyleBlock() {
       .aq-bubble { position: absolute; bottom: 22px; border-radius: 50%; background: rgba(255,255,255,0.75); box-shadow: inset 0 0 3px rgba(255,255,255,0.9); animation-name: aqRise; animation-timing-function: linear; animation-iteration-count: infinite; z-index: 2; }
       @keyframes aqWeed { 0%,100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
       .aq-weed { transform-origin: bottom center; animation: aqWeed 3.6s ease-in-out infinite; }
+      @keyframes ydWalk { from { transform: translateX(-10px); } to { transform: translateX(190px); } }
+      .yd-walk { animation-name: ydWalk; animation-timing-function: ease-in-out; animation-iteration-count: infinite; animation-direction: alternate; }
+      @keyframes ydCloud { from { left: -12%; } to { left: 105%; } }
+      .yd-cloud { animation: ydCloud 26s linear infinite; }
+      @keyframes ydHeart { 0% { transform: translate(-50%, 0) scale(.6); opacity: 0; } 30% { opacity: 1; } 100% { transform: translate(-50%, -26px) scale(1.2); opacity: 0; } }
+      .yd-heart { animation: ydHeart 1.2s ease-out forwards; }
+      @keyframes ydPop { 0% { transform: translateY(-14px) scale(.6); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateY(0) scale(1); opacity: .9; } }
+      .yd-pop { animation: ydPop .5s ease-out both; }
+      @keyframes aqBob { 0%, 100% { transform: translateY(calc(var(--drift, 10px) * -0.5)); } 50% { transform: translateY(calc(var(--drift, 10px) * 0.5)); } }
+      .aq-bob { animation-name: aqBob; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
+      @keyframes aqPulse { 0%, 100% { transform: scaleY(1) scaleX(1); } 50% { transform: scaleY(0.82) scaleX(1.12); } }
+      .aq-pulse { animation-name: aqPulse; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
       @keyframes aqFood { 0% { transform: translateY(-10px); opacity: 0; } 10% { opacity: 1; } 100% { transform: translateY(200px); opacity: .2; } }
       .aq-food { position: absolute; top: 0; width: 5px; height: 5px; border-radius: 50%; background: #d98c3a; box-shadow: 0 0 3px rgba(0,0,0,0.2); z-index: 3; animation: aqFood 3s ease-in forwards; }
       @keyframes aqCaustic { from { background-position: 0 0; } to { background-position: 120px 0; } }
@@ -9247,7 +9351,7 @@ function StyleBlock() {
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .gem-pop,.hero-bob,.gem-spin,.enter-prompt,.chat-bubble,.px-btn,.map-obj,.qs-aura,.qs-ring,.qs-float,.qs-spark circle,.rain-drop,.echo-flag,.red-flag,.palm-sway,.beacon,.chat-line,.pet-trot,.aq-swim,.aq-flip,.aq-bubble,.aq-weed,.aq-caustic { animation:none !important; transition:none !important; }
+        .gem-pop,.hero-bob,.gem-spin,.enter-prompt,.chat-bubble,.px-btn,.map-obj,.qs-aura,.qs-ring,.qs-float,.qs-spark circle,.rain-drop,.echo-flag,.red-flag,.palm-sway,.beacon,.chat-line,.pet-trot,.aq-swim,.aq-flip,.aq-bob,.aq-pulse,.aq-bubble,.aq-weed,.aq-caustic,.yd-walk,.yd-cloud,.yd-heart,.yd-pop { animation:none !important; transition:none !important; }
       }
     `}</style>
   );
