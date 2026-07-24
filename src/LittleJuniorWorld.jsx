@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v58 · 2026-07-24";
+const APP_VERSION = "v59 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -550,7 +550,7 @@ const ROOM_TIPS = {
   world: ["⬆⬇⬅➡ 또는 화면을 눌러 이동해요", "건물 안 왼쪽 아래 🚪 문 앞에서 Space 를 누르면 나와요", "건물 앞에서 Space 를 누르면 들어가요", "탈것을 타면 빨라지고 입장 범위도 넘어져요", "다른 사람 캐릭터를 누르면 따라가기·찾아가기·선물하기를 고를 수 있어요", "우측 상단 접속자 버튼 → 🏃 을 누르면 그 사람 옆으로 바로 가요", "좌측 하단 채팅은 5초 뒤 사라져요 · 확성기(🪙2)는 계속 남아요"],
   center: ["테이블을 눌러 주민들과 대화해요", "회의실 안에서 📋 회의 안건을 적고 완료 체크할 수 있어요", "회의실 3곳은 예약하고 채팅도 할 수 있어요", "회의실 안 📨 초대장으로 날짜·시간을 정해 보내보세요", "커피·자판기·정수기로 HP·MP 를 채워요"],
   house: ["🖥️ 책상에 메모를 여러 장 붙여둘 수 있어요 · 눌러서 자세히 보기", "🚪 현관문을 누르면 바로 나가요", "🔧 가구 배치를 켜고 가구를 끌어서 옮겨보세요", "집에 둔 선물을 누르면 🎒 가방에 넣거나 🗑 버릴 수 있어요", "🌳 마당과 🐟 수족관은 형욱이네에서 사야 생겨요", "집에 둔 선물을 누르면 누가 줌는지 보여요"],
-  sea: ["🚏 위쪽 정류장으로 가면 마을로 돌아가요", "🧔 어부 아저씨에게 미끼와 낚싯대를 사세요", "📖 바다 도감에서 뭐가 잡히는지 볼 수 있어요", "선착장 끝 🎣 낚시터에서 낚시를 해보세요", "잡은 건 어부 아저씨에게 팔 수 있어요"],
+  sea: ["🚏 위쪽 정류장으로 가면 마을로 돌아가요", "모래사장이 넓어졌어요 — 바위·조개·표류목 사이를 걸어보세요", "🧔 어부 아저씨에게 미끼와 낚싯대를 사세요", "📖 바다 도감에서 뭐가 잡히는지 볼 수 있어요", "선착장 끝 🎣 낚시터에서 낚시를 해보세요", "잡은 건 어부 아저씨에게 팔 수 있어요"],
   fishing: ["🎣 던지려면 🪱 미끼가 1개씩 필요해요", "❗ 입질이 오면 1.4초 안에 당기세요", "💎 젬과 💠 다이아는 잡는 즉시 들어와요", "🎁 비밀 상자는 어부에게 열어달라고 하세요", "낚싯대를 업그레이드하면 귀한 게 잘 걸려요"],
   petshop: ["🏗 시설 · 🐾 입양 · 🐠 수조 세 코너 앞에서 눌러 열어요", "아직 없는 동물·물고기는 ❓ 로 보이고 누르면 설명이 나와요", "먼저 🏗 시설에서 🌳 마당·🐟 수족관을 사세요", "마당이 있어야 반려동물을, 수족관이 있어야 물고기를 데려올 수 있어요", "데려나가기를 누르면 마을에서 나를 따라다니고 다른 사람에게도 보여요", "🤲 쓰다듬기·🍖 밥주기로 친밀도를 쌓아보세요"],
   bank: ["퀴스트로 모은 💎 젖을 원화로 바꿀 수 있어요", "🪙 골드는 마을 안에서만 쓰고 환전은 안 돼요", "환전 내역은 아래에 쌓여요"],
@@ -915,7 +915,7 @@ const RIVER_X = 2140, RIVER_W = 120;
 /* 🌊 바다 맵 (마을과 분리된 별도 지역)
    마을 남쪽 끝 길에서 들어가고, 바다 위쪽 끝으로 나오면 마을로 돌아와요. */
 const SEA = { w: 1600, h: 1100 };
-const SEA_SAND_Y = 150, SEA_WATER_Y = 300;              // 모래사장 → 바다
+const SEA_SAND_Y = 150, SEA_WATER_Y = 392;              // 풀숲 → 모래사장 → 바다
 const SEA_PIER_X = 740, SEA_PIER_W = 96, SEA_PIER_END = 900;
 const BRIDGE_Y1 = 690, BRIDGE_Y2 = 800;   // 이 구간(다리 · 공항 활주로)에서만 강을 건널 수 있음
 /* ===== 건물 이미지 교체 =====
@@ -1955,28 +1955,71 @@ function SeaView({ pos, setPos, onBack, onFish, onShop, onDex, look = null, carr
       <TitleBar tipId="sea" icon="🌊" title="바다" sub="⬆⬇⬅➡ 이동 · 선착장 위로만 바다에 나갈 수 있어요" onBack={onBack} bg="#1f5f96" fg={C.white} />
       <div ref={vpRef} tabIndex={0} className="game-vp" style={{ position: "relative", height: 480, overflow: "hidden", outline: "none", background: "#3a8fc4" }}>
         <div style={{ position: "absolute", width: SEA.w, height: SEA.h, left: -camX, top: -camY }}>
-          <div style={{ position: "absolute", left: 0, top: 0, width: SEA.w, height: SEA_SAND_Y, background: "linear-gradient(180deg,#bfe3f7,#dff0e2)" }} />
+          {/* 🌳 위쪽 풀숲 */}
+          <div style={{ position: "absolute", left: 0, top: 0, width: SEA.w, height: SEA_SAND_Y, background: "linear-gradient(180deg,#5aa35a,#7bbd6b)" }}>
+            <div style={{ position: "absolute", left: 0, top: 0, width: "100%", height: 40, background: TREE_TEX, backgroundSize: "72px 40px", backgroundRepeat: "repeat-x" }} />
+            <div style={{ position: "absolute", left: 0, bottom: -2, width: "100%", height: 14, background: "linear-gradient(180deg, rgba(122,189,107,0), #cbbd8d)" }} />
+          </div>
+
+          {/* 🏖 모래사장 */}
           <div style={{ position: "absolute", left: 0, top: SEA_SAND_Y, width: SEA.w, height: SEA_WATER_Y - SEA_SAND_Y,
-            background: "linear-gradient(180deg,#efe0b8,#dcc68f)", borderTop: "5px solid #cdb47e" }} />
-          <div style={{ position: "absolute", left: 0, top: SEA_WATER_Y, width: SEA.w, height: SEA.h - SEA_WATER_Y,
-            background: "linear-gradient(180deg,#6fc3e0 0%,#3a8fc4 45%,#154b7a 100%)" }} />
-          <div className="sea-wave" style={{ position: "absolute", left: 0, top: SEA_WATER_Y - 10, width: SEA.w, height: 22,
-            background: "repeating-linear-gradient(90deg, rgba(255,255,255,0.75) 0 26px, transparent 26px 62px)" }} />
-          <div className="sea-wave2" style={{ position: "absolute", left: 0, top: SEA_WATER_Y + 60, width: SEA.w, height: 14,
-            background: "repeating-linear-gradient(90deg, rgba(255,255,255,0.4) 0 34px, transparent 34px 78px)" }} />
-          <div className="sea-wave" style={{ position: "absolute", left: 0, top: SEA_WATER_Y + 190, width: SEA.w, height: 12,
-            background: "repeating-linear-gradient(90deg, rgba(255,255,255,0.28) 0 46px, transparent 46px 96px)" }} />
-          <span style={{ position: "absolute", left: 90, top: 22, fontSize: 34 }}>☀️</span>
-          <span className="yd-cloud" style={{ position: "absolute", top: 40, fontSize: 28 }}>☁️</span>
-          <span style={{ position: "absolute", right: 140, top: 30, fontSize: 24 }}>🕊️</span>
-          {[[180, 190, "⛱️", 40], [700, 205, "🏖️", 34], [1330, 200, "⛱️", 38], [980, 215, "🏐", 26], [560, 225, "🐚", 22], [1450, 210, "🦀", 26]].map(([x, y, e, sz], i) => (
-            <span key={"b" + i} style={{ position: "absolute", left: x, top: y, fontSize: sz }}>{e}</span>
+            background: `${SAND_TEX}, linear-gradient(180deg,#f1e2bb 0%,#ecd9ab 55%,#e2caa0 100%)`, backgroundSize: "96px 48px, 100% 100%" }} />
+          {/* 젖은 모래 */}
+          <div style={{ position: "absolute", left: 0, top: SEA_WATER_Y - 34, width: SEA.w, height: 34,
+            background: "linear-gradient(180deg, rgba(198,168,116,0) 0%, rgba(190,158,105,0.55) 100%)" }} />
+
+          {/* 🌊 바다 — 얕은 곳 → 깊은 곳 */}
+          <div style={{ position: "absolute", left: 0, top: SEA_WATER_Y, width: SEA.w, height: 130, background: "linear-gradient(180deg,#a9e2dc,#7fd0cf)" }} />
+          <div style={{ position: "absolute", left: 0, top: SEA_WATER_Y + 130, width: SEA.w, height: 220, background: "linear-gradient(180deg,#7fd0cf,#4fb0cf)" }} />
+          <div style={{ position: "absolute", left: 0, top: SEA_WATER_Y + 350, width: SEA.w, height: SEA.h - SEA_WATER_Y - 350, background: "linear-gradient(180deg,#4fb0cf 0%,#2b7fb0 45%,#14507e 100%)" }} />
+          <div style={{ position: "absolute", left: 0, top: SEA_WATER_Y, width: SEA.w, height: SEA.h - SEA_WATER_Y, background: WATER_TEX, backgroundSize: "72px 40px", opacity: 0.55 }} />
+
+          {/* 🤍 파도 거품선 */}
+          <div className="sea-wave" style={{ position: "absolute", left: -40, top: SEA_WATER_Y - 12, width: SEA.w + 80, height: 18,
+            background: FOAM_TEX, backgroundSize: "80px 18px", backgroundRepeat: "repeat-x", opacity: 0.95 }} />
+          <div className="sea-wave2" style={{ position: "absolute", left: -40, top: SEA_WATER_Y + 6, width: SEA.w + 80, height: 18,
+            background: FOAM_TEX, backgroundSize: "110px 18px", backgroundRepeat: "repeat-x", opacity: 0.42 }} />
+          <div className="sea-wave" style={{ position: "absolute", left: 0, top: SEA_WATER_Y + 150, width: SEA.w, height: 12,
+            background: "repeating-linear-gradient(90deg, rgba(255,255,255,0.35) 0 30px, transparent 30px 78px)" }} />
+          <div className="sea-wave2" style={{ position: "absolute", left: 0, top: SEA_WATER_Y + 330, width: SEA.w, height: 10,
+            background: "repeating-linear-gradient(90deg, rgba(255,255,255,0.22) 0 44px, transparent 44px 104px)" }} />
+
+          <span style={{ position: "absolute", left: 90, top: 18, fontSize: 30 }}>☀️</span>
+          <span className="yd-cloud" style={{ position: "absolute", top: 34, fontSize: 26 }}>☁️</span>
+
+          {/* 🪨 🌿 🐚 모래사장 소품 (도트) */}
+          {[[120, 196, "grass"], [268, 232, "rock"], [352, 205, "grass"], [455, 250, "shell"],
+            [610, 214, "grass"], [700, 262, "rock"], [845, 208, "star"], [930, 246, "grass"],
+            [1075, 226, "shell"], [1180, 200, "grass"], [1290, 258, "rock"], [1420, 218, "grass"],
+            [1520, 246, "shell"], [190, 300, "rock"], [520, 318, "grass"], [1000, 312, "star"],
+            [1350, 322, "grass"], [760, 330, "shell"]].map(([x, y, kind], i) => (
+            <div key={"deco" + i} style={{ position: "absolute", left: x, top: y, transform: "translate(-50%,-100%)", zIndex: 2 }}>
+              {kind === "rock" ? <PxRock size={26 + (i % 3) * 8} />
+                : kind === "grass" ? <PxGrass size={22 + (i % 3) * 5} />
+                : kind === "star" ? <PxStarfish size={20} />
+                : <PxShell size={18} />}
+            </div>
           ))}
-          {[[240, 430, "⛵", 44], [1230, 470, "🚤", 40], [1440, 660, "🛥️", 36], [420, 720, "🐬", 34], [1050, 850, "🐋", 46], [180, 900, "🐟", 24], [1330, 950, "🐠", 26], [640, 990, "🦭", 30]].map(([x, y, e, sz], i) => (
+
+          {/* 🪵 표류목 · 나무통 */}
+          {[[300, 268, 110], [880, 300, 130], [1240, 282, 96]].map(([x, y, w], i) => (
+            <div key={"plank" + i} style={{ position: "absolute", left: x, top: y, transform: "translate(-50%,-100%) rotate(" + (i % 2 ? -3 : 4) + "deg)", zIndex: 2 }}>
+              <PxPlank w={w} h={22} />
+            </div>
+          ))}
+          <div style={{ position: "absolute", left: 1015, top: 300, transform: "translate(-50%,-100%)", zIndex: 3 }}><PxBarrel size={40} /></div>
+
+          {/* 🌊 바다 위 생물·배 */}
+          {[[240, 520, "⛵", 44], [1230, 560, "🚤", 40], [1440, 730, "🛥️", 36], [420, 780, "🐬", 34], [1050, 900, "🐋", 46], [180, 950, "🐟", 24], [1330, 990, "🐠", 26], [640, 1030, "🦭", 30]].map(([x, y, e, sz], i) => (
             <span key={"s" + i} className="sea-float" style={{ position: "absolute", left: x, top: y, fontSize: sz, animationDelay: `${-i * 1.1}s` }}>{e}</span>
           ))}
+
+          {/* 🪵 선착장 */}
           <div style={{ position: "absolute", left: SEA_PIER_X, top: SEA_WATER_Y - 40, width: SEA_PIER_W, height: SEA_PIER_END - SEA_WATER_Y + 40,
             background: "repeating-linear-gradient(0deg,#a9814a 0 12px,#8a6b3f 12px 24px)", borderLeft: "4px solid #7a5230", borderRight: "4px solid #7a5230", boxShadow: "0 6px 14px rgba(0,0,0,0.35)" }} />
+          {[0, 1, 2, 3].map((k) => (
+            <div key={"pile" + k} style={{ position: "absolute", left: SEA_PIER_X - 8, top: SEA_WATER_Y + 60 + k * 190, width: SEA_PIER_W + 16, height: 12, background: "#6b4526", borderRadius: 2, opacity: 0.9 }} />
+          ))}
 
           {SPOTS.map((sp) => (
             <div key={sp.id} onClick={() => act(sp.id)} title={sp.label}
@@ -2009,6 +2052,68 @@ function SeaView({ pos, setPos, onBack, onFish, onShop, onDex, look = null, carr
         )}
       </div>
     </Panel>
+  );
+}
+
+/* ===== 🏖 바다 도트 오브젝트 ===== */
+const SAND_TEX = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='48'%3E%3Cg fill='none' stroke='%23d9c193' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M-8 12 q24 -8 48 0 t48 0'/%3E%3Cpath d='M-8 30 q24 8 48 0 t48 0'/%3E%3C/g%3E%3C/svg%3E\")";
+const WATER_TEX = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='40'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.35)' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 12 q7 -5 14 0'/%3E%3Cpath d='M42 26 q7 -5 14 0'/%3E%3C/g%3E%3C/svg%3E\")";
+const FOAM_TEX = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='18'%3E%3Cpath d='M0 12 q10 -10 20 0 t20 0 t20 0 t20 0 V18 H0 Z' fill='%23ffffff'/%3E%3C/svg%3E\")";
+const TREE_TEX = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='40'%3E%3Cpath d='M0 0 H72 V16 q-9 12 -18 0 t-18 0 t-18 0 t-18 0 Z' fill='%232f6b3c'/%3E%3Cpath d='M0 0 H72 V9 q-9 9 -18 0 t-18 0 t-18 0 t-18 0 Z' fill='%233d8a4c'/%3E%3C/svg%3E\")";
+
+function PxRock({ size = 30, tone = "#a7adb3", edge = "#5c6469" }) {
+  return (
+    <svg width={size} height={size * 0.78} viewBox="0 0 22 17" shapeRendering="crispEdges" style={{ imageRendering: "pixelated", display: "block" }}>
+      <path d="M3 15 L2 10 L5 4 L11 2 L16 5 L20 10 L19 15 Z" fill={tone} stroke={edge} strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M6 7 L10 4 L13 7 L10 9 Z" fill="#d2d7db" opacity="0.75" />
+      <path d="M4 13 H19 V15 H4 Z" fill={edge} opacity="0.45" />
+    </svg>
+  );
+}
+function PxGrass({ size = 26, tone = "#3f8a46", dark = "#2c6633" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 18 18" shapeRendering="crispEdges" style={{ imageRendering: "pixelated", display: "block" }}>
+      <path d="M9 17 L6 8 L8 9 L9 3" stroke={tone} strokeWidth="2" fill="none" strokeLinecap="round" />
+      <path d="M9 17 L13 9 L11 10 L12 5" stroke={dark} strokeWidth="2" fill="none" strokeLinecap="round" />
+      <path d="M9 17 L3 12" stroke={tone} strokeWidth="2" fill="none" strokeLinecap="round" />
+      <path d="M9 17 L16 13" stroke={dark} strokeWidth="2" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+function PxShell({ size = 20 }) {
+  return (
+    <svg width={size} height={size * 0.8} viewBox="0 0 16 13" shapeRendering="crispEdges" style={{ imageRendering: "pixelated", display: "block" }}>
+      <path d="M8 1 L14 11 H2 Z" fill="#f7ead6" stroke="#c9ac86" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M8 2 V11 M5 11 L8 4 M11 11 L8 4" stroke="#dcc7a6" strokeWidth="1" fill="none" />
+    </svg>
+  );
+}
+function PxStarfish({ size = 20 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" shapeRendering="crispEdges" style={{ imageRendering: "pixelated", display: "block" }}>
+      <path d="M8 1 L10 6 L15 6 L11 9 L13 14 L8 11 L3 14 L5 9 L1 6 L6 6 Z" fill="#e88b6a" stroke="#b45e40" strokeWidth="1.2" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function PxPlank({ w = 100, h = 24 }) {
+  return (
+    <svg width={w} height={h} viewBox="0 0 50 12" preserveAspectRatio="none" shapeRendering="crispEdges" style={{ imageRendering: "pixelated", display: "block" }}>
+      <rect x="0" y="1" width="50" height="10" fill="#9d6b41" stroke="#6b4526" strokeWidth="1.2" />
+      <rect x="0" y="2" width="50" height="2" fill="#b7834f" />
+      <rect x="6" y="6" width="38" height="1.4" fill="#7d5333" />
+      <rect x="14" y="1" width="1.4" height="10" fill="#7d5333" />
+      <rect x="33" y="1" width="1.4" height="10" fill="#7d5333" />
+    </svg>
+  );
+}
+function PxBarrel({ size = 40 }) {
+  return (
+    <svg width={size} height={size * 1.1} viewBox="0 0 20 22" shapeRendering="crispEdges" style={{ imageRendering: "pixelated", display: "block" }}>
+      <path d="M4 2 H16 L18 11 L16 20 H4 L2 11 Z" fill="#a2703f" stroke="#5e3b1e" strokeWidth="1.4" strokeLinejoin="round" />
+      <rect x="2" y="6" width="16" height="2" fill="#6b4526" />
+      <rect x="2" y="14" width="16" height="2" fill="#6b4526" />
+      <ellipse cx="10" cy="3" rx="6" ry="2" fill="#c08b52" stroke="#5e3b1e" strokeWidth="1.2" />
+    </svg>
   );
 }
 
@@ -7096,6 +7201,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n10", type: "업데이트", date: "2026-07-24", title: "🏖 바다맵 도트 리뉴얼",
+    body: "· 모래사장이 훨씬 넓어졌어요 (걸어다닐 공간이 늘었습니다)\n· 모래에 잔물결 무늬가 생기고, 물가 쪽은 젖은 모래로 어두워져요\n· 파도 거품선이 물결 모양으로 밀려와요\n· 바다가 얕은 곳(민트) → 중간(하늘) → 깊은 곳(남색) 3단계로 나뉘었어요\n· 위쪽에 나무 그늘 풀숲이 생겼어요\n· 🪨 바위 · 🌿 풀 · 🐚 조개 · ⭐ 불가사리 · 🪵 표류목 · 🛢 나무통을 도트로 새로 그려 배치했어요\n· 선착장에 지지대가 생겨 바다 위에 떠 있는 느낌이 살았어요" },
   { id: "u20260724n9", type: "수정", date: "2026-07-24", title: "✂️ 건물 이미지 누끼(배경 제거) 개선",
     body: "· [원인] 큰 이미지에서 배경 지우기 계산이 중간에 멈춰 흰 배경이 그대로 남았어요\n· 계산 방식을 고쳐서 이제 큰 사진도 끝까지 지워져요\n· 배경색을 네 모서리 대신 테두리 전체에서 가장 많은 색으로 잡아요 (모서리에 건물이 걸쳐 있어도 잘 됩니다)\n· ☰ 메뉴 → 🎨 건물 이미지 에서 「약하게 · 보통 · 세게 · 아주 세게」 버튼으로 바로 조절할 수 있어요\n· 흰 배경 사진은 「세게」부터 눌러보세요" },
   { id: "u20260724n9", type: "수정", date: "2026-07-24", title: "🚪 나가기 문이 다른 가구와 겹치지 않게",
