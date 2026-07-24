@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v21 · 2026-07-24";
+const APP_VERSION = "v22 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -5347,6 +5347,8 @@ function SmokeView({ onBack, bubble }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724s", type: "업데이트", date: "2026-07-24", title: "💾 쿠폰 골드 저장 안 되던 문제 수정",
+    body: "· 웰컴 쿠폰을 받자마자 즉시 저장돼요 (예전엔 2초 뒤 저장이라 그 사이 새로고침하면 사라졌어요)\n· 새로고침 · 탭 닫기 · 탭 전환 직전에도 밀린 저장을 바로 반영합니다\n· 자동 저장 간격을 2초 → 0.8초로 줄였어요\n· 서버 조회를 두 번 하던 것을 한 번으로 정리했어요" },
   { id: "u20260724r", type: "업데이트", date: "2026-07-24", title: "🛠 스쿨 이동 버그 수정",
     body: "· 📗 네이버스쿨 · 🎬 영상스쿨에서 ← → 를 누르면 이동이 통째로 멈추던 문제를 고쳤어요\n· 원인은 없는 변수를 참조해 오류가 나면서 이동 루프가 죽어버린 것이었어요\n· 좌우 이동과 대각선 이동이 정상 동작합니다\n· 퀘스트 근처에서 버벅이던 것도 개선했어요 (불필요한 화면 갱신 제거)\n· 마을 · 실내 · 보스맵 이동에도 안전장치를 넣어, 오류가 나도 이동이 멈추지 않아요" },
   { id: "u20260724q", type: "업데이트", date: "2026-07-24", title: "💾 새로고침해도 골드·젬이 유지돼요",
@@ -7023,23 +7025,23 @@ function EchoTown() {
     // ① 이 브라우저에 저장된 게 있으면 즉시 복원
     const local = loadJSON(saveKey(t), null);
     if (local) applySave(local);
-    // ② 서버 데이터가 더 최신이면 그걸로 덮어씀
-    dbLoadProfile(t).then((d) => {
-      const serverNewer = d && (!local || (d.savedAt || 0) >= (local.savedAt || 0));
-      if (serverNewer) applySave(d);
-      if (d || local) showNotice(`💾 ${t}님의 저장 데이터를 불러왔어요`);
-      dbLoadMail(t).then((ms) => { if (ms && ms.length) setMail(ms); });
-    });
     setOutfit((o) => (o.top || o.bottom || o.shoes) ? o : {
       top: CLOTHES.top[Math.floor(Math.random() * CLOTHES.top.length)],
       bottom: CLOTHES.bottom[Math.floor(Math.random() * CLOTHES.bottom.length)],
       shoes: CLOTHES.shoes[Math.floor(Math.random() * CLOTHES.shoes.length)],
     });
+    // ② 서버는 한 번만 조회 (더 최신이면 덮어쓰고, 처음이면 쿠폰 지급)
     dbLoadProfile(t).then((d) => {
+      const serverNewer = d && (!local || (d.savedAt || 0) >= (local.savedAt || 0));
+      if (serverNewer) applySave(d);
+      if (d || local) showNotice(`💾 ${t}님의 저장 데이터를 불러왔어요`);
+      dbLoadMail(t).then((ms) => { if (ms && ms.length) setMail(ms); });
       if (!d && !local && !couponDone) {
         setCouponDone(true);
         setGems((g) => g + 100); setLifetime((l) => l + 100); setGold((g) => g + 200);
         setCouponOpen(true);
+        // 쿠폰은 받자마자 바로 저장 (디바운스를 기다리지 않아요)
+        setTimeout(() => flushSaveRef.current && flushSaveRef.current(t), 80);
       }
     });
   };
@@ -7623,17 +7625,40 @@ function EchoTown() {
   const ringBell = (owner) => { if (netSendEvent) netSendEvent("bell", { to: owner, from: myName || "익명" }); };
   const [savedAt, setSavedAt] = useState(null);
   const saveTimer = useRef(null);
+  /* 현재 저장할 내용을 항상 최신으로 들고 있습니다 */
+  const payloadRef = useRef(null);
+  payloadRef.current = { gems, gold, exp, lifetime, profile, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept };
+  const flushSaveRef = useRef(null);
+  const flushSave = useCallback((name) => {
+    const n = name || myNameRef.current;
+    if (!n || !payloadRef.current) return;
+    const payload = { savedAt: Date.now(), ...payloadRef.current };
+    const okLocal = saveJSON(saveKey(n), payload);   // 이 브라우저에 먼저 (서버가 안 돼도 유지)
+    setSavedAt({ at: Date.now(), local: okLocal !== false, server: null });
+    dbSaveProfile(n, payload).then((ok) => setSavedAt((v) => ({ ...(v || {}), server: !!ok })));
+  }, []);
+  flushSaveRef.current = flushSave;
+
   useEffect(() => {
     if (!myName) return;
     clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      const payload = { savedAt: Date.now(), gems, gold, exp, lifetime, profile, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept };
-      const okLocal = saveJSON(saveKey(myName), payload);   // 이 브라우저에 먼저 저장 (서버가 안 돼도 유지)
-      setSavedAt({ at: Date.now(), local: okLocal !== false, server: null });
-      dbSaveProfile(myName, payload).then((ok) => setSavedAt((v) => ({ ...(v || {}), server: !!ok })));
-    }, 2000);
+    saveTimer.current = setTimeout(() => flushSave(myName), 800);
     return () => clearTimeout(saveTimer.current);
-  }, [myName, gems, gold, exp, lifetime, profile, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept]);
+  }, [myName, gems, gold, exp, lifetime, profile, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept, flushSave]);
+
+  /* 새로고침·탭 닫기·탭 전환 직전에 밀린 저장을 즉시 반영 */
+  useEffect(() => {
+    const flush = () => { if (myNameRef.current) flushSave(myNameRef.current); };
+    const onHide = () => { if (document.hidden) flush(); };
+    window.addEventListener("beforeunload", flush);
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      window.removeEventListener("beforeunload", flush);
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onHide);
+    };
+  }, [flushSave]);
 
   const AVATARS = ["🧑", "👩", "🧑‍💻", "👨‍💼", "👩‍🎨", "🧑‍🍳", "👩‍🔬", "🧑‍🎤", "👨‍🌾", "👩‍🏫"];
   const people = useMemo(() => {
