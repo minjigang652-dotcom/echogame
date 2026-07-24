@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v77 · 2026-07-24";
+const APP_VERSION = "v78 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2460,7 +2460,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
         });
         /* ⚠️ 새 이벤트를 만들면 반드시 여기에 이름을 넣어야 상대에게 도착해요 */
-        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor"].forEach((ev) => {
+        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor", "decorreq"].forEach((ev) => {
           ch.on("broadcast", { event: ev }, ({ payload }) => {
             if (onChatRef && onChatRef.net) onChatRef.net(ev, payload);
           });
@@ -7534,6 +7534,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n29", type: "수정", date: "2026-07-24", title: "🏠 남의 집 꾸민 모습이 여전히 안 보이던 문제",
+    body: "· [원인] 꾸민 정보를 접속이 다 붙기 전에 보내버려서 그대로 사라지고 있었어요\n· 이제 접속이 완료된 뒤에 다시 보내고, 1분마다 한 번씩 알려줘요\n· 남의 집에 들어가면 집주인에게 「지금 어떻게 꾸며놨어?」 하고 직접 물어봐요 — 집주인이 접속 중이면 바로 채워집니다\n· 접속 동기화로 받은 남의 집 정보를 내 것이 덮어쓰지 않도록 고쳤어요" },
   { id: "u20260724n28", type: "업데이트", date: "2026-07-24", title: "🏠 내 집 꾸민 모습이 남들에게도 보여요",
     body: "· 놀러 온 사람도 집주인이 꾸민 그대로 보게 됐어요\n· 벽지·바닥 스타일, 이케아 가구와 배치, 🌳 마당·🐟 수족관, 🐠 물고기, 🐾 집에 있는 반려동물, 🎁 받은 선물, 🍱 냉장고 음식까지 함께 보여요\n· 꾸미기를 바꾸면 접속 중인 사람 화면에 바로 반영되고, 새로 들어온 사람도 같은 모습을 봅니다\n· 🎮 미니게임 방 위치를 조금 위로 옮겼어요" },
   { id: "u20260724n27", type: "업데이트", date: "2026-07-24", title: "📺 집 티비 「요즘 보는 작품」 · 제단 필터 수정",
@@ -10259,6 +10261,8 @@ function EchoTown() {
     const h = HOUSES.find((x) => houseOwnerNames(x).includes((myName || "").trim()));
     return h ? h.id : null;
   }, [myName]);
+  const myHouseIdRef = useRef(null);
+  myHouseIdRef.current = myHouseId;
   const [ikeaOwned, setIkeaOwned] = useState({});
   const [houseSkin, setHouseSkin] = useState(null);
   useEffect(() => { netHouseRef.current = houseSkin; }, [houseSkin]);
@@ -10527,12 +10531,26 @@ function EchoTown() {
     fridge: (fridge || []).map((f) => ({ id: f.id, name: f.name, emoji: f.emoji })),
     by: myName || "",
   }), [houseSkin, myFurni, homeLayout, facilities, fishes, pets, activePet, homeGifts, fridge, myName]);
+  const myDecorRef = useRef(null);
+  myDecorRef.current = myDecor;
+  const sendDecor = useCallback(() => {
+    const hid = myHouseIdRef.current;
+    if (!hid || !netSendEventRef.current) return;
+    netSendEventRef.current("decor", { hid, d: myDecorRef.current });
+  }, []);
   useEffect(() => {
     if (!myHouseId) return;
     setHouseDecor((v) => { const o = { ...v, [myHouseId]: myDecor }; try { saveJSON(DECOR_KEY, o); } catch (e) {} return o; });
-    const t = setTimeout(() => { if (netSendEventRef.current) netSendEventRef.current("decor", { hid: myHouseId, d: myDecor }); }, 600);
+    const t = setTimeout(sendDecor, 900);
     return () => clearTimeout(t);
-  }, [myHouseId, myDecor]);
+  }, [myHouseId, myDecor, sendDecor]);
+  /* 접속이 늦게 붙으면 첫 전송이 사라져서, 연결된 뒤에 한 번 더 보내고 주기적으로도 알려요 */
+  useEffect(() => {
+    if (netStatus !== "접속됨") return;
+    const t = setTimeout(sendDecor, 1800);
+    const iv = setInterval(sendDecor, 60000);
+    return () => { clearTimeout(t); clearInterval(iv); };
+  }, [netStatus, sendDecor]);
   useEffect(() => { netCarryRef.current = carrying; }, [carrying]);
   const giftAct = (act, it, i) => {
     // 소지품에서 빼면 뒤쪽 인덱스가 당겨지므로 들고 있는 위치도 같이 보정
@@ -11063,7 +11081,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "qcallack") {
@@ -11115,7 +11133,12 @@ function EchoTown() {
         if (p.qacc && typeof p.qacc === "object") setQAccept((v) => mergeQAccept(v, p.qacc));
         if (p.qth && typeof p.qth === "object") setQThreads((v) => mergeQList(v, p.qth, "at", 200));
         if (p.qlg && typeof p.qlg === "object") setQLogs((v) => mergeQList(v, p.qlg, "id", 100));
-        if (p.dcr && typeof p.dcr === "object") setHouseDecor((v) => { const o = { ...p.dcr, ...v }; try { saveJSON("echotown_housedecor_v1", o); } catch (e) {} return o; });
+        if (p.dcr && typeof p.dcr === "object") setHouseDecor((v) => {
+          const o = { ...v };
+          Object.keys(p.dcr).forEach((k) => { if (k !== myHouseIdRef.current) o[k] = p.dcr[k]; });   // 내 집만 내 것 유지
+          try { saveJSON("echotown_housedecor_v1", o); } catch (e) {}
+          return o;
+        });
         if (p.wtc && typeof p.wtc === "object") setWatchBoard((v) => { const o = { ...v }; Object.keys(p.wtc).forEach((k) => { const ids = new Set((o[k] || []).map((x) => x.id)); o[k] = [...(o[k] || []), ...(p.wtc[k] || []).filter((x) => x && !ids.has(x.id))].slice(0, 30); }); try { saveJSON("echotown_watch_v1", o); } catch (e) {} return o; });
         if (Array.isArray(p.sng)) setSongs((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.sng.filter((x) => x && !ids.has(x.id))].slice(-80); });
         if (p.sscale && typeof p.sscale === "object") setSpriteScale((v) => { const o = { ...p.sscale, ...v }; saveJSON("echotown_spritescale_v1", o); return o; });
@@ -11214,6 +11237,10 @@ function EchoTown() {
         playBell();
         pushGrant({ grantId: p.shrId, rewards: p.rewards, title: p.title, who: p.by });
         showNotice(`🎁 「${p.title}」 보상이 도착했어요 · 퀘스트함에서 받아가세요!`);
+        return;
+      }
+      if (kind === "decorreq") {
+        if (p.hid && p.hid === myHouseIdRef.current) setTimeout(sendDecor, 120);
         return;
       }
       if (kind === "decor") {
@@ -11456,7 +11483,11 @@ function EchoTown() {
       case "bank": setView("bank"); break;
       case "board": setView("board"); break;
       case "big": setBigId(o.id); setView("big"); break;
-      case "house": setUnlocked({}); houseIdRef.current = o.id; setHouseId(o.id); setView("house"); break;
+      case "house":
+        setUnlocked({}); houseIdRef.current = o.id; setHouseId(o.id); setView("house");
+        // 집주인에게 「지금 어떻게 꾸며놨어?」 하고 물어봐요
+        if (o.id !== myHouseIdRef.current && netSendEventRef.current) netSendEventRef.current("decorreq", { hid: o.id, from: myName || "" });
+        break;
       case "small": if (o.id === "smoke") bump("smoke"); setView(o.id); break; // thanks/heart/listening/reels/smoke
       case "gate": setSeaPos({ x: SEA.w / 2, y: SEA_SAND_Y + 40 }); setView("sea"); break;
       case "shrine": setView("questdone"); break;
