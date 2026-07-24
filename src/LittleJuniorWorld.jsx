@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v78 · 2026-07-24";
+const APP_VERSION = "v79 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2368,7 +2368,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2388,6 +2388,27 @@ async function dbSprites() {
     });
     return out;
   } catch (e) { return {}; }
+}
+/* 🏠 집 꾸민 모습 서버 보관 — 집주인이 접속 안 해 있어도 남들이 볼 수 있게 */
+async function dbDecors() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("title,body,created_at").eq("type", "decor").order("created_at", { ascending: false }).limit(60);
+    const out = {}, seen = new Set();
+    ((r && r.data) || []).forEach((n) => {
+      if (!n.title || seen.has(n.title)) return;
+      seen.add(n.title);
+      try { const d = JSON.parse(n.body || "null"); if (d) out[n.title] = d; } catch (e) {}
+    });
+    return out;
+  } catch (e) { return {}; }
+}
+async function dbSaveDecor(hid, decor, by) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "decor", title: hid, body: JSON.stringify(decor || {}), uid: by || null });
+    return !(r && r.error);
+  } catch (e) { return false; }
 }
 async function dbSaveSprite(id, dataUrl, by) {
   try {
@@ -7534,6 +7555,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n30", type: "업데이트", date: "2026-07-24", title: "🏠 집주인이 없어도 꾸민 집이 보여요",
+    body: "· 지금까지 꾸며둔 것도 그대로 반영돼요 — 다시 꾸미지 않아도 됩니다\n· 집주인이 게임을 한 번 열면 그 시점의 꾸밈이 서버에 저장돼요\n· 그 뒤로는 집주인이 접속해 있지 않아도 놀러 간 사람에게 똑같이 보여요\n· 접속 중이면 실시간으로, 아니면 서버에 저장된 마지막 모습으로 보여줍니다" },
   { id: "u20260724n29", type: "수정", date: "2026-07-24", title: "🏠 남의 집 꾸민 모습이 여전히 안 보이던 문제",
     body: "· [원인] 꾸민 정보를 접속이 다 붙기 전에 보내버려서 그대로 사라지고 있었어요\n· 이제 접속이 완료된 뒤에 다시 보내고, 1분마다 한 번씩 알려줘요\n· 남의 집에 들어가면 집주인에게 「지금 어떻게 꾸며놨어?」 하고 직접 물어봐요 — 집주인이 접속 중이면 바로 채워집니다\n· 접속 동기화로 받은 남의 집 정보를 내 것이 덮어쓰지 않도록 고쳤어요" },
   { id: "u20260724n28", type: "업데이트", date: "2026-07-24", title: "🏠 내 집 꾸민 모습이 남들에게도 보여요",
@@ -10263,6 +10286,18 @@ function EchoTown() {
   }, [myName]);
   const myHouseIdRef = useRef(null);
   myHouseIdRef.current = myHouseId;
+  /* 서버에 남아 있는 「꾸민 모습」을 먼저 불러와요 (집주인이 접속 안 해 있어도 보이게) */
+  useEffect(() => {
+    dbDecors().then((d) => {
+      if (!d || !Object.keys(d).length) return;
+      setHouseDecor((v) => {
+        const o = { ...v };
+        Object.keys(d).forEach((k) => { if (k !== myHouseIdRef.current) o[k] = d[k]; });
+        try { saveJSON("echotown_housedecor_v1", o); } catch (e) {}
+        return o;
+      });
+    });
+  }, []);
   const [ikeaOwned, setIkeaOwned] = useState({});
   const [houseSkin, setHouseSkin] = useState(null);
   useEffect(() => { netHouseRef.current = houseSkin; }, [houseSkin]);
@@ -10542,8 +10577,9 @@ function EchoTown() {
     if (!myHouseId) return;
     setHouseDecor((v) => { const o = { ...v, [myHouseId]: myDecor }; try { saveJSON(DECOR_KEY, o); } catch (e) {} return o; });
     const t = setTimeout(sendDecor, 900);
-    return () => clearTimeout(t);
-  }, [myHouseId, myDecor, sendDecor]);
+    const t2 = setTimeout(() => { dbSaveDecor(myHouseId, myDecor, myName || null); }, 3000);
+    return () => { clearTimeout(t); clearTimeout(t2); };
+  }, [myHouseId, myDecor, sendDecor, myName]);
   /* 접속이 늦게 붙으면 첫 전송이 사라져서, 연결된 뒤에 한 번 더 보내고 주기적으로도 알려요 */
   useEffect(() => {
     if (netStatus !== "접속됨") return;
