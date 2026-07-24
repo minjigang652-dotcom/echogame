@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v33 · 2026-07-24";
+const APP_VERSION = "v34 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -664,7 +664,9 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
               );
             }
             return (
-              <div key={f.id} style={{ position: "absolute", left: f.x, top: f.y, width: f.w, height: f.h,
+              <div key={f.id} title={f.label}
+                onClick={(e) => { e.stopPropagation(); if (pausedRef.current) return; if (f.onInteract) f.onInteract(); if (f.toast) showToast(f.toast); }}
+                style={{ position: "absolute", left: f.x, top: f.y, width: f.w, height: f.h, cursor: "pointer",
                 background: f.color || "#c9a15f", border: `3px solid ${C.ink}`, borderRadius: f.round ? "50%" : 0,
                 boxShadow: active ? `0 0 0 3px ${C.gem}` : "inset 0 0 0 2px rgba(255,255,255,0.25)",
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
@@ -5201,7 +5203,6 @@ const IKEA_ITEMS = {
     { id: "f5", name: "게이밍 의자", price: 12, emoji: "🪑", color: "#7a5cd6" },
     { id: "f6", name: "냉장고", price: 14, emoji: "🧊", color: "#cfe0ea" },
     { id: "f7", name: "피아노", price: 20, emoji: "🎹", color: "#2b2b2b" },
-    { id: "f8", name: "수족관", price: 18, emoji: "🐠", color: "#4bb4d8" },
   ],
   vehicle: [
     { id: "v1", name: "킥보드", price: 8, emoji: "🛴", speed: 1.25 },
@@ -5674,6 +5675,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724ee", type: "업데이트", date: "2026-07-24", title: "🖱 가구 클릭 · 🐟 수족관 일원화",
+    body: "· 가구를 마우스로 눌러도 작동해요 — 예전엔 다가가서 스페이스바를 눌러야만 했어요\n· 수족관 · 메모장 · 냉장고 · 마당 · 회의실 등 모든 가구에 적용됩니다\n· 🛒 이케아에서 팔던 수족관을 없앴어요\n· 이미 이케아에서 산 수족관도 자동으로 정리됩니다\n· 이제 수족관은 🐾 형욱이네에서만 살 수 있어요" },
   { id: "u20260724dd", type: "업데이트", date: "2026-07-24", title: "🐾 형욱이네 · 📜 팝업 스크롤 · 📋 게시판 정리",
     body: "· 🐾 펫샵 이름을 「형욱이네」로 바꿨어요\n· 📮 피드백이 게시판과 메세지함에서 완전히 빠졌어요 (이전에 올라간 것도 안 보여요)\n· 팝업창 내용이 길어지면 스크롤할 수 있어요 — 퀘스트 추가 · 도감 · 프로필 등 모든 창에 적용했어요\n· 화면이 작아도 아래쪽 버튼이 잘리지 않아요" },
   { id: "u20260724cc", type: "업데이트", date: "2026-07-24", title: "📋 퀘스트 등록자 · 📮 답변 제출",
@@ -7531,10 +7534,10 @@ function EchoTown() {
     if (typeof d.lifetime === "number") setLifetime(d.lifetime);
     if (d.outfit) setOutfit(d.outfit);
     if (d.owned) setOwned(d.owned);
-    if (d.ikeaOwned) setIkeaOwned(d.ikeaOwned);
+    if (d.ikeaOwned) { const n = { ...d.ikeaOwned }; delete n.f8; setIkeaOwned(n); }   // 이케아 수족관은 폐지 → 형욱이네에서만
+    if (d.myFurni) setMyFurni((d.myFurni || []).filter((x) => x !== "f8"));
     if (d.houseSkin !== undefined) setHouseSkin(d.houseSkin);
     if (d.vehicle !== undefined) setVehicle(d.vehicle);
-    if (d.myFurni) setMyFurni(d.myFurni);
     if (d.thanksInv) setThanksInv(d.thanksInv);
     if (d.memos) setMemos(d.memos);
     if (d.stats) { setStats(d.stats); saveJSON("echotown_stats", d.stats); }
@@ -7593,6 +7596,11 @@ function EchoTown() {
   useEffect(() => { netHouseRef.current = houseSkin; }, [houseSkin]);
   const [vehicle, setVehicle] = useState(null);
   const [myFurni, setMyFurni] = useState([]);
+  /* 폐지된 이케아 수족관(f8) 흔적 정리 — 수족관은 이제 형욱이네에서만 */
+  useEffect(() => {
+    setIkeaOwned((v) => (v && v.f8 ? (() => { const n = { ...v }; delete n.f8; return n; })() : v));
+    setMyFurni((v) => (v.includes("f8") ? v.filter((x) => x !== "f8") : v));
+  }, []);
   const buyIkea = (kind, item) => {
     const has = !!ikeaOwned[item.id];
     if (!has) {
