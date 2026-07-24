@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback, createContext, useContext } from "react";
 
-const NetContext = createContext({ others: {}, view: "world", room: null, roomPosRef: null });
+const NetContext = createContext({ others: {}, view: "world", room: null, roomPosRef: null, me: null });
 
 /* 입력창(input/textarea/select)에 타이핑 중이면 게임 키 조작을 무시 */
 function isTyping(e) {
@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v42 · 2026-07-24";
+const APP_VERSION = "v43 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -566,6 +566,12 @@ function TitleBar({ icon, title, sub, onBack, right, bg = C.parch, fg = C.ink })
 /* furniture: {id,x,y,w,h,label,emoji,color?,onInteract?,toast?} 좌표는 룸 px 기준 */
 function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, start, onBack, paused = false, children, headerBg = C.parch, banner = null, bubble = null, outfit = null, look = null, carry = null, pet = null }) {
   const net = useContext(NetContext);
+  /* 건물 안에서도 내 옷·외모·반려동물·들고 있는 선물이 그대로 보이도록 */
+  const meNet = (net && net.me) || {};
+  const myOutfit = outfit || meNet.outfit || null;
+  const myLookC = look || meNet.look || null;
+  const myCarry = carry || meNet.carry || null;
+  const myPet = pet || meNet.pet || null;
   const [pos, setPos] = useState(start || { x: roomW / 2, y: roomH - 60 });
   useEffect(() => { if (net && net.roomPosRef) net.roomPosRef.current = pos; }, [pos, net]);
   const [facing, setFacing] = useState(1);
@@ -705,7 +711,7 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
                 Space · {nearFur.label}
               </div>
             )}
-            <Hero facing={facing} moving={moving} size={30} outfit={outfit} look={look} carry={carry} pet={pet} />
+            <Hero facing={facing} moving={moving} size={30} outfit={myOutfit} look={myLookC} carry={myCarry} pet={myPet} />
           </div>
           {/* 토스트 */}
           {toast && (
@@ -1557,6 +1563,17 @@ async function dbLoadProfile(name) {
 }
 async function dbAddRank(game, nick, score, target) {
   try { const s = await getSupa(); await s.from("rankings").insert({ game, nick, score, target: target || null }); } catch (e) {}
+}
+/* 샌드백처럼 «누적»되는 기록 : 같은 닉네임이면 기존 점수에 더합니다 */
+async function dbAddRankSum(game, nick, add, target) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("rankings").select("id,score").eq("game", game).eq("nick", nick).order("score", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    if (row) { await s.from("rankings").update({ score: (row.score || 0) + add, target: target || null }).eq("id", row.id); return (row.score || 0) + add; }
+    await s.from("rankings").insert({ game, nick, score: add, target: target || null });
+    return add;
+  } catch (e) { return add; }
 }
 async function dbTopRanks(game, desc) {
   try {
@@ -2926,15 +2943,19 @@ function GiftModal({ target, inventory, myName, onSend, onClose }) {
   );
 }
 
-function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras = [], gifts = [], fridge = [], fishes = [], hasAquarium = false, hasYard = false, petsAtHome = [], onOpenAqua, onOpenYard }) {
+function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras = [], gifts = [], fridge = [], fishes = [], hasAquarium = false, hasYard = false, petsAtHome = [], onOpenAqua, onOpenYard, isMine = false, housePw = "", onChangePw }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(memo || "");
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwNew, setPwNew] = useState("");
+  const [pwMsg, setPwMsg] = useState(null);
   const furniture = [
     { id: "bed", x: 40, y: 60, w: 150, h: 90, color: "#c98ba0", emoji: "🛏️", label: "침대", toast: "잠깐 누워 쉬었다 😌" },
     { id: "sofa", x: 40, y: 260, w: 130, h: 70, color: "#8ea9c9", emoji: "🛋️", label: "쇼파", toast: "쇼파에 앉아 한숨 돌린다 🛋️" },
     { id: "tv", x: 250, y: 280, w: 120, h: 56, color: "#3a3a3a", emoji: "📺", label: "티비", toast: "TV를 켰다 📺 예능이 나온다" },
     { id: "desk", x: 430, y: 90, w: 150, h: 90, color: "#a9814a", emoji: "🖥️", label: "책상(메모)", onInteract: () => { setText(memo || ""); setOpen(true); } },
   ];
+  if (isMine) furniture.push({ id: "door", x: 285, y: 355, w: 70, h: 45, color: "#7a5230", emoji: "🚪", label: "현관문", onInteract: () => { setPwNew(""); setPwMsg(null); setPwOpen(true); } });
   const EX_POS = [[240, 60], [430, 250], [60, 170], [330, 170], [520, 320], [150, 330], [520, 190], [250, 380]];
   extras.forEach((id, i) => {
     const it = IKEA_ITEMS.furni.find((x) => x.id === id);
@@ -2964,6 +2985,22 @@ function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras
     toast: fridge.length ? `🧊 냉장고 안: ${fridge.map((f) => `${f.emoji || "🍽"} ${f.name}`).join(", ")}` : "🧊 냉장고가 비었어요" });
   return (
     <RoomView title={house.name} icon="🏠" sub={skin ? `내 집 · ${skin.name} 스타일` : "침대·쇼파·티비·책상 · 책상에서 메모 작성"} bg={skin ? skin.bg : "#efe6d2"} roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={open} headerBg={skin ? skin.roof : house.wall} bubble={bubble}>
+      {pwOpen && (
+        <RoomModal title="🚪 현관 비밀번호" onClose={() => setPwOpen(false)} maxW={340}>
+          <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.8, marginBottom: 10 }}>
+            지금 비밀번호는 <b style={{ color: C.ink }}>{housePw ? "*".repeat(String(housePw).length) : "없음"}</b> 이에요.<br />
+            새 비밀번호를 정하면 바로 바뀝니다.
+          </div>
+          <input value={pwNew} onChange={(e) => { setPwNew(e.target.value); setPwMsg(null); }} maxLength={12} autoFocus
+            onKeyDown={(e) => { if (e.key === "Enter" && pwNew.trim()) { onChangePw(pwNew.trim()); setPwMsg("바뀌었어요 ✓"); setPwNew(""); } }}
+            placeholder="새 비밀번호 (예: 1234)"
+            style={{ width: "100%", boxSizing: "border-box", padding: 11, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, textAlign: "center", background: C.white }} />
+          {pwMsg && <div style={{ fontSize: 12.5, color: C.good, textAlign: "center", marginTop: 7, fontWeight: "bold" }}>{pwMsg}</div>}
+          <PxButton tone="good" disabled={!pwNew.trim()} onClick={() => { onChangePw(pwNew.trim()); setPwMsg("바뀌었어요 ✓"); setPwNew(""); }}
+            style={{ width: "100%", marginTop: 10, padding: 12, fontSize: 14 }}>비밀번호 바꾸기</PxButton>
+          <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 8 }}>바꾸면 예전 비밀번호로는 못 들어와요</div>
+        </RoomModal>
+      )}
       {open && (
         <RoomModal title="📝 개인 메모장" onClose={() => setOpen(false)}>
           <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>{house.name} 책상 · 나만 보는 메모</div>
@@ -4300,6 +4337,7 @@ function CopyBox({ sec }) {
   );
 }
 function SchoolView({ school, onBack, cleared = {}, onClear }) {
+  const meNet = (useContext(NetContext) || {}).me || {};
   const s = SCHOOLS[school];
   const MAP_W = 640, MAP_H = 420;
   const [pos, setPos] = useState({ x: MAP_W / 2, y: MAP_H - 50 });
@@ -4425,7 +4463,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear }) {
           })}
 
           <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-100%)", zIndex: 5 }}>
-            <Hero facing={facing} moving={moving} size={34} />
+            <Hero facing={facing} moving={moving} size={34} outfit={meNet.outfit} look={meNet.look} carry={meNet.carry} pet={meNet.pet} />
           </div>
 
           {near && (
@@ -4600,6 +4638,7 @@ function mergeMaps(base, saved) {
 
 function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree, onLeave, maps = [], people = [], onAddQuest, onEditQuest, onDelQuest, onAddMap, onGoShrine, onSubmitAnswer }) {
   const net = useContext(NetContext);
+  const meNet = (net && net.me) || {};
   const [tMsg, setTMsg] = useState("");
   const [shrineFor, setShrineFor] = useState(null);   // 제출 완료 → 제단 안내
   const [submitFor, setSubmitFor] = useState(null);  // 📮 제출 : 답변 작성
@@ -4625,12 +4664,18 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
     return nd.who.includes(myName) || nd.owner === myName;
   };
   const whoLabel = (nd) => (!nd || !nd.who || nd.who === "all" || !Array.isArray(nd.who) || !nd.who.length) ? "👥 모두 참가 가능" : `👥 ${nd.who.join(", ")} 만 참가`;
+  const oneReward = (r) => {
+    if (!r) return "";
+    const q = r.qty ? ` ${r.qty}${r.kind === "item" || r.kind === "skill" ? "개" : ""}` : "";
+    if (r.kind === "gold") return `🪙 골드${q}`;
+    if (r.kind === "gem") return `💎 젬${q}`;
+    if (r.kind === "skill") return `${r.emoji || "🧠"} ${r.name}${q}`;
+    return `${r.emoji || "🎁"} ${r.name}${q}`;
+  };
   const rewardLabel = (nd) => {
-    const r = nd && nd.reward;
-    if (!r) return `💎 ${(nd && nd.gem) || 0}`;
-    if (r.kind === "gold") return `🪙 골드 ${r.qty}`;
-    if (r.kind === "item") return `${r.emoji || "🎁"} ${r.name} ${r.qty}개`;
-    return `💎 젬 ${r.qty}`;
+    if (!nd) return "";
+    const list = (nd.rewards && nd.rewards.length) ? nd.rewards : (nd.reward ? [nd.reward] : [{ kind: "gem", qty: nd.gem || 0 }]);
+    return list.map(oneReward).filter(Boolean).join(" · ");
   };
   const saveEdit = () => {
     if (!editing || !editing.title.trim()) return;
@@ -4648,7 +4693,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
   const [dexMode, setDexMode] = useState("easy");
   const [addOpen, setAddOpen] = useState(false);
   const [addTab, setAddTab] = useState("quest");
-  const [fQ, setFQ] = useState({ stage: 1, title: "", icon: "🎯", gem: 5, rewardKind: "gem", rewardName: "", rewardEmoji: "🎁", desc: "", task: "", level: "초보자", field: "naverschool", due: "", who: "all", whoList: [], regMode: "me", regName: "" });
+  const [fQ, setFQ] = useState({ stage: 1, title: "", icon: "🎯", rewards: [{ kind: "gem", qty: 5 }], rKind: "gem", rQty: "", rName: "", rEmoji: "🎁", rPick: "", desc: "", task: "", level: "초보자", field: "naverschool", due: "", who: "all", whoList: [], regMode: "me", regName: "" });
   const [fM, setFM] = useState({ name: "", icon: "🗺", boss: "", bossIcon: "👹" });
   const [cleared, setCleared] = useState({});
   useEffect(() => { dbLoadBoss().then((d) => { if (d && Object.keys(d).length) setCleared((c) => ({ ...d, ...c })); }); }, []);
@@ -4719,7 +4764,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
     setCleared((c) => ({ ...c, [map.id]: { ...(c[map.id] || {}), [nd.id]: myName || true } }));
     dbClearBoss(map.id, nd.id, myName || null);
     // 보스는 즉시 보상, 일반 퀘스트는 제단에서 GM 검수 후 지급
-    if (nd.isBoss) onReward && onReward(nd.reward || { kind: "gem", qty: nd.gem || 0 });
+    if (nd.isBoss) onReward && onReward((nd.rewards && nd.rewards.length) ? nd.rewards : [nd.reward || { kind: "gem", qty: nd.gem || 0 }]);
     onClearQuest && onClearQuest(!!nd.isBoss, map.mode, nd.title);
     return true;
   };
@@ -4803,12 +4848,10 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
   const addQuest = () => {
     if (!fQ.title.trim()) return;
     const id = "cq" + Date.now();
-    const qty = Math.max(0, Number(fQ.gem) || 0);
-    const reward = fQ.rewardKind === "item"
-      ? { kind: "item", name: fQ.rewardName.trim() || "특별 보상", emoji: fQ.rewardEmoji || "🎁", qty }
-      : { kind: fQ.rewardKind, qty };
+    const rewards = (fQ.rewards || []).filter(Boolean);
+    const reward = rewards[0] || { kind: "gem", qty: 0 };   // 예전 화면 호환
     const nq = {
-      id, title: fQ.title.trim(), icon: fQ.icon || "🎯", gem: qty, reward,
+      id, title: fQ.title.trim(), icon: fQ.icon || "🎯", gem: reward.qty || 0, reward, rewards,
       desc: fQ.desc.trim() || "새로 추가된 퀘스트", task: fQ.task.trim() || fQ.title.trim(),
       level: isPlaza ? null : fQ.level,
       field: !isPlaza && fQ.level === "초보자" ? fQ.field : null,
@@ -4931,7 +4974,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
               </div>
             ))}
             <div ref={heroElRef} style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-100%)", zIndex: 6, filter: "drop-shadow(0 4px 3px rgba(0,0,0,0.35))", willChange: "left, top" }}>
-              <Hero facing={facing} moving={moving} size={38} />
+              <Hero facing={facing} moving={moving} size={38} outfit={meNet.outfit} look={meNet.look} carry={meNet.carry} pet={meNet.pet} />
             </div>
           </div>
 
@@ -5176,30 +5219,75 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                     </div>;
                   })()}
 
-                  <div style={{ fontSize: 11, fontWeight: "bold" }}>🎁 보상</div>
-                  <div style={{ display: "flex", gap: 5 }}>
-                    {[["gem", "💎 젬"], ["gold", "🪙 골드"], ["item", "🎁 직접 입력"]].map(([k, lb]) => (
-                      <PxButton key={k} tone={fQ.rewardKind === k ? "good" : "wood"} onClick={() => setFQ({ ...fQ, rewardKind: k })} style={{ flex: 1, fontSize: 11, padding: 8 }}>{lb}</PxButton>
-                    ))}
-                  </div>
-                  {fQ.rewardKind === "item" && (
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <input value={fQ.rewardEmoji} onChange={(e) => setFQ({ ...fQ, rewardEmoji: e.target.value })} maxLength={2} placeholder="🎁"
-                        style={{ width: 52, textAlign: "center", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 16 }} />
-                      <input value={fQ.rewardName} onChange={(e) => setFQ({ ...fQ, rewardName: e.target.value })} placeholder="보상 이름 (예: 커피 기프티콘)"
-                        style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                  <div style={{ fontSize: 11, fontWeight: "bold" }}>🎁 보상 (여러 개 가능)</div>
+
+                  {/* 등록된 보상 목록 */}
+                  {(fQ.rewards || []).length > 0 && (
+                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                      {fQ.rewards.map((r, ri) => (
+                        <span key={ri} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 12, padding: "4px 9px" }}>
+                          {r.kind === "gem" ? "💎 젬" : r.kind === "gold" ? "🪙 골드" : `${r.emoji || (r.kind === "skill" ? "🧠" : "🎁")} ${r.name}`}
+                          {r.qty ? ` ${r.qty}` : ""}
+                          <button type="button" onClick={() => setFQ({ ...fQ, rewards: fQ.rewards.filter((_, x) => x !== ri) })}
+                            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: C.danger, padding: 0 }}>✕</button>
+                        </span>
+                      ))}
                     </div>
                   )}
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <input value={fQ.gem} onChange={(e) => setFQ({ ...fQ, gem: e.target.value })} type="number" min="0"
-                      style={{ width: 80, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 13 }} />
-                    <span style={{ fontSize: 12, color: C.inkSoft }}>
-                      {fQ.rewardKind === "gem" ? "💎 젬" : fQ.rewardKind === "gold" ? "🪙 골드" : `${fQ.rewardEmoji || "🎁"} ${fQ.rewardName.trim() || "보상"}`} 개수
-                    </span>
+
+                  {/* 새 보상 추가 */}
+                  <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 9 }}>
+                    <div style={{ display: "flex", gap: 4, marginBottom: 6, flexWrap: "wrap" }}>
+                      {[["gem", "💎 젬"], ["gold", "🪙 골드"], ["item", "🏆 아이템"], ["skill", "🧠 스킬"]].map(([k, lb]) => (
+                        <PxButton key={k} tone={fQ.rKind === k ? "good" : "wood"} onClick={() => setFQ({ ...fQ, rKind: k, rPick: "", rName: "", rEmoji: k === "skill" ? "🧠" : "🎁" })} style={{ flex: "1 1 66px", fontSize: 10.5, padding: 7 }}>{lb}</PxButton>
+                      ))}
+                    </div>
+
+                    {(fQ.rKind === "item" || fQ.rKind === "skill") && (
+                      <>
+                        <select value={fQ.rPick} onChange={(e) => {
+                            const v = e.target.value;
+                            const src = fQ.rKind === "item" ? SPECIAL_ITEMS : SKILLS;
+                            const f = src.find((x) => x.id === v);
+                            setFQ({ ...fQ, rPick: v, rName: f ? f.name : "", rEmoji: f ? (f.emoji || f.icon) : (fQ.rKind === "skill" ? "🧠" : "🎁") });
+                          }}
+                          style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, marginBottom: 6 }}>
+                          <option value="">✍️ 새로 입력하기</option>
+                          {(fQ.rKind === "item" ? SPECIAL_ITEMS : SKILLS).map((x) => (
+                            <option key={x.id} value={x.id}>{(x.emoji || x.icon)} {x.name}</option>
+                          ))}
+                        </select>
+                        {!fQ.rPick && (
+                          <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                            <input value={fQ.rEmoji} onChange={(e) => setFQ({ ...fQ, rEmoji: e.target.value })} maxLength={2}
+                              style={{ width: 50, textAlign: "center", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 16 }} />
+                            <input value={fQ.rName} onChange={(e) => setFQ({ ...fQ, rName: e.target.value })} placeholder={fQ.rKind === "skill" ? "스킬 이름" : "아이템 이름 (예: 커피 기프티콘)"}
+                              style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5 }} />
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <input value={fQ.rQty} onChange={(e) => setFQ({ ...fQ, rQty: e.target.value })} type="number" min="0" placeholder="개수"
+                        style={{ width: 78, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 13 }} />
+                      <span style={{ flex: 1, fontSize: 10.5, color: C.inkSoft, lineHeight: 1.5 }}>비워두면 개수 없이 표시돼요</span>
+                      <PxButton tone="gold"
+                        disabled={(fQ.rKind === "item" || fQ.rKind === "skill") ? (!fQ.rPick && !fQ.rName.trim()) : !fQ.rQty}
+                        onClick={() => {
+                          const qty = fQ.rQty ? Math.max(0, Number(fQ.rQty) || 0) : 0;
+                          const r = (fQ.rKind === "gem" || fQ.rKind === "gold")
+                            ? { kind: fQ.rKind, qty }
+                            : { kind: fQ.rKind, name: fQ.rName.trim() || "보상", emoji: fQ.rEmoji || (fQ.rKind === "skill" ? "🧠" : "🎁"), refId: fQ.rPick || null, qty };
+                          setFQ({ ...fQ, rewards: [...(fQ.rewards || []), r], rQty: "", rName: "", rPick: "" });
+                        }}
+                        style={{ fontSize: 11.5, padding: "8px 12px", whiteSpace: "nowrap" }}>＋ 추가</PxButton>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 10.5, color: C.inkSoft, background: "#fff5d6", border: `2px solid ${C.ink}`, borderRadius: 6, padding: "6px 9px" }}>
-                    완료하면 <b>{fQ.rewardKind === "gem" ? `💎 젬 ${fQ.gem || 0}` : fQ.rewardKind === "gold" ? `🪙 골드 ${fQ.gem || 0}` : `${fQ.rewardEmoji || "🎁"} ${fQ.rewardName.trim() || "보상"} ${fQ.gem || 0}개`}</b> 지급
-                    {fQ.rewardKind === "item" && <><br />직접 입력 보상은 🎒 선물함에 증표로 들어가요</>}
+
+                  <div style={{ fontSize: 10.5, color: C.inkSoft, background: "#fff5d6", border: `2px solid ${C.ink}`, borderRadius: 6, padding: "6px 9px", lineHeight: 1.6 }}>
+                    완료하면 <b>{(fQ.rewards || []).length ? fQ.rewards.map((r) => (r.kind === "gem" ? `💎 젬${r.qty ? " " + r.qty : ""}` : r.kind === "gold" ? `🪙 골드${r.qty ? " " + r.qty : ""}` : `${r.emoji} ${r.name}${r.qty ? " " + r.qty + "개" : ""}`)).join(" · ") : "보상 없음"}</b> 지급
+                    <br />🏆 아이템·🧠 스킬 보상은 🎒 선물함에 증표로 들어가요
                   </div>
 
                   <div style={{ fontSize: 11, fontWeight: "bold" }}>📋 퀘스트 등록자 (검토 담당)</div>
@@ -5941,6 +6029,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724nn", type: "업데이트", date: "2026-07-24", title: "🎁 보상 여러 개 · 🥊 샌드백 누적 · 🚪 비밀번호 변경",
+    body: "· 퀘스트 보상을 여러 개 등록할 수 있어요 — 💎 젬 · 🪙 골드 · 🏆 아이템 · 🧠 스킬\n· 아이템·스킬은 기존 목록에서 고르거나 새로 입력할 수 있어요\n· 개수를 비워두면 개수 없이 표시돼요\n· 🥊 샌드백이 같은 닉네임이면 때린 수가 누적돼요\n· 🚪 내 집 현관문을 누르면 비밀번호를 바꿀 수 있어요\n· 건물 안에서도 내 옷·외모·반려동물·들고 있는 선물이 그대로 보여요" },
   { id: "u20260724mm", type: "업데이트", date: "2026-07-24", title: "🎒 인벤토리 분리 · 🔒 비밀번호 잠금 수정 · 📖 안내책자 보강",
     body: "· 🔒 남의 집 비밀번호 5번 제한이 이제 실제로 동작해요 — 집주인 기기의 응답을 받아 실패를 세도록 고쳤어요\n· 집주인이 접속해 있지 않으면 6초 뒤 실패로 처리됩니다\n· 🎒 인벤토리를 우측 하단에 별도 버튼으로 분리했어요 (도크 5개)\n· 🎁 소지품 · 🏆 아이템 · 🧠 스킬 세 탭으로 나뉘어요\n· 🗝️ 레전드 유물상자(보스 격파) · 🧥 1차 술사 스킬복 세트(사고 스킬 8개) 추가\n· 미보유 아이템은 회색으로 보이고, 누르면 얻는 방법과 진행도가 나와요\n· 📖 안내책자에 자동로그인 · 저장 · 공항 · 형욱이네 · 마당 · 라이어게임 · 감사칠판 · 사고스킬 등을 추가했어요" },
   { id: "u20260724ll", type: "업데이트", date: "2026-07-24", title: "🌳 마당 시각화 · 🪼 해파리 · 🍽 원형 테이블 정리",
@@ -8850,7 +8940,7 @@ function EchoTown() {
   const backToWorld = () => setView("world");
 
   return (
-    <NetContext.Provider value={{ others: netOthers, view, room: netRoomIdRef.current, roomPosRef: netRoomPosRef }}>
+    <NetContext.Provider value={{ others: netOthers, view, room: netRoomIdRef.current, roomPosRef: netRoomPosRef, me: { outfit, look: myLook, carry: carrying, pet: petEmoji } }}>
     <div style={{ fontFamily: "'DotGothic16', monospace", minHeight: "100vh", background: `repeating-linear-gradient(45deg, ${C.grass} 0 24px, ${C.grassDark} 24px 48px)`, color: C.ink, padding: 14, boxSizing: "border-box" }}>
       <StyleBlock />
       <audio ref={audioRef} src={import.meta.env.BASE_URL + encodeURIComponent(worldBgm.file)} preload="auto" onEnded={() => stepTrack(1)} />
@@ -8924,7 +9014,7 @@ function EchoTown() {
           }}
           onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && (unlocked[houseId] ? (
-          <HomeView fishes={isMyHouse(houseMeta.name) ? fishes : []} hasAquarium={isMyHouse(houseMeta.name) && facilities.includes("aquarium")} hasYard={isMyHouse(houseMeta.name) && facilities.includes("yard")} petsAtHome={isMyHouse(houseMeta.name) ? PETS.filter((x) => pets.includes(x.id) && x.id !== activePet).map((x) => `${x.emoji} ${x.name}`) : []} onOpenAqua={() => setAquaOpen(true)} onOpenYard={() => setYardOpen(true)} gifts={isMyHouse(houseMeta.name) ? homeGifts : []} fridge={isMyHouse(houseMeta.name) ? fridge : []} house={houseMeta} skin={isMyHouse(houseMeta.name) ? houseSkin : null} extras={isMyHouse(houseMeta.name) ? myFurni : []} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />
+          <HomeView isMine={isMyHouse(houseMeta.name)} housePw={housePw} onChangePw={(p) => { setHousePw(p); showNotice("🚪 현관 비밀번호를 바꿨어요"); }} fishes={isMyHouse(houseMeta.name) ? fishes : []} hasAquarium={isMyHouse(houseMeta.name) && facilities.includes("aquarium")} hasYard={isMyHouse(houseMeta.name) && facilities.includes("yard")} petsAtHome={isMyHouse(houseMeta.name) ? PETS.filter((x) => pets.includes(x.id) && x.id !== activePet).map((x) => `${x.emoji} ${x.name}`) : []} onOpenAqua={() => setAquaOpen(true)} onOpenYard={() => setYardOpen(true)} gifts={isMyHouse(houseMeta.name) ? homeGifts : []} fridge={isMyHouse(houseMeta.name) ? fridge : []} house={houseMeta} skin={isMyHouse(houseMeta.name) ? houseSkin : null} extras={isMyHouse(houseMeta.name) ? myFurni : []} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />
         ) : (
           <HouseGate house={houseMeta} isMine={isMyHouse(houseMeta.name)} myName={myName} hasPw={!!housePw} failSignal={pwFail}
             onSetPw={(p) => { setHousePw(p); }}
@@ -8970,18 +9060,22 @@ function EchoTown() {
         {view === "ikea" && <IkeaView gems={gold} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
         {view === "project" && <BossMapView myName={myName} onBack={backToWorld} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss, mode, title) => { bump(isBoss ? "boss" : "quest"); if (!isBoss && mode === "hard") learnSkill(title); }}
           people={people}
-          onReward={(r) => {
-            if (typeof r === "number") { award(r); showNotice(`💎 젬 ${r} 획득!`); return; }
-            if (!r || !r.qty) return;
-            if (r.kind === "gold") { awardGold(r.qty); showNotice(`🪙 골드 ${r.qty} 획득!`); return; }
-            if (r.kind === "item") {
-              // 실물 보상은 🎒 선물함에 증표로 들어가요
-              setThanksInv((v) => [...v, { id: "qr" + Date.now(), name: `${r.name} ×${r.qty}`, emoji: r.emoji || "🎁", acts: ["carry", "home"], from: "퀘스트 보상" }]);
-              setExp((e) => e + 10);
-              showNotice(`${r.emoji || "🎁"} ${r.name} ${r.qty}개 획득! 선물함을 확인하세요`);
-              return;
-            }
-            award(r.qty); showNotice(`💎 젬 ${r.qty} 획득!`);
+          onReward={(rs) => {
+            const list = typeof rs === "number" ? [{ kind: "gem", qty: rs }] : Array.isArray(rs) ? rs : [rs];
+            const said = [];
+            list.forEach((r, i) => {
+              if (!r) return;
+              if (r.kind === "gold") { if (r.qty) awardGold(r.qty); said.push(`🪙 골드${r.qty ? " " + r.qty : ""}`); return; }
+              if (r.kind === "item" || r.kind === "skill") {
+                setThanksInv((v) => [...v, { id: "qr" + Date.now() + i, name: r.qty ? `${r.name} ×${r.qty}` : r.name, emoji: r.emoji || (r.kind === "skill" ? "🧠" : "🎁"), acts: ["carry", "home"], from: "퀘스트 보상" }]);
+                setExp((e) => e + 10);
+                said.push(`${r.emoji || "🎁"} ${r.name}`);
+                return;
+              }
+              if (r.qty) award(r.qty);
+              said.push(`💎 젬${r.qty ? " " + r.qty : ""}`);
+            });
+            if (said.length) showNotice(`🎁 ${said.join(" · ")} 획득!`);
           }}
           onSubmitAnswer={(q, ans) => {
             const reward = q.reward
@@ -9033,7 +9127,16 @@ function EchoTown() {
           onNote={(qid, v) => setQNotes((n) => ({ ...n, [qid]: v }))}
           onThreadSend={(qid, text) => { setQThreads((t) => ({ ...t, [qid]: [...(t[qid] || []), { who: myName || "나", text }] })); if (netSendEvent) netSendEvent("qchat", { qid, who: myName || "나", text }); }} />}
         {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} cleared={schoolDone} onClear={clearSchool} />}
-        {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count, target) => { setBoxScores((s) => [...s, { nick, count, target }]); bump("punch", count); dbAddRank("sandbag", nick, count, target).then(reloadRanks); }} />}
+        {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count, target) => {
+          // 같은 닉네임이면 때린 수가 누적돼요
+          setBoxScores((s) => {
+            const i = s.findIndex((x) => x.nick === nick);
+            if (i < 0) return [...s, { nick, count, target }];
+            const n = [...s]; n[i] = { ...n[i], count: (n[i].count || 0) + count, target }; return n;
+          });
+          bump("punch", count);
+          dbAddRankSum("sandbag", nick, count, target).then(reloadRanks);
+        }} />}
         {view === "musinsa" && <MusinsaView gems={gold} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
         {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} onReward={(n) => awardGold(n)} myName={myName} recList={recList} onRec={addRec} />}
         {view === "board" && <BoardView myName={myName} onBack={backToWorld} />}
