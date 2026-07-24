@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v47 · 2026-07-24";
+const APP_VERSION = "v48 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -549,7 +549,7 @@ function GemBadge({ amount, big, kind = "gem" }) {
 const ROOM_TIPS = {
   world: ["⬆⬇⬅➡ 또는 화면을 눌러 이동해요", "건물 앞에서 Space 를 누르면 들어가요", "탈것을 타면 빨라지고 입장 범위도 넘어져요", "다른 사람 캐릭터를 누르면 따라가기·찾아가기·선물하기를 고를 수 있어요", "우측 상단 접속자 버튼 → 🏃 을 누르면 그 사람 옆으로 바로 가요", "좌측 하단 채팅은 5초 뒤 사라져요 · 확성기(🪙2)는 계속 남아요"],
   center: ["테이블을 눌러 주민들과 대화해요", "회의실 3곳은 예약하고 채팅도 할 수 있어요", "회의실 안 📨 초대장으로 날짜·시간을 정해 보내보세요", "커피·자판기·정수기로 HP·MP 를 채워요"],
-  house: ["🖥️ 책상은 나만 보는 메모장이에요", "🚪 현관문을 누르면 비밀번호를 바꿀 수 있어요", "🔧 가구 배치를 켜고 가구를 끌어서 옮겨보세요", "🌳 마당과 🐟 수족관은 형욱이네에서 사야 생겨요", "집에 둔 선물을 누르면 누가 줌는지 보여요"],
+  house: ["🖥️ 책상에 메모를 여러 장 붙여둘 수 있어요 · 눌러서 자세히 보기", "🚪 현관문을 누르면 바로 나가요", "🔧 가구 배치를 켜고 가구를 끌어서 옮겨보세요", "집에 둔 선물을 누르면 🎒 가방에 넣거나 🗑 버릴 수 있어요", "🌳 마당과 🐟 수족관은 형욱이네에서 사야 생겨요", "집에 둔 선물을 누르면 누가 줌는지 보여요"],
   sea: ["🚏 위쪽 정류장으로 가면 마을로 돌아가요", "바다에는 못 들어가고 선착장 위로만 걸어갈 수 있어요", "선착장 끝 🎣 낚시터에서 낚시를 해보세요", "⛵ 배와 🐬 돌고래가 떠다녀요"],
   fishing: ["🎣 낚싯대를 던지고 ❗ 입질이 오면 바로 당기세요", "1.4초 안에 못 당기면 놓쳐요", "잡은 만큼 🪙 골드를 받아요", "가끔 🐙 문어 같은 대물이 나와요"],
   petshop: ["먼저 🏗 시설에서 🌳 마당·🐟 수족관을 사세요", "마당이 있어야 반려동물을, 수족관이 있어야 물고기를 데려올 수 있어요", "데려나가기를 누르면 마을에서 나를 따라다니고 다른 사람에게도 보여요", "🤲 쓰다듬기·🍖 밥주기로 친밀도를 쌓아보세요"],
@@ -3071,7 +3071,7 @@ function playBell() {
 function loadJSON(k, d) { try { const r = window.localStorage.getItem(k); return r ? JSON.parse(r) : d; } catch (e) { return d; } }
 function saveJSON(k, v) { try { window.localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
 
-function HouseGate({ house, isMine, myName, hasPw, onSetPw, onEnter, onBell, onMail, onBack, failSignal = 0 }) {
+function HouseGate({ house, isMine, myName, hasPw, onSetPw, onGetPw, onEnter, onBell, onMail, onBack, failSignal = 0 }) {
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [msg, setMsg] = useState(null);
@@ -3093,6 +3093,17 @@ function HouseGate({ house, isMine, myName, hasPw, onSetPw, onEnter, onBell, onM
     const iv = setInterval(tick, 250);
     return () => clearInterval(iv);
   }, [lockUntil]);
+  const [chgOpen, setChgOpen] = useState(false);
+  const [chgOld, setChgOld] = useState("");
+  const [chgNew, setChgNew] = useState("");
+  const [chgMsg, setChgMsg] = useState(null);
+  const doChange = () => {
+    if (chgOld.trim() !== String(hasPw ? onGetPw && onGetPw() : "")) { setChgMsg({ ok: false, text: "기존 비밀번호가 달라요" }); return; }
+    onSetPw(chgNew.trim());
+    setChgMsg({ ok: true, text: "바뀌었어요 ✓" });
+    setChgOld(""); setChgNew("");
+    setTimeout(() => { setChgOpen(false); setChgMsg(null); }, 1200);
+  };
   const [waiting, setWaiting] = useState(false);
   const waitTimer = useRef(null);
   useEffect(() => () => clearTimeout(waitTimer.current), []);
@@ -3164,7 +3175,24 @@ function HouseGate({ house, isMine, myName, hasPw, onSetPw, onEnter, onBell, onM
               <div style={{ display: "flex", gap: 6 }}>
                 <input value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") tryEnter(); }} maxLength={12} type="password" placeholder="비밀번호" style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, textAlign: "center" }} />
                 <PxButton tone="good" disabled={waiting} onClick={tryEnter} style={{ padding: "10px 14px", fontSize: 13 }}>{waiting ? "확인 중…" : "입장"}</PxButton>
+                {isMine && <PxButton tone="wood" onClick={() => { setChgOpen(true); setChgOld(""); setChgNew(""); setChgMsg(null); }} style={{ padding: "10px 12px", fontSize: 12, whiteSpace: "nowrap" }}>변경</PxButton>}
               </div>
+
+              {chgOpen && (
+                <div style={{ background: "#fff5d6", border: `2px solid ${C.ink}`, borderRadius: 8, padding: 11, marginTop: 9 }}>
+                  <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 7 }}>🔑 비밀번호 변경</div>
+                  <input value={chgOld} onChange={(e) => { setChgOld(e.target.value); setChgMsg(null); }} maxLength={12} type="password" placeholder="기존 비밀번호"
+                    style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13.5, textAlign: "center", marginBottom: 6 }} />
+                  <input value={chgNew} onChange={(e) => { setChgNew(e.target.value); setChgMsg(null); }} maxLength={12} placeholder="새 비밀번호"
+                    onKeyDown={(e) => { if (e.key === "Enter") doChange(); }}
+                    style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13.5, textAlign: "center" }} />
+                  {chgMsg && <div style={{ fontSize: 11.5, color: chgMsg.ok ? C.good : C.danger, textAlign: "center", marginTop: 6, fontWeight: "bold" }}>{chgMsg.text}</div>}
+                  <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                    <PxButton tone="ink" onClick={() => setChgOpen(false)} style={{ flex: 1, padding: 9, fontSize: 12 }}>취소</PxButton>
+                    <PxButton tone="gold" disabled={!chgOld.trim() || !chgNew.trim()} onClick={doChange} style={{ flex: 1, padding: 9, fontSize: 12 }}>바꾸기</PxButton>
+                  </div>
+                </div>
+              )}
               {fails > 0 && <div style={{ marginTop: 7, fontSize: 11.5, color: C.danger, textAlign: "center" }}>⚠️ {fails}번 틀렸어요 · {5 - fails}번 더 틀리면 1분간 입력이 막혀요</div>}
             </>
           )}
@@ -3296,20 +3324,19 @@ function GiftModal({ target, inventory, myName, onSend, onClose }) {
   );
 }
 
-function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras = [], gifts = [], fridge = [], fishes = [], hasAquarium = false, hasYard = false, petsAtHome = [], onOpenAqua, onOpenYard, isMine = false, housePw = "", onChangePw, layout = {}, onMoveFurni, onResetLayout }) {
+function HomeView({ house, notes = [], onSaveMemo, onDelMemo, onBack, bubble, skin = null, extras = [], gifts = [], fridge = [], fishes = [], hasAquarium = false, hasYard = false, petsAtHome = [], onOpenAqua, onOpenYard, isMine = false, layout = {}, onMoveFurni, onResetLayout, onGiftHome }) {
   const [arrange, setArrange] = useState(false);
   const [open, setOpen] = useState(false);
-  const [text, setText] = useState(memo || "");
-  const [pwOpen, setPwOpen] = useState(false);
-  const [pwNew, setPwNew] = useState("");
-  const [pwMsg, setPwMsg] = useState(null);
+  const [text, setText] = useState("");
+  const [noteView, setNoteView] = useState(null);
+  const [giftPick, setGiftPick] = useState(null);
   const furniture = [
     { id: "bed", x: 40, y: 60, w: 150, h: 90, color: "#c98ba0", emoji: "🛏️", label: "침대", toast: "잠깐 누워 쉬었다 😌" },
     { id: "sofa", x: 40, y: 260, w: 130, h: 70, color: "#8ea9c9", emoji: "🛋️", label: "쇼파", toast: "쇼파에 앉아 한숨 돌린다 🛋️" },
     { id: "tv", x: 250, y: 280, w: 120, h: 56, color: "#3a3a3a", emoji: "📺", label: "티비", toast: "TV를 켰다 📺 예능이 나온다" },
-    { id: "desk", x: 430, y: 90, w: 150, h: 90, color: "#a9814a", emoji: "🖥️", label: "책상(메모)", onInteract: () => { setText(memo || ""); setOpen(true); } },
+    { id: "desk", x: 430, y: 90, w: 150, h: 90, color: "#a9814a", emoji: "🖥️", label: "책상(메모)", onInteract: () => { setNoteView(null); setOpen(true); } },
   ];
-  if (isMine) furniture.push({ id: "door", x: 285, y: 355, w: 70, h: 45, color: "#7a5230", emoji: "🚪", label: "현관문", onInteract: () => { setPwNew(""); setPwMsg(null); setPwOpen(true); } });
+  furniture.push({ id: "door", x: 285, y: 355, w: 70, h: 45, color: "#7a5230", emoji: "🚪", label: "나가기", onInteract: () => onBack && onBack() });
   const EX_POS = [[240, 60], [430, 250], [60, 170], [330, 170], [520, 320], [150, 330], [520, 190], [250, 380]];
   extras.forEach((id, i) => {
     const it = IKEA_ITEMS.furni.find((x) => x.id === id);
@@ -3322,7 +3349,7 @@ function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras
   gifts.forEach((g, i) => {
     const gp = GIFT_POS[i % GIFT_POS.length];
     furniture.push({ id: "gift" + i, x: gp[0], y: gp[1], w: 44, h: 44, color: "transparent", emoji: g.emoji || "🎁", label: g.name,
-      toast: `${g.name}${g.from ? ` — ${g.from}님이 준 선물이에요` : "을(를) 집에 뒀어요"} ✨` });
+      onInteract: () => setGiftPick({ ...g, _i: i }) });
   });
   /* 🐟 수족관 (구입했을 때만 놓여요) */
   if (hasAquarium) {
@@ -3350,33 +3377,61 @@ function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras
   ) : null;
 
   return (
-    <RoomView title={house.name} icon="🏠" sub={skin ? `내 집 · ${skin.name} 스타일` : "침대·쇼파·티비·책상 · 책상에서 메모 작성"} bg={skin ? skin.bg : "#efe6d2"} roomW={640} roomH={400} furniture={placed} onBack={onBack} paused={open || pwOpen} headerBg={skin ? skin.roof : house.wall} bubble={bubble}
+    <RoomView title={house.name} icon="🏠" sub={skin ? `내 집 · ${skin.name} 스타일` : "침대·쇼파·티비·책상 · 책상에서 메모 작성"} bg={skin ? skin.bg : "#efe6d2"} roomW={640} roomH={400} furniture={placed} onBack={onBack} paused={open || !!giftPick} headerBg={skin ? skin.roof : house.wall} bubble={bubble}
       banner={arrangeBar} editable={arrange} onMoveFurni={onMoveFurni} tipId="house">
-      {pwOpen && (
-        <RoomModal title="🚪 현관 비밀번호" onClose={() => setPwOpen(false)} maxW={340}>
-          <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.8, marginBottom: 10 }}>
-            지금 비밀번호는 <b style={{ color: C.ink }}>{housePw ? "*".repeat(String(housePw).length) : "없음"}</b> 이에요.<br />
-            새 비밀번호를 정하면 바로 바뀝니다.
+      {giftPick && (
+        <RoomModal title={`${giftPick.emoji || "🎁"} ${giftPick.name}`} onClose={() => setGiftPick(null)} maxW={320}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 52 }}>{giftPick.emoji || "🎁"}</div>
+            <div style={{ fontSize: 15, fontWeight: "bold", margin: "8px 0 4px" }}>{giftPick.name}</div>
+            <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.7, marginBottom: 14 }}>
+              {giftPick.from ? `🎀 ${giftPick.from}님이 준 선물이에요` : "집에 놓아둔 물건이에요"}
+            </div>
+            <PxButton tone="good" onClick={() => { onGiftHome && onGiftHome("bag", giftPick._i); setGiftPick(null); }} style={{ width: "100%", padding: 11, fontSize: 13 }}>🎒 치워서 가방에 넣기</PxButton>
+            <PxButton tone="danger" onClick={() => { if (window.confirm(`${giftPick.name}을(를) 버릴까요? 되돌릴 수 없어요.`)) { onGiftHome && onGiftHome("trash", giftPick._i); setGiftPick(null); } }} style={{ width: "100%", padding: 10, fontSize: 12.5, marginTop: 7 }}>🗑 쓰레기통에 버리기</PxButton>
+            <PxButton tone="ink" onClick={() => setGiftPick(null)} style={{ width: "100%", padding: 9, fontSize: 12, marginTop: 7 }}>그냥 두기</PxButton>
           </div>
-          <input value={pwNew} onChange={(e) => { setPwNew(e.target.value); setPwMsg(null); }} maxLength={12} autoFocus
-            onKeyDown={(e) => { if (e.key === "Enter" && pwNew.trim()) { onChangePw(pwNew.trim()); setPwMsg("바뀌었어요 ✓"); setPwNew(""); } }}
-            placeholder="새 비밀번호 (예: 1234)"
-            style={{ width: "100%", boxSizing: "border-box", padding: 11, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, textAlign: "center", background: C.white }} />
-          {pwMsg && <div style={{ fontSize: 12.5, color: C.good, textAlign: "center", marginTop: 7, fontWeight: "bold" }}>{pwMsg}</div>}
-          <PxButton tone="good" disabled={!pwNew.trim()} onClick={() => { onChangePw(pwNew.trim()); setPwMsg("바뀌었어요 ✓"); setPwNew(""); }}
-            style={{ width: "100%", marginTop: 10, padding: 12, fontSize: 14 }}>비밀번호 바꾸기</PxButton>
-          <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 8 }}>바꾸면 예전 비밀번호로는 못 들어와요</div>
         </RoomModal>
       )}
       {open && (
-        <RoomModal title="📝 개인 메모장" onClose={() => setOpen(false)}>
-          <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>{house.name} 책상 · 나만 보는 메모</div>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="오늘 할 일, 아이디어, 메모를 적어보세요…"
-            style={{ width: "100%", boxSizing: "border-box", height: 180, padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: "#fffdf5", resize: "none" }} />
-          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <PxButton tone="ink" onClick={() => setOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>닫기</PxButton>
-            <PxButton tone="good" onClick={() => { onSaveMemo(text); setOpen(false); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>저장</PxButton>
-          </div>
+        <RoomModal title="📝 개인 메모장" onClose={() => { setOpen(false); setNoteView(null); }} maxW={480}>
+          {noteView ? (
+            <div>
+              <PxButton tone="ink" onClick={() => setNoteView(null)} style={{ fontSize: 11, padding: "6px 10px", marginBottom: 9 }}>← 목록</PxButton>
+              <div style={{ background: noteView.color || "#ffe680", border: `3px solid ${C.ink}`, borderRadius: 8, padding: 14,
+                maxHeight: 300, overflowY: "auto", fontSize: 14, lineHeight: 1.9, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                {noteView.text}
+              </div>
+              <div style={{ fontSize: 10.5, color: C.inkSoft, marginTop: 7 }}>🕐 {noteView.at}</div>
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <PxButton tone="danger" onClick={() => { if (window.confirm("이 메모를 지울까요?")) { onDelMemo(noteView.id); setNoteView(null); } }} style={{ flex: 1, padding: 10, fontSize: 13 }}>🗑 삭제</PxButton>
+                <PxButton tone="wood" onClick={() => { setText(noteView.text); setNoteView(null); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>✏️ 불러와 수정</PxButton>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>{house.name} 책상 · 나만 보는 메모</div>
+              <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="오늘 할 일, 아이디어, 메모를 적어보세요…" rows={4}
+                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: "#fffdf5", resize: "vertical" }} />
+              <PxButton tone="good" disabled={!text.trim()} onClick={() => { onSaveMemo(text.trim()); setText(""); }} style={{ width: "100%", marginTop: 8, padding: 11, fontSize: 13 }}>📌 칠판에 붙이기</PxButton>
+
+              <div style={{ fontSize: 11.5, fontWeight: "bold", margin: "14px 0 7px" }}>📌 붙여둔 메모 {notes.length}장</div>
+              <div style={{ background: "#2f5d3f", border: `4px solid ${C.woodDark}`, borderRadius: 6, padding: 10, minHeight: 120, maxHeight: 260, overflowY: "auto",
+                display: "flex", flexWrap: "wrap", gap: 8, alignContent: "flex-start" }}>
+                {notes.length === 0 && <span style={{ color: "#cfe4d6", fontSize: 12 }}>아직 붙여둔 메모가 없어요. 첫 메모를 남겨보세요!</span>}
+                {notes.map((n, ni) => (
+                  <button key={n.id} type="button" onClick={() => setNoteView(n)}
+                    style={{ width: 118, minHeight: 92, cursor: "pointer", textAlign: "left", fontFamily: "'DotGothic16', monospace",
+                      background: n.color || "#ffe680", border: `2px solid ${C.ink}`, padding: 8, fontSize: 11.5, lineHeight: 1.5,
+                      transform: `rotate(${(ni % 5) - 2}deg)`, boxShadow: "2px 2px 0 rgba(0,0,0,0.25)" }}>
+                    <div style={{ display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden", wordBreak: "break-word" }}>{n.text}</div>
+                    <div style={{ fontSize: 9, color: C.inkSoft, marginTop: 4 }}>{n.at}</div>
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 8 }}>메모를 누르면 전체 내용을 볼 수 있어요</div>
+            </div>
+          )}
         </RoomModal>
       )}
     </RoomView>
@@ -6396,6 +6451,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724ss", type: "업데이트", date: "2026-07-24", title: "📌 메모 칠판 · 🎁 선물 치우기 · 🔑 비밀번호 변경",
+    body: "· 메모를 칠판에 붙이는 것처럼 여러 장 남길 수 있어요\n· 붙인 메모를 누르면 전체 내용을 스크롤하며 보고, 수정·삭제할 수 있어요\n· 집에 둔 선물을 누르면 🎒 가방에 다시 넣거나 🗑 버릴 수 있어요\n· 🚪 현관문은 이제 바로 나가기예요\n· 🔑 비밀번호 변경은 입장 화면의 「변경」 버튼에서 — 기존 비밀번호를 확인한 뒤 바꿔요" },
   { id: "u20260724rr", type: "업데이트", date: "2026-07-24", title: "🌊 바다를 별도 지역으로 분리",
     body: "· 마을을 늘리는 대신 바다를 독립된 지역으로 만들었어요\n· 십자로 세로길 남쪽 끝 🌊 바다 가는 길로 들어가요\n· 돌아올 땐 바다 위쪽 🚏 정류장을 누르면 마을 입구로 나와요\n· 바다에서도 다른 접속자가 보이고, 내 옷·반려동물·선물이 그대로 보여요\n· 모래사장은 걸을 수 있고, 바다는 선착장 위로만 나갈 수 있어요\n· 선착장 끝 🎣 낚시터에서 낚시를 즐기세요" },
   { id: "u20260724qq", type: "업데이트", date: "2026-07-24", title: "🌊 남쪽 바다 · 🎣 낚시터 오픈",
@@ -6998,7 +7055,9 @@ const HELP_DATA = {
   ],
   "🏠 집": [
     { icon: "🔧", title: "가구 배치 바꾸기", body: "내 집에서 상단 「🔧 가구 배치」를 켜면 가구를 끌어서 원하는 자리로 옮길 수 있어요. 위치는 저장되고 「↩ 처음 배치로」로 되돌릴 수도 있어요." },
-    { icon: "🚪", title: "현관 비밀번호 바꾸기", body: "내 집 안 🚪 현관문을 누르면 비밀번호를 바꿀 수 있어요. 바꾸면 예전 비밀번호로는 들어올 수 없어요." },
+    { icon: "📌", title: "메모 칠판", body: "🖥️ 책상에서 메모를 여러 장 붙여둘 수 있어요. 붙인 메모를 누르면 전체 내용을 스크롤하며 볼 수 있고, 수정하거나 지울 수 있어요." },
+    { icon: "🎁", title: "집에 둔 선물 치우기", body: "집에 놓아둔 선물을 누르면 🎒 가방에 다시 넣거나 🗑 버릴 수 있어요." },
+    { icon: "🔑", title: "현관 비밀번호 바꾸기", body: "내 집 입장 화면에서 비밀번호 칸 옆 「변경」을 누르세요. 기존 비밀번호를 확인한 뒤 새 비밀번호로 바꿉니다." },
     { icon: "🔒", title: "비밀번호", body: "내 집 첫 방문 때 비밀번호를 설정해요(최초 1회). 이후에는 방문할 때마다 현관에서 비밀번호를 입력해 들어갑니다. 비밀번호를 아는 사람은 누구나 들어올 수 있어요." },
     { icon: "🔔", title: "초인종", body: "누르면 딩동 소리와 함께 집주인에게 알림이 갑니다. 주인은 문 열어주기 / 거절하기를 선택할 수 있어요." },
     { icon: "📮", title: "우체통", body: "방명록·편지를 남기고 선물도 함께 보내요(택배비 🪙0.3). 보낼 선물은 🙏 감사의 방에서 미리 구매해두면 목록에 나와요. 내 집 우체통에서는 받은 편지함을 확인할 수 있어요.", go: "thanks", goLabel: "감사의 방 가기" },
@@ -8258,6 +8317,21 @@ function EchoTown() {
   });
 
   const [memos, setMemos] = useState({});
+  /* 메모는 집마다 여러 장 붙여둘 수 있어요 (예전 문자열 형식도 자동으로 이어받아요) */
+  const NOTE_COLORS = ["#ffe680", "#ffd0e0", "#c9f0d0", "#cfe4ff", "#f0d9b8"];
+  const noteList = (hid) => {
+    const v = memos[hid];
+    if (Array.isArray(v)) return v;
+    if (typeof v === "string" && v.trim()) return [{ id: 1, text: v, at: "", color: NOTE_COLORS[0] }];
+    return [];
+  };
+  const addNote = (hid, text) => setMemos((m) => {
+    const cur = Array.isArray(m[hid]) ? m[hid] : (typeof m[hid] === "string" && m[hid].trim() ? [{ id: 1, text: m[hid], at: "", color: NOTE_COLORS[0] }] : []);
+    const row = { id: Date.now() + Math.random(), text, color: NOTE_COLORS[cur.length % NOTE_COLORS.length],
+      at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
+    return { ...m, [hid]: [row, ...cur].slice(0, 40) };
+  });
+  const delNote = (hid, id) => setMemos((m) => ({ ...m, [hid]: (Array.isArray(m[hid]) ? m[hid] : []).filter((x) => x.id !== id) }));
   const [meetingRooms, setMeetingRooms] = useState({
     m1: { reserved: false, by: "", time: "", locked: false },
     m2: { reserved: true, by: "도희", time: "14:00", locked: false },
@@ -9402,13 +9476,23 @@ function EchoTown() {
           }}
           onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && (unlocked[houseId] ? (
-          <HomeView isMine={isMyHouse(houseMeta.name)} housePw={housePw}
+          <HomeView isMine={isMyHouse(houseMeta.name)}
             layout={isMyHouse(houseMeta.name) ? homeLayout : {}}
             onMoveFurni={(id, x, y) => setHomeLayout((v) => ({ ...v, [id]: { x, y } }))}
-            onResetLayout={() => { setHomeLayout({}); showNotice("↩ 가구를 처음 배치로 되돌렸어요"); }} onChangePw={(p) => { setHousePw(p); showNotice("🚪 현관 비밀번호를 바꿨어요"); }} fishes={isMyHouse(houseMeta.name) ? fishes : []} hasAquarium={isMyHouse(houseMeta.name) && facilities.includes("aquarium")} hasYard={isMyHouse(houseMeta.name) && facilities.includes("yard")} petsAtHome={isMyHouse(houseMeta.name) ? PETS.filter((x) => pets.includes(x.id) && x.id !== activePet).map((x) => `${x.emoji} ${x.name}`) : []} onOpenAqua={() => setAquaOpen(true)} onOpenYard={() => setYardOpen(true)} gifts={isMyHouse(houseMeta.name) ? homeGifts : []} fridge={isMyHouse(houseMeta.name) ? fridge : []} house={houseMeta} skin={isMyHouse(houseMeta.name) ? houseSkin : null} extras={isMyHouse(houseMeta.name) ? myFurni : []} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />
+            onResetLayout={() => { setHomeLayout({}); showNotice("↩ 가구를 처음 배치로 되돌렸어요"); }}
+            notes={noteList(houseId)}
+            onSaveMemo={(t) => addNote(houseId, t)}
+            onDelMemo={(id) => delNote(houseId, id)}
+            onGiftHome={(how, idx) => {
+              const it = homeGifts[idx];
+              if (!it) return;
+              setHomeGifts((v) => v.filter((_, i) => i !== idx));
+              if (how === "bag") { setThanksInv((v) => [...v, it]); showNotice(`🎒 ${it.name}을(를) 가방에 넣었어요`); }
+              else showNotice(`🗑 ${it.name}을(를) 버렸어요`);
+            }} fishes={isMyHouse(houseMeta.name) ? fishes : []} hasAquarium={isMyHouse(houseMeta.name) && facilities.includes("aquarium")} hasYard={isMyHouse(houseMeta.name) && facilities.includes("yard")} petsAtHome={isMyHouse(houseMeta.name) ? PETS.filter((x) => pets.includes(x.id) && x.id !== activePet).map((x) => `${x.emoji} ${x.name}`) : []} onOpenAqua={() => setAquaOpen(true)} onOpenYard={() => setYardOpen(true)} gifts={isMyHouse(houseMeta.name) ? homeGifts : []} fridge={isMyHouse(houseMeta.name) ? fridge : []} house={houseMeta} skin={isMyHouse(houseMeta.name) ? houseSkin : null} extras={isMyHouse(houseMeta.name) ? myFurni : []} onBack={backToWorld} bubble={bubble} />
         ) : (
           <HouseGate house={houseMeta} isMine={isMyHouse(houseMeta.name)} myName={myName} hasPw={!!housePw} failSignal={pwFail}
-            onSetPw={(p) => { setHousePw(p); }}
+            onSetPw={(p) => { setHousePw(p); showNotice("🔑 현관 비밀번호를 바꿨어요"); }} onGetPw={() => housePw}
             onEnter={(p) => {
               if (!p) return false;
               if (isMyHouse(houseMeta.name)) {
