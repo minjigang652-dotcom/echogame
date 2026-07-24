@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v43 · 2026-07-24";
+const APP_VERSION = "v44 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -544,10 +544,76 @@ function GemBadge({ amount, big, kind = "gem" }) {
   );
 }
 
-function TitleBar({ icon, title, sub, onBack, right, bg = C.parch, fg = C.ink }) {
+/* ===== ❓ 방별 팁 =====
+   기능을 추가하거나 바꿀 때마다 여기에도 한 줄씩 넣어주세요. */
+const ROOM_TIPS = {
+  world: ["⬆⬇⬅➡ 또는 화면을 눌러 이동해요", "건물 앞에서 Space 를 누르면 들어가요", "탈것을 타면 빨라지고 입장 범위도 넘어져요", "다른 사람 캐릭터를 누르면 따라가기·찾아가기·선물하기를 고를 수 있어요", "우측 상단 접속자 버튼 → 🏃 을 누르면 그 사람 옆으로 바로 가요", "좌측 하단 채팅은 5초 뒤 사라져요 · 확성기(🪙2)는 계속 남아요"],
+  center: ["테이블을 눌러 주민들과 대화해요", "회의실 3곳은 예약하고 채팅도 할 수 있어요", "회의실 안 📨 초대장으로 날짜·시간을 정해 보내보세요", "커피·자판기·정수기로 HP·MP 를 채워요"],
+  house: ["🖥️ 책상은 나만 보는 메모장이에요", "🚪 현관문을 누르면 비밀번호를 바꿀 수 있어요", "🌳 마당과 🐟 수족관은 형욱이네에서 사야 생겨요", "집에 둔 선물을 누르면 누가 줌는지 보여요"],
+  petshop: ["먼저 🏗 시설에서 🌳 마당·🐟 수족관을 사세요", "마당이 있어야 반려동물을, 수족관이 있어야 물고기를 데려올 수 있어요", "데려나가기를 누르면 마을에서 나를 따라다니고 다른 사람에게도 보여요", "🤲 쓰다듬기·🍖 밥주기로 친밀도를 쌓아보세요"],
+  bank: ["퀴스트로 모은 💎 젖을 원화로 바꿀 수 있어요", "🪙 골드는 마을 안에서만 쓰고 환전은 안 돼요", "환전 내역은 아래에 쌓여요"],
+  board: ["글을 올리면 모두가 봐요", "내가 쓴 글은 ✏️ 수정·🗑 삭제할 수 있어요", "업데이트 탭에서 새로 바뀐 기능을 확인하세요"],
+  thanks: ["칠판에 남긴 쪽지는 모두에게 보여요", "🔒 받는 사람만 보게 할 수도 있어요", "🕶 익명으로 남겨도 내 글은 지울 수 있어요", "선반 상점에서 선물을 사서 우체통으로 보내보세요"],
+  heart: ["고민을 익명으로 남기면 모두에게 보여요", "고해성사와 서운 점 중에 골라 넣어요", "글을 넣을 땐 🪙 골드가 필요해요"],
+  listening: ["🎧 디제이 부스에서 🔗 링크·🎤 가수·🎵 제목을 넣어보세요", "등록하면 바로 재생되고 방을 나가도 계속 들려요", "좌측 하단 미니 플레이어로 멈추거나 접을 수 있어요"],
+  reels: ["핸드폰을 눌러 카테고리별 릴스를 봐요", "카테고리를 추가하면 모두에게 공유돼요"],
+  minigame: ["🕵️ 라이어 게임은 실제 접속자 3명부터 시작해요", "방을 만들면 다른 사람에게 참가 버튼이 떠요", "반사신경·가위바위보·순서기억으로 🪙 골드를 모아요"],
+  smoke: ["재떨이를 누르면 실제 접속자들과 수다 떨어요", "채팅창 위에 지금 방에 있는 사람이 보여요", "창문을 열면 공기가 맑아져요"],
+  pool: ["레인에서 수영 대결을 해보세요", "1등을 하면 🪙 골드와 랭킹 기록을 얻어요"],
+  gym: ["웨이트 존에서 운동하면 🪙4 을 받아요", "스트레칭 코너도 한 번 들러보세요"],
+  sandbag: ["때릴 대상을 정하고 마음껏 두드려보세요", "같은 닉네임으로 등록하면 때린 수가 누적돼요"],
+  jjeop: ["📋 메뉴 추천에 한 마디 남기면 모두에게 보여요", "🔮 점심술사가 오늘 메뉴를 골라줘요", "인증샷을 제출하면 🪙5 를 받아요"],
+  musinsa: ["상의·하의·신발을 입어보고 살 수 있어요", "입은 옷은 마을과 건물 안 모두에서 보여요"],
+  ikea: ["집 외관·가구·탈것을 살 수 있어요", "가구를 사면 내 집에 배치돼요", "탈것은 빠를수록 비싸지만 입장 조준도 쉬워져요"],
+  project: ["이지모드는 순서대로, 하드모드는 광장에서 자유롭게", "＋ 버튼으로 퀴스트를 추가하고 보상을 여러 개 걸 수 있어요", "다 했으면 📮 제출 → 답변을 적으면 제단에 자동으로 올라가요", "하드모드 퀴스트를 깨면 🧠 사고 스킬을 배워요", "상단 도감에서 지금까지 모은 것을 볼 수 있어요"],
+  questdone: ["퀴스트 신청·수락 파편을 봉헌해요", "등록자가 🛡 검토하고 ⭐ 보상을 체크하면 지급돼요", "「🙋 내 관련」 필터로 내가 처리할 것만 볼 수 있어요"],
+  coredict: ["우리만의 단어를 등록하고 가나다 순으로 찾아봐요", "🖼 갤러리에 사진을 올리고 한 줄 설명을 달 수 있어요", "🔒 비밀사전은 나만 보는 핵심 요약 보관함이에요", "상단 🔄 동기화로 다른 사람 기록을 받아와요"],
+  meeting: ["채팅으로 같은 회의실 사람들과 대화해요", "📨 초대장을 보내면 상대 메세지함으로 가요", "예약해두면 주민센터에 표시돼요"],
+  naverschool: ["집을 하나씩 들러 퀴스트를 깨요", "앞 집을 깨야 다음 집이 열려요", "깨난 기록은 저장돼서 나갔다 와도 그대로예요"],
+  videoschool: ["집을 하나씩 들러 퀴스트를 깨요", "앞 집을 깨야 다음 집이 열려요", "깨난 기록은 저장돼서 나갔다 와도 그대로예요"],
+  rent: ["치앙마이 집을 한 달 빌려볼 수 있어요", "렌트비는 🪙 골드로 내요"],
+  big: ["목록에서 업무를 골라 진행해요", "끝내면 💎 젖을 받아요"],
+};
+
+function RoomTips({ id }) {
+  const [open, setOpen] = useState(false);
+  const tips = ROOM_TIPS[id];
+  if (!tips || !tips.length) return null;
+  return (
+    <>
+      <button onClick={() => setOpen(true)} title="이 방에서 할 수 있는 것"
+        style={{ width: 26, height: 26, borderRadius: "50%", border: `2px solid ${C.ink}`, background: C.gem, color: C.ink,
+          cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 14, fontWeight: "bold", lineHeight: 1, flexShrink: 0 }}>?</button>
+      {open && (
+        <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 145, padding: 14 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 330 }}>
+            <div style={{ background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: 22 }}>💡</span>
+                <b style={{ flex: 1, fontSize: 14 }}>여기서 할 수 있는 것</b>
+                <PxButton tone="ink" onClick={() => setOpen(false)} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {tips.map((t, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "9px 11px", fontSize: 12.5, lineHeight: 1.6 }}>
+                    <span style={{ color: C.gem, fontWeight: "bold" }}>•</span>
+                    <span style={{ flex: 1 }}>{t}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function TitleBar({ icon, title, sub, onBack, right, bg = C.parch, fg = C.ink, tipId = null }) {
   return (
     <div style={{ padding: "12px 16px", background: bg, color: fg, borderBottom: `4px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <RoomTips id={tipId} />
         {icon && <span style={{ fontSize: 26 }}>{icon}</span>}
         <div>
           <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11 }}>{title}</div>
@@ -564,7 +630,7 @@ function TitleBar({ icon, title, sub, onBack, right, bg = C.parch, fg = C.ink })
 
 /* ======================= 이동 가능한 룸(내부) ======================= */
 /* furniture: {id,x,y,w,h,label,emoji,color?,onInteract?,toast?} 좌표는 룸 px 기준 */
-function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, start, onBack, paused = false, children, headerBg = C.parch, banner = null, bubble = null, outfit = null, look = null, carry = null, pet = null }) {
+function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, start, onBack, paused = false, children, headerBg = C.parch, banner = null, bubble = null, outfit = null, look = null, carry = null, pet = null, tipId = null }) {
   const net = useContext(NetContext);
   /* 건물 안에서도 내 옷·외모·반려동물·들고 있는 선물이 그대로 보이도록 */
   const meNet = (net && net.me) || {};
@@ -657,7 +723,7 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
 
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon={icon} title={title} sub={sub || "⬆⬇⬅➡ 이동 · 가구 앞에서 Space 상호작용"} onBack={onBack} bg={headerBg} />
+      <TitleBar icon={icon} title={title} sub={sub || "⬆⬇⬅➡ 이동 · 가구를 눌러 상호작용"} onBack={onBack} bg={headerBg} tipId={tipId || (net && net.view)} />
       {banner}
       <div style={{ position: "relative", width: "100%", overflow: "hidden" }}>
         <div style={{ position: "relative", width: roomW, height: roomH, margin: "0 auto", background: bg, borderBottom: `3px solid ${C.ink}` }}>
@@ -2154,6 +2220,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
             </div>
           </div>
         )}
+        <div style={{ position: "absolute", left: 10, top: 10, zIndex: 27 }}><RoomTips id="world" /></div>
         {toast2 && (
           <div style={{ position: "absolute", left: "50%", top: 56, transform: "translateX(-50%)", zIndex: 28, background: C.ink, color: C.gem, border: `2px solid ${C.gem}`, borderRadius: 20, padding: "7px 16px", fontSize: 12.5, fontFamily: "'DotGothic16', monospace" }}>{toast2}</div>
         )}
@@ -2386,7 +2453,7 @@ function BigBuildingView({ b, qs, day, onRun, onBack }) {
   const shownQuests = cats ? b.quests.filter((q) => q.cat === curCat) : b.quests;
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon={b.icon} title={b.name} sub="업무(반복) 퀘스트는 하루 1회 · 다음 날 초기화" onBack={onBack} bg={b.color} fg={C.white} />
+      <TitleBar tipId="big" icon={b.icon} title={b.name} sub="업무(반복) 퀘스트는 하루 1회 · 다음 날 초기화" onBack={onBack} bg={b.color} fg={C.white} />
       <div style={{ padding: 16, background: `repeating-linear-gradient(0deg, ${C.parch} 0 40px, ${C.parchLine} 40px 80px)`, display: "grid", gap: 12 }}>
         {cats && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -2571,7 +2638,7 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
   const participants = [{ name: myName || "나", me: true }, ...here.map((o) => ({ name: o.name, me: false }))];
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="🎥" title={`회의실 ${num}`} sub={room.locked ? "🔒 잠긴 회의실" : "화상 회의 (데모)"} onBack={onBack} bg={C.bankRoof} fg={C.white}
+      <TitleBar tipId="meeting" icon="🎥" title={`회의실 ${num}`} sub={room.locked ? "🔒 잠긴 회의실" : "화상 회의 (데모)"} onBack={onBack} bg={C.bankRoof} fg={C.white}
         right={<div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <PxButton tone="gold" onClick={() => setInvOpen(true)} style={{ fontSize: 11, padding: "5px 9px" }}>📨 초대장</PxButton>
           <span style={{ fontSize: 11, background: room.reserved ? C.gem : "rgba(255,255,255,0.25)", color: room.reserved ? C.ink : C.white, padding: "4px 8px", border: `2px solid ${C.ink}` }}>{room.reserved ? `📌 ${room.by} · ${room.time}` : "예약 없음"}</span>
@@ -4145,7 +4212,7 @@ function SandbagView({ onBack, scores, onEnd, myName = "" }) {
   const ranked = [...scores].sort((a, b) => b.count - a.count).slice(0, 8);
   return (
     <Panel style={{ padding: 0, overflow: "hidden", position: "relative" }}>
-      <TitleBar icon="🥊" title="샌드백 치기" sub={target ? `🎯 ${target} 샌드백 · 끝을 누르면 랭킹 집계` : "샌드백을 마구 클릭! · 끝을 누르면 랭킹 집계"} onBack={onBack} bg="#c0563a" fg={C.white} />
+      <TitleBar tipId="sandbag" icon="🥊" title="샌드백 치기" sub={target ? `🎯 ${target} 샌드백 · 끝을 누르면 랭킹 집계` : "샌드백을 마구 클릭! · 끝을 누르면 랭킹 집계"} onBack={onBack} bg="#c0563a" fg={C.white} />
       <div style={{ display: "flex", flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 320px", position: "relative", height: 420, background: "#2a2233", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: mode === "mouse" ? GLOVE_CURSOR : "default" }} onClick={mode === "mouse" ? hit : undefined}>
           <div style={{ position: "absolute", top: 12, right: 14, textAlign: "center" }}>
@@ -4432,7 +4499,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear }) {
   const doneCount = houses.filter((h) => cleared[h.id]).length;
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon={s.icon} title={s.title} sub="WASD 이동 · 집 근처에서 E · 👑은 보스급, 🔒은 잠긴 퀘스트" onBack={onBack} bg={s.color} fg={C.white} />
+      <TitleBar tipId={school} icon={s.icon} title={s.title} sub="WASD 이동 · 집 근처에서 E · 👑은 보스급, 🔒은 잠긴 퀘스트" onBack={onBack} bg={s.color} fg={C.white} />
       <div style={{ padding: 12, background: C.parch }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
           <div style={{ flex: 1, height: 12, background: "#e2d3ab", border: `2px solid ${C.ink}` }}>
@@ -4885,7 +4952,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
 
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="🗺" title="보스맵 도전기" sub="WASD로 이동 · 아래에서 위로 진행 · 퀘스트 앞에서 E" onBack={onBack} bg="#241c33" fg={C.white} />
+      <TitleBar tipId="project" icon="🗺" title="보스맵 도전기" sub="WASD로 이동 · 아래에서 위로 진행 · 퀘스트 앞에서 E" onBack={onBack} bg="#241c33" fg={C.white} />
       <div style={{ padding: 14, background: "linear-gradient(180deg,#f6f2e8,#eae3d4)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: "8px 12px", boxShadow: "0 2px 0 rgba(0,0,0,0.15)" }}>
           {isPlaza ? (
@@ -5754,7 +5821,7 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
 
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="📖" title="코어사전" sub="우리만의 단어와 사진을 함께 모아요 · 모두에게 공유됩니다" onBack={onBack} bg="#8a5a3b" fg={C.white}
+      <TitleBar tipId="coredict" icon="📖" title="코어사전" sub="우리만의 단어와 사진을 함께 모아요 · 모두에게 공유됩니다" onBack={onBack} bg="#8a5a3b" fg={C.white}
         right={<PxButton tone="wood" onClick={() => { onSync && onSync(); say("동기화 요청을 보냈어요 🔄"); }} style={{ fontSize: 11, padding: "5px 9px" }}>🔄 동기화</PxButton>} />
       <div style={{ padding: 14, background: "#f7efdc" }}>
         <div style={{ display: "flex", gap: 7, marginBottom: 12 }}>
@@ -6029,6 +6096,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724oo", type: "업데이트", date: "2026-07-24", title: "❓ 방별 팁 버튼 추가",
+    body: "· 모든 방 좌측 상단에 ❓ 버튼이 생겼어요\n· 그 방에서 할 수 있는 것과 숨은 기능을 한 줄씩 알려줘요\n· 마을·주민센터·집·형욱이네·은행·게시판·감사의 방·마음의 방·리스닝방·릴스방·미니게임·흡연의 방·수영장·헬스장·샌드백·쩝쩝박사·무신사·이케아·보스맵·제단·코어사전·회의실·스쿨·렌트하우스 등 24곳\n· 앞으로 기능이 바뀔 때마다 📖 안내책자 · ❓ 방별 팁 · 📋 이 업데이트 소식 세 곳을 함께 갱신할게요" },
   { id: "u20260724nn", type: "업데이트", date: "2026-07-24", title: "🎁 보상 여러 개 · 🥊 샌드백 누적 · 🚪 비밀번호 변경",
     body: "· 퀘스트 보상을 여러 개 등록할 수 있어요 — 💎 젬 · 🪙 골드 · 🏆 아이템 · 🧠 스킬\n· 아이템·스킬은 기존 목록에서 고르거나 새로 입력할 수 있어요\n· 개수를 비워두면 개수 없이 표시돼요\n· 🥊 샌드백이 같은 닉네임이면 때린 수가 누적돼요\n· 🚪 내 집 현관문을 누르면 비밀번호를 바꿀 수 있어요\n· 건물 안에서도 내 옷·외모·반려동물·들고 있는 선물이 그대로 보여요" },
   { id: "u20260724mm", type: "업데이트", date: "2026-07-24", title: "🎒 인벤토리 분리 · 🔒 비밀번호 잠금 수정 · 📖 안내책자 보강",
@@ -6179,7 +6248,7 @@ function BoardView({ onBack, myName = "", myUid = "" }) {
   const key = (d) => `2026-07-${String(d).padStart(2, "0")}`;
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="📋" title="게시판" sub="공지사항 · 2026년 7월 캘린더" onBack={onBack} bg={C.wood} fg={C.white}
+      <TitleBar tipId="board" icon="📋" title="게시판" sub="공지사항 · 2026년 7월 캘린더" onBack={onBack} bg={C.wood} fg={C.white}
         right={<PxButton tone="gold" onClick={() => setWOpen(true)} style={{ fontSize: 11, padding: "5px 10px" }}>✍️ 글쓰기</PxButton>} />
       {edit && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120, padding: 14 }} onClick={() => setEdit(null)}>
@@ -6352,7 +6421,7 @@ function BoardView({ onBack, myName = "", myUid = "" }) {
 function RentView({ house, gems, rented, onRent, onBack }) {
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="🌴" title={house.name} sub="치앙마이 · 한 달 살기 렌트" onBack={onBack} bg={C.villaDk} fg={C.white} right={<GemBadge kind="gold" amount={gems} />} />
+      <TitleBar tipId="rent" icon="🌴" title={house.name} sub="치앙마이 · 한 달 살기 렌트" onBack={onBack} bg={C.villaDk} fg={C.white} right={<GemBadge kind="gold" amount={gems} />} />
       <div style={{ padding: 20, textAlign: "center", background: `repeating-linear-gradient(0deg, ${C.parch} 0 40px, ${C.parchLine} 40px 80px)` }}>
         <div style={{ display: "inline-block" }}><PixelHouse roof={house.roof} roofDk={house.roofDk} wall={house.wall} size={150} /></div>
         <div style={{ fontSize: 15, marginTop: 8 }}>강 건너 치앙마이의 아늑한 숙소</div>
@@ -6392,7 +6461,7 @@ function BankView({ gems, lifetime, exchanged, history, onExchange, onBack }) {
   }
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="🏦" title="SYSTEM CORE BANK" sub="자산 결산 & 환전 게이트" onBack={onBack} bg={C.bankRoof} fg={C.white} />
+      <TitleBar tipId="bank" icon="🏦" title="SYSTEM CORE BANK" sub="자산 결산 & 환전 게이트" onBack={onBack} bg={C.bankRoof} fg={C.white} />
       <div style={{ padding: 16, background: `repeating-linear-gradient(0deg, ${C.parch} 0 40px, ${C.parchLine} 40px 80px)` }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px,1fr))", gap: 12 }}>
           <StatCard label="현재 보유 젬" value={gems} accent={C.gem} icon="💎" />
@@ -6567,6 +6636,10 @@ function saveStats(v) {
 
 /* ======================= 도움말 (사용설명서) ======================= */
 const HELP_CATS = ["🌱 시작", "🏢 퀘스트", "🏛 생활", "🎮 놀이", "🏠 집", "👥 소통", "💎 젬·🪙 골드", "❓ FAQ"];
+/* ⚠️ 기능을 추가·변경할 때마다 아래 3곳을 함께 업데이트합니다.
+   ① HELP_DATA  — 📖 안내책자 (자세한 설명)
+   ② ROOM_TIPS  — ❓ 방별 팁 (한 줄 요약)
+   ③ UPDATE_NOTES — 📋 게시판 업데이트 소식 */
 const HELP_DATA = {
   "🌱 시작": [
     { icon: "🔐", title: "자동 로그인", body: "이름을 한 번 정하면 이 브라우저에서는 다음부터 자동으로 들어와요. 상단 🧑 버튼에서 로그아웃할 수 있어요." },
@@ -7754,7 +7827,7 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed,
 
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar icon="🏆" title="퀘스트 완료의 제단" sub="신청 파편과 수락 파편을 봉헌하고, GM 검수·보상을 확인하는 곳" onBack={onBack} bg="#2e2455" fg="#ffd75e" />
+      <TitleBar tipId="questdone" icon="🏆" title="퀘스트 완료의 제단" sub="신청 파편과 수락 파편을 봉헌하고, GM 검수·보상을 확인하는 곳" onBack={onBack} bg="#2e2455" fg="#ffd75e" />
       <div style={{ padding: 16, background: "radial-gradient(circle at 50% 0%, #3a2e6b 0%, #1a1436 60%, #120e28 100%)" }}>
 
         {/* 제단 헤더 */}
