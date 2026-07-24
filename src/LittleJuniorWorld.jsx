@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v64 · 2026-07-24";
+const APP_VERSION = "v65 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2390,7 +2390,11 @@ async function dbSprites() {
   } catch (e) { return {}; }
 }
 async function dbSaveSprite(id, dataUrl, by) {
-  try { const s = await getSupa(); await s.from("notices").insert({ type: "sprite", title: id, body: dataUrl || "", uid: by || null }); return true; } catch (e) { return false; }
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "sprite", title: id, body: dataUrl || "", uid: by || null });
+    return !(r && r.error);   // supabase 는 예외 대신 error 를 돌려줘요
+  } catch (e) { return false; }
 }
 async function dbAddNotice(type, title, body, uid) {
   try { const s = await getSupa(); await s.from("notices").insert({ type, title, body: body || null, uid: uid || null }); } catch (e) {}
@@ -2456,7 +2460,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
         });
         /* ⚠️ 새 이벤트를 만들면 반드시 여기에 이름을 넣어야 상대에게 도착해요 */
-        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm"].forEach((ev) => {
+        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow"].forEach((ev) => {
           ch.on("broadcast", { event: ev }, ({ payload }) => {
             if (onChatRef && onChatRef.net) onChatRef.net(ev, payload);
           });
@@ -4097,7 +4101,7 @@ function parseYouTubeId(url) {
   if (/^[\w-]{11}$/.test(s)) return s;
   return null;
 }
-function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelSong, onPlayYt, onPlayBgm, ytNow, myName = "", chat = [], onChat, roomBgm = null }) {
+function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelSong, onPlayYt, onPlayBgm, onFollow, ytNow, myName = "", chat = [], onChat, roomBgm = null }) {
   const net = useContext(NetContext);
   const listeners = (net && net.others ? Object.values(net.others) : []).filter((o) => o.ny && o.ny.v);
   const inp = { padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white, boxSizing: "border-box" };
@@ -4174,7 +4178,7 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
       <span style={{ fontSize: 10, color: "#b9a7d6" }}>{roomBgm && ytNow && roomBgm.song.id === ytNow.id ? "🎶 배경음악(다같이)" : ytNow ? "🎧 개인 감상" : ""}</span>
       <b style={{ fontSize: 13 }}>{ytNow ? label(ytNow) : "재생 중인 곡 없음"}</b>
       {roomBgm && (!ytNow || ytNow.id !== roomBgm.song.id) && (
-        <PxButton tone="good" onClick={() => onPlayYt(roomBgm.song)} style={{ fontSize: 11, padding: "4px 9px" }}>🎶 배경음악 듣기</PxButton>
+        <PxButton tone="good" onClick={() => { onPlayYt(roomBgm.song); onFollow && onFollow(roomBgm.by, label(roomBgm.song)); }} style={{ fontSize: 11, padding: "4px 9px" }}>🎶 배경음악 듣기</PxButton>
       )}
       <PxButton tone="gold" onClick={() => setDjOpen(true)} style={{ fontSize: 12, padding: "4px 10px", marginLeft: 6 }}>🎧 디제이 부스</PxButton>
       <PxButton tone="blue" onClick={() => setListOpen(true)} style={{ fontSize: 12, padding: "4px 10px" }}>📃 선곡 리스트 ({songs.length})</PxButton>
@@ -4196,14 +4200,14 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
       <div style={{ borderBottom: `3px solid ${C.ink}`, background: "#241a33", padding: "7px 9px", maxHeight: 132, overflow: "auto" }}>
         <div style={{ fontSize: 10.5, color: "#b9a7d6", marginBottom: 5 }}>🎧 지금 듣는 사람 · 눌러서 같이 듣기</div>
         {roomBgm && (
-          <button type="button" onClick={() => onPlayYt(roomBgm.song)} title="방 배경음악 듣기"
+          <button type="button" onClick={() => { onPlayYt(roomBgm.song); onFollow && onFollow(roomBgm.by, label(roomBgm.song)); }} title="방 배경음악 듣기"
             style={{ width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "'DotGothic16', monospace", background: "#4a3570", color: "#ffe680", border: `2px solid ${C.gem}`, borderRadius: 6, padding: "5px 8px", marginBottom: 4, fontSize: 11 }}>
             🎶 <b>배경음악</b> · {label(roomBgm.song)}<div style={{ fontSize: 9, color: "#c9bbe6" }}>{roomBgm.by}님 선곡 · 다같이</div>
           </button>
         )}
         {listeners.length === 0 && !roomBgm && <div style={{ fontSize: 10.5, color: "#8f7fb0" }}>아직 아무도 듣고 있지 않아요</div>}
         {listeners.map((o) => (
-          <button key={o.id} type="button" onClick={() => onPlayYt({ id: "j" + o.ny.i, artist: "", title: o.ny.t, videoId: o.ny.v, q: o.ny.t })}
+          <button key={o.id} type="button" onClick={() => { onPlayYt({ id: "j" + o.ny.i, artist: "", title: o.ny.t, videoId: o.ny.v, q: o.ny.t }); onFollow && onFollow(o.name, o.ny.t); }}
             title={`${o.name}님과 같이 듣기`}
             style={{ width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "'DotGothic16', monospace", background: "#32254d", color: "#f3ecff", border: `2px solid ${C.ink}`, borderRadius: 6, padding: "5px 8px", marginBottom: 4, fontSize: 11 }}>
             🎧 <b>{o.name}</b><div style={{ fontSize: 10, color: "#b9a7d6", wordBreak: "break-all" }}>{o.ny.t}</div>
@@ -4213,10 +4217,14 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
       <div ref={chatRef} style={{ flex: 1, overflow: "auto", padding: 8, display: "flex", flexDirection: "column", gap: 5 }}>
         {chat.length === 0 && <div style={{ fontSize: 11.5, color: "#8f7fb0", textAlign: "center", padding: 16, lineHeight: 1.7 }}>아직 대화가 없어요 🎵<br />지금 듣는 노래 얘기해봐요!</div>}
         {chat.map((m, i) => (
+          m.sys ? (
+            <div key={i} style={{ alignSelf: "center", fontSize: 10.5, color: "#ffe680", background: "rgba(255,215,94,0.12)", border: "1px solid rgba(255,215,94,0.4)", borderRadius: 10, padding: "3px 10px", textAlign: "center", lineHeight: 1.5 }}>🎧 {m.text}</div>
+          ) : (
           <div key={i} style={{ alignSelf: m.me ? "flex-end" : "flex-start", maxWidth: "88%" }}>
             {!m.me && <div style={{ fontSize: 9.5, color: "#b9a7d6", marginBottom: 1 }}>{m.who}</div>}
             <div style={{ background: m.me ? "#ffd75e" : "#3a2b52", color: m.me ? C.ink : "#f3ecff", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "5px 9px", fontSize: 12.5, wordBreak: "break-word", lineHeight: 1.5 }}>{m.text}</div>
           </div>
+          )
         ))}
       </div>
       <div style={{ display: "flex", gap: 5, padding: 7, borderTop: `3px solid ${C.ink}` }}>
@@ -7366,6 +7374,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n16", type: "수정", date: "2026-07-24", title: "🖼 새로고침해도 남는 건물 이미지 · 🎧 따라 듣기 알림",
+    body: "· [원인] 서버 저장이 거절돼도 성공으로 처리하고 있었고, 받은 그림을 이 기기에 남기지 않아 새로고침하면 사라졌어요\n· 이제 남이 바꾼 건물 이미지도 내 기기에 저장돼서 새로고침해도 그대로 보여요\n· 서버 저장 성공 여부를 정확히 확인해서 안내해요\n· 🎧 다른 사람의 선곡을 같이 듣기 시작하면, 원래 듣던 사람에게 「○○님이 내 선곡을 같이 듣고 있어요」 알림이 떠요\n· 리스닝 채팅에도 「○○님이 △△님의 선곡을 같이 듣기 시작했어요」가 남아요" },
   { id: "u20260724n15", type: "업데이트", date: "2026-07-24", title: "🎶 배경음악(다같이) · 🪑 개인 감상 분리 · 🪑 주민센터 실시간 대화",
     body: "· 🎧 디제이 부스에서 틀면 리스닝방 🎶 배경음악이 되어 방 안 모두에게 같이 틀려요\n· 🪑 관객석 리스트에서 고르면 나만 들어요 (목록 옆 🎶 버튼을 누르면 배경음악으로 전환)\n· 상단 「같이 듣기」 버튼 대신, 우측에 「🎧 지금 듣는 사람」 목록이 생겼어요 — 누르면 그 사람 곡을 같이 들어요\n· 🪑 주민센터 라운지 테이블 채팅이 실제 접속자끼리 실시간으로 바뀌었어요 (데모 대화 삭제)\n· 🚪 나가기 문을 작게 줄이고 아이콘을 없앴어요\n· 📅 방문 횟수가 새로고침이 아니라 「하루 한 번」으로 세집니다 (뱃지도 5일·10일·30일·100일 기준)" },
   { id: "u20260724n14", type: "업데이트", date: "2026-07-24", title: "🎵 리스닝방 개편 — 관객석 착석 · 공유 선곡 · 실시간 채팅",
@@ -9861,7 +9871,15 @@ function EchoTown() {
   useEffect(() => { probeSpriteFiles().then(setFileSprites); }, []);
   const [sprites, setSprites] = useState(() => loadJSON(SPRITE_KEY, {}) || {});
   /* 🌍 모두가 함께 보는 건물 이미지 (서버 + 실시간 공유) */
-  const [sharedSprites, setSharedSprites] = useState({});
+  const SHARED_SPR_KEY = "echotown_sprites_shared_v1";
+  const [sharedSprites, setSharedSprites] = useState(() => loadJSON(SHARED_SPR_KEY, null) || {});
+  /* 남이 바꾼 그림도 이 기기에 남겨둬요 — 새로고침하거나 아무도 접속 안 해 있어도 그대로 보여요 */
+  useEffect(() => {
+    const keys = Object.keys(sharedSprites);
+    const trim = (n) => { const o = {}; keys.slice(-n).forEach((k) => { o[k] = sharedSprites[k]; }); return o; };
+    try { window.localStorage.setItem(SHARED_SPR_KEY, JSON.stringify(keys.length > 14 ? trim(14) : sharedSprites)); }
+    catch (e) { try { window.localStorage.setItem(SHARED_SPR_KEY, JSON.stringify(trim(5))); } catch (e2) {} }
+  }, [sharedSprites]);
   const sharedSprRef = useRef({});
   sharedSprRef.current = sharedSprites;
   const [spriteScale, setSpriteScale] = useState(() => loadJSON("echotown_spritescale_v1", {}) || {});
@@ -9898,8 +9916,8 @@ function EchoTown() {
     if (netSendEventRef.current) netSendEventRef.current("spr", { id, src: src || "", by: myNameRef.current || "익명" });
     dbSaveSprite(id, src || "", myUid).then((ok) => {
       showNotice(ok
-        ? (src ? "🌍 건물 이미지를 모두에게 공유했어요" : "🌍 건물 이미지를 모두에게서 지웠어요")
-        : "⚠️ 서버 저장에 실패했어요 — 지금 접속 중인 사람에게만 보여요");
+        ? (src ? "🌍 건물 이미지를 모두에게 공유했어요 (새로고침해도 유지)" : "🌍 건물 이미지를 모두에게서 지웠어요")
+        : "⚠️ 서버 보관은 실패했지만, 접속 중인 사람에게 전달되고 각자 기기에 저장돼요");
     });
   };
   const setSprite = (id, src) => { const ok = writeSprites({ ...sprites, [id]: src }); publishSprite(id, src); return ok; };
@@ -10382,7 +10400,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "qcallack") {
@@ -10500,6 +10518,13 @@ function EchoTown() {
       }
       if (kind === "cchat") {
         if (p.who !== (myName || "나")) setCenterChat((v) => [...v, { who: p.who, text: p.text, me: false }].slice(-80));
+        return;
+      }
+      if (kind === "follow") {
+        const me = myName || "나";
+        if (p.from === me) return;
+        setMusicChat((v) => [...v, { who: "🎵", text: `${p.from}님이 ${p.to}님의 선곡을 같이 듣기 시작했어요`, me: false, sys: true }].slice(-80));
+        if (p.to === me) { playBell(); showNotice(`🎧 ${p.from}님이 내 선곡 「${p.title}」을 같이 듣고 있어요!`); }
         return;
       }
       if (kind === "lchat") {
@@ -10833,7 +10858,8 @@ function EchoTown() {
         {view === "thanks" && <ThanksView gems={gold} inventory={thanksInv} postits={postits} myName={myName} myUid={myUid} people={people} onDelPost={delPostit} onBuy={(it) => { setGold((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={addPostit} onBack={backToWorld} bubble={bubble} />}
         {view === "heart" && <HeartView gems={gold} worries={worries} onPost={(text, cost, kind) => { setGold((g) => g - cost); addWorry(text, kind); }} onBack={backToWorld} bubble={bubble} />}
         {view === "listening" && <ListeningView onBack={backToWorld} gems={gold} onSpend={(n) => setGold((g) => g - n)} bubble={bubble}
-          songs={songs} onAddSong={addSong} onDelSong={delSong} onPlayYt={(sg) => playYt(sg, false)} onPlayBgm={playRoomBgm} ytNow={ytNow} myName={myName} roomBgm={roomBgm}
+          songs={songs} onAddSong={addSong} onDelSong={delSong} onPlayYt={(sg) => playYt(sg, false)} onPlayBgm={playRoomBgm}
+          onFollow={(who, title) => { if (!who || who === (myName || "나")) return; if (netSendEvent) netSendEvent("follow", { to: who, from: myName || "나", title }); showNotice(`🎧 ${who}님의 선곡을 같이 들어요`); }} ytNow={ytNow} myName={myName} roomBgm={roomBgm}
           chat={musicChat} onChat={(t) => { setMusicChat((v) => [...v, { who: myName || "나", text: t, me: true }].slice(-80)); if (netSendEvent) netSendEvent("lchat", { who: myName || "나", text: t }); }} />}
         {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} extraCats={reelExtra} onAddCat={addReel} />}
         {view === "minigame" && <MiniGameRoom myName={myName} people={people} onBack={backToWorld} onReward={(n) => awardGold(n)} bubble={bubble} liarGame={liarGame} onLiarAction={lgAction} />}
