@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v65 · 2026-07-24";
+const APP_VERSION = "v66 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -7374,6 +7374,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n17", type: "수정", date: "2026-07-24", title: "🚨 실행되지 않던 오류 수정 (Cannot access before initialization)",
+    body: "· [원인] 「지금 듣는 곡」을 알려주는 값을 만들기도 전에 접속 코드가 먼저 사용해서 앱 전체가 멈췄어요\n· 선언 순서를 바로잡아 정상 실행됩니다\n· 저장 데이터는 그대로예요 — 초기화하지 않으셔도 됩니다" },
   { id: "u20260724n16", type: "수정", date: "2026-07-24", title: "🖼 새로고침해도 남는 건물 이미지 · 🎧 따라 듣기 알림",
     body: "· [원인] 서버 저장이 거절돼도 성공으로 처리하고 있었고, 받은 그림을 이 기기에 남기지 않아 새로고침하면 사라졌어요\n· 이제 남이 바꾼 건물 이미지도 내 기기에 저장돼서 새로고침해도 그대로 보여요\n· 서버 저장 성공 여부를 정확히 확인해서 안내해요\n· 🎧 다른 사람의 선곡을 같이 듣기 시작하면, 원래 듣던 사람에게 「○○님이 내 선곡을 같이 듣고 있어요」 알림이 떠요\n· 리스닝 채팅에도 「○○님이 △△님의 선곡을 같이 듣기 시작했어요」가 남아요" },
   { id: "u20260724n15", type: "업데이트", date: "2026-07-24", title: "🎶 배경음악(다같이) · 🪑 개인 감상 분리 · 🪑 주민센터 실시간 대화",
@@ -9672,6 +9674,8 @@ function EchoTown() {
   const netCarryRef = useRef(null);
   const netPetRef = useRef(null);
   const netVehicleRef = useRef(null);
+  const netNowRef = useRef(null);   /* 지금 듣고 있는 곡 */
+  const viewRef2 = useRef("world");
   const netRoomIdRef = useRef(null);   // 같은 집·회의실에 있는 사람만 보이게
   const netRoomPosRef = useRef({ x: 0, y: 0 });
   const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat, sendEvent: netSendEvent, reconnect: netReconnect } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef, netOutfitRef, netViewRef, netRoomPosRef, netDanceRef, netHouseRef, netLookRef, netCarryRef, netPetRef, netRoomIdRef, netVehicleRef, netNowRef);
@@ -10276,8 +10280,6 @@ function EchoTown() {
     if (netSendEvent) netSendEvent("gal", { del: id });
   };
   const songsRef = useRef([]);
-  const netNowRef = useRef(null);
-  const viewRef2 = useRef("world");
   const [songs, setSongs] = useState(() => loadJSON("echotown_songs_v1", null) || [
     { id: 1, artist: "Bazzi", title: "Mine", desc: "요즘 즐겨듣는 노래에요", videoId: null, q: "Bazzi Mine" },
     { id: 2, artist: "LANY", title: "ILYSB", desc: "드라이브할 때 최고 🚗", videoId: null, q: "LANY ILYSB" },
