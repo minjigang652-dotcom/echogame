@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v52 · 2026-07-24";
+const APP_VERSION = "v55 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -567,7 +567,7 @@ const ROOM_TIPS = {
   jjeop: ["📋 메뉴 추천에 한 마디 남기면 모두에게 보여요", "🔮 점심술사가 오늘 메뉴를 골라줘요", "인증샷을 제출하면 🪙5 를 받아요"],
   musinsa: ["상의·하의·신발을 입어보고 살 수 있어요", "입은 옷은 마을과 건물 안 모두에서 보여요"],
   ikea: ["집 외관·가구·탈것을 살 수 있어요", "가구를 사면 내 집에 배치돼요", "탈것은 빠를수록 비싸지만 입장 조준도 쉬워져요"],
-  project: ["이지모드는 순서대로, 하드모드는 광장에서 자유롭게", "＋ 버튼으로 퀘스트를 추가할 때 ⭐ 경험치를 꼭 정해야 해요", "보상은 💎 젬·🪙 골드·🏆 아이템·🧠 스킬 여러 개를 걸 수 있어요", "다 했으면 📮 제출 → 답변과 📷 인증 사진(최대 3장)을 올려요", "수락해야 💬 대화창이 열려요 · 수락 후엔 모집 화면과 자유롭게 오갈 수 있어요", "대화방의 📣 모두 부르기를 누르면 파티원 화면에 팝업이 떠요", "하드모드 퀘스트를 깨면 🧠 사고 스킬을 배워요", "상단 🧠 도감을 누르고, 항목을 다시 누르면 완료한 사람이 보여요"],
+  project: ["이지모드는 순서대로, 하드모드는 광장에서 자유롭게", "＋ 버튼으로 퀘스트를 추가할 때 ⭐ 경험치를 꼭 정해야 해요", "보상은 💎 젬·🪙 골드·🏆 아이템·🧠 스킬 여러 개를 걸 수 있어요", "다 했으면 📮 제출 → 답변과 📷 인증 사진(최대 3장)을 올려요", "수락해야 💬 대화창이 열려요 · 수락 후엔 모집 화면과 자유롭게 오갈 수 있어요", "대화방의 📣 모두 부르기를 누르면 파티원 화면에 팝업이 떠요 (바로 이동·거절 선택)", "대화 내역은 새로고침해도 그대로 남아요", "📓 퀘스트 일지를 등록하면 파티원 모두가 볼 수 있어요 (여러 개 가능)", "하드모드 퀘스트를 깨면 🧠 사고 스킬을 배워요", "상단 🧠 도감을 누르고, 항목을 다시 누르면 완료한 사람이 보여요"],
   questdone: ["퀴스트 신청·수락 파편을 봉헌해요", "등록자가 🛡 검토하고 ⭐ 보상을 체크하면 지급돼요", "「🙋 내 관련」 필터로 내가 처리할 것만 볼 수 있어요"],
   coredict: ["우리만의 단어를 등록하고 가나다 순으로 찾아봐요", "🖼 갤러리에 사진을 올리고 한 줄 설명을 달 수 있어요", "🔒 비밀사전은 나만 보는 핵심 요약 보관함이에요", "상단 🔄 동기화로 다른 사람 기록을 받아와요"],
   meeting: ["📋 회의 안건을 추가하면 같은 회의실 사람 모두에게 보여요", "채팅으로 같은 회의실 사람들과 대화해요", "📨 초대장을 보내면 상대 메세지함으로 가요", "예약해두면 주민센터에 표시돼요"],
@@ -5326,6 +5326,38 @@ const BOSS_MAPS_INIT = [
   },
 ];
 
+/* 🤝 퀘스트 참가 정보 합치기 — 서로 다른 기기에 흩어진 파티 명단을 하나로 모아요.
+   (접속 전에 다른 사람이 수락했으면 내 기기엔 없었기 때문에 목록이 일부만 보였어요) */
+function mergeQAccept(mine, theirs) {
+  const out = { ...(mine || {}) };
+  Object.keys(theirs || {}).forEach((qid) => {
+    const b = theirs[qid];
+    if (!b) return;
+    const a = out[qid];
+    if (!a) { out[qid] = { party: [], agree: [], locked: false, started: false, ...b }; return; }
+    out[qid] = {
+      ...a, ...b,
+      title: a.title || b.title || "",
+      party: Array.from(new Set([...(a.party || []), ...(b.party || [])])),
+      agree: Array.from(new Set([...(a.agree || []), ...(b.agree || [])])),
+      started: !!(a.started || b.started),
+      locked: !!(a.locked || b.locked),
+    };
+  });
+  return out;
+}
+/* 리스트형(대화·일지) 합치기 — id 가 같으면 하나로 봅니다 */
+function mergeQList(mine, theirs, key, cap) {
+  const out = { ...(mine || {}) };
+  Object.keys(theirs || {}).forEach((qid) => {
+    const cur = out[qid] || [];
+    const seen = new Set(cur.map((x) => x[key]));
+    const add = (theirs[qid] || []).filter((x) => x && !seen.has(x[key]));
+    out[qid] = [...cur, ...add].sort((a, b) => (a.at || 0) - (b.at || 0)).slice(-cap);
+  });
+  return out;
+}
+
 /* 퀘스트 경험치 — 새로 만든 퀘스트는 exp 를 직접 정하고,
    예전 기본 퀘스트는 젬 보상을 기준으로 자동 환산해요 (젬 1 = 경험치 3) */
 function questExp(q) {
@@ -5355,10 +5387,11 @@ function mergeMaps(base, saved) {
   return out;
 }
 
-function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree, onLeave, maps = [], people = [], onAddQuest, onEditQuest, onDelQuest, onAddMap, onGoShrine, onSubmitAnswer, onGainExp, onCallParty, jumpTo = null, onJumpUsed }) {
+function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree, onLeave, maps = [], people = [], onAddQuest, onEditQuest, onDelQuest, onAddMap, onGoShrine, onSubmitAnswer, onGainExp, onCallParty, jumpTo = null, onJumpUsed, logs = {}, onLogAdd, onLogDel, onSyncParty }) {
   const net = useContext(NetContext);
   const meNet = (net && net.me) || {};
   const [tMsg, setTMsg] = useState("");
+  const [logTxt, setLogTxt] = useState("");   // 📓 퀘스트 일지 작성칸
   const [shrineFor, setShrineFor] = useState(null);   // 제출 완료 → 제단 안내
   const [submitFor, setSubmitFor] = useState(null);  // 📮 제출 : 답변 작성
   const [answer, setAnswer] = useState("");
@@ -6356,7 +6389,11 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
 
                         {/* 👥 지금 참가 중인 사람 */}
                         <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "7px 9px", marginBottom: 8 }}>
-                          <div style={{ fontSize: 10.5, color: C.inkSoft, marginBottom: 4 }}>👥 지금 참가 중 ({party.length}명)</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                            <span style={{ flex: 1, fontSize: 10.5, color: C.inkSoft }}>👥 지금 참가 중 ({party.length}명)</span>
+                            <button type="button" onClick={() => onSyncParty && onSyncParty()} title="명단 다시 불러오기"
+                              style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10, padding: "3px 8px", borderRadius: 10, border: `2px solid ${C.ink}`, background: C.white, fontWeight: "bold" }}>🔄 새로고침</button>
+                          </div>
                           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                             {party.length === 0 && <span style={{ fontSize: 11, color: C.inkSoft }}>아직 아무도 없어요 — 가장 먼저 수락해보세요!</span>}
                             {party.map((n) => (
@@ -6415,19 +6452,68 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                           style={{ width: "100%", padding: 9, fontSize: 12, marginBottom: 8 }}>
                           📣 파티원 모두 부르기 {party.length > 1 ? `(${party.length - 1}명)` : "(혼자예요)"}
                         </PxButton>
-                        <div style={{ fontSize: 12, fontWeight: "bold", margin: "4px 0 5px" }}>💬 퀘스트 대화방 <span style={{ fontSize: 10, color: C.inkSoft, fontWeight: "normal" }}>· 파티원 {party.length}명</span></div>
+                        <div style={{ fontSize: 12, fontWeight: "bold", margin: "4px 0 5px" }}>💬 퀘스트 대화방 <span style={{ fontSize: 10, color: C.inkSoft, fontWeight: "normal" }}>· 파티원 {party.length}명 · 새로고침해도 남아요</span></div>
                         <div ref={threadRef} style={{ height: 110, overflow: "auto", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: 7, display: "flex", flexDirection: "column", gap: 4 }}>
                           {(threads[sel.id] || []).length === 0 && <div style={{ fontSize: 11, color: C.inkSoft }}>대화를 시작해보세요</div>}
                           {(threads[sel.id] || []).map((m, i) => (
-                            <div key={i} style={{ fontSize: 12 }}><b style={{ color: "#5b8def" }}>{m.who}</b> {m.text}</div>
+                            <div key={i} style={{ fontSize: 12, lineHeight: 1.55 }}>
+                              <b style={{ color: m.who === myName ? "#2f9e6e" : "#5b8def" }}>{m.who}</b> {m.text}
+                              {m.at ? <span style={{ fontSize: 9.5, color: C.inkSoft, marginLeft: 5 }}>{new Date(m.at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}</span> : null}
+                            </div>
                           ))}
                         </div>
                         <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
                           <input value={tMsg} onChange={(e) => setTMsg(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} placeholder="메시지" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
                           <PxButton tone="blue" onClick={() => { if (tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} style={{ fontSize: 11, padding: "7px 10px" }}>➤</PxButton>
                         </div>
-                        <div style={{ fontSize: 12, fontWeight: "bold", margin: "10px 0 5px" }}>📓 퀘스트 일지</div>
-                        <textarea value={notes[sel.id] || ""} onChange={(e) => onNote && onNote(sel.id, e.target.value)} placeholder="진행 상황·메모를 남겨두세요" style={{ width: "100%", boxSizing: "border-box", height: 70, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, resize: "none", background: C.white }} />
+                        {/* 📓 퀘스트 일지 — 등록하면 파티원 모두에게 보여요 · 여러 개 등록 가능 */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "12px 0 5px" }}>
+                          <span style={{ fontSize: 12, fontWeight: "bold" }}>📓 퀘스트 일지</span>
+                          <span style={{ flex: 1, fontSize: 10, color: C.inkSoft }}>· 등록하면 모두가 볼 수 있어요</span>
+                          <span style={{ fontSize: 10.5, fontWeight: "bold", color: C.white, background: C.inkSoft, borderRadius: 10, padding: "1px 8px" }}>{(logs[sel.id] || []).length}개</span>
+                        </div>
+                        <textarea value={logTxt} onChange={(e) => setLogTxt(e.target.value)} rows={3}
+                          placeholder={"오늘 한 일 · 배운 점 · 결과물 링크를 남겨보세요\n예) 훅 3버전 만들어봤고 두 번째가 반응 제일 좋았어요"}
+                          style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, resize: "vertical", background: C.white }} />
+                        <PxButton tone="gold" disabled={!logTxt.trim()}
+                          onClick={() => { onLogAdd && onLogAdd(sel.id, logTxt.trim()); setLogTxt(""); }}
+                          style={{ width: "100%", padding: 10, fontSize: 12.5, marginTop: 6 }}>＋ 일지 등록하기</PxButton>
+
+                        {(logs[sel.id] || []).length === 0 ? (
+                          <div style={{ fontSize: 11.5, color: C.inkSoft, textAlign: "center", padding: 14, marginTop: 8, lineHeight: 1.7, border: `2px dashed ${C.parchEdge}`, borderRadius: 8 }}>
+                            아직 등록된 일지가 없어요 📓<br />첫 기록을 남겨보세요!
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8, maxHeight: 240, overflow: "auto" }}>
+                            {(logs[sel.id] || []).slice().reverse().map((lg) => (
+                              <div key={lg.id} style={{ background: lg.who === myName ? "#f3f8ee" : C.white, border: `2px solid ${lg.who === myName ? C.good : C.ink}`, borderRadius: 8, padding: "8px 10px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                                  <b style={{ fontSize: 11.5, color: lg.who === myName ? C.good : "#5b8def" }}>🧑 {lg.who}{lg.who === myName ? " (나)" : ""}</b>
+                                  <span style={{ flex: 1, fontSize: 9.5, color: C.inkSoft }}>
+                                    {lg.at ? new Date(lg.at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
+                                  </span>
+                                  {lg.who === myName && (
+                                    <button type="button" onClick={() => { if (window.confirm("이 일지를 지울까요? 모두에게서 사라져요.")) onLogDel && onLogDel(sel.id, lg.id); }}
+                                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: C.inkSoft, padding: 0 }}>🗑</button>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: 12.5, lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{lg.text}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* 예전에 혼자 적어둔 메모가 있으면 옮길 수 있게 */}
+                        {notes[sel.id] && String(notes[sel.id]).trim() && (
+                          <div style={{ marginTop: 9, background: "#fff5d6", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "9px 10px" }}>
+                            <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 4 }}>🔒 예전에 나만 보던 메모</div>
+                            <div style={{ fontSize: 12, color: C.inkSoft, whiteSpace: "pre-wrap", lineHeight: 1.6, marginBottom: 7 }}>{notes[sel.id]}</div>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <PxButton tone="good" onClick={() => { onLogAdd && onLogAdd(sel.id, String(notes[sel.id]).trim()); onNote && onNote(sel.id, ""); }} style={{ flex: 1, fontSize: 11, padding: 8 }}>📤 일지로 올리기</PxButton>
+                              <PxButton tone="ink" onClick={() => onNote && onNote(sel.id, "")} style={{ fontSize: 11, padding: 8 }}>🗑 지우기</PxButton>
+                            </div>
+                          </div>
+                        )}
                         <PxButton tone="danger" onClick={() => { onLeave && onLeave(sel.id); setQView("party"); }} style={{ width: "100%", padding: 9, fontSize: 12, marginTop: 8 }}>🚪 퀘스트에서 나가기</PxButton>
                         <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginTop: 5 }}>나가면 대화창이 닫히고 🤝 모집 화면으로 돌아가요</div>
                       </div>
@@ -6984,6 +7070,12 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n6", type: "수정", date: "2026-07-24", title: "🛠 참가 중 목록이 일부만 보이던 문제 수정",
+    body: "· [원인] 내가 아직 수락하지 않은 퀘스트는 다른 사람의 수락 소식을 받아도 무시하고 있었어요 — 그래서 사람마다 명단이 다르게 보였습니다\n· 이제 누가 수락하든 모든 사람의 명단에 바로 추가돼요\n· 접속할 때 다른 주민들에게 참가 명단 · 대화 · 일지를 받아와 자동으로 합쳐요 (오프라인일 때 있었던 일도 따라옵니다)\n· ▶ 퀘스트 시작도 파티원 모두에게 전달돼요 (예전엔 시작한 사람만 알았어요)\n· 모집 화면의 「🔄 새로고침」을 누르면 명단을 다시 불러올 수 있어요\n· 🔒 파티 잠금 동의도 명단이 없던 사람에게 정상 반영돼요" },
+  { id: "u20260724n5", type: "업데이트", date: "2026-07-24", title: "📓 퀘스트 일지 = 모두가 보는 공유 기록",
+    body: "· 📓 퀘스트 일지를 등록하면 파티원 모두가 볼 수 있어요\n· 여러 개 등록할 수 있고, 최신 것이 위에 쌓여요\n· 각 일지에 작성자 이름과 등록 시각이 표시돼요\n· 내가 쓴 일지는 🗑 로 지울 수 있어요 (모두에게서 사라져요)\n· 새로고침해도 일지가 그대로 남아요 (퀘스트별 최근 100개 보관)\n· 예전에 혼자 적어둔 메모가 있으면 「📤 일지로 올리기」로 옮길 수 있어요" },
+  { id: "u20260724n4", type: "업데이트", date: "2026-07-24", title: "📣 퀘스트 호출 팝업 · 💬 대화 내역 저장",
+    body: "· 📣 파티원 모두 부르기가 회의 초대장처럼 팝업으로 떠요\n· 「🏃 바로 이동」 · 「✕ 거절하기」 · 「나중에 볼게요」 중에 고를 수 있어요\n· 거절할 때 사유를 적으면 부른 사람에게 회신되고 ✉️ 메세지함에도 남아요\n· 상대가 이동했는지 거절했는지 부른 사람에게 바로 알려줘요\n· 💬 퀘스트 대화방 내역이 새로고침해도 사라지지 않아요 (퀘스트별 최근 200개 보관)\n· 메시지 옆에 보낸 시각이 표시되고, 내 메시지는 초록색 이름으로 보여요" },
   { id: "u20260724n3", type: "업데이트", date: "2026-07-24", title: "🚪 걸어서 나가기 · 📣 모두 부르기 · 📋 회의 안건 · 🛵 남의 탈것",
     body: "· 🚪 모든 건물 아래쪽 가운데에 문이 생겼어요 — 문 쪽으로 계속 걸어 내려가면 자동으로 나가요 (눌러서 나가도 돼요)\n· 📣 퀘스트 대화방에 「파티원 모두 부르기」가 생겼어요\n· 부르면 파티원 화면에 팝업이 뜨고 「🏃 바로 이동하기」로 그 대화방까지 한 번에 이동해요\n· 🆕 게시판 업데이트 탭에 「✅ 전체 확인」 버튼이 생겼어요\n· 📜 확인한 업데이트 기록은 접혀 있고, 누르면 목록이 펼쳐져요\n· 📋 주민센터 회의실에 회의 안건을 추가·완료체크·삭제할 수 있어요 (같은 회의실 사람들과 공유)\n· 🛵 다른 사람이 어떤 탈것을 타고 있는지 마을·건물 안·접속자 목록에서 보여요" },
   { id: "u20260724n1", type: "업데이트", date: "2026-07-24", title: "⭐ 퀘스트 경험치 · 📷 인증 이미지 · 📖 도감 상세",
@@ -9132,6 +9224,7 @@ function EchoTown() {
   /* 🏆 퀘스트 완료의 제단 — 저장 + 모두 공유 (등록자가 검토해야 하므로) */
   const [shrineItems, setShrineItems] = useState(() => { const v = loadJSON(QD_KEY, []); return Array.isArray(v) ? v : []; });
   const shrineRef = useRef(shrineItems); shrineRef.current = shrineItems;
+  /* 퀘스트 참가·대화·일지도 접속할 때 서로 맞춰요 */
   /* 사진은 용량이 커서 최근 15개 파편까지만 기기에 보관해요 */
   useEffect(() => { saveJSON(QD_KEY, shrineItems.slice(0, 120).map((x, i) => (i < 15 ? x : { ...x, imgs: [] }))); }, [shrineItems]);
   const addShrine = (row) => {
@@ -9229,6 +9322,8 @@ function EchoTown() {
   /* 📣 퀘스트 「모두 부르기」 */
   const [questCall, setQuestCall] = useState(null);   // 받은 호출
   const [questJump, setQuestJump] = useState(null);   // 바로 이동할 퀘스트
+  const [qcDeclineOpen, setQcDeclineOpen] = useState(false);
+  const [qcDeclineWhy, setQcDeclineWhy] = useState("");
   const [nameOpen, setNameOpen] = useState(() => !loadJSON("echotown_myname", ""));
   const [nameInput, setNameInput] = useState("");
   const [couponOpen, setCouponOpen] = useState(false);
@@ -9269,6 +9364,8 @@ function EchoTown() {
     if (d.couponDone) setCouponDone(true);
     if (d.qNotes) setQNotes(d.qNotes);
     if (d.qAccept) setQAccept(d.qAccept);
+    if (d.qThreads) setQThreads(d.qThreads);
+    if (d.qLogs) setQLogs(d.qLogs);
     return true;
   };
   const confirmName = (nm) => {
@@ -9609,8 +9706,43 @@ function EchoTown() {
     return () => clearInterval(iv);
   }, []);
   const [qAccept, setQAccept] = useState({});
+  const qAccRef = useRef({});
+  const qThRef = useRef({});
+  const qLgRef = useRef({});
+  qAccRef.current = qAccept;
   const [qNotes, setQNotes] = useState({});
-  const [qThreads, setQThreads] = useState({});
+  /* 📓 퀘스트 일지 — 등록하면 모두에게 공유돼요 */
+  const QL_KEY = "echotown_qlogs_v1";
+  const [qLogs, setQLogs] = useState(() => { const v = loadJSON(QL_KEY, null); return (v && typeof v === "object") ? v : {}; });
+  qLgRef.current = qLogs;
+  useEffect(() => {
+    try {
+      const trimmed = {};
+      Object.keys(qLogs).forEach((k) => { trimmed[k] = (qLogs[k] || []).slice(-100); });
+      saveJSON(QL_KEY, trimmed);
+    } catch (e) {}
+  }, [qLogs]);
+  const addQLog = (qid, text) => {
+    const row = { id: Date.now() + Math.random(), who: myName || "익명", text, at: Date.now() };
+    setQLogs((v) => ({ ...v, [qid]: [...(v[qid] || []), row].slice(-100) }));
+    if (netSendEvent) netSendEvent("qlog", { qid, row });
+    showNotice("📓 퀘스트 일지를 등록했어요 (모두에게 공유)");
+  };
+  const delQLog = (qid, id) => {
+    setQLogs((v) => ({ ...v, [qid]: (v[qid] || []).filter((x) => x.id !== id) }));
+    if (netSendEvent) netSendEvent("qlog", { qid, del: id });
+  };
+  const QT_KEY = "echotown_qthreads_v1";
+  const [qThreads, setQThreads] = useState(() => { const v = loadJSON(QT_KEY, null); return (v && typeof v === "object") ? v : {}; });
+  qThRef.current = qThreads;
+  /* 퀘스트별 최근 200개까지 이 브라우저에 남겨둬요 */
+  useEffect(() => {
+    try {
+      const trimmed = {};
+      Object.keys(qThreads).forEach((k) => { trimmed[k] = (qThreads[k] || []).slice(-200); });
+      saveJSON(QT_KEY, trimmed);
+    } catch (e) {}
+  }, [qThreads]);
   /* 현관 비밀번호는 이름(집주인)별로 따로 저장합니다.
      예전엔 브라우저에 하나만 저장돼서, 다른 이름으로 접속해도 「비번 있음」으로 처리됐어요. */
   const [pwFail, setPwFail] = useState(0);
@@ -9834,9 +9966,15 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qlock" || kind === "qleave" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qlock" || kind === "qleave" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
+      if (kind === "qcallack") {
+        if (p.to !== (myName || "나")) return;
+        showNotice(`${p.from}님이 「${p.title}」 호출에 ${p.ok ? "바로 이동" : "거절"}했어요${!p.ok && p.reason ? " — " + p.reason : ""}`);
+        pushMsg("dm", { from: p.from, text: p.ok ? `📣 「${p.title}」 대화방으로 갈게요! 🏃` : `📣 「${p.title}」 호출을 거절했어요.\n사유: ${p.reason || "(사유 없음)"}` });
+        return;
+      }
       if (kind === "inviteack") {
         showNotice(`${p.from}님이 회의에 ${p.ok ? "참석" : "불참"}한다고 답했어요${!p.ok && p.reason ? " — " + p.reason : ""}`);
         pushMsg("dm", { from: p.from, text: p.ok ? "회의 초대에 참석하겠습니다 👍" : `회의 초대 불참합니다.\n사유: ${p.reason || "(사유 없음)"}` });
@@ -9855,7 +9993,7 @@ function EchoTown() {
       if (kind === "dictreq") {
         if (p.from === (myName || "")) return;
         const mine = dictRef.current || [];
-        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current, shr: shrineRef.current, thx: thxRef.current });
+        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current, shr: shrineRef.current, thx: thxRef.current, qacc: qAccRef.current, qth: qThRef.current, qlg: qLgRef.current });
         const gs = galRef.current || [];
         gs.slice(0, 12).forEach((ph, i) => setTimeout(() => { if (netSendEvent) netSendEvent("gal", { photo: ph }); }, 350 * (i + 1)));
         return;
@@ -9869,6 +10007,9 @@ function EchoTown() {
         if (Array.isArray(p.rec)) setRecList((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.rec.filter((x) => !ids.has(x.id))].slice(-60); });
         if (p.reel && typeof p.reel === "object") setReelExtra((v) => ({ ...p.reel, ...v }));
         if (Array.isArray(p.worry)) setWorries((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.worry.filter((x) => !ids.has(x.id))].sort((a, b) => b.id - a.id).slice(0, 80); });
+        if (p.qacc && typeof p.qacc === "object") setQAccept((v) => mergeQAccept(v, p.qacc));
+        if (p.qth && typeof p.qth === "object") setQThreads((v) => mergeQList(v, p.qth, "at", 200));
+        if (p.qlg && typeof p.qlg === "object") setQLogs((v) => mergeQList(v, p.qlg, "id", 100));
         return;
       }
       if (kind === "bmap") { applyBossOp(p); return; }
@@ -9918,16 +10059,41 @@ function EchoTown() {
         if (p.from === me) return;
         if (Array.isArray(p.party) && p.party.length && !p.party.includes(me)) return;
         playBell();
+        setQcDeclineOpen(false); setQcDeclineWhy("");
         setQuestCall(p);
         pushMsg("call", { from: p.from, reason: `「${p.title}」 퀘스트 대화방으로 불렀어요` });
         return;
       }
+      if (kind === "qlog") {
+        if (p.row) setQLogs((v) => {
+          const cur = v[p.qid] || [];
+          if (cur.some((x) => x.id === p.row.id)) return v;
+          return { ...v, [p.qid]: [...cur, p.row].sort((a, b) => (a.at || 0) - (b.at || 0)).slice(-100) };
+        });
+        else if (p.del != null) setQLogs((v) => ({ ...v, [p.qid]: (v[p.qid] || []).filter((x) => x.id !== p.del) }));
+        return;
+      }
       if (kind === "qchat") {
-        setQThreads((t) => ({ ...t, [p.qid]: [...(t[p.qid] || []), { who: p.who, text: p.text }] }));
+        setQThreads((t) => {
+          const cur = t[p.qid] || [];
+          // 같은 사람·같은 시각의 메시지가 이미 있으면 중복으로 보고 넘겨요
+          if (p.at && cur.some((m) => m.at === p.at && m.who === p.who)) return t;
+          return { ...t, [p.qid]: [...cur, { who: p.who, text: p.text, at: p.at || Date.now() }].slice(-200) };
+        });
         return;
       }
       if (kind === "qparty") {
-        setQAccept((a) => (a[p.qid] ? { ...a, [p.qid]: { ...a[p.qid], party: Array.from(new Set([...(a[p.qid].party || []), p.who])) } } : a));
+        setQAccept((a) => {
+          const cur = a[p.qid] || { party: [], agree: [], locked: false, started: false, title: p.title || "" };
+          return { ...a, [p.qid]: { ...cur, title: cur.title || p.title || "", party: Array.from(new Set([...(cur.party || []), p.who])) } };
+        });
+        return;
+      }
+      if (kind === "qstart") {
+        setQAccept((a) => {
+          const cur = a[p.qid] || { party: [], agree: [], locked: false, started: false, title: p.title || "" };
+          return { ...a, [p.qid]: { ...cur, started: true } };
+        });
         return;
       }
       if (kind === "qleave") {
@@ -9942,7 +10108,7 @@ function EchoTown() {
       }
       if (kind === "qlock") {
         setQAccept((a) => {
-          const cur = a[p.qid]; if (!cur) return a;
+          const cur = a[p.qid] || { party: [p.who], agree: [], locked: false, started: false, title: "" };
           const agree = Array.from(new Set([...(cur.agree || []), p.who]));
           const party = cur.party || [];
           const locked = party.length > 0 && party.every((n) => agree.includes(n));
@@ -9994,7 +10160,7 @@ function EchoTown() {
   const saveTimer = useRef(null);
   /* 현재 저장할 내용을 항상 최신으로 들고 있습니다 */
   const payloadRef = useRef(null);
-  payloadRef.current = { gems, gold, exp, lifetime, townRegion, profile, skills, schoolDone, rod, bait, catchBag, caughtDex, pets, activePet, fishes, facilities, homeLayout, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept };
+  payloadRef.current = { gems, gold, exp, lifetime, townRegion, profile, skills, schoolDone, rod, bait, catchBag, caughtDex, pets, activePet, fishes, facilities, homeLayout, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept, qThreads, qLogs };
   const flushSaveRef = useRef(null);
   const flushSave = useCallback((name) => {
     const n = name || myNameRef.current;
@@ -10011,7 +10177,7 @@ function EchoTown() {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => flushSave(myName), 800);
     return () => clearTimeout(saveTimer.current);
-  }, [myName, gems, gold, exp, lifetime, townRegion, profile, skills, schoolDone, rod, bait, catchBag, caughtDex, pets, activePet, fishes, facilities, homeLayout, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept, flushSave]);
+  }, [myName, gems, gold, exp, lifetime, townRegion, profile, skills, schoolDone, rod, bait, catchBag, caughtDex, pets, activePet, fishes, facilities, homeLayout, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept, qThreads, qLogs, flushSave]);
 
   /* 새로고침·탭 닫기·탭 전환 직전에 밀린 저장을 즉시 반영 */
   useEffect(() => {
@@ -10294,7 +10460,9 @@ function EchoTown() {
           onDelQuest={(mapId, qid) => { sendBoss({ mapId, delQuest: qid }); showNotice("🗑 퀘스트를 삭제했어요"); }}
           onAddMap={(m) => { sendBoss({ addMap: m }); showNotice("👹 새 보스맵을 만들었어요"); }}
           accepted={qAccept} notes={qNotes} threads={qThreads}
-          onAccept={(qid, title) => { setQAccept((a) => (a[qid] && a[qid].locked ? a : { ...a, [qid]: a[qid] ? { ...a[qid], party: Array.from(new Set([...(a[qid].party || []), myName || "나"])) } : { party: [myName || "나"], agree: [], locked: false, started: false, title } })); if (netSendEvent) netSendEvent("qparty", { qid, who: myName || "나" }); showNotice("🤝 퀘스트를 수락했어요"); }}
+          logs={qLogs} onLogAdd={addQLog} onLogDel={delQLog}
+          onSyncParty={() => { askSync(); showNotice("🔄 다른 주민들에게 참가 명단을 다시 물어봤어요"); }}
+          onAccept={(qid, title) => { setQAccept((a) => (a[qid] && a[qid].locked ? a : { ...a, [qid]: a[qid] ? { ...a[qid], party: Array.from(new Set([...(a[qid].party || []), myName || "나"])) } : { party: [myName || "나"], agree: [], locked: false, started: false, title } })); if (netSendEvent) netSendEvent("qparty", { qid, who: myName || "나", title }); showNotice("🤝 퀘스트를 수락했어요"); }}
           onAgree={(qid) => {
             const me = myName || "나";
             setQAccept((a) => {
@@ -10319,11 +10487,11 @@ function EchoTown() {
             if (netSendEvent) netSendEvent("qleave", { qid, who: me });
             showNotice("🚪 퀘스트에서 나왔어요");
           }}
-          onStart={(qid) => { setQAccept((a) => ({ ...a, [qid]: { ...a[qid], started: true } })); showNotice("▶ 퀘스트를 시작했어요!"); }}
+          onStart={(qid) => { setQAccept((a) => ({ ...a, [qid]: { ...a[qid], started: true } })); if (netSendEvent) netSendEvent("qstart", { qid, who: myName || "나" }); showNotice("▶ 퀘스트를 시작했어요!"); }}
           onShout={(msg) => { postChat(msg, true); showNotice("📢 마을에 알렸어요"); }}
           onBoard={(title) => { dbAddNotice("모집", `[파티모집] ${title}`, `${myName || "익명"}님이 「${title}」 퀘스트 파티원을 찾고 있어요!`); showNotice("📋 게시판에 모집글을 올렸어요"); }}
           onNote={(qid, v) => setQNotes((n) => ({ ...n, [qid]: v }))}
-          onThreadSend={(qid, text) => { setQThreads((t) => ({ ...t, [qid]: [...(t[qid] || []), { who: myName || "나", text }] })); if (netSendEvent) netSendEvent("qchat", { qid, who: myName || "나", text }); }} />}
+          onThreadSend={(qid, text) => { const at = Date.now(); setQThreads((t) => ({ ...t, [qid]: [...(t[qid] || []), { who: myName || "나", text, at }].slice(-200) })); if (netSendEvent) netSendEvent("qchat", { qid, who: myName || "나", text, at }); }} />}
         {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} cleared={schoolDone} onClear={clearSchool} />}
         {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count, target) => {
           // 같은 닉네임이면 때린 수가 누적돼요
@@ -10596,18 +10764,48 @@ function EchoTown() {
       {callWith && <FaceTalkModal person={callWith} onClose={() => setCallWith(null)} />}
 
       {questCall && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 210, padding: 16 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 210, padding: 14 }}>
           <div style={{ width: "100%", maxWidth: 330 }}>
-            <div style={{ background: "radial-gradient(circle at 50% 0%, #3a2e6b, #1a1436 75%)", border: `4px solid ${C.ink}`, borderRadius: 14, padding: 22, textAlign: "center", boxShadow: "0 12px 30px rgba(0,0,0,0.6)" }}>
-              <div className="gem-pop" style={{ fontSize: 46 }}>📣</div>
-              <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, color: "#ffd75e", margin: "10px 0 8px" }}>PARTY CALL</div>
-              <div style={{ fontSize: 14, color: C.white, fontWeight: "bold", lineHeight: 1.7 }}>
-                <b style={{ color: "#7fe3ff" }}>{questCall.from}</b> 님이 불렀어요
+            <div style={{ background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 20, boxShadow: "0 10px 26px rgba(0,0,0,0.5)" }}>
+              <div className="gem-pop" style={{ textAlign: "center", fontSize: 42 }}>📣</div>
+              <div style={{ textAlign: "center", fontSize: 15, fontWeight: "bold", margin: "8px 0 10px" }}>퀘스트 호출이 도착했어요</div>
+              <div style={{ background: C.white, border: `2px dashed ${C.ink}`, borderRadius: 8, padding: 12, fontSize: 13, lineHeight: 1.8 }}>
+                <b>{questCall.icon || "🎯"} {questCall.title}</b><br />
+                부른 사람 : <b>{questCall.from}</b><br />
+                받는 사람 : {myName || "나"}<br />
+                <span style={{ color: C.inkSoft }}>💬 퀘스트 대화방으로 모여달래요</span>
               </div>
-              <div style={{ fontSize: 15, color: "#ffd75e", fontWeight: "bold", margin: "8px 0 4px" }}>{questCall.icon || "🎯"} {questCall.title}</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", lineHeight: 1.7, marginBottom: 16 }}>퀘스트 대화방으로 모여달래요!</div>
-              <PxButton tone="gold" onClick={() => { setQuestJump({ mapId: questCall.mapId, qid: questCall.qid }); setQuestCall(null); setView("project"); }} style={{ width: "100%", padding: 13, fontSize: 14 }}>🏃 바로 이동하기</PxButton>
-              <PxButton tone="ink" onClick={() => setQuestCall(null)} style={{ width: "100%", padding: 10, fontSize: 12, marginTop: 8 }}>나중에</PxButton>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }}>
+                {qcDeclineOpen ? (
+                  <>
+                    <div style={{ fontSize: 12, fontWeight: "bold" }}>✍️ 거절 사유 (부른 분께 회신돼요)</div>
+                    <textarea value={qcDeclineWhy} onChange={(e) => setQcDeclineWhy(e.target.value)} rows={3} autoFocus
+                      placeholder="예: 지금 다른 일 하는 중이에요. 30분 뒤에 갈게요!"
+                      style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "vertical" }} />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <PxButton tone="ink" onClick={() => setQcDeclineOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>뒤로</PxButton>
+                      <PxButton tone="danger" onClick={() => {
+                        if (netSendEvent) netSendEvent("qcallack", { to: questCall.from, from: myName || "나", title: questCall.title, ok: false, reason: qcDeclineWhy.trim() });
+                        showNotice(`✉️ ${questCall.from}님에게 거절 사유를 보냈어요`);
+                        setQcDeclineOpen(false); setQcDeclineWhy(""); setQuestCall(null);
+                      }} style={{ flex: 1, padding: 10, fontSize: 13 }}>회신 보내기</PxButton>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <PxButton tone="danger" onClick={() => setQcDeclineOpen(true)} style={{ flex: 1, padding: 11, fontSize: 13 }}>✕ 거절하기</PxButton>
+                      <PxButton tone="good" onClick={() => {
+                        if (netSendEvent) netSendEvent("qcallack", { to: questCall.from, from: myName || "나", title: questCall.title, ok: true });
+                        setQuestJump({ mapId: questCall.mapId, qid: questCall.qid });
+                        setQuestCall(null);
+                        setView("project");
+                      }} style={{ flex: 1, padding: 11, fontSize: 13 }}>🏃 바로 이동</PxButton>
+                    </div>
+                    <PxButton tone="ink" onClick={() => setQuestCall(null)} style={{ width: "100%", padding: 9, fontSize: 12 }}>나중에 볼게요</PxButton>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
