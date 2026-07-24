@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v32 · 2026-07-24";
+const APP_VERSION = "v33 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -745,7 +745,7 @@ function buildWorld() {
   list.push({ id: "sandbag", kind: "small", x: 800, y: 360, r: 55, label: "🥊 샌드백", tint: "#c0563a" });
   list.push({ id: "musinsa", kind: "small", x: 1650, y: 1260, r: 55, label: "🛍️ 무신사", tint: "#2b2b2b" });
 list.push({ id: "jjeop", kind: "small", x: 1820, y: 1210, r: 55, label: "🍴 쩝쩝박사", tint: "#c0563a" });
-  list.push({ id: "petshop", kind: "small", x: 1820, y: 1400, r: 58, label: "🐾 펫샵" });
+  list.push({ id: "petshop", kind: "small", x: 1820, y: 1400, r: 58, label: "🐾 형욱이네" });
   // 은행 / 게시판
   list.push({ id: "bank", kind: "bank", x: 1000, y: 640, r: 65, label: "🏦 중앙은행" });
   list.push({ id: "board", kind: "board", x: 1585, y: 700, r: 60, label: "📋 게시판" });
@@ -1080,7 +1080,7 @@ function Aquarium({ fishes = [], onClose }) {
   const bubbles = [12, 30, 48, 66, 84];
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 130, padding: 14 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 480 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, maxHeight: "calc(100vh - 28px)", overflowY: "auto" }}>
         <Panel style={{ padding: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
             <span style={{ fontSize: 22 }}>🐟</span>
@@ -1106,7 +1106,7 @@ function Aquarium({ fishes = [], onClose }) {
             {/* 물고기 */}
             {list.length === 0 && (
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.85)", fontSize: 13, fontFamily: "'DotGothic16', monospace", textAlign: "center", lineHeight: 1.9, zIndex: 3 }}>
-                수조가 비어 있어요 🫧<br />🐾 펫샵에서 물고기를 데려와보세요
+                수조가 비어 있어요 🫧<br />🐾 형욱이네에서 물고기를 데려와보세요
               </div>
             )}
             {list.map((f) => (
@@ -1151,13 +1151,13 @@ function PetShop({ onBack, gold, pets = [], activePet = null, fishes = [], facil
     { id: "tank", x: 440, y: 200, w: 140, h: 90, color: "#bfe0f7", emoji: "🐠", label: "수조", toast: "물고기들이 헤엄쳐요 🐠" },
   ];
   return (
-    <RoomView title="펫샵" icon="🐾" sub="반려동물을 입양하고 🐠 물고기를 데려가요" bg="#f3ead8" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused headerBg="#7bbf8f" bubble={bubble}>
+    <RoomView title="형욱이네" icon="🐾" sub="반려동물을 입양하고 🐠 물고기를 데려가요" bg="#f3ead8" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused headerBg="#7bbf8f" bubble={bubble}>
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", padding: 14, zIndex: 20 }}>
         <div style={{ width: "100%", maxWidth: 460, maxHeight: "92%", overflow: "auto" }}>
           <Panel style={{ padding: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <span style={{ fontSize: 22 }}>🐾</span>
-              <b style={{ flex: 1, fontSize: 15 }}>펫샵</b>
+              <b style={{ flex: 1, fontSize: 15 }}>형욱이네</b>
               <GemBadge kind="gold" amount={gold} />
             </div>
             <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
@@ -1473,7 +1473,9 @@ async function dbNotices() {
   try {
     const s = await getSupa();
     const r = await s.from("notices").select("id,type,title,body,created_at").order("created_at", { ascending: false }).limit(50);
-    return ((r && r.data) || []).map((n) => ({ id: "db" + n.id, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
+    return ((r && r.data) || [])
+      .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
+      .map((n) => ({ id: "db" + n.id, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
   } catch (e) { return []; }
 }
 async function dbAddNotice(type, title, body) {
@@ -2124,7 +2126,7 @@ function ManagerChat({ name, onClose }) {
   const send = () => { const t = text.trim(); if (!t) return; setMsgs((m) => [...m, { me: true, text: t }]); setText(""); setTimeout(() => setMsgs((m) => [...m, { me: false, text: replies[Math.floor(Math.random() * replies.length)] }]), 700); };
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 165, padding: 14 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, maxHeight: "calc(100vh - 28px)", overflowY: "auto" }}>
         <Panel style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "#7a8b99", color: C.white, borderBottom: `3px solid ${C.ink}` }}>
             <span style={{ fontSize: 20 }}>🧑‍💼</span><b style={{ flex: 1 }}>담당자 {name}</b>
@@ -2393,7 +2395,7 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
         </div>} />
       {invOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={() => setInvOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, maxHeight: "calc(100vh - 28px)", overflowY: "auto" }}>
             <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                 <span style={{ fontSize: 22 }}>📨</span>
@@ -2641,7 +2643,7 @@ function MailboxModal({ owner, isMine, myName, gems, inventory, mail, onSend, on
   };
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 400 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 400, maxHeight: "calc(100vh - 28px)", overflowY: "auto" }}>
         <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
             <span style={{ fontSize: 22 }}>📮</span>
@@ -4720,7 +4722,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
 
       {dexOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 95, padding: 14 }} onClick={() => setDexOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 520 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 520, maxHeight: "calc(100vh - 28px)", overflowY: "auto" }}>
             <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16, boxShadow: "0 10px 26px rgba(0,0,0,0.45)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                 <span style={{ fontSize: 26 }}>🧠</span>
@@ -4773,7 +4775,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
 
       {collOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 95, padding: 14 }} onClick={() => setCollOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, maxHeight: "calc(100vh - 28px)", overflowY: "auto" }}>
             <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16, boxShadow: "0 10px 26px rgba(0,0,0,0.45)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                 <span style={{ fontSize: 22 }}>👾</span>
@@ -4814,7 +4816,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
 
       {submitFor && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.68)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={() => setSubmitFor(null)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, maxHeight: "calc(100vh - 28px)", overflowY: "auto" }}>
             <Panel style={{ padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                 <span style={{ fontSize: 22 }}>📮</span>
@@ -4868,7 +4870,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
 
       {addOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 95, padding: 14 }} onClick={() => setAddOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, maxHeight: "calc(100vh - 28px)", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
             <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16 }}>
               <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
                 <PxButton tone={addTab === "quest" ? "good" : "wood"} onClick={() => setAddTab("quest")} style={{ flex: 2, fontSize: 12, padding: 8 }}>🎯 퀘스트 추가</PxButton>
@@ -5521,7 +5523,7 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
       {/* 단어 등록 모달 */}
       {formOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120, padding: 14 }} onClick={() => setFormOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 400 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 400, maxHeight: "calc(100vh - 28px)", overflowY: "auto" }}>
             <Panel style={{ padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                 <span style={{ fontSize: 22 }}>📖</span>
@@ -5672,14 +5674,16 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724dd", type: "업데이트", date: "2026-07-24", title: "🐾 형욱이네 · 📜 팝업 스크롤 · 📋 게시판 정리",
+    body: "· 🐾 펫샵 이름을 「형욱이네」로 바꿨어요\n· 📮 피드백이 게시판과 메세지함에서 완전히 빠졌어요 (이전에 올라간 것도 안 보여요)\n· 팝업창 내용이 길어지면 스크롤할 수 있어요 — 퀘스트 추가 · 도감 · 프로필 등 모든 창에 적용했어요\n· 화면이 작아도 아래쪽 버튼이 잘리지 않아요" },
   { id: "u20260724cc", type: "업데이트", date: "2026-07-24", title: "📋 퀘스트 등록자 · 📮 답변 제출",
     body: "· 퀘스트를 만들 때 📋 등록자를 「나」 또는 「타인」 중에 고를 수 있어요 (타인은 주민 목록에서 선택)\n· 작성자와 등록자만 그 퀘스트를 수정·삭제할 수 있어요\n· ✅ 완료 → 📮 제출 로 바뀌었어요\n· 제출을 누르면 답변 작성창이 뜨고, 어떻게 해결했는지 적어서 등록합니다\n· 등록하면 🏆 완료의 제단 「수락 파편」에 자동으로 올라가요 (제목·완료조건·답변·보상이 함께 기록)\n· 「완료의 제단에 등록되었습니다!」 안내와 함께 제단으로 이동하는 버튼이 나와요\n· 제단의 검수가 GM 검수 → 📋 등록자 검토 로 바뀌었어요" },
   { id: "u20260724bb", type: "업데이트", date: "2026-07-24", title: "🐟 수족관 시각화 · 🏗 시설 선행 구입",
     body: "· 🏗 시설 탭이 생겼어요 — 🐟 수족관(🪙120) · 🌳 마당(🪙100)\n· 🌳 마당을 사야 반려동물을 입양할 수 있어요\n· 🐟 수족관을 사야 물고기를 데려올 수 있어요\n· 물고기가 「어항」이 아니라 내가 산 수족관에 들어가요\n· 집에서 수족관을 누르면 진짜 수조처럼 보여요 — 물빛, 공기방울, 흔들리는 수초, 모래 바닥\n· 물고기마다 깊이·크기·속도가 달라 자유롭게 헤엄치고, 벽에 닿으면 방향을 바꿔요\n· 🌳 마당에는 데리고 나가지 않은 반려동물이 놀고 있어요" },
   { id: "u20260724aa", type: "업데이트", date: "2026-07-24", title: "🧠 사고 스킬 · 🔒 비밀번호 잠금 · 🐾 펫샵 이전",
-    body: "· 🧠 하드모드(사고의 광장) 퀘스트를 깰 때마다 사고 스킬을 하나씩 배워요 (총 16종)\n· 관찰력 · 구조화 · 질문력 · 메타인지 · 역발상 · 본질파악 등\n· 배운 스킬은 🧑 내 프로필에서 확인할 수 있어요\n· ✅ 이미 완료된 퀘스트는 수락할 수 없게 막았어요\n· 🔒 남의 집 비밀번호를 5번 틀리면 경고와 함께 1분간 입력이 금지돼요 (남은 시간 표시)\n· 🐾 펫샵을 쩝쩝박사 아래로 옮겼어요\n· 📮 피드백이 공지사항에 올라가지 않게 했어요 (메뉴 안에서만 보여요)" },
+    body: "· 🧠 하드모드(사고의 광장) 퀘스트를 깰 때마다 사고 스킬을 하나씩 배워요 (총 16종)\n· 관찰력 · 구조화 · 질문력 · 메타인지 · 역발상 · 본질파악 등\n· 배운 스킬은 🧑 내 프로필에서 확인할 수 있어요\n· ✅ 이미 완료된 퀘스트는 수락할 수 없게 막았어요\n· 🔒 남의 집 비밀번호를 5번 틀리면 경고와 함께 1분간 입력이 금지돼요 (남은 시간 표시)\n· 🐾 형욱이네를 쩝쩝박사 아래로 옮겼어요\n· 📮 피드백이 공지사항에 올라가지 않게 했어요 (메뉴 안에서만 보여요)" },
   { id: "u20260724z", type: "업데이트", date: "2026-07-24", title: "🐾 펫샵 오픈 · 🏃 찾아가기 · 📅 DAY 삭제",
-    body: "· 🐾 펫샵이 생겼어요 (마을 남쪽) — 강아지·고양이·토끼·햄스터·앵무새·거북이·여우·펭귄 8종\n· 입양하면 마을에서 나를 졸졸 따라다니고, 다른 사람에게도 보여요\n· 여러 마리를 키워도 데리고 나가는 건 한 마리씩이에요\n· 🐠 반려물고기 8종은 우리 집 어항에서 헤엄쳐요 (집에서 어항을 눌러보세요)\n· 🏃 접속자 목록의 달리기 버튼을 누르면 그 사람 옆으로 바로 이동해요\n· 마을에서 다른 사람 캐릭터를 누르면 따라가기 · 찾아가기 · 선물하기 메뉴가 떠요\n· 📅 DAY 표시와 「다음 날」 기능을 없앴어요" },
+    body: "· 🐾 형욱이네(펫샵)가 생겼어요 — 강아지·고양이·토끼·햄스터·앵무새·거북이·여우·펭귄 8종\n· 입양하면 마을에서 나를 졸졸 따라다니고, 다른 사람에게도 보여요\n· 여러 마리를 키워도 데리고 나가는 건 한 마리씩이에요\n· 🐠 반려물고기 8종은 우리 집 어항에서 헤엄쳐요 (집에서 어항을 눌러보세요)\n· 🏃 접속자 목록의 달리기 버튼을 누르면 그 사람 옆으로 바로 이동해요\n· 마을에서 다른 사람 캐릭터를 누르면 따라가기 · 찾아가기 · 선물하기 메뉴가 떠요\n· 📅 DAY 표시와 「다음 날」 기능을 없앴어요" },
   { id: "u20260724y", type: "업데이트", date: "2026-07-24", title: "🏃 친구 따라가기 · 🛵 탈것 조준 개선 · 💬 채팅 중복 수정",
     body: "· 우측 상단 접속자 목록에서 「🏃 따라가기」 를 누르면 그 친구를 자동으로 쫓아가요 (70px 이내면 멈춤)\n· 방향키를 누르면 내 조작이 우선이고, 상단 배너의 「멈춤」 으로 해제합니다\n· 🛵 탈것을 타면 건물 입장 판정 범위가 1.55배 넓어져 조준이 쉬워요\n· 기본 걷기 속도를 4.2 → 3.5 로 살짝 줄였어요 (탈것 속도는 그대로 배율 적용)\n· 💬 내가 보낸 채팅이 한 번 더 뜨던 중복 문제를 고쳤어요" },
   { id: "u20260724x", type: "업데이트", date: "2026-07-24", title: "🚬 재떨이 수다방 실시간 채팅",
@@ -5926,7 +5930,7 @@ function BoardView({ onBack, myName = "" }) {
 
       {openDoc && (
         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, padding: 14 }} onClick={() => setOpenDoc(null)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 480 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, maxHeight: "calc(100vh - 28px)", overflowY: "auto" }}>
             <Panel style={{ padding: 16 }}>
               <div style={{ fontSize: 15, fontWeight: "bold" }}>{openDoc.title}</div>
               <div style={{ fontSize: 11, color: C.inkSoft, margin: "4px 0 10px" }}>{openDoc.date}</div>
@@ -6567,7 +6571,7 @@ function DMChatModal({ person, onClose, thread = [], onSend, online = false, myN
   };
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 165, padding: 14 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, maxHeight: "calc(100vh - 28px)", overflowY: "auto" }}>
         <Panel style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "#5b8def", color: C.white, borderBottom: `3px solid ${C.ink}` }}>
             <span style={{ fontSize: 22 }}>{person.avatar || "🧑"}</span>
