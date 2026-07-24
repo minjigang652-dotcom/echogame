@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v38 · 2026-07-24";
+const APP_VERSION = "v39 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -613,7 +613,7 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
     const loop = (now) => {
       try {
       const t = now || performance.now();
-      const dt = Math.min(0.05, Math.max(0, (t - last) / 1000));
+      const dt = Math.min(0.1, Math.max(0, (t - last) / 1000));
       last = t;
       const SPEED = PPS * dt;
       if (!pausedRef.current) {
@@ -1813,9 +1813,9 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
       try {
       // 화면 주사율이 낮은 기기에서도 같은 속도가 나오도록 '초 단위'로 이동합니다
       const t = now || performance.now();
-      const dt = Math.min(0.05, Math.max(0, (t - last) / 1000));
+      const dt = Math.min(0.1, Math.max(0, (t - last) / 1000));
       last = t;
-      const SPEED = 210 * dt * ((vehicleRef.current && vehicleRef.current.speed) || 1);
+      const SPEED = 210 * dt * vehicleSpeed(vehicleRef.current);
       const k = keys.current;
       let { x, y } = posRef.current;
       let dx = 0, dy = 0;
@@ -2076,9 +2076,13 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
             )}
           </button>
           {vehicle && (
-            <PxButton tone="danger" onClick={() => onDismount && onDismount()} title="탈것에서 내리기" style={{ fontSize: 11, padding: "6px 9px" }}>
-              {vehicle.emoji || "🛵"} 내리기
-            </PxButton>
+            <>
+              <span title={`${vehicle.name} · 걷기보다 ${vehicleSpeed(vehicle)}배 빠름`}
+                style={{ background: C.ink, color: C.gem, fontSize: 11, padding: "5px 9px", border: `2px solid ${C.gem}`, whiteSpace: "nowrap" }}>
+                {vehicle.emoji || "🛵"} ×{vehicleSpeed(vehicle)}
+              </span>
+              <PxButton tone="danger" onClick={() => onDismount && onDismount()} title="탈것에서 내리기" style={{ fontSize: 11, padding: "6px 9px" }}>내리기</PxButton>
+            </>
           )}
           <div style={{ position: "relative" }}>
             <PxButton tone={danceMove ? "good" : "gold"} onClick={() => setDanceMenu((v) => !v)} style={{ fontSize: 14, padding: "5px 9px" }}>💃</PxButton>
@@ -4175,7 +4179,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear }) {
     const loop = (now) => {
       try {
         const t = now || performance.now();
-        const dt = Math.min(0.05, Math.max(0, (t - last) / 1000));
+        const dt = Math.min(0.1, Math.max(0, (t - last) / 1000));
         last = t;
         const SPEED = PPS * dt;
         if (!openRef.current) {
@@ -4573,7 +4577,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
     const loop = (now) => {
       try {
       const t = now || performance.now();
-      const dt = Math.min(0.05, Math.max(0, (t - last) / 1000));
+      const dt = Math.min(0.1, Math.max(0, (t - last) / 1000));
       last = t;
       const SPEED = 276 * dt;
       if (!openRef.current) {
@@ -5294,6 +5298,14 @@ const IKEA_ITEMS = {
   ],
 };
 const IKEA_TABS = { house: "🏠 집 외관", furni: "🛋 가구", vehicle: "🚲 교통수단" };
+/* 저장된 탈것 객체에 speed 가 없을 수 있어서 항상 정의표에서 다시 찾습니다.
+   (예전 버전에서 저장된 데이터 때문에 혼자만 느려지는 문제가 있었어요) */
+function vehicleSpeed(v) {
+  if (!v) return 1;
+  const def = IKEA_ITEMS.vehicle.find((x) => x.id === v.id);
+  const sp = (def && def.speed) || v.speed;
+  return typeof sp === "number" && sp > 0 ? sp : 1;
+}
 
 function IkeaView({ gems, owned, houseSkin, vehicle, myFurni, onBuy, onBack, bubble }) {
   const [tab, setTab] = useState(null);
@@ -5756,6 +5768,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724jj", type: "업데이트", date: "2026-07-24", title: "🏎 탈것 속도가 사람마다 다르던 문제 수정",
+    body: "· 탈것 속도를 저장된 데이터가 아니라 항상 최신 정의표에서 읽도록 바꿨어요\n· 예전 버전에서 저장된 탈것은 속도 정보가 없어 혼자만 걷기 속도로 다녔어요\n· 상단에 「🏎️ ×2.8」 처럼 현재 속도 배율이 표시돼요 — 이 숫자가 같으면 속도도 같습니다\n· 아주 느린 기기(10~20fps)에서도 정상 속도가 나오도록 보정 범위를 넓혔어요" },
   { id: "u20260724ii", type: "업데이트", date: "2026-07-24", title: "🏆 제단 공유 · 📗 스쿨 진행도 저장",
     body: "· 🏆 제단에 봉헌한 파편이 접속자 모두에게 공유돼요 — 등록자가 직접 검토하고 체크할 수 있어요\n· 새로 접속하면 지금까지 쌓인 파편을 자동으로 받아옵니다\n· 「🙋 내 관련」 필터로 내가 올렸거나 내가 검토할 파편만 골라볼 수 있어요\n· 🛡 검토 · ⭐ 보상 체크도 실시간으로 모두에게 반영돼요\n· 📗 네이버스쿨 · 🎬 영상스쿨에서 깬 퀘스트가 저장돼요 (방을 나가도 유지)" },
   { id: "u20260724hh", type: "업데이트", date: "2026-07-24", title: "🏃 사람마다 걷는 속도가 다르던 문제 수정",
@@ -7697,7 +7711,7 @@ function EchoTown() {
     if (d.ikeaOwned) { const n = { ...d.ikeaOwned }; delete n.f8; setIkeaOwned(n); }   // 이케아 수족관은 폐지 → 형욱이네에서만
     if (d.myFurni) setMyFurni((d.myFurni || []).filter((x) => x !== "f8"));
     if (d.houseSkin !== undefined) setHouseSkin(d.houseSkin);
-    if (d.vehicle !== undefined) setVehicle(d.vehicle);
+    if (d.vehicle !== undefined) setVehicle(d.vehicle ? (IKEA_ITEMS.vehicle.find((x) => x.id === d.vehicle.id) || d.vehicle) : null);
     if (d.thanksInv) setThanksInv(d.thanksInv);
     if (d.memos) setMemos(d.memos);
     if (d.stats) { setStats(d.stats); saveJSON("echotown_stats", d.stats); }
