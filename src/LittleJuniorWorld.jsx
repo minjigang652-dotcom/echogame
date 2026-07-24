@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v63 · 2026-07-24";
+const APP_VERSION = "v64 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -557,7 +557,7 @@ const ROOM_TIPS = {
   board: ["글을 올리면 모두가 봐요", "내가 쓴 글은 ✏️ 수정·🗑 삭제할 수 있어요", "업데이트 탭에서 새로 바뀐 기능을 확인하세요"],
   thanks: ["칠판에 남긴 쪽지는 모두에게 보여요", "🔒 받는 사람만 보게 할 수도 있어요", "🕶 익명으로 남겨도 내 글은 지울 수 있어요", "선반 상점에서 선물을 사서 우체통으로 보내보세요"],
   heart: ["고민을 익명으로 남기면 모두에게 보여요", "고해성사와 서운 점 중에 골라 넣어요", "글을 넣을 땐 🪙 골드가 필요해요"],
-  listening: ["🪑 관객석을 누르면 앉으면서 📃 선곡 리스트가 열려요", "🎧 디제이 부스에서 🔗 링크·🎤 가수·🎵 제목을 넣어보세요", "등록한 노래는 모두의 리스트에 들어가요", "오른쪽 💬 채팅창에서 같이 들으며 얘기해요", "등록하면 바로 재생되고 방을 나가도 계속 들려요", "좌측 하단 미니 플레이어로 멈추거나 접을 수 있어요"],
+  listening: ["🪑 관객석을 누르면 앉으면서 📃 선곡 리스트가 열려요", "🎧 디제이 부스에서 🔗 링크·🎤 가수·🎵 제목을 넣어보세요", "등록한 노래는 모두의 리스트에 들어가요", "오른쪽 💬 채팅창에서 같이 들으며 얘기해요", "🎶 부스에서 틀면 다같이 · 🪑 관객석에서 고르면 나만 들어요", "우측 🎧 목록에서 다른 사람이 듣는 곡을 눌러 같이 들을 수 있어요", "등록하면 바로 재생되고 방을 나가도 계속 들려요", "좌측 하단 미니 플레이어로 멈추거나 접을 수 있어요"],
   reels: ["핸드폰을 눌러 카테고리별 릴스를 봐요", "카테고리를 추가하면 모두에게 공유돼요"],
   minigame: ["🕵️ 라이어 게임은 실제 접속자 3명부터 시작해요", "방을 만들면 다른 사람에게 참가 버튼이 떠요", "반사신경·가위바위보·순서기억으로 🪙 골드를 모아요"],
   smoke: ["재떨이를 누르면 실제 접속자들과 수다 떨어요", "채팅창 위에 지금 방에 있는 사람이 보여요", "창문을 열면 공기가 맑아져요"],
@@ -660,17 +660,17 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
      문 앞에 서서 Space 를 누르면 나갑니다 (눌러서 나가도 돼요). */
   const exitFurniture = (() => {
     if (!onBack) return null;
-    const W = 76, H = 76, PAD = 22;
+    const W = 58, H = 36, PAD = 18;
     /* 다른 가구와 겹치지 않는 자리를 순서대로 찾아요 (왼쪽아래 → 오른쪽아래 → 왼쪽중간 …) */
     const spots = [
-      [18, roomH - 88], [roomW - 94, roomH - 88], [18, Math.round(roomH / 2) - 38],
-      [roomW - 94, Math.round(roomH / 2) - 38], [Math.round(roomW / 2) - 38, roomH - 88],
-      [18, 18], [roomW - 94, 18],
+      [14, roomH - 48], [roomW - 72, roomH - 48], [14, Math.round(roomH / 2) - 18],
+      [roomW - 72, Math.round(roomH / 2) - 18], [Math.round(roomW / 2) - 29, roomH - 48],
+      [14, 14], [roomW - 72, 14],
     ];
     const hits = (x, y) => (furniture || []).some((f) =>
       x < f.x + f.w + PAD && x + W + PAD > f.x && y < f.y + f.h + PAD && y + H + PAD > f.y);
     const free = spots.find(([x, y]) => !hits(x, y)) || spots[0];
-    return { id: "__exit", x: free[0], y: free[1], w: W, h: H, color: "#8b5a2b", emoji: "🚪", label: "나가기", onInteract: onBack, fixed: true };
+    return { id: "__exit", x: free[0], y: free[1], w: W, h: H, color: "#8b5a2b", emoji: "", label: "나가기", onInteract: onBack, fixed: true };
   })();
   /* 기존 가구를 먼저 두고 문을 마지막에 넣어요 — 가구와 겹쳐도 가구가 우선 인식됩니다 */
   const allFurniture = exitFurniture ? [...(furniture || []), exitFurniture] : (furniture || []);
@@ -803,11 +803,11 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
                 style={{ position: "absolute", left: f.x, top: f.y, width: f.w, height: f.h,
                   cursor: editable && !f.fixed ? "grab" : "pointer", touchAction: editable && !f.fixed ? "none" : "auto",
                   display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center",
-                  background: f.fixed ? "rgba(139,90,43,0.22)" : editable ? "rgba(255,255,255,0.35)" : "transparent",
-                  border: f.fixed ? `3px solid ${C.ink}` : editable ? `2px dashed ${C.ink}` : "none", borderRadius: 10,
+                  background: f.fixed ? "rgba(0,0,0,0.10)" : editable ? "rgba(255,255,255,0.35)" : "transparent",
+                  border: f.fixed ? `2px solid ${C.ink}` : editable ? `2px dashed ${C.ink}` : "none", borderRadius: 8,
                   filter: active ? `drop-shadow(0 0 5px ${C.gem}) drop-shadow(0 0 2px ${C.gem})` : "drop-shadow(0 2px 1px rgba(0,0,0,0.28))",
                   transition: "filter .12s" }}>
-                <span style={{ fontSize: Math.max(22, Math.min(f.w, f.h) * 0.72), lineHeight: 1 }}>{f.emoji}</span>
+                {f.emoji ? <span style={{ fontSize: Math.max(22, Math.min(f.w, f.h) * 0.72), lineHeight: 1 }}>{f.emoji}</span> : null}
                 <span style={{ fontSize: 10, marginTop: 2, fontWeight: "bold", color: C.ink, background: active ? C.gem : "rgba(255,253,246,0.85)",
                   border: `1.5px solid ${C.ink}`, borderRadius: 8, padding: "0 6px", whiteSpace: "nowrap", maxWidth: Math.max(f.w + 24, 70), overflow: "hidden", textOverflow: "ellipsis" }}>{f.label}</span>
               </div>
@@ -2402,7 +2402,7 @@ async function dbDelNotice(id) {
   try { const s = await getSupa(); await s.from("notices").delete().eq("id", id); return true; } catch (e) { return false; }
 }
 
-function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef, roomPosRef, danceRef, houseRef, lookRef, carryRef, petRef, roomIdRef, vehicleRef) {
+function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef, roomPosRef, danceRef, houseRef, lookRef, carryRef, petRef, roomIdRef, vehicleRef, nowRef) {
   const [retry, setRetry] = useState(0);          // 연결이 끊기면 올라가며 재접속을 유발
   const [others, setOthers] = useState({});
   const [count, setCount] = useState(1);
@@ -2456,7 +2456,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
         });
         /* ⚠️ 새 이벤트를 만들면 반드시 여기에 이름을 넣어야 상대에게 도착해요 */
-        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat"].forEach((ev) => {
+        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm"].forEach((ev) => {
           ch.on("broadcast", { event: ev }, ({ payload }) => {
             if (onChatRef && onChatRef.net) onChatRef.net(ev, payload);
           });
@@ -2553,6 +2553,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
                   pt: (petRef && petRef.current) || null,
                   vh: (vehicleRef && vehicleRef.current) ? (vehicleRef.current.emoji || "🛵") : null,
                   vn: (vehicleRef && vehicleRef.current) ? (vehicleRef.current.name || "") : null,
+                  ny: (nowRef && nowRef.current) || null,
                   rm: (roomIdRef && roomIdRef.current) || null,
                   oc: [of.top ? of.top.color : null, of.bottom ? of.bottom.color : null, of.shoes ? of.shoes.color : null] };
               })() });
@@ -3322,8 +3323,9 @@ function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble
           <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "5px 8px" }}>
             🪑 지금 테이블에 앉은 사람: <b>나</b>{here.length ? ", " + here.map((o) => o.name).join(", ") : " (혼자예요)"}
           </div>
-          <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>* 데모용 로컬 채팅입니다.</div>
+          <div style={{ fontSize: 11, color: C.good, marginBottom: 8, fontWeight: "bold" }}>🟢 실시간 채팅 · 지금 접속한 사람 모두에게 보여요</div>
           <div ref={loungeRef} style={{ height: 200, overflow: "auto", background: C.white, border: `3px solid ${C.ink}`, padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+            {chat.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 20, lineHeight: 1.7 }}>아직 대화가 없어요 🪑<br />먼저 인사해볼까요? 👋</div>}
             {chat.map((m, i) => (
               <div key={i} style={{ fontSize: 13, alignSelf: m.me ? "flex-end" : "flex-start", background: m.me ? C.gem : "#eadfc6", border: `2px solid ${C.ink}`, padding: "4px 8px", maxWidth: "80%" }}>
                 <b style={{ fontSize: 10, color: C.inkSoft }}>{m.who}</b><br />{m.text}
@@ -4095,7 +4097,9 @@ function parseYouTubeId(url) {
   if (/^[\w-]{11}$/.test(s)) return s;
   return null;
 }
-function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelSong, onPlayYt, ytNow, myName = "", chat = [], onChat, djNow = null }) {
+function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelSong, onPlayYt, onPlayBgm, ytNow, myName = "", chat = [], onChat, roomBgm = null }) {
+  const net = useContext(NetContext);
+  const listeners = (net && net.others ? Object.values(net.others) : []).filter((o) => o.ny && o.ny.v);
   const inp = { padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white, boxSizing: "border-box" };
   const [djOpen, setDjOpen] = useState(false);     // 🎧 디제이 부스 : 등록 · 신청만
   const [listOpen, setListOpen] = useState(false); // 🪑 관객석 : 선곡 리스트
@@ -4126,7 +4130,7 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
     };
     onAddSong && onAddSong(s);
     setNu(""); setNa(""); setNt(""); setNd("");
-    if (vid && autoPlay) onPlayYt(s);
+    if (vid && autoPlay) onPlayBgm && onPlayBgm(s);   // 부스에서 틀면 방 전체 배경음악
   };
 
   const requestSong = () => {
@@ -4137,7 +4141,7 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
     const s = { id: Date.now() + Math.random(), artist: "", title: vid ? "신청곡 (유튜브)" : t, desc: "신청곡 🎶", videoId: vid, q: t, by: myName || "익명" };
     onAddSong && onAddSong(s);
     setReqText(""); setReqOpen(false);
-    if (vid) onPlayYt(s);
+    if (vid) onPlayBgm && onPlayBgm(s);   // 신청곡도 다같이 들어요
   };
 
   const pickSong = (s) => {
@@ -4167,11 +4171,10 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
   const banner = (
     <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#241a33", color: "#ffe680", borderBottom: `3px solid ${C.ink}`, flexWrap: "wrap" }}>
       <span className={ytNow ? "gem-spin" : ""} style={{ fontSize: 16 }}>♬</span>
+      <span style={{ fontSize: 10, color: "#b9a7d6" }}>{roomBgm && ytNow && roomBgm.song.id === ytNow.id ? "🎶 배경음악(다같이)" : ytNow ? "🎧 개인 감상" : ""}</span>
       <b style={{ fontSize: 13 }}>{ytNow ? label(ytNow) : "재생 중인 곡 없음"}</b>
-      {djNow && (!ytNow || ytNow.id !== djNow.song.id) && (
-        <PxButton tone="good" onClick={() => onPlayYt(djNow.song)} style={{ fontSize: 11, padding: "4px 9px" }}>
-          🎧 {djNow.by}님 선곡 같이 듣기
-        </PxButton>
+      {roomBgm && (!ytNow || ytNow.id !== roomBgm.song.id) && (
+        <PxButton tone="good" onClick={() => onPlayYt(roomBgm.song)} style={{ fontSize: 11, padding: "4px 9px" }}>🎶 배경음악 듣기</PxButton>
       )}
       <PxButton tone="gold" onClick={() => setDjOpen(true)} style={{ fontSize: 12, padding: "4px 10px", marginLeft: 6 }}>🎧 디제이 부스</PxButton>
       <PxButton tone="blue" onClick={() => setListOpen(true)} style={{ fontSize: 12, padding: "4px 10px" }}>📃 선곡 리스트 ({songs.length})</PxButton>
@@ -4188,6 +4191,24 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
         <span style={{ fontSize: 15 }}>💬</span>
         <b style={{ flex: 1, fontSize: 12.5 }}>리스닝 채팅</b>
         <span style={{ fontSize: 9.5, opacity: 0.8 }}>모두에게 보여요</span>
+      </div>
+      {/* 🎧 지금 누가 뭘 듣는지 */}
+      <div style={{ borderBottom: `3px solid ${C.ink}`, background: "#241a33", padding: "7px 9px", maxHeight: 132, overflow: "auto" }}>
+        <div style={{ fontSize: 10.5, color: "#b9a7d6", marginBottom: 5 }}>🎧 지금 듣는 사람 · 눌러서 같이 듣기</div>
+        {roomBgm && (
+          <button type="button" onClick={() => onPlayYt(roomBgm.song)} title="방 배경음악 듣기"
+            style={{ width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "'DotGothic16', monospace", background: "#4a3570", color: "#ffe680", border: `2px solid ${C.gem}`, borderRadius: 6, padding: "5px 8px", marginBottom: 4, fontSize: 11 }}>
+            🎶 <b>배경음악</b> · {label(roomBgm.song)}<div style={{ fontSize: 9, color: "#c9bbe6" }}>{roomBgm.by}님 선곡 · 다같이</div>
+          </button>
+        )}
+        {listeners.length === 0 && !roomBgm && <div style={{ fontSize: 10.5, color: "#8f7fb0" }}>아직 아무도 듣고 있지 않아요</div>}
+        {listeners.map((o) => (
+          <button key={o.id} type="button" onClick={() => onPlayYt({ id: "j" + o.ny.i, artist: "", title: o.ny.t, videoId: o.ny.v, q: o.ny.t })}
+            title={`${o.name}님과 같이 듣기`}
+            style={{ width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "'DotGothic16', monospace", background: "#32254d", color: "#f3ecff", border: `2px solid ${C.ink}`, borderRadius: 6, padding: "5px 8px", marginBottom: 4, fontSize: 11 }}>
+            🎧 <b>{o.name}</b><div style={{ fontSize: 10, color: "#b9a7d6", wordBreak: "break-all" }}>{o.ny.t}</div>
+          </button>
+        ))}
       </div>
       <div ref={chatRef} style={{ flex: 1, overflow: "auto", padding: 8, display: "flex", flexDirection: "column", gap: 5 }}>
         {chat.length === 0 && <div style={{ fontSize: 11.5, color: "#8f7fb0", textAlign: "center", padding: 16, lineHeight: 1.7 }}>아직 대화가 없어요 🎵<br />지금 듣는 노래 얘기해봐요!</div>}
@@ -4209,7 +4230,7 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
   );
 
   return (
-    <RoomView title="리스닝 방" icon="🎵" sub="🪑 관객석에 앉으면 선곡 리스트 · 🎧 부스에서 등록·신청" bg="#2a2140" roomW={640} roomH={400}
+    <RoomView title="리스닝 방" icon="🎵" sub="🎶 배경음악은 다같이 · 🪑 관객석은 개인 감상" bg="#2a2140" roomW={640} roomH={400}
       furniture={furniture} onBack={onBack} paused={djOpen || reqOpen || listOpen} headerBg="#5b8def" banner={banner} bubble={bubble}
       side={chatPanel} sitAt={seat ? { x: seat.x + seat.w / 2, y: seat.y + seat.h - 6 } : null} onStand={standUp}>
 
@@ -4247,9 +4268,9 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
             {linkErr && <div style={{ fontSize: 11.5, color: "#ff9a8a", marginTop: 7 }}>⚠️ {linkErr}</div>}
             <div style={{ display: "flex", gap: 6, marginTop: 9 }}>
               <PxButton tone="wood" onClick={() => addSong(false)} style={{ flex: 1, fontSize: 12, padding: 9 }}>목록에만 추가</PxButton>
-              <PxButton tone="gold" onClick={() => addSong(true)} style={{ flex: 1.4, fontSize: 12, padding: 9 }}>▶ 등록하고 재생</PxButton>
+              <PxButton tone="gold" onClick={() => addSong(true)} style={{ flex: 1.4, fontSize: 12, padding: 9 }}>🎶 배경음악으로 틀기</PxButton>
             </div>
-            <div style={{ fontSize: 10, color: "#b9a7d6", marginTop: 6, lineHeight: 1.6 }}>재생하면 방을 나가도 계속 들려요 (좌측 하단 미니 플레이어)<br />내가 틀면 다른 사람에게 「같이 듣기」 버튼이 떠요</div>
+            <div style={{ fontSize: 10, color: "#b9a7d6", marginTop: 6, lineHeight: 1.6 }}>🎶 <b style={{ color: "#ffe680" }}>배경음악</b>은 리스닝방에 있는 모두에게 같이 틀려요<br />🪑 관객석 리스트에서 고르면 <b style={{ color: "#ffe680" }}>나만</b> 들어요</div>
           </div>
 
           <PxButton tone="blue" onClick={() => { setDjOpen(false); setReqOpen(true); }} style={{ width: "100%", marginTop: 9, padding: 11, fontSize: 13 }}>🎵 신청곡 넣기 (🪙5)</PxButton>
@@ -4262,7 +4283,8 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
         <RoomModal title={seat ? "🪑 관객석 · 선곡 리스트" : "📃 선곡 리스트"} onClose={() => setListOpen(false)} maxW={480}>
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 9, flexWrap: "wrap" }}>
             <span style={{ fontSize: 11.5, color: C.inkSoft, flex: 1, lineHeight: 1.6 }}>
-              {seat ? "의자에 앉아서 감상 중이에요 🎶 창을 닫아도 계속 앉아 있어요" : "관객석에 앉으면 자동으로 열려요"}
+              🎧 여기서 고르면 <b>나만</b> 들어요 (다같이 들으려면 🎧 부스에서 배경음악으로)<br />
+              {seat ? "의자에 앉아 감상 중 · 창을 닫아도 계속 앉아 있어요" : "관객석에 앉으면 자동으로 열려요"}
             </span>
             <span style={{ fontSize: 11.5, fontWeight: "bold" }}>{songs.length}곡</span>
           </div>
@@ -4279,7 +4301,8 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
                     {sg.desc && <div style={{ fontSize: 11, color: C.inkSoft, wordBreak: "break-all" }}>{sg.desc}</div>}
                     <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 1 }}>🎧 {sg.by || "마을"}</div>
                   </div>
-                  <PxButton tone={on ? "ink" : "good"} onClick={() => pickSong(sg)} style={{ fontSize: 11, padding: "6px 9px" }}>{on ? "재생 중" : sg.videoId ? "▶ 재생" : "🔍 유튜브"}</PxButton>
+                  <PxButton tone={on ? "ink" : "good"} onClick={() => pickSong(sg)} style={{ fontSize: 11, padding: "6px 9px" }}>{on ? "재생 중" : sg.videoId ? "▶ 나만 듣기" : "🔍 유튜브"}</PxButton>
+                  {sg.videoId && onPlayBgm && <PxButton tone="gold" onClick={() => onPlayBgm(sg)} title="방 전체 배경음악으로" style={{ fontSize: 11, padding: "6px 8px" }}>🎶</PxButton>}
                   <button onClick={() => onDelSong && onDelSong(sg.id)} title="삭제" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: C.inkSoft }}>🗑</button>
                 </div>
               );
@@ -7343,6 +7366,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n15", type: "업데이트", date: "2026-07-24", title: "🎶 배경음악(다같이) · 🪑 개인 감상 분리 · 🪑 주민센터 실시간 대화",
+    body: "· 🎧 디제이 부스에서 틀면 리스닝방 🎶 배경음악이 되어 방 안 모두에게 같이 틀려요\n· 🪑 관객석 리스트에서 고르면 나만 들어요 (목록 옆 🎶 버튼을 누르면 배경음악으로 전환)\n· 상단 「같이 듣기」 버튼 대신, 우측에 「🎧 지금 듣는 사람」 목록이 생겼어요 — 누르면 그 사람 곡을 같이 들어요\n· 🪑 주민센터 라운지 테이블 채팅이 실제 접속자끼리 실시간으로 바뀌었어요 (데모 대화 삭제)\n· 🚪 나가기 문을 작게 줄이고 아이콘을 없앴어요\n· 📅 방문 횟수가 새로고침이 아니라 「하루 한 번」으로 세집니다 (뱃지도 5일·10일·30일·100일 기준)" },
   { id: "u20260724n14", type: "업데이트", date: "2026-07-24", title: "🎵 리스닝방 개편 — 관객석 착석 · 공유 선곡 · 실시간 채팅",
     body: "· 🪑 관객석을 누르면 캐릭터가 의자에 앉아요 (방향키를 누르면 일어납니다)\n· 앉으면 📃 선곡 리스트가 자동으로 열려요\n· 🎧 디제이 부스는 이제 노래 등록과 🎵 신청곡만 담당해요\n· 🌍 부스에서 등록한 노래는 모두의 리스트에 들어가요 (누가 올렸는지도 표시)\n· 누가 노래를 틀면 다른 사람 화면에 「🎧 ○○님 선곡 같이 듣기」 버튼이 떠요\n· 💬 방 오른쪽에 실시간 채팅창이 생겼어요 — 같이 들으면서 수다 떨 수 있어요\n· 선곡 리스트는 새로고침해도 남아 있어요" },
   { id: "u20260724n13", type: "업데이트", date: "2026-07-24", title: "🔍 건물 크기 조절",
@@ -7900,10 +7925,10 @@ function ChatDock({ messages, shout, onToggleShout, onSend, gems = 0 }) {
 /* ======================= 뱃지 ======================= */
 const BADGES = [
   { id: "v1", cat: "방문", stat: "visit", need: 1, icon: "🌱", name: "웰컴", desc: "에코타운에 처음 방문했어요" },
-  { id: "v2", cat: "방문", stat: "visit", need: 5, icon: "🚪", name: "시작이 좋아", desc: "5번 방문" },
-  { id: "v3", cat: "방문", stat: "visit", need: 10, icon: "📅", name: "꾸준함이 곧 답", desc: "10번 방문" },
-  { id: "v4", cat: "방문", stat: "visit", need: 30, icon: "🛋", name: "하루쯤은 쉬어도 좋아", desc: "30번 방문" },
-  { id: "v5", cat: "방문", stat: "visit", need: 100, icon: "🏅", name: "에코타운 터줏대감", desc: "100번 방문" },
+  { id: "v2", cat: "방문", stat: "visit", need: 5, icon: "🚪", name: "시작이 좋아", desc: "5일 방문" },
+  { id: "v3", cat: "방문", stat: "visit", need: 10, icon: "📅", name: "꾸준함이 곧 답", desc: "10일 방문" },
+  { id: "v4", cat: "방문", stat: "visit", need: 30, icon: "🛋", name: "하루쯤은 쉬어도 좋아", desc: "30일 방문" },
+  { id: "v5", cat: "방문", stat: "visit", need: 100, icon: "🏅", name: "에코타운 터줏대감", desc: "100일 방문" },
 
   { id: "c1", cat: "소통", stat: "chat", need: 1, icon: "💬", name: "첫 인사", desc: "채팅 1회" },
   { id: "c2", cat: "소통", stat: "chat", need: 10, icon: "🗣", name: "수다쟁이", desc: "채팅 10회" },
@@ -9435,10 +9460,7 @@ function EchoTown() {
     m2: { reserved: true, by: "도희", time: "14:00", locked: false, agenda: [] },
     m3: { reserved: false, by: "", time: "", locked: true, agenda: [] },
   });
-  const [centerChat, setCenterChat] = useState([
-    { who: "도희", text: "다들 점심 뭐 먹었어요?", me: false },
-    { who: "창민", text: "뭐야!", me: false },
-  ]);
+  const [centerChat, setCenterChat] = useState([]);
   const [thanksInv, setThanksInv] = useState([]);
   const [postits, setPostits] = useState(() => {
     const v = loadJSON("echotown_postits_v1", null);
@@ -9642,7 +9664,7 @@ function EchoTown() {
   const netVehicleRef = useRef(null);
   const netRoomIdRef = useRef(null);   // 같은 집·회의실에 있는 사람만 보이게
   const netRoomPosRef = useRef({ x: 0, y: 0 });
-  const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat, sendEvent: netSendEvent, reconnect: netReconnect } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef, netOutfitRef, netViewRef, netRoomPosRef, netDanceRef, netHouseRef, netLookRef, netCarryRef, netPetRef, netRoomIdRef, netVehicleRef);
+  const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat, sendEvent: netSendEvent, reconnect: netReconnect } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef, netOutfitRef, netViewRef, netRoomPosRef, netDanceRef, netHouseRef, netLookRef, netCarryRef, netPetRef, netRoomIdRef, netVehicleRef, netNowRef);
   useEffect(() => { netSendEventRef.current = netSendEvent; }, [netSendEvent]);
   useEffect(() => { myNameRef.current = myName; }, [myName]);
   /* 📣 퀘스트 「모두 부르기」 */
@@ -9952,6 +9974,8 @@ function EchoTown() {
   const petEmoji = useMemo(() => { const p = PETS.find((x) => x.id === activePet); return p ? p.emoji : null; }, [activePet]);
   useEffect(() => { netPetRef.current = petEmoji; }, [petEmoji]);
   useEffect(() => { netVehicleRef.current = vehicle; }, [vehicle]);
+  useEffect(() => { viewRef2.current = view; }, [view]);
+  useEffect(() => { netNowRef.current = ytNow && ytNow.videoId ? { t: String(ytNow.artist ? ytNow.artist + " - " + ytNow.title : ytNow.title).slice(0, 28), v: ytNow.videoId, i: ytNow.id } : null; }, [ytNow]);
 
   const [carrying, setCarrying] = useState(null);        // { ...item, _i }
   const [homeGifts, setHomeGifts] = useState([]);        // 집에 둔 선물
@@ -10234,6 +10258,8 @@ function EchoTown() {
     if (netSendEvent) netSendEvent("gal", { del: id });
   };
   const songsRef = useRef([]);
+  const netNowRef = useRef(null);
+  const viewRef2 = useRef("world");
   const [songs, setSongs] = useState(() => loadJSON("echotown_songs_v1", null) || [
     { id: 1, artist: "Bazzi", title: "Mine", desc: "요즘 즐겨듣는 노래에요", videoId: null, q: "Bazzi Mine" },
     { id: 2, artist: "LANY", title: "ILYSB", desc: "드라이브할 때 최고 🚗", videoId: null, q: "LANY ILYSB" },
@@ -10245,7 +10271,13 @@ function EchoTown() {
     setYtNow(s); setYtOpen(true);
     setWorldBgm((b) => ({ ...b, playing: false }));   // 마을 BGM 은 잠시 멈춤
     showNotice(`▶ ${s.artist ? s.artist + " - " : ""}${s.title} 재생 중`);
-    if (share && s.videoId && netSendEventRef.current) netSendEventRef.current("ytplay", { song: s, by: myNameRef.current || "익명" });
+    if (share && s.videoId && netSendEventRef.current) netSendEventRef.current("roombgm", { song: s, by: myNameRef.current || "익명" });
+  };
+  /* 🎶 리스닝방 배경음악 — 방에 있는 모두가 같은 곡을 들어요 */
+  const [roomBgm, setRoomBgm] = useState(null);
+  const playRoomBgm = (song) => {
+    setRoomBgm({ song, by: myNameRef.current || "나" });
+    playYt(song, true);
   };
   /* 🎵 선곡 리스트 공유 — 누가 등록해도 모두의 목록에 들어가요 */
   const addSong = (row) => {
@@ -10256,8 +10288,6 @@ function EchoTown() {
     setSongs((v) => v.filter((x) => x.id !== id));
     if (netSendEventRef.current) netSendEventRef.current("song", { del: id });
   };
-  /* 🎧 지금 다른 사람이 틀고 있는 곡 */
-  const [djNow, setDjNow] = useState(null);
   /* 💬 리스닝방 실시간 채팅 */
   const [musicChat, setMusicChat] = useState([]);
   const [profileTab, setProfileTab] = useState(null);
@@ -10290,8 +10320,11 @@ function EchoTown() {
     });
   }, []);
   useEffect(() => {
+    /* 방문 횟수는 새로고침이 아니라 「하루에 한 번」만 올라가요 */
     const cur = loadStats();
-    const next = { ...cur, visit: (cur.visit || 0) + 1 };
+    const today = new Date().toLocaleDateString("sv-SE");   // YYYY-MM-DD (로컬 기준)
+    if (cur.lastVisit === today) { setStats(cur); return; }
+    const next = { ...cur, visit: (cur.visit || 0) + 1, lastVisit: today };
     saveStats(next);
     setStats(next);
     const got = BADGES.filter((b) => b.stat === "visit" && next.visit >= b.need).sort((a, b2) => b2.need - a.need)[0];
@@ -10349,7 +10382,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "qcallack") {
@@ -10455,13 +10488,18 @@ function EchoTown() {
         else if (p.del != null) setSongs((v) => v.filter((x) => x.id !== p.del));
         return;
       }
-      if (kind === "ytplay") {
-        if (p.by === (myName || "나")) return;
-        if (p.song) {
-          setSongs((v) => (v.some((x) => x.id === p.song.id) ? v : [...v, p.song].slice(-80)));
-          setDjNow({ song: p.song, by: p.by || "누군가" });
-          showNotice(`🎧 ${p.by || "누군가"}님이 「${p.song.artist ? p.song.artist + " - " : ""}${p.song.title}」를 틀었어요`);
-        }
+      if (kind === "roombgm") {
+        if (p.by === (myName || "나") || !p.song) return;
+        setSongs((v) => (v.some((x) => x.id === p.song.id) ? v : [...v, p.song].slice(-80)));
+        setRoomBgm({ song: p.song, by: p.by || "누군가" });
+        const nm = `${p.song.artist ? p.song.artist + " - " : ""}${p.song.title}`;
+        // 리스닝방 안에 있으면 배경음악이 자동으로 바뀌어요
+        if (viewRef2.current === "listening" && p.song.videoId) { playYt(p.song, false); showNotice(`🎶 배경음악 : ${nm} (${p.by}님 선곡)`); }
+        else showNotice(`🎶 리스닝방 배경음악이 「${nm}」로 바뀌었어요`);
+        return;
+      }
+      if (kind === "cchat") {
+        if (p.who !== (myName || "나")) setCenterChat((v) => [...v, { who: p.who, text: p.text, me: false }].slice(-80));
         return;
       }
       if (kind === "lchat") {
@@ -10751,7 +10789,7 @@ function EchoTown() {
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
         {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gold} sprites={allSprites} cutCfg={cutCfg} scales={spriteScale} look={myLook} carry={carrying} pet={petEmoji} shuffle={shuffle} onShuffle={toggleShuffle} onNextTrack={() => stepTrack(1)} onPrevTrack={() => stepTrack(-1)} onReconnect={netReconnect} onDismount={() => { setVehicle(null); showNotice("🚶 탈것에서 내렸어요"); }} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} myNick={myName} onGift={(n) => setGiftTarget(n)} />}
-        {view === "center" && <CenterView meetings={myMeetings} meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
+        {view === "center" && <CenterView meetings={myMeetings} meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => { setCenterChat((c) => [...c, { who: myName || "나", text: t, me: true }].slice(-80)); if (netSendEvent) netSendEvent("cchat", { who: myName || "나", text: t }); }} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} myName={myName} people={people}
           chat={meetingChat[meetingId] || []}
           onChat={(t) => { pushMeetingChat(meetingId, { who: myName || "나", text: t, me: true }); if (netSendEvent) netSendEvent("mchat", { room: meetingId, who: myName || "나", text: t }); }}
@@ -10795,7 +10833,7 @@ function EchoTown() {
         {view === "thanks" && <ThanksView gems={gold} inventory={thanksInv} postits={postits} myName={myName} myUid={myUid} people={people} onDelPost={delPostit} onBuy={(it) => { setGold((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={addPostit} onBack={backToWorld} bubble={bubble} />}
         {view === "heart" && <HeartView gems={gold} worries={worries} onPost={(text, cost, kind) => { setGold((g) => g - cost); addWorry(text, kind); }} onBack={backToWorld} bubble={bubble} />}
         {view === "listening" && <ListeningView onBack={backToWorld} gems={gold} onSpend={(n) => setGold((g) => g - n)} bubble={bubble}
-          songs={songs} onAddSong={addSong} onDelSong={delSong} onPlayYt={playYt} ytNow={ytNow} myName={myName} djNow={djNow}
+          songs={songs} onAddSong={addSong} onDelSong={delSong} onPlayYt={(sg) => playYt(sg, false)} onPlayBgm={playRoomBgm} ytNow={ytNow} myName={myName} roomBgm={roomBgm}
           chat={musicChat} onChat={(t) => { setMusicChat((v) => [...v, { who: myName || "나", text: t, me: true }].slice(-80)); if (netSendEvent) netSendEvent("lchat", { who: myName || "나", text: t }); }} />}
         {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} extraCats={reelExtra} onAddCat={addReel} />}
         {view === "minigame" && <MiniGameRoom myName={myName} people={people} onBack={backToWorld} onReward={(n) => awardGold(n)} bubble={bubble} liarGame={liarGame} onLiarAction={lgAction} />}
