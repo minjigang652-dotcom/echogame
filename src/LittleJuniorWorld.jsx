@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v30 · 2026-07-24";
+const APP_VERSION = "v32 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -1060,9 +1060,91 @@ const FISHES = [
   { id: "f8", name: "새우", emoji: "🦐", price: 6 },
 ];
 
-function PetShop({ onBack, gold, pets = [], activePet = null, fishes = [], onBuyPet, onSetActive, onBuyFish, bubble }) {
-  const [tab, setTab] = useState("pet");
+const FACILITIES = [
+  { id: "aquarium", name: "수족관", emoji: "🐟", price: 120, desc: "우리 집에 놓는 진짜 수조. 물고기를 데려오려면 먼저 필요해요." },
+  { id: "yard", name: "마당", emoji: "🌳", price: 100, desc: "반려동물이 뛰어놀 공간. 입양하려면 먼저 필요해요." },
+];
+
+/* 🐠 수족관 — 물이 채워진 진짜 수조처럼 보여줍니다 */
+function Aquarium({ fishes = [], onClose }) {
+  const list = useMemo(() => fishes.map((id, i) => {
+    const f = FISHES.find((x) => x.id === id);
+    return f ? {
+      key: i, emoji: f.emoji, name: f.name,
+      top: 14 + ((i * 37) % 62),                 // 깊이
+      dur: 7 + ((i * 3) % 7),                    // 헤엄 속도
+      delay: -((i * 1.7) % 8),
+      size: 20 + ((i * 5) % 14),
+    } : null;
+  }).filter(Boolean), [fishes]);
+  const bubbles = [12, 30, 48, 66, 84];
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 130, padding: 14 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 480 }}>
+        <Panel style={{ padding: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 22 }}>🐟</span>
+            <b style={{ flex: 1, fontSize: 15 }}>우리 집 수족관</b>
+            <span style={{ fontSize: 12, color: C.inkSoft }}>{list.length}마리</span>
+            <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+          </div>
+
+          {/* 수조 */}
+          <div style={{ position: "relative", height: 250, borderRadius: 10, overflow: "hidden",
+            border: `6px solid #6b5a44`, boxShadow: "inset 0 0 40px rgba(0,40,80,0.45), 0 6px 16px rgba(0,0,0,0.35)",
+            background: "linear-gradient(180deg,#8fe0f7 0%,#4fb3e0 40%,#1f74ad 100%)" }}>
+            {/* 유리 반사 */}
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(115deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0) 45%)", pointerEvents: "none", zIndex: 4 }} />
+            {/* 물빛 흔들림 */}
+            <div className="aq-caustic" style={{ position: "absolute", inset: 0, opacity: 0.25, background: "repeating-linear-gradient(100deg, rgba(255,255,255,0.5) 0 2px, transparent 2px 22px)", pointerEvents: "none" }} />
+
+            {/* 공기방울 */}
+            {bubbles.map((x, i) => (
+              <span key={"b" + i} className="aq-bubble" style={{ left: `${x}%`, animationDuration: `${3.4 + i * 0.6}s`, animationDelay: `${-i * 1.3}s`, width: 5 + (i % 3) * 3, height: 5 + (i % 3) * 3 }} />
+            ))}
+
+            {/* 물고기 */}
+            {list.length === 0 && (
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.85)", fontSize: 13, fontFamily: "'DotGothic16', monospace", textAlign: "center", lineHeight: 1.9, zIndex: 3 }}>
+                수조가 비어 있어요 🫧<br />🐾 펫샵에서 물고기를 데려와보세요
+              </div>
+            )}
+            {list.map((f) => (
+              <span key={f.key} className="aq-swim" title={f.name}
+                style={{ position: "absolute", top: `${f.top}%`, fontSize: f.size, zIndex: 3, animationDuration: `${f.dur}s`, animationDelay: `${f.delay}s` }}>
+                <span className="aq-flip" style={{ display: "inline-block", animationDuration: `${f.dur}s`, animationDelay: `${f.delay}s` }}>{f.emoji}</span>
+              </span>
+            ))}
+
+            {/* 수초 */}
+            <span style={{ position: "absolute", left: "8%", bottom: 16, fontSize: 34, zIndex: 2 }} className="aq-weed">🌿</span>
+            <span style={{ position: "absolute", left: "26%", bottom: 14, fontSize: 26, zIndex: 2 }} className="aq-weed">🌱</span>
+            <span style={{ position: "absolute", right: "12%", bottom: 16, fontSize: 30, zIndex: 2 }} className="aq-weed">🪸</span>
+            <span style={{ position: "absolute", right: "32%", bottom: 18, fontSize: 22, zIndex: 2 }}>🐚</span>
+            {/* 바닥 모래 */}
+            <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 26, background: "linear-gradient(180deg,#e6d3a3,#c9ae74)", borderTop: "3px solid #b39a63", zIndex: 1 }} />
+          </div>
+
+          {/* 목록 */}
+          {list.length > 0 && (
+            <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 10 }}>
+              {Object.entries(fishes.reduce((a, id) => { a[id] = (a[id] || 0) + 1; return a; }, {})).map(([id, c]) => {
+                const f = FISHES.find((x) => x.id === id);
+                return f ? <span key={id} style={{ fontSize: 11.5, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 12, padding: "4px 10px" }}>{f.emoji} {f.name} ×{c}</span> : null;
+              })}
+            </div>
+          )}
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+function PetShop({ onBack, gold, pets = [], activePet = null, fishes = [], facilities = [], onBuyPet, onSetActive, onBuyFish, onBuyFacility, bubble }) {
+  const [tab, setTab] = useState("fac");
   const has = (id) => pets.includes(id);
+  const hasAqua = facilities.includes("aquarium");
+  const hasYard = facilities.includes("yard");
   const furniture = [
     { id: "counter", x: 250, y: 60, w: 150, h: 70, color: "#a9814a", emoji: "🧑‍⚕️", label: "카운터", toast: "어떤 친구를 찾으세요? 🐾" },
     { id: "cage", x: 60, y: 200, w: 120, h: 90, color: "#d9c9a8", emoji: "🐕", label: "강아지 우리", toast: "멍멍! 🐕" },
@@ -1078,16 +1160,52 @@ function PetShop({ onBack, gold, pets = [], activePet = null, fishes = [], onBuy
               <b style={{ flex: 1, fontSize: 15 }}>펫샵</b>
               <GemBadge kind="gold" amount={gold} />
             </div>
-            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-              <PxButton tone={tab === "pet" ? "good" : "wood"} onClick={() => setTab("pet")} style={{ flex: 1, fontSize: 12, padding: 9 }}>🐾 반려동물</PxButton>
-              <PxButton tone={tab === "fish" ? "good" : "wood"} onClick={() => setTab("fish")} style={{ flex: 1, fontSize: 12, padding: 9 }}>🐠 반려물고기</PxButton>
+            <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
+              <PxButton tone={tab === "fac" ? "good" : "wood"} onClick={() => setTab("fac")} style={{ flex: 1, fontSize: 11.5, padding: 9 }}>🏗 시설</PxButton>
+              <PxButton tone={tab === "pet" ? "good" : "wood"} onClick={() => setTab("pet")} style={{ flex: 1, fontSize: 11.5, padding: 9 }}>🐾 동물</PxButton>
+              <PxButton tone={tab === "fish" ? "good" : "wood"} onClick={() => setTab("fish")} style={{ flex: 1, fontSize: 11.5, padding: 9 }}>🐠 물고기</PxButton>
             </div>
 
-            {tab === "pet" ? (
+            {tab === "fac" && (
+              <>
+                <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 8, lineHeight: 1.7 }}>
+                  반려동물·물고기를 데려오려면 <b>먼저 살 곳</b>을 마련해야 해요.
+                </div>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {FACILITIES.map((fc) => {
+                    const own = facilities.includes(fc.id);
+                    return (
+                      <div key={fc.id} style={{ display: "flex", alignItems: "center", gap: 10, background: own ? "#eef6ef" : C.white, border: `3px solid ${own ? C.good : C.ink}`, borderRadius: 10, padding: 11 }}>
+                        <span style={{ fontSize: 34 }}>{fc.emoji}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: "bold" }}>{fc.name}{own ? " ✓" : ""}</div>
+                          <div style={{ fontSize: 11, color: C.inkSoft, lineHeight: 1.6 }}>{fc.desc}</div>
+                        </div>
+                        {own
+                          ? <span style={{ fontSize: 11.5, color: C.good, fontWeight: "bold", whiteSpace: "nowrap" }}>보유중</span>
+                          : <PxButton tone="gold" disabled={gold < fc.price} onClick={() => onBuyFacility(fc)} style={{ fontSize: 11.5, padding: "9px 11px", whiteSpace: "nowrap" }}>
+                              {gold < fc.price ? `🪙${fc.price} 부족` : `🪙${fc.price} 구입`}
+                            </PxButton>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {tab === "pet" && (
               <>
                 <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 8, lineHeight: 1.7 }}>
                   입양하면 마을에서 나를 졸졸 따라다녀요. 여러 마리를 키워도 <b>데리고 나가는 건 한 마리</b>씩이에요.
                 </div>
+                {!hasYard && (
+                  <div style={{ background: "#fbe4e0", border: `3px solid ${C.danger}`, borderRadius: 10, padding: 12, marginBottom: 10, textAlign: "center" }}>
+                    <div style={{ fontSize: 26 }}>🌳🔒</div>
+                    <div style={{ fontSize: 13, fontWeight: "bold", color: C.danger, margin: "6px 0 4px" }}>먼저 마당이 필요해요</div>
+                    <div style={{ fontSize: 11.5, color: C.inkSoft, lineHeight: 1.7 }}>반려동물이 뛰어놀 공간을 마련해야 입양할 수 있어요.</div>
+                    <PxButton tone="gold" onClick={() => setTab("fac")} style={{ width: "100%", marginTop: 9, padding: 10, fontSize: 12.5 }}>🏗 시설 탭에서 마당 구입하기</PxButton>
+                  </div>
+                )}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
                   {PETS.map((pt) => {
                     const own = has(pt.id), act = activePet === pt.id;
@@ -1101,8 +1219,8 @@ function PetShop({ onBack, gold, pets = [], activePet = null, fishes = [], onBuy
                             {act ? "🏠 집에 두기" : "🚶 데리고 나가기"}
                           </PxButton>
                         ) : (
-                          <PxButton tone="gold" disabled={gold < pt.price} onClick={() => onBuyPet(pt)} style={{ width: "100%", marginTop: 6, fontSize: 11, padding: 8 }}>
-                            {gold < pt.price ? `🪙${pt.price} 부족` : `🪙${pt.price} 입양`}
+                          <PxButton tone="gold" disabled={!hasYard || gold < pt.price} onClick={() => onBuyPet(pt)} style={{ width: "100%", marginTop: 6, fontSize: 11, padding: 8 }}>
+                            {!hasYard ? "🌳 마당 필요" : gold < pt.price ? `🪙${pt.price} 부족` : `🪙${pt.price} 입양`}
                           </PxButton>
                         )}
                       </div>
@@ -1110,11 +1228,20 @@ function PetShop({ onBack, gold, pets = [], activePet = null, fishes = [], onBuy
                   })}
                 </div>
               </>
-            ) : (
+            )}
+            {tab === "fish" && (
               <>
                 <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 8, lineHeight: 1.7 }}>
-                  데려간 물고기는 <b>우리 집 어항</b>에서 헤엄쳐요. 집에 들어가 어항을 눌러보세요 🐠
+                  데려간 물고기는 <b>우리 집 수족관</b>에서 헤엄쳐요. 집에 들어가 수족관을 눌러보세요 🐠
                 </div>
+                {!hasAqua && (
+                  <div style={{ background: "#e0f0fb", border: `3px solid #3a7bb5`, borderRadius: 10, padding: 12, marginBottom: 10, textAlign: "center" }}>
+                    <div style={{ fontSize: 26 }}>🐟🔒</div>
+                    <div style={{ fontSize: 13, fontWeight: "bold", color: "#2a6a9e", margin: "6px 0 4px" }}>먼저 수족관이 필요해요</div>
+                    <div style={{ fontSize: 11.5, color: C.inkSoft, lineHeight: 1.7 }}>물고기를 넣을 수조를 마련해야 데려올 수 있어요.</div>
+                    <PxButton tone="blue" onClick={() => setTab("fac")} style={{ width: "100%", marginTop: 9, padding: 10, fontSize: 12.5 }}>🏗 시설 탭에서 수족관 구입하기</PxButton>
+                  </div>
+                )}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 8 }}>
                   {FISHES.map((f) => {
                     const cnt = fishes.filter((x) => x === f.id).length;
@@ -1123,8 +1250,8 @@ function PetShop({ onBack, gold, pets = [], activePet = null, fishes = [], onBuy
                         <div style={{ fontSize: 30 }}>{f.emoji}</div>
                         <div style={{ fontSize: 12.5, fontWeight: "bold", marginTop: 3 }}>{f.name}</div>
                         {cnt > 0 && <div style={{ fontSize: 10, color: C.good, fontWeight: "bold" }}>어항에 {cnt}마리</div>}
-                        <PxButton tone="blue" disabled={gold < f.price} onClick={() => onBuyFish(f)} style={{ width: "100%", marginTop: 6, fontSize: 11, padding: 8 }}>
-                          {gold < f.price ? `🪙${f.price} 부족` : `🪙${f.price} 데려가기`}
+                        <PxButton tone="blue" disabled={!hasAqua || gold < f.price} onClick={() => onBuyFish(f)} style={{ width: "100%", marginTop: 6, fontSize: 11, padding: 8 }}>
+                          {!hasAqua ? "🐟 수족관 필요" : gold < f.price ? `🪙${f.price} 부족` : `🪙${f.price} 데려가기`}
                         </PxButton>
                       </div>
                     );
@@ -2608,7 +2735,7 @@ function GiftModal({ target, inventory, myName, onSend, onClose }) {
   );
 }
 
-function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras = [], gifts = [], fridge = [], fishes = [] }) {
+function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras = [], gifts = [], fridge = [], fishes = [], hasAquarium = false, hasYard = false, petsAtHome = [], onOpenAqua }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(memo || "");
   const furniture = [
@@ -2631,12 +2758,15 @@ function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras
     furniture.push({ id: "gift" + i, x: gp[0], y: gp[1], w: 44, h: 44, color: "transparent", emoji: g.emoji || "🎁", label: g.name,
       toast: `${g.name}${g.from ? ` — ${g.from}님이 준 선물이에요` : "을(를) 집에 뒀어요"} ✨` });
   });
-  /* 🐠 어항 */
-  if (fishes && fishes.length) {
-    const counts = {};
-    fishes.forEach((id) => { counts[id] = (counts[id] || 0) + 1; });
-    const label = Object.entries(counts).map(([id, c]) => { const f = FISHES.find((x) => x.id === id); return f ? `${f.emoji} ${f.name} ${c}` : null; }).filter(Boolean).join(", ");
-    furniture.push({ id: "aqua", x: 210, y: 40, w: 120, h: 62, color: "#bfe0f7", emoji: "🐠", label: `어항 (${fishes.length})`, toast: `🐠 어항 : ${label}` });
+  /* 🐟 수족관 (구입했을 때만 놓여요) */
+  if (hasAquarium) {
+    furniture.push({ id: "aqua", x: 200, y: 36, w: 140, h: 66, color: "#7fd4f5", emoji: "🐟", label: `수족관 (${fishes.length})`,
+      onInteract: () => onOpenAqua && onOpenAqua() });
+  }
+  /* 🌳 마당 (구입했을 때만) */
+  if (hasYard) {
+    furniture.push({ id: "yard", x: 40, y: 330, w: 120, h: 60, color: "#a8d5a2", emoji: "🌳", label: "마당",
+      toast: petsAtHome.length ? `🌳 마당에서 ${petsAtHome.join(", ")} 이(가) 놀고 있어요` : "🌳 마당 · 반려동물이 뛰어놀아요" });
   }
   /* 🧊 냉장고 */
   furniture.push({ id: "fridge", x: 552, y: 285, w: 58, h: 80, color: "#dfe7ea", emoji: "🧊", label: `냉장고 (${fridge.length})`,
@@ -4230,10 +4360,12 @@ function mergeMaps(base, saved) {
   return out;
 }
 
-function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree, onLeave, maps = [], people = [], onAddQuest, onEditQuest, onDelQuest, onAddMap, onGoShrine }) {
+function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree, onLeave, maps = [], people = [], onAddQuest, onEditQuest, onDelQuest, onAddMap, onGoShrine, onSubmitAnswer }) {
   const net = useContext(NetContext);
   const [tMsg, setTMsg] = useState("");
-  const [shrineFor, setShrineFor] = useState(null);   // 완료 → 제단 안내
+  const [shrineFor, setShrineFor] = useState(null);   // 제출 완료 → 제단 안내
+  const [submitFor, setSubmitFor] = useState(null);  // 📮 제출 : 답변 작성
+  const [answer, setAnswer] = useState("");
   const threadRef = useAutoScroll(JSON.stringify(threads || {}).length);
   const [editing, setEditing] = useState(null);
   const [nowTs, setNowTs] = useState(Date.now());
@@ -4247,7 +4379,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
     const h = Math.floor(d / 3600000), m = Math.floor((d % 3600000) / 60000), sec = Math.floor((d % 60000) / 1000);
     return { txt: `⏳ ${h > 0 ? h + "시간 " : ""}${m}분 ${sec}초 남음`, over: false };
   };
-  const canEdit = (nd) => !!nd && !nd.isBoss && (!nd.owner || nd.owner === myName);
+  const canEdit = (nd) => !!nd && !nd.isBoss && (!nd.owner || nd.owner === myName || nd.registrar === myName);
   /* 참가 가능 대상 : who 가 "all" 이거나 목록에 내 이름이 있으면 참가 가능 */
   const canJoin = (nd) => {
     if (!nd || !nd.who || nd.who === "all") return true;
@@ -4278,7 +4410,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
   const [dexMode, setDexMode] = useState("easy");
   const [addOpen, setAddOpen] = useState(false);
   const [addTab, setAddTab] = useState("quest");
-  const [fQ, setFQ] = useState({ stage: 1, title: "", icon: "🎯", gem: 5, rewardKind: "gem", rewardName: "", rewardEmoji: "🎁", desc: "", task: "", level: "초보자", field: "naverschool", due: "", who: "all", whoList: [] });
+  const [fQ, setFQ] = useState({ stage: 1, title: "", icon: "🎯", gem: 5, rewardKind: "gem", rewardName: "", rewardEmoji: "🎁", desc: "", task: "", level: "초보자", field: "naverschool", due: "", who: "all", whoList: [], regMode: "me", regName: "" });
   const [fM, setFM] = useState({ name: "", icon: "🗺", boss: "", bossIcon: "👹" });
   const [cleared, setCleared] = useState({});
   useEffect(() => { dbLoadBoss().then((d) => { if (d && Object.keys(d).length) setCleared((c) => ({ ...d, ...c })); }); }, []);
@@ -4438,7 +4570,9 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
       level: isPlaza ? null : fQ.level,
       field: !isPlaza && fQ.level === "초보자" ? fQ.field : null,
       who: fQ.who === "all" ? "all" : (fQ.whoList || []),
-      owner: myName || "익명", due: fQ.due || null,
+      owner: myName || "익명",
+      registrar: fQ.regMode === "other" && fQ.regName ? fQ.regName : (myName || "익명"),
+      due: fQ.due || null,
     };
     onAddQuest(map.id, isPlaza ? map.stages[0].n : Number(fQ.stage), nq);
     setFQ({ ...fQ, title: "", desc: "", task: "" });
@@ -4678,6 +4812,37 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
         </div>
       )}
 
+      {submitFor && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.68)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={() => setSubmitFor(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
+            <Panel style={{ padding: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 22 }}>📮</span>
+                <b style={{ flex: 1, fontSize: 15 }}>퀘스트 답변 제출</b>
+                <PxButton tone="ink" onClick={() => setSubmitFor(null)} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+              </div>
+              <div style={{ background: "#fff5d6", border: `2px solid ${C.ink}`, borderRadius: 8, padding: 10, fontSize: 12.5, lineHeight: 1.7, marginBottom: 10 }}>
+                <b>{submitFor.icon} {submitFor.title}</b><br />
+                <span style={{ color: C.inkSoft }}>✅ {submitFor.task || "완료 조건 없음"}</span><br />
+                <span style={{ color: C.inkSoft, fontSize: 11 }}>📋 검토 : {submitFor.registrar || submitFor.owner || "미지정"}</span>
+              </div>
+              <div style={{ fontSize: 11.5, fontWeight: "bold", marginBottom: 5 }}>✍️ 어떻게 해결했는지 적어주세요</div>
+              <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} rows={5} autoFocus
+                placeholder={"예: 훅 3가지 버전으로 만들어봤고 두 번째가 반응이 제일 좋았어요.\n결과물 링크: ..."}
+                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "vertical" }} />
+              <PxButton tone="gold" disabled={!answer.trim()} onClick={() => {
+                const q = submitFor;
+                clear(q);
+                setSubmitFor(null); setSel(null);
+                onSubmitAnswer && onSubmitAnswer(q, answer.trim());
+                setShrineFor(q);
+              }} style={{ width: "100%", marginTop: 10, padding: 12, fontSize: 14 }}>🏆 답변 등록하기</PxButton>
+              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 7 }}>등록하면 퀘스트 완료의 제단 「수락 파편」에 자동으로 올라가요</div>
+            </Panel>
+          </div>
+        </div>
+      )}
+
       {shrineFor && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 14 }} onClick={() => setShrineFor(null)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340 }}>
@@ -4686,17 +4851,16 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
               <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, color: "#ffd75e", margin: "12px 0 8px" }}>QUEST COMPLETE</div>
               <div style={{ fontSize: 15, fontWeight: "bold", color: C.white, marginBottom: 8 }}>{shrineFor.icon} {shrineFor.title}</div>
               <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.8)", lineHeight: 1.9, marginBottom: 14 }}>
-                ✅ 완료 처리됐어요 — 광장에서 사라지고<br />
-                🧠 <b style={{ color: "#7fe3ff" }}>사고 도감</b>에 기록됐습니다<br /><br />
-                🏆 <b style={{ color: "#ffd75e" }}>퀘스트 완료의 제단</b>에<br />
-                <b style={{ color: "#7fe3ff" }}>완료 파편</b>을 올려야<br />
-                🛡 검토 후 보상이 주어집니다
+                🏆 <b style={{ color: "#ffd75e" }}>완료의 제단에 등록되었습니다!</b><br /><br />
+                ✅ 광장에서 사라지고 🧠 <b style={{ color: "#7fe3ff" }}>사고 도감</b>에 기록됐어요<br />
+                📋 <b style={{ color: "#7fe3ff" }}>{shrineFor.registrar || shrineFor.owner || "등록자"}</b> 님의 검토 후<br />
+                보상이 지급됩니다
               </div>
               <div style={{ background: "rgba(255,255,255,0.1)", border: "2px solid rgba(255,215,94,0.5)", borderRadius: 8, padding: 10, fontSize: 11.5, color: "rgba(255,255,255,0.75)", lineHeight: 1.7, marginBottom: 14 }}>
                 예상 보상 · <b style={{ color: "#ffd75e" }}>{rewardLabel(shrineFor)}</b>
               </div>
-              <PxButton tone="gold" onClick={() => { const q = shrineFor; setShrineFor(null); setSel(null); onGoShrine && onGoShrine(q); }} style={{ width: "100%", padding: 13, fontSize: 14 }}>🏆 제단으로 바로 이동</PxButton>
-              <PxButton tone="ink" onClick={() => setShrineFor(null)} style={{ width: "100%", padding: 10, fontSize: 12, marginTop: 8 }}>나중에 하기</PxButton>
+              <PxButton tone="gold" onClick={() => { const q = shrineFor; setShrineFor(null); setSel(null); onGoShrine && onGoShrine(q); }} style={{ width: "100%", padding: 13, fontSize: 14 }}>🏆 제단으로 이동</PxButton>
+              <PxButton tone="ink" onClick={() => setShrineFor(null)} style={{ width: "100%", padding: 10, fontSize: 12, marginTop: 8 }}>닫기</PxButton>
             </div>
           </div>
         </div>
@@ -4795,6 +4959,30 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                     {fQ.rewardKind === "item" && <><br />직접 입력 보상은 🎒 선물함에 증표로 들어가요</>}
                   </div>
 
+                  <div style={{ fontSize: 11, fontWeight: "bold" }}>📋 퀘스트 등록자 (검토 담당)</div>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    <PxButton tone={fQ.regMode === "me" ? "good" : "wood"} onClick={() => setFQ({ ...fQ, regMode: "me", regName: "" })} style={{ flex: 1, fontSize: 12, padding: 8 }}>🧑 나</PxButton>
+                    <PxButton tone={fQ.regMode === "other" ? "good" : "wood"} onClick={() => setFQ({ ...fQ, regMode: "other" })} style={{ flex: 1, fontSize: 12, padding: 8 }}>🙋 타인</PxButton>
+                  </div>
+                  {fQ.regMode === "other" && (
+                    <div>
+                      <div style={{ display: "flex", gap: 5, flexWrap: "wrap", maxHeight: 110, overflow: "auto", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: 8 }}>
+                        {(people.length ? people : [{ name: myName || "나", avatar: "🧑" }]).map((pp) => (
+                          <button key={pp.name} type="button" onClick={() => setFQ({ ...fQ, regName: pp.name })}
+                            style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: fQ.regName === pp.name ? C.gem : C.white, fontWeight: fQ.regName === pp.name ? "bold" : "normal" }}>
+                            {pp.avatar} {pp.name}{fQ.regName === pp.name ? " ✓" : ""}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ fontSize: 10.5, color: fQ.regName ? C.good : C.danger, marginTop: 5 }}>
+                        {fQ.regName ? `${fQ.regName} 님이 이 퀘스트를 검토해요` : "등록자를 골라주세요"}
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ fontSize: 10.5, color: C.inkSoft, background: "#fff5d6", border: `2px solid ${C.ink}`, borderRadius: 6, padding: "6px 9px" }}>
+                    작성자(나)와 등록자만 이 퀘스트를 수정·삭제할 수 있어요
+                  </div>
+
                   <div style={{ fontSize: 11, fontWeight: "bold" }}>👥 참가 가능한 사람</div>
                   <div style={{ display: "flex", gap: 5 }}>
                     <PxButton tone={fQ.who === "all" ? "good" : "wood"} onClick={() => setFQ({ ...fQ, who: "all" })} style={{ flex: 1, fontSize: 12, padding: 8 }}>🌍 모두</PxButton>
@@ -4822,7 +5010,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
 
                   <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                     <PxButton tone="ink" onClick={() => setAddOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>
-                    <PxButton tone="gold" disabled={!fQ.title.trim()} onClick={addQuest} style={{ flex: 1, padding: 10, fontSize: 13 }}>퀘스트 추가</PxButton>
+                    <PxButton tone="gold" disabled={!fQ.title.trim() || (fQ.regMode === "other" && !fQ.regName)} onClick={addQuest} style={{ flex: 1, padding: 10, fontSize: 13 }}>퀘스트 추가</PxButton>
                   </div>
                 </div>
               ) : (
@@ -4979,12 +5167,12 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                   <PxButton tone="danger" onClick={() => { if (window.confirm(`「${sel.title}」 퀘스트를 삭제할까요?`)) delQuest(sel.id); }} style={{ flex: 1, padding: 9, fontSize: 12 }}>🗑 삭제</PxButton>
                 </div>
               )}
-              {sel.owner && <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginBottom: 8 }}>✍️ 작성자 {sel.owner}</div>}
+              {sel.owner && <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginBottom: 8 }}>✍️ 작성자 {sel.owner}{sel.registrar && sel.registrar !== sel.owner ? ` · 📋 등록자 ${sel.registrar}` : ""}</div>}
               <div style={{ display: "flex", gap: 8 }}>
                 <PxButton tone="ink" onClick={() => { setSel(null); setEditing(null); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>닫기</PxButton>
                 <PxButton tone="gold" disabled={!!done[sel.id] || !!lockReason(sel)}
-                  onClick={() => { const q = sel; clear(q); if (q.isBoss) setSel(null); else setShrineFor(q); }}
-                  style={{ flex: 1, padding: 10, fontSize: 13 }}>{done[sel.id] ? "완료됨 ✓" : sel.isBoss ? "⚔ 격파!" : "✅ 완료"}</PxButton>
+                  onClick={() => { const q = sel; if (q.isBoss) { clear(q); setSel(null); } else { setSubmitFor(q); setAnswer(""); } }}
+                  style={{ flex: 1, padding: 10, fontSize: 13 }}>{done[sel.id] ? "완료됨 ✓" : sel.isBoss ? "⚔ 격파!" : "📮 제출"}</PxButton>
               </div>
             </div>
           </div>
@@ -5484,6 +5672,10 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724cc", type: "업데이트", date: "2026-07-24", title: "📋 퀘스트 등록자 · 📮 답변 제출",
+    body: "· 퀘스트를 만들 때 📋 등록자를 「나」 또는 「타인」 중에 고를 수 있어요 (타인은 주민 목록에서 선택)\n· 작성자와 등록자만 그 퀘스트를 수정·삭제할 수 있어요\n· ✅ 완료 → 📮 제출 로 바뀌었어요\n· 제출을 누르면 답변 작성창이 뜨고, 어떻게 해결했는지 적어서 등록합니다\n· 등록하면 🏆 완료의 제단 「수락 파편」에 자동으로 올라가요 (제목·완료조건·답변·보상이 함께 기록)\n· 「완료의 제단에 등록되었습니다!」 안내와 함께 제단으로 이동하는 버튼이 나와요\n· 제단의 검수가 GM 검수 → 📋 등록자 검토 로 바뀌었어요" },
+  { id: "u20260724bb", type: "업데이트", date: "2026-07-24", title: "🐟 수족관 시각화 · 🏗 시설 선행 구입",
+    body: "· 🏗 시설 탭이 생겼어요 — 🐟 수족관(🪙120) · 🌳 마당(🪙100)\n· 🌳 마당을 사야 반려동물을 입양할 수 있어요\n· 🐟 수족관을 사야 물고기를 데려올 수 있어요\n· 물고기가 「어항」이 아니라 내가 산 수족관에 들어가요\n· 집에서 수족관을 누르면 진짜 수조처럼 보여요 — 물빛, 공기방울, 흔들리는 수초, 모래 바닥\n· 물고기마다 깊이·크기·속도가 달라 자유롭게 헤엄치고, 벽에 닿으면 방향을 바꿔요\n· 🌳 마당에는 데리고 나가지 않은 반려동물이 놀고 있어요" },
   { id: "u20260724aa", type: "업데이트", date: "2026-07-24", title: "🧠 사고 스킬 · 🔒 비밀번호 잠금 · 🐾 펫샵 이전",
     body: "· 🧠 하드모드(사고의 광장) 퀘스트를 깰 때마다 사고 스킬을 하나씩 배워요 (총 16종)\n· 관찰력 · 구조화 · 질문력 · 메타인지 · 역발상 · 본질파악 등\n· 배운 스킬은 🧑 내 프로필에서 확인할 수 있어요\n· ✅ 이미 완료된 퀘스트는 수락할 수 없게 막았어요\n· 🔒 남의 집 비밀번호를 5번 틀리면 경고와 함께 1분간 입력이 금지돼요 (남은 시간 표시)\n· 🐾 펫샵을 쩝쩝박사 아래로 옮겼어요\n· 📮 피드백이 공지사항에 올라가지 않게 했어요 (메뉴 안에서만 보여요)" },
   { id: "u20260724z", type: "업데이트", date: "2026-07-24", title: "🐾 펫샵 오픈 · 🏃 찾아가기 · 📅 DAY 삭제",
@@ -7005,8 +7197,25 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed 
   /* 보스맵에서 「완료」를 누르고 넘어오면 수락 파편 칸에 자동으로 채워둡니다 */
   useEffect(() => {
     if (!draft) return;
-    setAccT(draft.text || "");
-    setAccD(draft.detail || "");
+    if (draft.autoAdd) {
+      // 보스맵에서 답변을 제출하면 파편이 자동으로 봉헌돼요
+      setItems((cur) => {
+        const it = {
+          id: Date.now() + Math.random(), kind: draft.kind || "acc",
+          text: draft.text, detail: draft.detail || "", who: myName || "익명",
+          reviewer: draft.reviewer || null,
+          at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+          gm: false, reward: false,
+        };
+        const next = [it, ...cur];
+        saveJSON(QD_KEY, next);
+        return next;
+      });
+      ping("🏆 완료의 제단에 등록되었습니다!");
+    } else {
+      setAccT(draft.text || "");
+      setAccD(draft.detail || "");
+    }
     onDraftUsed && onDraftUsed();
   }, [draft]);
   const save = (v) => { setItems(v); saveJSON(QD_KEY, v); };
@@ -7029,7 +7238,7 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed 
     const next = items.map((it) => (it.id === id ? { ...it, [key]: !it[key], [key + "By"]: !it[key] ? (myName || "익명") : null } : it));
     save(next);
     const t = next.find((it) => it.id === id);
-    if (t && t[key]) ping(key === "gm" ? "🛡 GM 검수 완료로 표시했어요" : "⭐ 보상 완료로 표시했어요");
+    if (t && t[key]) ping(key === "gm" ? "🛡 등록자 검토 완료로 표시했어요" : "⭐ 보상 완료로 표시했어요");
   };
   const remove = (id) => { if (window.confirm("이 파편을 제단에서 지울까요?")) save(items.filter((it) => it.id !== id)); };
 
@@ -7061,7 +7270,7 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed 
             <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, color: "#ffd75e", marginBottom: 7 }}>QUEST COMPLETE</div>
             <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.75)", lineHeight: 1.8 }}>
               제단은 완료의 증거를 기억합니다.<br />
-              파편을 봉헌하면 🛡 <b style={{ color: "#7fe3ff" }}>GM 검수</b>와 ⭐ <b style={{ color: "#ffd75e" }}>보상 지급</b>이 순서대로 새겨져요.
+              파편을 봉헌하면 🛡 <b style={{ color: "#7fe3ff" }}>등록자 검토</b>와 ⭐ <b style={{ color: "#ffd75e" }}>보상 지급</b>이 순서대로 새겨져요.
             </div>
             <div style={{ marginTop: 10, background: "rgba(255,255,255,0.1)", border: `2px solid #ffd75e66`, borderRadius: 20, height: 16, overflow: "hidden", position: "relative" }}>
               <div style={{ height: "100%", width: `${pct}%`, background: "linear-gradient(90deg,#7fe3ff,#ffd75e)", transition: "width .3s" }} />
@@ -7069,7 +7278,7 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed 
             </div>
             <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
               <span style={{ fontSize: 11, background: "rgba(127,227,255,0.18)", border: "2px solid #7fe3ff", color: "#cdf4ff", borderRadius: 12, padding: "3px 9px" }}>총 파편 {items.length}</span>
-              <span style={{ fontSize: 11, background: "rgba(127,227,255,0.18)", border: "2px solid #7fe3ff", color: "#cdf4ff", borderRadius: 12, padding: "3px 9px" }}>🛡 검수 {nGm}</span>
+              <span style={{ fontSize: 11, background: "rgba(127,227,255,0.18)", border: "2px solid #7fe3ff", color: "#cdf4ff", borderRadius: 12, padding: "3px 9px" }}>🛡 검토 {nGm}</span>
               <span style={{ fontSize: 11, background: "rgba(255,215,94,0.18)", border: "2px solid #ffd75e", color: "#ffeaa8", borderRadius: 12, padding: "3px 9px" }}>⭐ 보상 {nRw}</span>
             </div>
           </div>
@@ -7112,14 +7321,14 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed 
                     </div>
                     <div style={{ fontSize: 14, fontWeight: "bold", color: C.white, marginTop: 4, wordBreak: "break-word" }}>{it.text}</div>
                     {it.detail && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)", whiteSpace: "pre-wrap", wordBreak: "break-word", marginTop: 3, lineHeight: 1.6 }}>{it.detail}</div>}
-                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 5 }}>🧑 {it.who} · 🕐 {it.at}</div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 5 }}>🧑 {it.who} · 🕐 {it.at}{it.reviewer ? ` · 📋 검토 ${it.reviewer}` : ""}</div>
                   </div>
                   <button onClick={() => remove(it.id)} title="삭제" style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 15 }}>🗑</button>
                 </div>
                 <div style={{ display: "flex", gap: 7, marginTop: 10, flexWrap: "wrap" }}>
                   <button onClick={() => toggle(it.id, "gm")} style={{ flex: "1 1 140px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, padding: "9px 11px", borderRadius: 8, border: `2px solid ${it.gm ? "#5fd39a" : "rgba(255,255,255,0.3)"}`, background: it.gm ? "rgba(95,211,154,0.2)" : "rgba(255,255,255,0.05)", color: it.gm ? "#a8f0cd" : "rgba(255,255,255,0.7)", fontWeight: "bold" }}>
                     <span style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${it.gm ? "#5fd39a" : "rgba(255,255,255,0.4)"}`, background: it.gm ? "#5fd39a" : "transparent", color: "#10261c", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>{it.gm ? "✔" : ""}</span>
-                    🛡 GM 검수 완료
+                    🛡 {it.reviewer ? `${it.reviewer} 검토 완료` : "등록자 검토 완료"}
                   </button>
                   <button onClick={() => toggle(it.id, "reward")} style={{ flex: "1 1 140px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, padding: "9px 11px", borderRadius: 8, border: `2px solid ${it.reward ? "#ffd75e" : "rgba(255,255,255,0.3)"}`, background: it.reward ? "rgba(255,215,94,0.2)" : "rgba(255,255,255,0.05)", color: it.reward ? "#ffeaa8" : "rgba(255,255,255,0.7)", fontWeight: "bold" }}>
                     <span style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${it.reward ? "#ffd75e" : "rgba(255,255,255,0.4)"}`, background: it.reward ? "#ffd75e" : "transparent", color: "#2e1d06", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>{it.reward ? "✔" : ""}</span>
@@ -7128,7 +7337,7 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed 
                 </div>
                 {(it.gmBy || it.rewardBy) && (
                   <div style={{ fontSize: 10, color: "rgba(255,255,255,0.42)", marginTop: 6 }}>
-                    {it.gm && it.gmBy ? `🛡 검수: ${it.gmBy}` : ""}{it.gm && it.gmBy && it.reward && it.rewardBy ? " · " : ""}{it.reward && it.rewardBy ? `⭐ 보상: ${it.rewardBy}` : ""}
+                    {it.gm && it.gmBy ? `🛡 검토: ${it.gmBy}` : ""}{it.gm && it.gmBy && it.reward && it.rewardBy ? " · " : ""}{it.reward && it.rewardBy ? `⭐ 보상: ${it.rewardBy}` : ""}
                   </div>
                 )}
               </div>
@@ -7312,6 +7521,7 @@ function EchoTown() {
     if (d.pets) setPets(d.pets);
     if (d.activePet !== undefined) setActivePet(d.activePet);
     if (d.fishes) setFishes(d.fishes);
+    if (d.facilities) setFacilities(d.facilities);
     if (d.homeGifts) setHomeGifts(d.homeGifts);
     if (d.fridge) setFridge(d.fridge);
     if (typeof d.lifetime === "number") setLifetime(d.lifetime);
@@ -7533,6 +7743,8 @@ function EchoTown() {
   const [pets, setPets] = useState([]);
   const [activePet, setActivePet] = useState(null);
   const [fishes, setFishes] = useState([]);
+  const [facilities, setFacilities] = useState([]);
+  const [aquaOpen, setAquaOpen] = useState(false);
   const petEmoji = useMemo(() => { const p = PETS.find((x) => x.id === activePet); return p ? p.emoji : null; }, [activePet]);
   useEffect(() => { netPetRef.current = petEmoji; }, [petEmoji]);
 
@@ -8010,7 +8222,7 @@ function EchoTown() {
   const saveTimer = useRef(null);
   /* 현재 저장할 내용을 항상 최신으로 들고 있습니다 */
   const payloadRef = useRef(null);
-  payloadRef.current = { gems, gold, exp, lifetime, profile, skills, pets, activePet, fishes, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept };
+  payloadRef.current = { gems, gold, exp, lifetime, profile, skills, pets, activePet, fishes, facilities, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept };
   const flushSaveRef = useRef(null);
   const flushSave = useCallback((name) => {
     const n = name || myNameRef.current;
@@ -8027,7 +8239,7 @@ function EchoTown() {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => flushSave(myName), 800);
     return () => clearTimeout(saveTimer.current);
-  }, [myName, gems, gold, exp, lifetime, profile, skills, pets, activePet, fishes, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept, flushSave]);
+  }, [myName, gems, gold, exp, lifetime, profile, skills, pets, activePet, fishes, facilities, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept, flushSave]);
 
   /* 새로고침·탭 닫기·탭 전환 직전에 밀린 저장을 즉시 반영 */
   useEffect(() => {
@@ -8197,7 +8409,7 @@ function EchoTown() {
           }}
           onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && (unlocked[houseId] ? (
-          <HomeView fishes={isMyHouse(houseMeta.name) ? fishes : []} gifts={isMyHouse(houseMeta.name) ? homeGifts : []} fridge={isMyHouse(houseMeta.name) ? fridge : []} house={houseMeta} skin={isMyHouse(houseMeta.name) ? houseSkin : null} extras={isMyHouse(houseMeta.name) ? myFurni : []} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />
+          <HomeView fishes={isMyHouse(houseMeta.name) ? fishes : []} hasAquarium={isMyHouse(houseMeta.name) && facilities.includes("aquarium")} hasYard={isMyHouse(houseMeta.name) && facilities.includes("yard")} petsAtHome={isMyHouse(houseMeta.name) ? PETS.filter((x) => pets.includes(x.id) && x.id !== activePet).map((x) => `${x.emoji} ${x.name}`) : []} onOpenAqua={() => setAquaOpen(true)} gifts={isMyHouse(houseMeta.name) ? homeGifts : []} fridge={isMyHouse(houseMeta.name) ? fridge : []} house={houseMeta} skin={isMyHouse(houseMeta.name) ? houseSkin : null} extras={isMyHouse(houseMeta.name) ? myFurni : []} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />
         ) : (
           <HouseGate house={houseMeta} isMine={isMyHouse(houseMeta.name)} myName={myName} hasPw={!!housePw}
             onSetPw={(p) => { setHousePw(p); }}
@@ -8229,10 +8441,11 @@ function EchoTown() {
         {view === "coredict" && <CoreDictView myName={myName} onBack={backToWorld} netCount={netCount}
           dict={dict} gallery={gallery} onSaveWord={saveWord} onDelWord={delWord}
           onAddPhotos={addPhotos} onCaption={setCaption} onDelPhoto={delPhoto} onSync={askSync} />}
-        {view === "petshop" && <PetShop onBack={backToWorld} bubble={bubble} gold={gold} pets={pets} activePet={activePet} fishes={fishes}
-          onBuyPet={(pt) => { if (gold < pt.price) return; setGold((g) => g - pt.price); setPets((v) => [...v, pt.id]); setActivePet(pt.id); showNotice(`${pt.emoji} ${pt.name}를 입양했어요!`); }}
+        {view === "petshop" && <PetShop onBack={backToWorld} bubble={bubble} gold={gold} pets={pets} activePet={activePet} fishes={fishes} facilities={facilities}
+          onBuyFacility={(fc) => { if (gold < fc.price || facilities.includes(fc.id)) return; setGold((g) => g - fc.price); setFacilities((v) => [...v, fc.id]); showNotice(`${fc.emoji} ${fc.name}을(를) 마련했어요!`); }}
+          onBuyPet={(pt) => { if (gold < pt.price || !facilities.includes("yard")) return; setGold((g) => g - pt.price); setPets((v) => [...v, pt.id]); setActivePet(pt.id); showNotice(`${pt.emoji} ${pt.name}를 입양했어요!`); }}
           onSetActive={(id) => setActivePet(id)}
-          onBuyFish={(f) => { if (gold < f.price) return; setGold((g) => g - f.price); setFishes((v) => [...v, f.id]); showNotice(`${f.emoji} ${f.name}를 어항에 넣었어요!`); }} />}
+          onBuyFish={(f) => { if (gold < f.price || !facilities.includes("aquarium")) return; setGold((g) => g - f.price); setFishes((v) => [...v, f.id]); showNotice(`${f.emoji} ${f.name}를 어항에 넣었어요!`); }} />}
         {view === "questdone" && <QuestDoneView myName={myName} onBack={backToWorld} bubble={bubble} draft={shrineDraft} onDraftUsed={() => setShrineDraft(null)} />}
         {view === "ikea" && <IkeaView gems={gold} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
         {view === "project" && <BossMapView myName={myName} onBack={backToWorld} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss, mode, title) => { bump(isBoss ? "boss" : "quest"); if (!isBoss && mode === "hard") learnSkill(title); }}
@@ -8250,11 +8463,19 @@ function EchoTown() {
             }
             award(r.qty); showNotice(`💎 젬 ${r.qty} 획득!`);
           }}
-          onGoShrine={(q) => {
-            setShrineDraft({ text: q.title, detail: `${q.desc || ""}\n완료 조건 : ${q.task || ""}\n보상 : ${q.reward ? (q.reward.kind === "gold" ? `🪙 골드 ${q.reward.qty}` : q.reward.kind === "item" ? `${q.reward.emoji || "🎁"} ${q.reward.name} ${q.reward.qty}개` : `💎 젬 ${q.reward.qty}`) : `💎 젬 ${q.gem || 0}`}`.trim() });
-            setView("questdone");
-            showNotice("🏆 제단에 완료 파편을 봉헌해주세요");
+          onSubmitAnswer={(q, ans) => {
+            const reward = q.reward
+              ? (q.reward.kind === "gold" ? `🪙 골드 ${q.reward.qty}` : q.reward.kind === "item" ? `${q.reward.emoji || "🎁"} ${q.reward.name} ${q.reward.qty}개` : `💎 젬 ${q.reward.qty}`)
+              : `💎 젬 ${q.gem || 0}`;
+            setShrineDraft({
+              autoAdd: true, kind: "acc",
+              text: q.title,
+              detail: `${q.desc ? q.desc + "\n" : ""}✅ 완료 조건 : ${q.task || "-"}\n\n✍️ 제출 답변\n${ans}\n\n🎁 보상 : ${reward}`,
+              reviewer: q.registrar || q.owner || "등록자",
+            });
+            showNotice("🏆 완료의 제단에 등록되었습니다!");
           }}
+          onGoShrine={() => setView("questdone")}
           maps={bossMaps}
           onAddQuest={(mapId, stageN, quest) => { sendBoss({ mapId, stageN, addQuest: quest }); showNotice("🎯 퀘스트를 추가했어요 (모두에게 공유)"); }}
           onEditQuest={(mapId, quest) => { sendBoss({ mapId, editQuest: quest }); showNotice("✏️ 퀘스트를 수정했어요"); }}
@@ -8426,6 +8647,7 @@ function EchoTown() {
           </div>
         </div>
       )}
+      {aquaOpen && <Aquarium fishes={fishes} onClose={() => setAquaOpen(false)} />}
       {skillPop && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 153, padding: 14 }} onClick={() => setSkillPop(null)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 320 }}>
@@ -8672,6 +8894,18 @@ function StyleBlock() {
       .red-flag { animation: redWave .85s ease-in-out infinite; }
       @keyframes petTrot { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
       .pet-trot { animation: petTrot .55s ease-in-out infinite; }
+
+      /* 🐠 수족관 */
+      @keyframes aqSwim { from { transform: translateX(-12%); } to { transform: translateX(112%); } }
+      .aq-swim { animation-name: aqSwim; animation-timing-function: ease-in-out; animation-iteration-count: infinite; animation-direction: alternate; will-change: transform; }
+      @keyframes aqFlip { 0%, 100% { transform: scaleX(-1); } }
+      .aq-flip { animation-name: aqFlip; animation-timing-function: steps(1, end); animation-iteration-count: infinite; animation-direction: alternate; }
+      @keyframes aqRise { 0% { transform: translateY(0) scale(.7); opacity: .1; } 15% { opacity: .75; } 100% { transform: translateY(-230px) scale(1.15); opacity: 0; } }
+      .aq-bubble { position: absolute; bottom: 22px; border-radius: 50%; background: rgba(255,255,255,0.75); box-shadow: inset 0 0 3px rgba(255,255,255,0.9); animation-name: aqRise; animation-timing-function: linear; animation-iteration-count: infinite; z-index: 2; }
+      @keyframes aqWeed { 0%,100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+      .aq-weed { transform-origin: bottom center; animation: aqWeed 3.6s ease-in-out infinite; }
+      @keyframes aqCaustic { from { background-position: 0 0; } to { background-position: 120px 0; } }
+      .aq-caustic { animation: aqCaustic 6s linear infinite; }
       @keyframes beaconBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
       .beacon { animation: beaconBlink 1.1s ease-in-out infinite; }
       @keyframes chatIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
@@ -8717,7 +8951,7 @@ function StyleBlock() {
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .gem-pop,.hero-bob,.gem-spin,.enter-prompt,.chat-bubble,.px-btn,.map-obj,.qs-aura,.qs-ring,.qs-float,.qs-spark circle,.rain-drop,.echo-flag,.red-flag,.palm-sway,.beacon,.chat-line,.pet-trot { animation:none !important; transition:none !important; }
+        .gem-pop,.hero-bob,.gem-spin,.enter-prompt,.chat-bubble,.px-btn,.map-obj,.qs-aura,.qs-ring,.qs-float,.qs-spark circle,.rain-drop,.echo-flag,.red-flag,.palm-sway,.beacon,.chat-line,.pet-trot,.aq-swim,.aq-flip,.aq-bubble,.aq-weed,.aq-caustic { animation:none !important; transition:none !important; }
       }
     `}</style>
   );
