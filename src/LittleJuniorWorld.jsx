@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v39 · 2026-07-24";
+const APP_VERSION = "v40 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -1588,6 +1588,9 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
         ch.on("broadcast", { event: "dictres" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("dictres", payload);
         });
+        ch.on("broadcast", { event: "thx" }, ({ payload }) => {
+          if (onChatRef && onChatRef.net) onChatRef.net("thx", payload);
+        });
         ch.on("broadcast", { event: "shr" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("shr", payload);
         });
@@ -2849,10 +2852,16 @@ function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras
 }
 
 /* ======================= 감사의 방(상점 + 감사 칠판) ======================= */
-function ThanksView({ gems, inventory, postits, onBuy, onPost, onBack, bubble }) {
+function ThanksView({ gems, inventory, postits = [], onBuy, onPost, onDelPost, onBack, bubble, myName = "", myUid = "", people = [] }) {
   const [shop, setShop] = useState(false);
   const [board, setBoard] = useState(false);
-  const [to, setTo] = useState(""); const [from, setFrom] = useState(""); const [msg, setMsg] = useState("");
+  const [to, setTo] = useState(""); const [msg, setMsg] = useState("");
+  const [anon, setAnon] = useState(false);
+  const [priv, setPriv] = useState(false);
+  const [bFilter, setBFilter] = useState("all");
+  /* 🔒 비공개 쪽지는 받는 사람과 쓴 사람에게만 보여요 */
+  const visible = postits.filter((p) => !p.priv || p.to === myName || (p.uid && p.uid === myUid));
+  const shownPostits = visible.filter((p) => bFilter === "all" || (bFilter === "toMe" ? p.to === myName : p.uid === myUid));
   const furniture = [
     { id: "shelf", x: 30, y: 60, w: 130, h: 150, color: "#b98a4e", emoji: "🧑‍🦳", label: "선반·상점 주인", onInteract: () => setShop(true) },
     { id: "table", x: 180, y: 240, w: 110, h: 70, color: "#caa06a", emoji: "🧺", label: "포장 테이블", toast: "정성껏 포장했습니다 🎁" },
@@ -2883,20 +2892,68 @@ function ThanksView({ gems, inventory, postits, onBuy, onPost, onBack, bubble })
       )}
       {board && (
         <RoomModal title="🖊️ 감사 칠판" onClose={() => setBoard(false)} maxW={560}>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-            <input value={to} onChange={(e) => setTo(e.target.value)} placeholder="To. 받는 사람" style={{ padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, width: 120, background: C.white }} />
-            <input value={from} onChange={(e) => setFrom(e.target.value)} placeholder="From. 나" style={{ padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, width: 100, background: C.white }} />
-            <input value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="감사 메시지" style={{ flex: 1, minWidth: 140, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
-            <PxButton tone="good" disabled={!to.trim() || !msg.trim()} onClick={() => { onPost({ to: to.trim(), from: from.trim() || "익명", msg: msg.trim(), color: paColors[Math.floor(Math.random() * paColors.length)] }); setTo(""); setFrom(""); setMsg(""); }} style={{ fontSize: 12, padding: "8px 12px" }}>붙이기</PxButton>
+          <div style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 11, marginBottom: 10 }}>
+            <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 7, lineHeight: 1.6 }}>
+              고마운 마음을 남겨보세요. <b>공개 범위</b>와 <b>익명</b>을 고를 수 있어요.
+            </div>
+
+            {/* 받는 사람 */}
+            <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 4 }}>💌 받는 사람</div>
+            <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 7 }}>
+              {(people.length ? people : [{ name: myName || "나", avatar: "🧑" }]).map((pp) => (
+                <button key={pp.name} type="button" onClick={() => setTo(pp.name)}
+                  style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: to === pp.name ? C.gem : C.white, fontWeight: to === pp.name ? "bold" : "normal" }}>
+                  {pp.avatar} {pp.name}
+                </button>
+              ))}
+              <input value={to} onChange={(e) => setTo(e.target.value)} placeholder="직접 입력"
+                style={{ width: 100, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 12, fontFamily: "'DotGothic16', monospace", fontSize: 12, textAlign: "center" }} />
+            </div>
+
+            {/* 공개 범위 */}
+            <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 4 }}>👀 누가 볼 수 있나요</div>
+            <div style={{ display: "flex", gap: 5, marginBottom: 7 }}>
+              <PxButton tone={!priv ? "good" : "wood"} onClick={() => setPriv(false)} style={{ flex: 1, fontSize: 11.5, padding: 8 }}>🌍 모두에게 공개</PxButton>
+              <PxButton tone={priv ? "good" : "wood"} onClick={() => setPriv(true)} style={{ flex: 1, fontSize: 11.5, padding: 8 }}>🔒 받는 사람만</PxButton>
+            </div>
+
+            {/* 익명 */}
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12.5, fontWeight: "bold", marginBottom: 7 }}>
+              <input type="checkbox" checked={anon} onChange={(e) => setAnon(e.target.checked)} style={{ width: 17, height: 17, cursor: "pointer" }} />
+              🕶 익명으로 남기기
+              <span style={{ fontWeight: "normal", color: C.inkSoft, fontSize: 11 }}>— From. {anon ? "익명" : (myName || "나")}</span>
+            </label>
+
+            <textarea value={msg} onChange={(e) => setMsg(e.target.value)} rows={2} placeholder="감사 메시지를 적어주세요"
+              style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white, resize: "vertical" }} />
+            <PxButton tone="good" disabled={!to.trim() || !msg.trim()}
+              onClick={() => { onPost({ to: to.trim(), msg: msg.trim(), anon, priv }); setMsg(""); setPriv(false); }}
+              style={{ width: "100%", marginTop: 8, padding: 11, fontSize: 13 }}>🖊️ 칠판에 붙이기</PxButton>
           </div>
-          <div style={{ background: "#2f5d3f", border: `4px solid ${C.woodDark}`, padding: 10, minHeight: 140, display: "flex", flexWrap: "wrap", gap: 8, alignContent: "flex-start" }}>
-            {postits.length === 0 && <span style={{ color: "#cfe4d6", fontSize: 12 }}>아직 포스트잇이 없어요. 첫 감사를 남겨보세요!</span>}
-            {postits.map((p) => (
-              <div key={p.id} style={{ width: 110, background: p.color, border: `2px solid ${C.ink}`, padding: 6, fontSize: 11, transform: `rotate(${(p.id % 5) - 2}deg)`, boxShadow: "2px 2px 0 rgba(0,0,0,0.25)" }}>
-                <b>To. {p.to}</b><div style={{ margin: "3px 0" }}>{p.msg}</div><span style={{ color: C.inkSoft }}>- {p.from}</span>
+
+          <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
+            {[["all", `전체 ${visible.length}`], ["toMe", `💝 내가 받은 ${visible.filter((p) => p.to === myName).length}`], ["mine", `✍️ 내가 쓴 ${visible.filter((p) => p.uid === myUid).length}`]].map(([k, lb]) => (
+              <button key={k} type="button" onClick={() => setBFilter(k)}
+                style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "5px 10px", borderRadius: 12, border: `2px solid ${C.ink}`, background: bFilter === k ? C.gem : C.white, fontWeight: "bold" }}>{lb}</button>
+            ))}
+          </div>
+
+          <div style={{ background: "#2f5d3f", border: `4px solid ${C.woodDark}`, padding: 10, minHeight: 140, display: "flex", flexWrap: "wrap", gap: 8, alignContent: "flex-start", maxHeight: 300, overflow: "auto" }}>
+            {shownPostits.length === 0 && <span style={{ color: "#cfe4d6", fontSize: 12 }}>아직 포스트잇이 없어요. 첫 감사를 남겨보세요!</span>}
+            {shownPostits.map((p) => (
+              <div key={p.id} style={{ width: 120, background: p.color, border: `2px solid ${C.ink}`, padding: 7, fontSize: 11, transform: `rotate(${(Math.floor(p.id) % 5) - 2}deg)`, boxShadow: "2px 2px 0 rgba(0,0,0,0.25)", position: "relative" }}>
+                {p.priv && <span title="받는 사람만 볼 수 있어요" style={{ position: "absolute", right: 3, top: 2, fontSize: 11 }}>🔒</span>}
+                <b>To. {p.to}</b>
+                <div style={{ margin: "4px 0", wordBreak: "break-word", lineHeight: 1.5 }}>{p.msg}</div>
+                <span style={{ color: C.inkSoft }}>- {p.from}</span>
+                {p.uid && myUid && p.uid === myUid && (
+                  <button onClick={() => onDelPost && onDelPost(p.id)} title="지우기"
+                    style={{ position: "absolute", right: 2, bottom: 2, background: "none", border: "none", cursor: "pointer", fontSize: 11, opacity: 0.6 }}>🗑</button>
+                )}
               </div>
             ))}
           </div>
+          <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 8 }}>🔒 표시는 받는 사람과 쓴 사람에게만 보여요 · 삭제는 쓴 사람만 가능해요</div>
         </RoomModal>
       )}
     </RoomView>
@@ -5768,6 +5825,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724kk", type: "업데이트", date: "2026-07-24", title: "🖊 감사 칠판 공유 · 비공개 · 익명",
+    body: "· 감사 칠판에 남긴 쪽지가 모두에게 공유돼요 (예전엔 본인만 보였어요)\n· 받는 사람을 주민 목록에서 고르거나 직접 입력할 수 있어요\n· 👀 공개 범위 선택 — 🌍 모두에게 공개 / 🔒 받는 사람만\n· 🕶 익명으로 남기기 체크하면 From. 익명 으로 표시돼요\n· 익명으로 남겨도 내가 쓴 쪽지는 지울 수 있어요 (이름 대신 브라우저 ID로 판별)\n· 전체 / 💝 내가 받은 / ✍️ 내가 쓴 으로 걸러볼 수 있어요\n· 새로 접속하면 지금까지 쌓인 쪽지를 자동으로 받아옵니다" },
   { id: "u20260724jj", type: "업데이트", date: "2026-07-24", title: "🏎 탈것 속도가 사람마다 다르던 문제 수정",
     body: "· 탈것 속도를 저장된 데이터가 아니라 항상 최신 정의표에서 읽도록 바꿨어요\n· 예전 버전에서 저장된 탈것은 속도 정보가 없어 혼자만 걷기 속도로 다녔어요\n· 상단에 「🏎️ ×2.8」 처럼 현재 속도 배율이 표시돼요 — 이 숫자가 같으면 속도도 같습니다\n· 아주 느린 기기(10~20fps)에서도 정상 속도가 나오도록 보정 범위를 넓혔어요" },
   { id: "u20260724ii", type: "업데이트", date: "2026-07-24", title: "🏆 제단 공유 · 📗 스쿨 진행도 저장",
@@ -7512,9 +7571,10 @@ function EchoTown() {
     { who: "창민", text: "뭐야!", me: false },
   ]);
   const [thanksInv, setThanksInv] = useState([]);
-  const [postits, setPostits] = useState([
-    { id: 1, to: "정인", from: "창민", msg: "저번에 도와줘서 고마워요!", color: "#ffe680" },
-  ]);
+  const [postits, setPostits] = useState(() => {
+    const v = loadJSON("echotown_postits_v1", null);
+    return Array.isArray(v) ? v : [{ id: 1, to: "정인", from: "창민", msg: "저번에 도와줘서 고마워요!", color: "#ffe680" }];
+  });
   /* 🕵️ 라이어 게임 — 호스트가 상태를 계산하고 모두에게 방송 */
   const [liarGame, setLiarGame] = useState(null);
   const lgRef = useRef(null); lgRef.current = liarGame;
@@ -7595,6 +7655,28 @@ function EchoTown() {
     if (g.caught && !iAmLiar) { awardGold(10); showNotice("🎉 라이어를 잡았어요! 🪙10 획득"); }
     else if (!g.caught && iAmLiar) { awardGold(15); showNotice("😈 끝까지 속였어요! 🪙15 획득"); }
   }, [liarGame]);
+
+  /* 🖊 감사 칠판 — 저장 + 모두 공유 (🔒 비공개·🕶 익명 지원) */
+  const THX_KEY = "echotown_postits_v1";
+  const thxRef = useRef(postits); thxRef.current = postits;
+  useEffect(() => { saveJSON(THX_KEY, postits.slice(0, 120)); }, [postits]);
+  const addPostit = ({ to, msg, anon, priv }) => {
+    const colors = ["#ffe680", "#ffd0e0", "#c9f0d0", "#cfe4ff", "#f0d9b8"];
+    const row = {
+      id: Date.now() + Math.random(), to, msg,
+      from: anon ? "익명" : (myName || "익명"),
+      uid: myUid, priv: !!priv,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+    };
+    setPostits((v) => [row, ...v].slice(0, 120));
+    if (netSendEvent) netSendEvent("thx", { row });
+    showNotice(priv ? `🔒 ${to}님에게만 보이는 쪽지를 남겼어요` : `🖊 ${to}님에게 감사를 남겼어요`);
+  };
+  const delPostit = (id) => {
+    setPostits((v) => v.filter((x) => !(x.id === id && x.uid === myUid)));
+    if (netSendEvent) netSendEvent("thx", { del: id, uid: myUid });
+  };
 
   /* 🏆 퀘스트 완료의 제단 — 저장 + 모두 공유 (등록자가 검토해야 하므로) */
   const [shrineItems, setShrineItems] = useState(() => { const v = loadJSON(QD_KEY, []); return Array.isArray(v) ? v : []; });
@@ -8279,7 +8361,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qlock" || kind === "qleave" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qlock" || kind === "qleave" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "inviteack") {
@@ -8300,7 +8382,7 @@ function EchoTown() {
       if (kind === "dictreq") {
         if (p.from === (myName || "")) return;
         const mine = dictRef.current || [];
-        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current, shr: shrineRef.current });
+        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current, shr: shrineRef.current, thx: thxRef.current });
         const gs = galRef.current || [];
         gs.slice(0, 12).forEach((ph, i) => setTimeout(() => { if (netSendEvent) netSendEvent("gal", { photo: ph }); }, 350 * (i + 1)));
         return;
@@ -8309,6 +8391,7 @@ function EchoTown() {
         if (p.dict) setDict((v) => mergeDict(p.dict, v));
         if (p.maps) setBossMaps((v) => mergeMaps(BOSS_MAPS_INIT, mergeMaps(v, p.maps)));
         if (Array.isArray(p.fb)) setFeedback((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.fb.filter((x) => !ids.has(x.id))].sort((a, b) => b.id - a.id).slice(0, 60); });
+        if (Array.isArray(p.thx)) setPostits((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.thx.filter((x) => !ids.has(x.id))].sort((a, b) => b.id - a.id).slice(0, 120); });
         if (Array.isArray(p.shr)) setShrineItems((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.shr.filter((x) => !ids.has(x.id))].sort((a, b) => b.id - a.id).slice(0, 120); });
         if (Array.isArray(p.rec)) setRecList((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.rec.filter((x) => !ids.has(x.id))].slice(-60); });
         if (p.reel && typeof p.reel === "object") setReelExtra((v) => ({ ...p.reel, ...v }));
@@ -8326,6 +8409,11 @@ function EchoTown() {
         if (p.state) { setLiarGame(p.state); return; }
         // 호스트만 참가자 요청을 처리합니다
         if (p.req) { const g = lgRef.current; if (g && g.host === (myName || "나")) lgApplyRef.current && lgApplyRef.current(p.req.type, p.req.payload, p.req.from); }
+        return;
+      }
+      if (kind === "thx") {
+        if (p.row) setPostits((v) => (v.some((x) => x.id === p.row.id) ? v : [p.row, ...v].slice(0, 120)));
+        else if (p.del) setPostits((v) => v.filter((x) => !(x.id === p.del && x.uid === p.uid)));
         return;
       }
       if (kind === "shr") {
@@ -8626,7 +8714,7 @@ function EchoTown() {
             }}
             onBell={ringBell} onMail={(owner) => { setMailTarget(owner); if (owner === myName) dbLoadMail(owner).then((ms) => setMail(ms || [])); }} onBack={backToWorld} />
         ))}
-        {view === "thanks" && <ThanksView gems={gold} inventory={thanksInv} postits={postits} onBuy={(it) => { setGold((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={(p) => setPostits((v) => [...v, { ...p, id: Date.now() }])} onBack={backToWorld} bubble={bubble} />}
+        {view === "thanks" && <ThanksView gems={gold} inventory={thanksInv} postits={postits} myName={myName} myUid={myUid} people={people} onDelPost={delPostit} onBuy={(it) => { setGold((g) => g - it.price); setThanksInv((v) => [...v, it]); }} onPost={addPostit} onBack={backToWorld} bubble={bubble} />}
         {view === "heart" && <HeartView gems={gold} worries={worries} onPost={(text, cost, kind) => { setGold((g) => g - cost); addWorry(text, kind); }} onBack={backToWorld} bubble={bubble} />}
         {view === "listening" && <ListeningView onBack={backToWorld} gems={gold} onSpend={(n) => setGold((g) => g - n)} bubble={bubble} songs={songs} setSongs={setSongs} onPlayYt={playYt} ytNow={ytNow} />}
         {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} extraCats={reelExtra} onAddCat={addReel} />}
