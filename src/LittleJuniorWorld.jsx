@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v41 · 2026-07-24";
+const APP_VERSION = "v42 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -1075,6 +1075,16 @@ const FISHES = [
   { id: "f6", name: "해파리", emoji: "🪼", price: 12 },
   { id: "f7", name: "문어", emoji: "🐙", price: 18 },
   { id: "f8", name: "새우", emoji: "🦐", price: 6 },
+];
+
+/* 🏆 특별 아이템 — 조건을 만족하면 얻는 희귀품 */
+const SPECIAL_ITEMS = [
+  { id: "relicbox", name: "레전드 유물상자", emoji: "🗝️", rarity: "레전드", color: "#e0a13d",
+    desc: "어디서 왔는지 모를 고대의 상자. 아직 아무도 열지 못했다.",
+    how: "보스맵 보스를 격파하면 드물게 나와요" },
+  { id: "sulsa1", name: "1차 술사 스킬복 세트", emoji: "🧥", rarity: "에픽", color: "#8e5a9e",
+    desc: "생각을 다듬는 자에게 주어지는 첫 번째 예복.",
+    how: "사고 스킬을 8개 이상 배우면 받아요" },
 ];
 
 const FACILITIES = [
@@ -2691,7 +2701,7 @@ function playBell() {
 function loadJSON(k, d) { try { const r = window.localStorage.getItem(k); return r ? JSON.parse(r) : d; } catch (e) { return d; } }
 function saveJSON(k, v) { try { window.localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
 
-function HouseGate({ house, isMine, myName, hasPw, onSetPw, onEnter, onBell, onMail, onBack }) {
+function HouseGate({ house, isMine, myName, hasPw, onSetPw, onEnter, onBell, onMail, onBack, failSignal = 0 }) {
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [msg, setMsg] = useState(null);
@@ -2713,16 +2723,39 @@ function HouseGate({ house, isMine, myName, hasPw, onSetPw, onEnter, onBell, onM
     const iv = setInterval(tick, 250);
     return () => clearInterval(iv);
   }, [lockUntil]);
-  const tryEnter = () => {
-    if (locked) return;
-    const r = onEnter(pw);
-    if (r === true) { setFails(0); return; }
-    setPw("");
-    if (r === "wait") { say("확인 중… 잠시만요"); return; }
-    const n = fails + 1;
+  const [waiting, setWaiting] = useState(false);
+  const waitTimer = useRef(null);
+  useEffect(() => () => clearTimeout(waitTimer.current), []);
+  const bump = (n) => {
     setFails(n);
     if (n >= 5) { setLockUntil(Date.now() + 60000); say("🚫 5번 틀렸어요 — 1분간 입력이 막힙니다"); }
     else say(`비밀번호가 틀렸어요 (${n}/5)`);
+  };
+  /* 남의 집은 집주인 기기가 확인해 알려주므로, 그 응답이 올 때 실패로 셉니다 */
+  const sigRef = useRef(failSignal);
+  useEffect(() => {
+    if (failSignal === sigRef.current) return;
+    sigRef.current = failSignal;
+    clearTimeout(waitTimer.current);
+    setWaiting(false);
+    if (failSignal > 0) bump(failsRef.current + 1);
+  }, [failSignal]);
+  const failsRef = useRef(0);
+  failsRef.current = fails;
+
+  const tryEnter = () => {
+    if (locked || waiting) return;
+    const r = onEnter(pw);
+    if (r === true) { setFails(0); return; }
+    setPw("");
+    if (r === "wait") {
+      setWaiting(true);
+      clearTimeout(waitTimer.current);
+      waitTimer.current = setTimeout(() => { setWaiting(false); bump(failsRef.current + 1); }, 6000);
+      say("확인 중… 잠시만요");
+      return;
+    }
+    bump(fails + 1);
   };
 
   if (isMine && !hasPw) {
@@ -2760,7 +2793,7 @@ function HouseGate({ house, isMine, myName, hasPw, onSetPw, onEnter, onBell, onM
             <>
               <div style={{ display: "flex", gap: 6 }}>
                 <input value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") tryEnter(); }} maxLength={12} type="password" placeholder="비밀번호" style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, textAlign: "center" }} />
-                <PxButton tone="good" onClick={tryEnter} style={{ padding: "10px 14px", fontSize: 13 }}>입장</PxButton>
+                <PxButton tone="good" disabled={waiting} onClick={tryEnter} style={{ padding: "10px 14px", fontSize: 13 }}>{waiting ? "확인 중…" : "입장"}</PxButton>
               </div>
               {fails > 0 && <div style={{ marginTop: 7, fontSize: 11.5, color: C.danger, textAlign: "center" }}>⚠️ {fails}번 틀렸어요 · {5 - fails}번 더 틀리면 1분간 입력이 막혀요</div>}
             </>
@@ -5908,6 +5941,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724mm", type: "업데이트", date: "2026-07-24", title: "🎒 인벤토리 분리 · 🔒 비밀번호 잠금 수정 · 📖 안내책자 보강",
+    body: "· 🔒 남의 집 비밀번호 5번 제한이 이제 실제로 동작해요 — 집주인 기기의 응답을 받아 실패를 세도록 고쳤어요\n· 집주인이 접속해 있지 않으면 6초 뒤 실패로 처리됩니다\n· 🎒 인벤토리를 우측 하단에 별도 버튼으로 분리했어요 (도크 5개)\n· 🎁 소지품 · 🏆 아이템 · 🧠 스킬 세 탭으로 나뉘어요\n· 🗝️ 레전드 유물상자(보스 격파) · 🧥 1차 술사 스킬복 세트(사고 스킬 8개) 추가\n· 미보유 아이템은 회색으로 보이고, 누르면 얻는 방법과 진행도가 나와요\n· 📖 안내책자에 자동로그인 · 저장 · 공항 · 형욱이네 · 마당 · 라이어게임 · 감사칠판 · 사고스킬 등을 추가했어요" },
   { id: "u20260724ll", type: "업데이트", date: "2026-07-24", title: "🌳 마당 시각화 · 🪼 해파리 · 🍽 원형 테이블 정리",
     body: "· 🌳 집에서 마당을 누르면 진짜 마당처럼 보여요 — 해·구름·나무·꽃, 뛰노는 반려동물\n· 동물을 누르면 🤲 쓰다듬기(💖 하트가 떠요), 상단 🍖 밥주기로 다 같이 먹여요\n· 데리고 나간 동물은 「🚶 데리고 나감」으로 따로 표시돼요\n· 🪼 해파리가 안 움직이던 문제 수정 — 이제 둥실둥실 떠다니며 갓이 오므라들어요\n· 다른 물고기들도 위아래로 자연스럽게 움직여요\n· 🍴 쩝쩝박사의 원형 테이블을 없애고 남은 두 곳을 보기 좋게 재배치했어요" },
   { id: "u20260724kk", type: "업데이트", date: "2026-07-24", title: "🖊 감사 칠판 공유 · 비공개 · 익명",
@@ -6444,6 +6479,9 @@ function saveStats(v) {
 const HELP_CATS = ["🌱 시작", "🏢 퀘스트", "🏛 생활", "🎮 놀이", "🏠 집", "👥 소통", "💎 젬·🪙 골드", "❓ FAQ"];
 const HELP_DATA = {
   "🌱 시작": [
+    { icon: "🔐", title: "자동 로그인", body: "이름을 한 번 정하면 이 브라우저에서는 다음부터 자동으로 들어와요. 상단 🧑 버튼에서 로그아웃할 수 있어요." },
+    { icon: "💾", title: "저장은 어떻게 되나요", body: "젖·골드·옷·반려동물·스킬·지역 설정이 자동 저장돼요. 화면 맨 아래 💾 표시가 초록이면 서버까지, 주황이면 이 기기에만 저장된 상태예요." },
+    { icon: "🎒", title: "인벤토리", body: "우측 하단 🎒 버튼에서 소지품·특별 아이템·사고 스킬을 모두 볼 수 있어요. 아직 없는 것은 회색으로 보이고, 누르면 얻는 방법을 알려줘요." },
     { icon: "🧑", title: "이름 정하기", body: "처음 들어오면 이름을 정해요. 이름이 정인·창민·도희·유리·민지·희정·의준·호종·슬이·상하 중 하나면 그 집이 내 집이 됩니다. 상단 🧑 버튼으로 언제든 변경 가능해요." },
     { icon: "🎟️", title: "웰컴 쿠폰", body: "사전예약자 혜택으로 처음 한 번 💎100 젬을 드려요." },
     { icon: "🎮", title: "조작법", body: "W A S D 또는 방향키로 이동 · Space로 상호작용 · 스쿨/보스맵에서는 E로 퀘스트 열기 · 다른 사람 캐릭터를 클릭하면 선물 주기." },
@@ -6451,12 +6489,20 @@ const HELP_DATA = {
     { icon: "📍", title: "지역 설정 · 실시간 날씨", body: "상단 ＋지역 버튼으로 내가 사는 지역을 고를 수 있어요. 서울 · 영등포구 · 강동구 · 마포구 · 인천 · 용인 · 부산 · 대구 · 대전 · 제주 중에서 선택합니다.\n\n고른 지역의 실제 날씨 예보를 그대로 가져와요. 상단에 현재 기온과 날씨 아이콘이 뜨고, 진짜로 비가 오는 날에는 마을에도 비가 내립니다. 10분마다 자동으로 갱신되니, 실제로 비가 그치면 게임 속 비도 멈춰요. 강 건너 치앙마이는 태국 치앙마이의 실제 날씨를 따라가요.\n\n강을 건너면 상단 날씨 표시도 치앙마이 기준으로 자동으로 바뀝니다." },
   ],
   "🏢 퀘스트": [
+    { icon: "📋", title: "등록자와 검토", body: "퀘스트를 만들 때 등록자를 「나」 또는 「타인」 중에 골라요. 작성자와 등록자만 수정·삭제할 수 있고, 제단에 올라온 파편도 등록자가 검토해요." },
+    { icon: "📮", title: "퀘스트 제출하기", body: "다 했으면 📮 제출을 누르고 어떻게 해결했는지 적어요. 등록하면 광장에서 사라지고 🧠 사고 도감에 기록되며 🏆 제단에 자동으로 봉헌돼요." },
+    { icon: "🧠", title: "사고 스킬", body: "하드모드(사고의 광장) 퀘스트를 깨면 관찰력·구조화·질문력 같은 스킬을 하나씩 배워요. 총 16종이고 🎒 인벤토리 → 🧠 스킬 에서 볼 수 있어요." },
+    { icon: "🏆", title: "특별 아이템", body: "🗝️ 레전드 유물상자는 보스를 격파하면, 🧥 1차 술사 스킬복 세트는 사고 스킬 8개를 모으면 받아요." },
     { icon: "🏆", title: "퀘스트 완료의 제단", body: "주민센터 남쪽의 신비한 상징물. 끝낸 퀘스트를 [퀘스트 신청 파편]과 [퀘스트 수락 파편]으로 봉헌하고, 항목마다 🛡 GM 검수 완료 / ⭐ 보상 완료를 체크해요. 둘 다 체크되면 '봉인 완료'로 바뀝니다.", go: "questdone", goLabel: "제단 가기" },
     { icon: "🗺", title: "보스맵 도전기 (숙련자용)", body: "프로젝트를 게임처럼. 이지모드(어플·속옷·양말)와 하드모드(사고력 훈련). 아래에서 위로 올라가며 스테이지를 클리어하고 꼭대기 보스를 잡아요. 상단 👾 보스도감 / 🧠 사고도감 버튼도 여기 있어요.", go: "project", goLabel: "보스맵 가기" },
     { icon: "📗", title: "네이버스쿨 (초보자용)", body: "개념정리 → 블로그 → 카페 → 지식인 순서로 배우는 학습 맵. 집(퀘스트) 앞에서 E.", go: "naverschool", goLabel: "네이버스쿨 가기" },
     { icon: "🎬", title: "영상스쿨 (초보자용)", body: "코어개념 → 레퍼런스 → 원고작성 → 영상제작. 프롬프트 복사 버튼과 어시스턴트가 있어요.", go: "videoschool", goLabel: "영상스쿨 가기" },
   ],
   "🏛 생활": [
+    { icon: "✈️", title: "공항·비밀코드", body: "다리 양 끝에 ✈️ 인천공항·치앙마이공항이 있어요. 비밀코드를 한 번만 맞히면 바로 반대편으로 이동하고, 그 뒤로는 자유롭게 왕복할 수 있어요." },
+    { icon: "🐾", title: "형욱이네 (펫샵)", body: "먼저 🌳 마당을 사면 반려동물을, 🐟 수족관을 사면 물고기를 데려올 수 있어요.", go: "petshop", goLabel: "형욱이네 가기" },
+    { icon: "🌳", title: "마당과 수족관", body: "집에서 마당을 누르면 동물들이 뛰놀아요. 동물을 누르면 🤲 쓰다듬기, 상단 🍖 으로 밥을 줍니다. 수족관은 🍤 밥주기로 먹이를 넣어줘요." },
+    { icon: "🔒", title: "남의 집 방문", body: "현관 비밀번호를 5번 틀리면 1분간 입력이 막혀요. 그럴 땐 🔔 초인종을 눌러 집주인에게 물어보세요." },
     { icon: "🌦", title: "날씨", body: "상단 ＋지역에서 고른 지역의 실제 예보를 가져와요. 접속할 때 · 지역을 바꿀 때 · 10분마다 · 다른 탭에 갔다 돌아올 때 자동으로 다시 받아옵니다. 실제로 비가 그치면 게임 속 비도 멈춰요. 날씨 표시에 마우스를 올리면 마지막 갱신 시각이 보입니다." },
     { icon: "🏛", title: "주민센터", body: "회의실 예약, 음료 코너(HP·MP +20), 공지사항과 캘린더.", go: "center", goLabel: "주민센터 가기" },
     { icon: "🛍️", title: "무신사", body: "상의·하의·신발을 무료로 입어보고 마음에 들면 구매. 착용한 옷은 다른 접속자에게도 보여요.", go: "musinsa", goLabel: "무신사 가기" },
@@ -6466,6 +6512,9 @@ const HELP_DATA = {
     { icon: "📋", title: "게시판", body: "공지·이벤트 라벨로 구분된 마을 소식과 캘린더.", go: "board", goLabel: "게시판 가기" },
   ],
   "🎮 놀이": [
+    { icon: "🕵️", title: "라이어 게임", body: "미니게임 방에서 실제 접속자끼리 해요. 방을 만들고 3명 이상 모이면 시작. 라이어 한 명만 제시어를 모른 채 힌트를 말하고 투표로 찾아냅니다.", go: "minigame", goLabel: "미니게임 방" },
+    { icon: "🚬", title: "재떨이 수다방", body: "흡연의 방에서 실제 접속자들과 실시간으로 대화해요. 채팅창 위에 지금 방에 있는 사람이 보입니다." },
+    { icon: "🎵", title: "유튜브 음악", body: "리스닝 방 디제이 부스에서 🔗 링크·🎤 가수·🎵 제목을 넣으면 바로 재생돼요. 방을 나가도 좌측 하단 미니 플레이어로 계속 들려요.", go: "listening", goLabel: "리스닝 방" },
     { icon: "🥊", title: "샌드백", body: "마우스/키보드로 타격. 상대 이름을 붙인 샌드백도 만들 수 있고 랭킹에 집계돼요.", go: "sandbag", goLabel: "샌드백 가기" },
     { icon: "🎮", title: "미니게임 방", body: "반응속도 · 가위바위보 · 숫자순서 · 라이어게임 · 대회 코너. 라이어는 방을 만들고 주민을 초대해요.", go: "minigame", goLabel: "미니게임 가기" },
     { icon: "🏊", title: "수영장", body: "스페이스바 연타로 레인 경주. 1등이면 🪙 골드를 받고 기록이 랭킹에 남아요.", go: "pool", goLabel: "수영장 가기" },
@@ -6483,6 +6532,9 @@ const HELP_DATA = {
     { icon: "🛋", title: "집 꾸미기", body: "이케아에서 산 외관과 가구가 내 집에 반영되고, 마을에서도 그 집이 바뀌어 보여요." },
   ],
   "👥 소통": [
+    { icon: "🖊", title: "감사 칠판", body: "감사의 방 칠판에 남긴 쪽지는 모두에게 보여요. 🔒 받는 사람만 보게 하거나 🕶 익명으로 남길 수도 있어요.", go: "thanks", goLabel: "감사의 방 가기" },
+    { icon: "📮", title: "피드백", body: "☰ 메뉴 → ⚙️ 피드백에서 의견을 남기면 모두에게 보여요. 🕶 익명 선택과 ✅ 확인 체크가 있고, 내 글은 직접 지울 수 있어요." },
+    { icon: "🏃", title: "친구 찾기·따라가기", body: "우측 상단 접속자 버튼에서 🏃 를 누르면 그 사람 옆으로 바로 이동해요. 마을에서 캐릭터를 누르면 따라가기·찾아가기·선물하기를 고를 수 있어요." },
     { icon: "💬", title: "채팅", body: "좌측 하단에서 입력하면 머리 위 말풍선으로 뜨고 모든 접속자에게 보여요(50자까지)." },
     { icon: "📢", title: "확성기", body: "⭐1을 내면 크게 외칠 수 있어요. 한 번 외치면 자동으로 꺼집니다." },
     { icon: "💃", title: "춤", body: "우상단 💃 버튼으로 동작 선택. 다른 사람에게도 춤추는 모습이 보여요." },
@@ -6984,7 +7036,7 @@ function MyPanel({ onClose, myName, gems, gold = 0, lifetime, hp, mp, level = 1,
   };
   return (
     <Sheet icon="🧑" title="내 프로필" onClose={onClose} tab={tab} setTab={setTab}
-      tabs={[{ k: "me", label: "🧑 프로필" }, { k: "inv", label: "🎒 선물함·인벤토리" }, { k: "badge", label: "🏅 뱃지" }]}>
+      tabs={[{ k: "me", label: "🧑 프로필" }, { k: "badge", label: "🏅 뱃지" }]}>
       {tab === "me" && (
         <div>
           <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
@@ -7095,8 +7147,7 @@ function MyPanel({ onClose, myName, gems, gold = 0, lifetime, hp, mp, level = 1,
           <ProfileDetail p={me} />
         </div>
       )}
-      {tab === "inv" && <InventoryBody carrying={carrying} onGiftAct={onGiftAct} gems={gold} outfit={outfit} ownedClothes={ownedClothes} ikeaOwned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} thanksInv={thanksInv} onEquipCloth={onEquipCloth} onToggleIkea={onToggleIkea} />}
-      {tab === "badge" && <BadgeBody stats={stats} />}
+            {tab === "badge" && <BadgeBody stats={stats} />}
     </Sheet>
   );
 }
@@ -7226,11 +7277,98 @@ function DockBtn({ icon, label, onClick, bg, badge, pixel }) {
   );
 }
 
-function CornerDock({ onMenu, onProfile, onGuide, onMsg, msgCount, badgeCount }) {
+/* 🎒 인벤토리 — 소지품 · 특별 아이템 · 사고 스킬 */
+function InventorySheet({ onClose, gold, outfit, ownedClothes, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, onEquipCloth, onToggleIkea, carrying, onGiftAct, skills = [], stats = {} }) {
+  const [tab, setTab] = useState("bag");
+  const [pick, setPick] = useState(null);
+  const owns = (id) => (id === "relicbox" ? (stats.boss || 0) > 0 : id === "sulsa1" ? (skills || []).length >= 8 : false);
+  const progress = (id) => (id === "relicbox" ? `보스 격파 ${stats.boss || 0}회` : `사고 스킬 ${(skills || []).length} / 8`);
+
+  return (
+    <Sheet icon="🎒" title="인벤토리" onClose={onClose} tab={tab} setTab={setTab}
+      tabs={[{ k: "bag", label: "🎁 소지품" }, { k: "item", label: "🏆 아이템" }, { k: "skill", label: "🧠 스킬" }]}>
+      {tab === "bag" && (
+        <InventoryBody gems={gold} outfit={outfit} ownedClothes={ownedClothes} ikeaOwned={ikeaOwned} houseSkin={houseSkin}
+          vehicle={vehicle} myFurni={myFurni} thanksInv={thanksInv} onEquipCloth={onEquipCloth} onToggleIkea={onToggleIkea}
+          carrying={carrying} onGiftAct={onGiftAct} />
+      )}
+
+      {tab === "item" && (
+        <div>
+          <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 9, lineHeight: 1.7 }}>
+            특별한 조건을 만족하면 얻는 희귀품이에요. 눌러서 자세히 보세요.
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 9 }}>
+            {SPECIAL_ITEMS.map((it) => {
+              const have = owns(it.id);
+              return (
+                <button key={it.id} type="button" onClick={() => setPick(it)}
+                  style={{ cursor: "pointer", textAlign: "center", fontFamily: "'DotGothic16', monospace",
+                    background: have ? "#fff8e1" : "#e7e2d6", border: `3px solid ${have ? it.color : "#b5ad9c"}`, borderRadius: 10, padding: 11 }}>
+                  <div style={{ fontSize: 38, filter: have ? "none" : "grayscale(1)", opacity: have ? 1 : 0.45 }}>{it.emoji}</div>
+                  <div style={{ fontSize: 12.5, fontWeight: "bold", marginTop: 4, color: have ? C.ink : C.inkSoft, lineHeight: 1.35, wordBreak: "keep-all" }}>{it.name}</div>
+                  <div style={{ fontSize: 10, marginTop: 3, color: have ? it.color : C.inkSoft, fontWeight: "bold" }}>{it.rarity}</div>
+                  <div style={{ marginTop: 6, fontSize: 10.5, fontWeight: "bold", borderRadius: 10, padding: "3px 0",
+                    background: have ? C.good : "#cfc7b6", color: have ? C.white : "#7a7263" }}>
+                    {have ? "✔ 보유중" : "🔒 미보유"}
+                  </div>
+                  {!have && <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 4 }}>{progress(it.id)}</div>}
+                </button>
+              );
+            })}
+          </div>
+          {pick && (
+            <div onClick={() => setPick(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 140, padding: 14 }}>
+              <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 320 }}>
+                <div style={{ background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 20, textAlign: "center" }}>
+                  <div style={{ fontSize: 54, filter: owns(pick.id) ? "none" : "grayscale(1)", opacity: owns(pick.id) ? 1 : 0.5 }}>{pick.emoji}</div>
+                  <div style={{ fontSize: 11, color: pick.color, fontWeight: "bold", marginTop: 8 }}>{pick.rarity}</div>
+                  <div style={{ fontSize: 17, fontWeight: "bold", margin: "3px 0 8px" }}>{pick.name}</div>
+                  <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.8 }}>{pick.desc}</div>
+                  <div style={{ background: C.white, border: `2px dashed ${C.ink}`, borderRadius: 8, padding: 10, fontSize: 12, lineHeight: 1.7, margin: "12px 0" }}>
+                    📌 얻는 방법<br /><b>{pick.how}</b>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: "bold", color: owns(pick.id) ? C.good : C.danger, marginBottom: 12 }}>
+                    {owns(pick.id) ? "✔ 보유중이에요" : `🔒 아직 없어요 · ${progress(pick.id)}`}
+                  </div>
+                  <PxButton tone="ink" onClick={() => setPick(null)} style={{ width: "100%", padding: 11, fontSize: 13 }}>닫기</PxButton>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "skill" && (
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 9 }}>
+            <span style={{ fontSize: 11.5, color: C.inkSoft, flex: 1, lineHeight: 1.6 }}>🗺 보스맵 하드모드 퀘스트를 깨면 하나씩 배워요</span>
+            <b style={{ fontSize: 12.5 }}>{(skills || []).length} / {SKILLS.length}</b>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(104px, 1fr))", gap: 7 }}>
+            {SKILLS.map((sk) => {
+              const have = (skills || []).includes(sk.id);
+              return (
+                <div key={sk.id} title={have ? sk.desc : "아직 배우지 않았어요"}
+                  style={{ background: have ? "#f2ecff" : "#e7e2d6", border: `2px solid ${have ? C.ink : "#b5ad9c"}`, borderRadius: 8, padding: "9px 5px", textAlign: "center" }}>
+                  <div style={{ fontSize: 24, filter: have ? "none" : "grayscale(1)", opacity: have ? 1 : 0.4 }}>{have ? sk.icon : "❓"}</div>
+                  <div style={{ fontSize: 11.5, fontWeight: "bold", marginTop: 3, color: have ? C.ink : C.inkSoft }}>{have ? sk.name : "???"}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </Sheet>
+  );
+}
+
+function CornerDock({ onMenu, onProfile, onBag, onGuide, onMsg, msgCount, badgeCount }) {
   return (
     <div className="corner-dock" style={{ position: "fixed", right: 12, bottom: 12, zIndex: 62, display: "flex", gap: 7, background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 7, boxShadow: `0 4px 0 ${C.parchEdge}, 0 8px 18px rgba(0,0,0,0.28)` }}>
       <DockBtn pixel label="메뉴" bg={C.gem} onClick={onMenu} />
       <DockBtn icon="🧑" label="내 프로필" bg="linear-gradient(180deg,#6fa8e8,#3a6fb5)" onClick={onProfile} badge={badgeCount} />
+      <DockBtn icon="🎒" label="인벤토리" bg="linear-gradient(180deg,#b98a4e,#7a5230)" onClick={onBag} />
       <DockBtn icon="📖" label="안내책자" bg="linear-gradient(180deg,#7bbf8f,#2f7d5e)" onClick={onGuide} />
       <DockBtn icon="✉️" label="메세지" bg="linear-gradient(180deg,#e0a13d,#a86e13)" onClick={onMsg} badge={msgCount} />
     </div>
@@ -8149,6 +8287,7 @@ function EchoTown() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [bagOpen, setBagOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [msgOpen, setMsgOpen] = useState(false);
   const [dmWith, setDmWith] = useState(null);
@@ -8227,6 +8366,7 @@ function EchoTown() {
   const [qThreads, setQThreads] = useState({});
   /* 현관 비밀번호는 이름(집주인)별로 따로 저장합니다.
      예전엔 브라우저에 하나만 저장돼서, 다른 이름으로 접속해도 「비번 있음」으로 처리됐어요. */
+  const [pwFail, setPwFail] = useState(0);
   const [pwMap, setPwMap] = useState(() => {
     const m = loadJSON("echotown_pw_v2", null);
     if (m && typeof m === "object") return m;
@@ -8559,8 +8699,8 @@ function EchoTown() {
         if (ok) showNotice(`🔓 ${p.from}님이 비밀번호로 들어왔어요`);
       }
       if (kind === "door") {
-        if (p.ok) { setUnlocked((u) => (houseIdRef.current ? { ...u, [houseIdRef.current]: true } : u)); showNotice("🚪 문이 열렸어요! 들어가세요"); }
-        else showNotice("🚫 지금은 곤란하대요…");
+        if (p.ok) { setUnlocked((u) => (houseIdRef.current ? { ...u, [houseIdRef.current]: true } : u)); setPwFail(0); showNotice("🚪 문이 열렸어요! 들어가세요"); }
+        else setPwFail((n) => n + 1);
       }
       if (kind === "mail") {
         const item = { from: p.from, text: p.text, item: p.item, at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
@@ -8786,7 +8926,7 @@ function EchoTown() {
         {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && (unlocked[houseId] ? (
           <HomeView fishes={isMyHouse(houseMeta.name) ? fishes : []} hasAquarium={isMyHouse(houseMeta.name) && facilities.includes("aquarium")} hasYard={isMyHouse(houseMeta.name) && facilities.includes("yard")} petsAtHome={isMyHouse(houseMeta.name) ? PETS.filter((x) => pets.includes(x.id) && x.id !== activePet).map((x) => `${x.emoji} ${x.name}`) : []} onOpenAqua={() => setAquaOpen(true)} onOpenYard={() => setYardOpen(true)} gifts={isMyHouse(houseMeta.name) ? homeGifts : []} fridge={isMyHouse(houseMeta.name) ? fridge : []} house={houseMeta} skin={isMyHouse(houseMeta.name) ? houseSkin : null} extras={isMyHouse(houseMeta.name) ? myFurni : []} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />
         ) : (
-          <HouseGate house={houseMeta} isMine={isMyHouse(houseMeta.name)} myName={myName} hasPw={!!housePw}
+          <HouseGate house={houseMeta} isMine={isMyHouse(houseMeta.name)} myName={myName} hasPw={!!housePw} failSignal={pwFail}
             onSetPw={(p) => { setHousePw(p); }}
             onEnter={(p) => {
               if (!p) return false;
@@ -9106,6 +9246,7 @@ function EchoTown() {
         msgCount={unreadMsgCount}
         onMenu={() => setMenuOpen(true)}
         onProfile={() => setProfileOpen(true)}
+        onBag={() => setBagOpen(true)}
         onGuide={() => setGuideOpen(true)}
         onMsg={() => setMsgOpen(true)} />
 
@@ -9114,6 +9255,10 @@ function EchoTown() {
         onSetSprite={setSprite} onClearSprite={clearSprite} onClearSprites={clearAllSprites}
         onDm={(p) => setDmWith(p)}
         onCall={(p) => { setCallWith(p); if (netSendEvent) netSendEvent("call", { to: p.name, from: myName || "나" }); }} />}
+
+      {bagOpen && <InventorySheet onClose={() => setBagOpen(false)} gold={gold} outfit={outfit} ownedClothes={owned}
+        ikeaOwned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} thanksInv={thanksInv}
+        onEquipCloth={tryOnClothing} onToggleIkea={buyIkea} carrying={carrying} onGiftAct={giftAct} skills={skills} stats={stats} />}
 
       {profileOpen && <MyPanel key={profileTab || "me"} onClose={() => { setProfileOpen(false); setProfileTab(null); }} myName={myName} gems={gems} gold={gold} level={expInfo.lv} lifetime={lifetime} hp={hp} mp={mp} day={day}
         profile={profile} onProfile={patchProfile} carrying={carrying} onGiftAct={giftAct} initialTab={profileTab} skills={skills}
