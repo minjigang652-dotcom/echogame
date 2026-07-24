@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v59 · 2026-07-24";
+const APP_VERSION = "v61 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -547,7 +547,7 @@ function GemBadge({ amount, big, kind = "gem" }) {
 /* ===== ❓ 방별 팁 =====
    기능을 추가하거나 바꿀 때마다 여기에도 한 줄씩 넣어주세요. */
 const ROOM_TIPS = {
-  world: ["⬆⬇⬅➡ 또는 화면을 눌러 이동해요", "건물 안 왼쪽 아래 🚪 문 앞에서 Space 를 누르면 나와요", "건물 앞에서 Space 를 누르면 들어가요", "탈것을 타면 빨라지고 입장 범위도 넘어져요", "다른 사람 캐릭터를 누르면 따라가기·찾아가기·선물하기를 고를 수 있어요", "우측 상단 접속자 버튼 → 🏃 을 누르면 그 사람 옆으로 바로 가요", "좌측 하단 채팅은 5초 뒤 사라져요 · 확성기(🪙2)는 계속 남아요"],
+  world: ["⬆⬇⬅➡ 또는 화면을 눌러 이동해요", "☰ 메뉴 → 🎨 건물 이미지 에서 바꾸면 모두에게 똑같이 보여요", "건물 안 왼쪽 아래 🚪 문 앞에서 Space 를 누르면 나와요", "건물 앞에서 Space 를 누르면 들어가요", "탈것을 타면 빨라지고 입장 범위도 넘어져요", "다른 사람 캐릭터를 누르면 따라가기·찾아가기·선물하기를 고를 수 있어요", "우측 상단 접속자 버튼 → 🏃 을 누르면 그 사람 옆으로 바로 가요", "좌측 하단 채팅은 5초 뒤 사라져요 · 확성기(🪙2)는 계속 남아요"],
   center: ["테이블을 눌러 주민들과 대화해요", "회의실 안에서 📋 회의 안건을 적고 완료 체크할 수 있어요", "회의실 3곳은 예약하고 채팅도 할 수 있어요", "회의실 안 📨 초대장으로 날짜·시간을 정해 보내보세요", "커피·자판기·정수기로 HP·MP 를 채워요"],
   house: ["🖥️ 책상에 메모를 여러 장 붙여둘 수 있어요 · 눌러서 자세히 보기", "🚪 현관문을 누르면 바로 나가요", "🔧 가구 배치를 켜고 가구를 끌어서 옮겨보세요", "집에 둔 선물을 누르면 🎒 가방에 넣거나 🗑 버릴 수 있어요", "🌳 마당과 🐟 수족관은 형욱이네에서 사야 생겨요", "집에 둔 선물을 누르면 누가 줌는지 보여요"],
   sea: ["🚏 위쪽 정류장으로 가면 마을로 돌아가요", "모래사장이 넓어졌어요 — 바위·조개·표류목 사이를 걸어보세요", "🧔 어부 아저씨에게 미끼와 낚싯대를 사세요", "📖 바다 도감에서 뭐가 잡히는지 볼 수 있어요", "선착장 끝 🎣 낚시터에서 낚시를 해보세요", "잡은 건 어부 아저씨에게 팔 수 있어요"],
@@ -2250,6 +2250,17 @@ function GuardGate({ onPass, onClose, onCross, passed = false, side = "town" }) 
 const SUPA_URL = "https://fbemzeslbvweojmgvohv.supabase.co";
 const SUPA_KEY = "sb_publishable_dErg2UZWZQjifyAgO5-ejg_5AH563FV";
 const MY_ID = Math.random().toString(36).slice(2, 10);
+/* 접속자 목록에 "지금 어디 있는지"를 한글로 보여주기 위한 이름표 */
+const PLACE_NAME = {
+  world: "🏘 마을", center: "🏛 주민센터", house: "🏠 집", sea: "🌊 바다", fishing: "🎣 낚시터",
+  petshop: "🐾 형욱이네", bank: "🏦 은행", board: "📋 게시판", thanks: "🙏 감사의 방", heart: "💗 마음의 방",
+  listening: "🎵 리스닝방", reels: "📱 릴스방", minigame: "🎮 미니게임", smoke: "🚬 흡연의 방",
+  pool: "🏊 수영장", gym: "💪 헬스장", sandbag: "🥊 샌드백", jjeop: "🍴 쩝쩝박사",
+  musinsa: "🛍 무신사", ikea: "🛒 이케아", project: "🗺 보스맵", questdone: "🏆 제단",
+  coredict: "📚 코어사전", meeting: "🎥 회의실", naverschool: "📗 네이버스쿨", videoschool: "🎬 영상스쿨",
+  rent: "🏝 렌트하우스", big: "🏢 회사", alba: "💼 알바", gate: "🚧 검문소",
+};
+const placeLabel = (v) => PLACE_NAME[v || "world"] || "🏢 건물 안";
 
 /* ======================= DB (Supabase 저장) ======================= */
 let _supa = null;
@@ -2333,11 +2344,29 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
   } catch (e) { return []; }
+}
+/* 🎨 건물 이미지 공유 — 모두가 같은 그림을 보도록 서버에 남겨둬요.
+   (별도 테이블 없이 notices 를 type="sprite" 로 재사용합니다) */
+async function dbSprites() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("title,body,uid,created_at").eq("type", "sprite").order("created_at", { ascending: false }).limit(80);
+    const out = {}, seen = new Set();
+    ((r && r.data) || []).forEach((n) => {
+      if (!n.title || seen.has(n.title)) return;   // 가장 최근 것만 사용
+      seen.add(n.title);
+      if (n.body) out[n.title] = n.body;           // 빈 값이면 "지움"
+    });
+    return out;
+  } catch (e) { return {}; }
+}
+async function dbSaveSprite(id, dataUrl, by) {
+  try { const s = await getSupa(); await s.from("notices").insert({ type: "sprite", title: id, body: dataUrl || "", uid: by || null }); return true; } catch (e) { return false; }
 }
 async function dbAddNotice(type, title, body, uid) {
   try { const s = await getSupa(); await s.from("notices").insert({ type, title, body: body || null, uid: uid || null }); } catch (e) {}
@@ -2403,7 +2432,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
         });
         /* ⚠️ 새 이벤트를 만들면 반드시 여기에 이름을 넣어야 상대에게 도착해요 */
-        ["qcall", "qcallack", "qstart", "qlog", "mroom"].forEach((ev) => {
+        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr"].forEach((ev) => {
           ch.on("broadcast", { event: ev }, ({ payload }) => {
             if (onChatRef && onChatRef.net) onChatRef.net(ev, payload);
           });
@@ -2579,7 +2608,12 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
   /* 🏃 찾아가기 : 그 사람 바로 옆으로 순간이동 */
   const goTo = (o) => {
     if (!o) return;
-    if (o.v && o.v !== "world") { setToast2(`${o.name}님은 지금 마을에 없어요 (${o.v})`); setTimeout(() => setToast2(null), 1800); return; }
+    if (o.v && o.v !== "world") {
+      // 마을 지도 밖(건물 안·바다·보스맵 등)에 있으면 그 좌표로 달려갈 수 없어요
+      setToast2(`${o.name}님은 지금 ${placeLabel(o.v)}에 있어요 · 마을로 나오면 찾아갈 수 있어요`);
+      setTimeout(() => setToast2(null), 2400);
+      return;
+    }
     const nx = Math.max(30, Math.min(WORLD.w - 30, (o.x || 0) + 46));
     const ny = Math.max(40, Math.min(WORLD.h - 30, o.y || 0));
     posRef.current = { x: nx, y: ny };
@@ -2903,19 +2937,28 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
         {/* HUD 오버레이: 날짜 */}
         <div style={{ position: "absolute", right: 10, top: 10, display: "flex", gap: 8, alignItems: "center" }}>
           <button onClick={() => setWhoOpen((v) => !v)} title="접속자 보기" style={{ position: "relative", cursor: "pointer", background: netStatus === "접속됨" ? "#2f9e6e" : C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}`, fontFamily: "'DotGothic16', monospace" }}>
-            👥 {netCount}
+            👥 {Object.keys(others).length + 1}
             {whoOpen && (
               <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", right: 0, top: "120%", background: C.parch, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 8, minWidth: 130, zIndex: 40, textAlign: "left", boxShadow: `0 3px 0 ${C.parchEdge}` }}>
-                <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 4 }}>접속 중</div>
-                <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 2 }}>🟢 {myNick || "나"} (나)</div>
+                <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 4 }}>접속 중 · 총 {Object.keys(others).length + 1}명</div>
+                <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 2 }}>🟢 {myNick || "나"} (나) <span style={{ fontSize: 10, fontWeight: "normal", color: C.inkSoft }}>{placeLabel("world")}</span></div>
                 {Object.values(others).map((o) => (
                   <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                    <span style={{ flex: 1, fontSize: 12, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={o.vh ? `${o.vn || "탈것"} 탑승 중` : "걷는 중"}>🟢 {o.name} {o.vh || "🚶"}</span>
-                    <button onClick={() => goTo(o)} title={`${o.name}님에게 찾아가기`}
-                      style={{ cursor: "pointer", background: C.gem, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 15, padding: "2px 8px", lineHeight: 1.4 }}>🏃</button>
+                    <span style={{ flex: 1, fontSize: 12, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={o.vh ? `${o.vn || "탈것"} 탑승 중` : "걷는 중"}>
+                      🟢 {o.name} {o.vh || "🚶"}
+                      <span style={{ fontSize: 9.5, color: C.inkSoft, marginLeft: 4 }}>{placeLabel(o.v)}</span>
+                    </span>
+                    <button onClick={() => goTo(o)} title={(o.v || "world") === "world" ? `${o.name}님에게 찾아가기` : `${o.name}님은 ${placeLabel(o.v)}에 있어요`}
+                      style={{ cursor: "pointer", background: (o.v || "world") === "world" ? C.gem : "#ddd8cc", border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 15, padding: "2px 8px", lineHeight: 1.4, opacity: (o.v || "world") === "world" ? 1 : 0.6 }}>🏃</button>
                   </div>
                 ))}
                 {Object.keys(others).length === 0 && <div style={{ fontSize: 11, color: C.inkSoft }}>아직 다른 주민이 없어요</div>}
+                {netCount > Object.keys(others).length + 1 && (
+                  <div style={{ fontSize: 10, color: C.inkSoft, background: "#f7efdc", border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "5px 7px", marginTop: 4, lineHeight: 1.6 }}>
+                    🔗 접속만 되어 있고 아직 신호가 안 온 창 {netCount - (Object.keys(others).length + 1)}개<br />
+                    <span style={{ opacity: 0.8 }}>(창을 두 개 열었거나, 방금 나간 사람이에요)</span>
+                  </div>
+                )}
                 <div style={{ borderTop: `2px solid ${C.parchEdge}`, marginTop: 6, paddingTop: 6 }}>
                   <div style={{ fontSize: 10.5, color: netStatus === "접속됨" ? C.good : C.danger, fontWeight: "bold", marginBottom: 5 }}>
                     {netStatus === "접속됨" ? "🟢 연결됨" : `🔴 ${netStatus || "연결 안 됨"}`}
@@ -7201,6 +7244,10 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n12", type: "업데이트", date: "2026-07-24", title: "🌍 건물 이미지를 모두가 함께 보기",
+    body: "· ☰ 메뉴 → 🎨 건물 이미지 에서 바꾼 그림이 이제 모두에게 보여요\n· 올리는 즉시 접속 중인 사람 화면이 바뀌고, 「○○님이 건물 이미지를 바꿨어요」 알림이 떠요\n· 서버에도 보관돼서 아무도 접속해 있지 않아도 다음에 들어오면 그대로 보여요\n· ↩ 되돌리기를 누르면 모두에게서 원래 그림으로 돌아가요\n· 전달을 위해 이미지 용량을 자동으로 줄여요\n· ✂️ 누끼 강도만 각자 따로 조절돼요 (사람마다 화면이 달라도 되는 부분)" },
+  { id: "u20260724n11", type: "수정", date: "2026-07-24", title: "👥 접속자 수와 목록이 다르던 문제 정리",
+    body: "· 상단 숫자는 「연결된 창 수」, 목록은 「신호가 오는 사람」이라 서로 달랐어요\n· 이제 상단 숫자도 목록과 똑같이 세요\n· 차이가 생기면 목록 아래에 「접속만 되고 아직 신호가 안 온 창 N개」로 알려줘요 (창을 두 개 열었거나 방금 나간 경우)\n· 목록에 각자 지금 어디 있는지 표시돼요 (🏘 마을 · 🏛 주민센터 · 🌊 바다 …)\n· 마을 밖에 있는 사람은 🏃 버튼이 흐리게 보여요\n· 「마을에 없어요」 안내가 「○○님은 지금 🌊 바다에 있어요」처럼 바뀌었어요" },
   { id: "u20260724n10", type: "업데이트", date: "2026-07-24", title: "🏖 바다맵 도트 리뉴얼",
     body: "· 모래사장이 훨씬 넓어졌어요 (걸어다닐 공간이 늘었습니다)\n· 모래에 잔물결 무늬가 생기고, 물가 쪽은 젖은 모래로 어두워져요\n· 파도 거품선이 물결 모양으로 밀려와요\n· 바다가 얕은 곳(민트) → 중간(하늘) → 깊은 곳(남색) 3단계로 나뉘었어요\n· 위쪽에 나무 그늘 풀숲이 생겼어요\n· 🪨 바위 · 🌿 풀 · 🐚 조개 · ⭐ 불가사리 · 🪵 표류목 · 🛢 나무통을 도트로 새로 그려 배치했어요\n· 선착장에 지지대가 생겨 바다 위에 떠 있는 느낌이 살았어요" },
   { id: "u20260724n9", type: "수정", date: "2026-07-24", title: "✂️ 건물 이미지 누끼(배경 제거) 개선",
@@ -8750,9 +8797,12 @@ function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSe
     if (!f.type.startsWith("image/")) { say("이미지 파일만 올릴 수 있어요"); return; }
     setBusy(id);
     try {
-      const data = await compressImage(f, 320, 1, "image/png");
+      /* 모두에게 전달돼야 해서 너무 크면 단계적으로 줄여요 */
+      let data = await compressImage(f, 320, 1, "image/png");
+      if (data.length > 170000) data = await compressImage(f, 220, 1, "image/png");
+      if (data.length > 170000) data = await compressImage(f, 160, 1, "image/png");
       const ok = onSet(id, data);
-      if (!ok) say("저장 공간이 가득 찼어요 — 다른 이미지를 지우고 다시 시도해주세요");
+      if (!ok) say("이 기기에는 저장하지 못했지만 모두에게는 공유됐어요");
     } catch (x) { say("이미지를 읽지 못했어요"); }
     setBusy(null);
   };
@@ -8770,10 +8820,11 @@ function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSe
   return (
     <div>
       <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 10, fontSize: 11.5, lineHeight: 1.7, marginBottom: 10 }}>
-건물 그림을 <b>내 이미지</b>로 바꿀 수 있어요.<br />
-        · 📁 <b>프로젝트 폴더</b> : <code style={{ background: "#efe6d2", padding: "0 4px" }}>public/sprites/건물id.png</code> 로 넣으면 자동 인식 (모두에게 보임)<br />
-        · 여기서 올리는 파일·링크는 <b>이 브라우저에만</b> 저장돼요<br />
-        · 배경이 투명하지 않아도 ✂️ 누끼가 자동으로 잘라줘요
+건물 그림을 바꾸면 <b style={{ color: C.good }}>🌍 모두에게 똑같이 보여요</b>.<br />
+        · 올린 즉시 접속 중인 사람 화면이 바뀌고, 나중에 들어온 사람도 같은 그림을 봐요<br />
+        · 되돌리기(↩)를 누르면 모두에게서 원래 그림으로 돌아가요<br />
+        · 📁 <b>프로젝트 폴더</b> : <code style={{ background: "#efe6d2", padding: "0 4px" }}>public/sprites/건물id.png</code> 로 넣어도 돼요<br />
+        · 배경이 투명하지 않아도 ✂️ 누끼가 자동으로 잘라줘요 (누끼 강도는 나만 적용)
       </div>
 
       <div style={{ display: "flex", gap: 7, alignItems: "center", marginBottom: 9 }}>
@@ -8805,7 +8856,7 @@ function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSe
                     <code style={{ background: "#efe6d2", padding: "0 4px", borderRadius: 3 }}>{s.id}</code>
                     {" · "}
                     {fromFile ? <span style={{ color: "#2f7fb5" }}>📁 sprites 폴더 파일</span>
-                      : userSprites[s.id] ? <span style={{ color: C.good }}>업로드한 이미지 ✓</span>
+                      : userSprites[s.id] ? <span style={{ color: C.good }}>🌍 모두에게 공유됨 ✓</span>
                       : "기본 도트 그림"}
                   </div>
                 </div>
@@ -9662,15 +9713,34 @@ function EchoTown() {
   const [fileSprites, setFileSprites] = useState({});
   useEffect(() => { probeSpriteFiles().then(setFileSprites); }, []);
   const [sprites, setSprites] = useState(() => loadJSON(SPRITE_KEY, {}) || {});
+  /* 🌍 모두가 함께 보는 건물 이미지 (서버 + 실시간 공유) */
+  const [sharedSprites, setSharedSprites] = useState({});
+  const sharedSprRef = useRef({});
+  sharedSprRef.current = sharedSprites;
+  useEffect(() => { dbSprites().then((d) => { if (d && Object.keys(d).length) setSharedSprites((v) => ({ ...d, ...v })); }); }, []);
   const [cutCfg, setCutCfg] = useState(() => loadJSON(SPRITE_CUT_KEY, {}) || {});
-  const allSprites = useMemo(() => ({ ...fileSprites, ...sprites }), [fileSprites, sprites]);
+  const allSprites = useMemo(() => ({ ...fileSprites, ...sharedSprites, ...sprites }), [fileSprites, sharedSprites, sprites]);
   const writeSprites = (v) => {
     try { window.localStorage.setItem(SPRITE_KEY, JSON.stringify(v)); setSprites(v); return true; }
-    catch (e) { return false; }
+    catch (e) { setSprites(v); return false; }   // 저장 공간이 없어도 화면에는 반영돼요
   };
-  const setSprite = (id, src) => writeSprites({ ...sprites, [id]: src });
-  const clearSprite = (id) => { const n = { ...sprites }; delete n[id]; writeSprites(n); };
-  const clearAllSprites = () => { if (window.confirm("업로드한 건물 이미지를 모두 지울까요? (public/sprites 파일은 그대로예요)")) writeSprites({}); };
+  /* 올리면 나만이 아니라 모두에게 보여요 (실시간 + 서버 보관) */
+  const publishSprite = (id, src) => {
+    setSharedSprites((v) => { const n = { ...v }; if (src) n[id] = src; else delete n[id]; return n; });
+    if (netSendEventRef.current) netSendEventRef.current("spr", { id, src: src || "", by: myNameRef.current || "익명" });
+    dbSaveSprite(id, src || "", myUid).then((ok) => {
+      showNotice(ok
+        ? (src ? "🌍 건물 이미지를 모두에게 공유했어요" : "🌍 건물 이미지를 모두에게서 지웠어요")
+        : "⚠️ 서버 저장에 실패했어요 — 지금 접속 중인 사람에게만 보여요");
+    });
+  };
+  const setSprite = (id, src) => { const ok = writeSprites({ ...sprites, [id]: src }); publishSprite(id, src); return ok; };
+  const clearSprite = (id) => { const n = { ...sprites }; delete n[id]; writeSprites(n); publishSprite(id, ""); };
+  const clearAllSprites = () => {
+    if (!window.confirm("올린 건물 이미지를 모두 지울까요? 모두에게서 사라져요. (public/sprites 파일은 그대로예요)")) return;
+    Object.keys({ ...sprites, ...sharedSprites }).forEach((id) => publishSprite(id, ""));
+    writeSprites({});
+  };
   const setCut = (id, patch) => {
     const n = { ...cutCfg, [id]: { cut: true, tol: 32, ...(cutCfg[id] || {}), ...patch } };
     setCutCfg(n); saveJSON(SPRITE_CUT_KEY, n);
@@ -10116,7 +10186,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "qcallack") {
@@ -10143,7 +10213,7 @@ function EchoTown() {
       if (kind === "dictreq") {
         if (p.from === (myName || "")) return;
         const mine = dictRef.current || [];
-        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current, shr: shrineRef.current, thx: thxRef.current, qacc: qAccRef.current, qth: qThRef.current, qlg: qLgRef.current });
+        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current, shr: shrineRef.current, thx: thxRef.current, qacc: qAccRef.current, qth: qThRef.current, qlg: qLgRef.current, spr: sharedSprRef.current });
         const gs = galRef.current || [];
         gs.slice(0, 12).forEach((ph, i) => setTimeout(() => { if (netSendEvent) netSendEvent("gal", { photo: ph }); }, 350 * (i + 1)));
         return;
@@ -10160,6 +10230,7 @@ function EchoTown() {
         if (p.qacc && typeof p.qacc === "object") setQAccept((v) => mergeQAccept(v, p.qacc));
         if (p.qth && typeof p.qth === "object") setQThreads((v) => mergeQList(v, p.qth, "at", 200));
         if (p.qlg && typeof p.qlg === "object") setQLogs((v) => mergeQList(v, p.qlg, "id", 100));
+        if (p.spr && typeof p.spr === "object") setSharedSprites((v) => ({ ...p.spr, ...v }));
         return;
       }
       if (kind === "bmap") { applyBossOp(p); return; }
@@ -10212,6 +10283,12 @@ function EchoTown() {
         setQcDeclineOpen(false); setQcDeclineWhy("");
         setQuestCall(p);
         pushMsg("call", { from: p.from, reason: `「${p.title}」 퀘스트 대화방으로 불렀어요` });
+        return;
+      }
+      if (kind === "spr") {
+        if (!p.id) return;
+        setSharedSprites((v) => { const n = { ...v }; if (p.src) n[p.id] = p.src; else delete n[p.id]; return n; });
+        showNotice(p.src ? `🎨 ${p.by || "누군가"}님이 건물 이미지를 바꿨어요` : `🎨 ${p.by || "누군가"}님이 건물 이미지를 되돌렸어요`);
         return;
       }
       if (kind === "qlog") {
