@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v66 · 2026-07-24";
+const APP_VERSION = "v67 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -547,7 +547,7 @@ function GemBadge({ amount, big, kind = "gem" }) {
 /* ===== ❓ 방별 팁 =====
    기능을 추가하거나 바꿀 때마다 여기에도 한 줄씩 넣어주세요. */
 const ROOM_TIPS = {
-  world: ["⬆⬇⬅➡ 또는 화면을 눌러 이동해요", "☰ 메뉴 → 🎨 건물 이미지 에서 바꾸면 모두에게 똑같이 보여요", "건물 안 왼쪽 아래 🚪 문 앞에서 Space 를 누르면 나와요", "건물 앞에서 Space 를 누르면 들어가요", "탈것을 타면 빨라지고 입장 범위도 넘어져요", "다른 사람 캐릭터를 누르면 따라가기·찾아가기·선물하기를 고를 수 있어요", "우측 상단 접속자 버튼 → 🏃 을 누르면 그 사람 옆으로 바로 가요", "좌측 하단 채팅은 5초 뒤 사라져요 · 확성기(🪙2)는 계속 남아요"],
+  world: ["⬆⬇⬅➡ 또는 화면을 눌러 이동해요", "우측 하단 🗺 퀘스트함에서 진행중·미참여 퀘스트를 한눈에 봐요", "☰ 메뉴 → 🎨 건물 이미지 에서 바꾸면 모두에게 똑같이 보여요", "건물 안 왼쪽 아래 🚪 문 앞에서 Space 를 누르면 나와요", "건물 앞에서 Space 를 누르면 들어가요", "탈것을 타면 빨라지고 입장 범위도 넘어져요", "다른 사람 캐릭터를 누르면 따라가기·찾아가기·선물하기를 고를 수 있어요", "우측 상단 접속자 버튼 → 🏃 을 누르면 그 사람 옆으로 바로 가요", "좌측 하단 채팅은 5초 뒤 사라져요 · 확성기(🪙2)는 계속 남아요"],
   center: ["테이블을 눌러 주민들과 대화해요", "회의실 안에서 📋 회의 안건을 적고 완료 체크할 수 있어요", "회의실 3곳은 예약하고 채팅도 할 수 있어요", "회의실 안 📨 초대장으로 날짜·시간을 정해 보내보세요", "커피·자판기·정수기로 HP·MP 를 채워요"],
   house: ["🖥️ 책상에 메모를 여러 장 붙여둘 수 있어요 · 눌러서 자세히 보기", "🚪 현관문을 누르면 바로 나가요", "🔧 가구 배치를 켜고 가구를 끌어서 옮겨보세요", "집에 둔 선물을 누르면 🎒 가방에 넣거나 🗑 버릴 수 있어요", "🌳 마당과 🐟 수족관은 형욱이네에서 사야 생겨요", "집에 둔 선물을 누르면 누가 줌는지 보여요"],
   sea: ["🚏 위쪽 정류장으로 가면 마을로 돌아가요", "모래사장이 넓어졌어요 — 바위·조개·표류목 사이를 걸어보세요", "🧔 어부 아저씨에게 미끼와 낚싯대를 사세요", "📖 바다 도감에서 뭐가 잡히는지 볼 수 있어요", "선착장 끝 🎣 낚시터에서 낚시를 해보세요", "잡은 건 어부 아저씨에게 팔 수 있어요"],
@@ -2460,7 +2460,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
         });
         /* ⚠️ 새 이벤트를 만들면 반드시 여기에 이름을 넣어야 상대에게 도착해요 */
-        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow"].forEach((ev) => {
+        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone"].forEach((ev) => {
           ch.on("broadcast", { event: ev }, ({ payload }) => {
             if (onChatRef && onChatRef.net) onChatRef.net(ev, payload);
           });
@@ -5691,7 +5691,7 @@ function mergeMaps(base, saved) {
   return out;
 }
 
-function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree, onLeave, maps = [], people = [], onAddQuest, onEditQuest, onDelQuest, onAddMap, onGoShrine, onSubmitAnswer, onGainExp, onCallParty, jumpTo = null, onJumpUsed, logs = {}, onLogAdd, onLogDel, onSyncParty }) {
+function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", accepted = {}, onAccept, onStart, onShout, onBoard, notes = {}, onNote, threads = {}, onThreadSend, onAgree, onLeave, maps = [], people = [], onAddQuest, onEditQuest, onDelQuest, onAddMap, onGoShrine, onSubmitAnswer, onGainExp, onCallParty, jumpTo = null, onJumpUsed, logs = {}, onLogAdd, onLogDel, onSyncParty, onClearedChange, onQuestDone }) {
   const net = useContext(NetContext);
   const meNet = (net && net.me) || {};
   const [tMsg, setTMsg] = useState("");
@@ -5841,6 +5841,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
     dbClearBoss(map.id, nd.id, myName || null);
     // ⭐ 경험치는 검수와 무관하게 완료 즉시 지급돼요
     if (nd.exp > 0) onGainExp && onGainExp(Number(nd.exp) || 0, nd.title);
+    onQuestDone && onQuestDone(map.id, nd);   // 🗺 퀘스트함 알림
     // 보스는 즉시 보상, 일반 퀘스트는 제단에서 GM 검수 후 지급
     if (nd.isBoss) onReward && onReward((nd.rewards && nd.rewards.length) ? nd.rewards : [nd.reward || { kind: "gem", qty: nd.gem || 0 }]);
     onClearQuest && onClearQuest(!!nd.isBoss, map.mode, nd.title);
@@ -5849,6 +5850,8 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
 
   useEffect(() => { openRef.current = !!sel; }, [sel]);
   useEffect(() => { setQView(null); }, [sel && sel.id]);
+  /* 완료 현황을 퀘스트함과 공유해요 */
+  useEffect(() => { onClearedChange && onClearedChange(cleared); }, [cleared]);
   /* 📣 「모두 부르기」로 불려왔을 때 해당 퀘스트 대화방을 바로 열어줘요 */
   const [pendingQ, setPendingQ] = useState(null);
   useEffect(() => {
@@ -7374,6 +7377,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n18", type: "업데이트", date: "2026-07-24", title: "🗺 퀘스트함 신설 · 우측 하단 두 줄 정리",
+    body: "· 우측 하단이 두 줄이 됐어요 — 윗줄에 ✉️ 메세지함 · 🗺 퀘스트함을 크게 배치했어요\n· 알림이 있으면 아이콘이 흔들리고 테두리가 반짝여요 (읽으면 멈춰요)\n· 퀘스트가 새로 등록되거나, 누가 참가·시작·완료하면 🗺 퀘스트함에 알림이 쌓여요\n· 퀘스트함 탭 : 🔔 알림 · ▶ 진행중 · 📋 미참여 · 🏆 완료\n· 보스맵 도전기와 연동돼서, 목록에서 누르면 그 퀘스트로 바로 이동해요\n· 진행중 탭에는 파티 인원과 시작 여부가, 미참여 탭에는 지금 참가한 사람이 보여요" },
   { id: "u20260724n17", type: "수정", date: "2026-07-24", title: "🚨 실행되지 않던 오류 수정 (Cannot access before initialization)",
     body: "· [원인] 「지금 듣는 곡」을 알려주는 값을 만들기도 전에 접속 코드가 먼저 사용해서 앱 전체가 멈췄어요\n· 선언 순서를 바로잡아 정상 실행됩니다\n· 저장 데이터는 그대로예요 — 초기화하지 않으셔도 됩니다" },
   { id: "u20260724n16", type: "수정", date: "2026-07-24", title: "🖼 새로고침해도 남는 건물 이미지 · 🎧 따라 듣기 알림",
@@ -8786,14 +8791,16 @@ function MessageCenter({ onClose, myName, box, notices, onReadAll, onAnswerInvit
   );
 }
 
-function DockBtn({ icon, label, onClick, bg, badge, pixel }) {
+function DockBtn({ icon, label, onClick, bg, badge, pixel, big, alert }) {
+  const S = big ? 70 : 52;
   return (
-    <button onClick={onClick} title={label} className="dock-btn" style={{ position: "relative", width: 52, height: 52, background: bg, border: `3px solid ${C.ink}`, borderRadius: 10, boxShadow: `0 3px 0 ${C.ink}`, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1, color: C.white, fontFamily: "'DotGothic16', monospace", padding: 0 }}>
+    <button onClick={onClick} title={label} className={"dock-btn" + (alert ? " dock-glow" : "")}
+      style={{ position: "relative", width: S, height: S, background: bg, border: `3px solid ${C.ink}`, borderRadius: big ? 13 : 10, boxShadow: `0 3px 0 ${C.ink}`, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: big ? 3 : 1, color: C.white, fontFamily: "'DotGothic16', monospace", padding: 0 }}>
       {pixel ? (
         <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>{[0, 1, 2].map((i) => <span key={i} style={{ width: 20, height: 3, background: C.ink, display: "block" }} />)}</span>
-      ) : <span style={{ fontSize: 20, lineHeight: 1 }}>{icon}</span>}
-      <span style={{ fontSize: 8.5, color: pixel ? C.ink : C.white, fontWeight: "bold" }}>{label}</span>
-      {badge > 0 && <span style={{ position: "absolute", right: -5, top: -5, background: C.danger, color: C.white, border: `2px solid ${C.ink}`, borderRadius: 9, fontSize: 9, padding: "0 4px", fontWeight: "bold" }}>{badge > 99 ? "99+" : badge}</span>}
+      ) : <span className={alert ? "dock-alert" : ""} style={{ fontSize: big ? 30 : 20, lineHeight: 1 }}>{icon}</span>}
+      <span style={{ fontSize: big ? 10 : 8.5, color: pixel ? C.ink : C.white, fontWeight: "bold" }}>{label}</span>
+      {badge > 0 && <span style={{ position: "absolute", right: -6, top: -6, background: C.danger, color: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, fontSize: big ? 11 : 9, padding: big ? "1px 6px" : "0 4px", fontWeight: "bold" }}>{badge > 99 ? "99+" : badge}</span>}
     </button>
   );
 }
@@ -8905,15 +8912,130 @@ function InventorySheet({ onClose, gold, outfit, ownedClothes, ikeaOwned, houseS
   );
 }
 
-function CornerDock({ onMenu, onProfile, onBag, onGuide, onMsg, msgCount, badgeCount }) {
+function CornerDock({ onMenu, onProfile, onBag, onGuide, onMsg, onQuest, msgCount, questCount, badgeCount }) {
+  const box = { display: "flex", gap: 8, background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 7, boxShadow: `0 4px 0 ${C.parchEdge}, 0 8px 18px rgba(0,0,0,0.28)` };
   return (
-    <div className="corner-dock" style={{ position: "fixed", right: 12, bottom: 12, zIndex: 62, display: "flex", gap: 7, background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 7, boxShadow: `0 4px 0 ${C.parchEdge}, 0 8px 18px rgba(0,0,0,0.28)` }}>
-      <DockBtn pixel label="메뉴" bg={C.gem} onClick={onMenu} />
-      <DockBtn icon="🧑" label="내 프로필" bg="linear-gradient(180deg,#6fa8e8,#3a6fb5)" onClick={onProfile} badge={badgeCount} />
-      <DockBtn icon="🎒" label="인벤토리" bg="linear-gradient(180deg,#b98a4e,#7a5230)" onClick={onBag} />
-      <DockBtn icon="📖" label="안내책자" bg="linear-gradient(180deg,#7bbf8f,#2f7d5e)" onClick={onGuide} />
-      <DockBtn icon="✉️" label="메세지" bg="linear-gradient(180deg,#e0a13d,#a86e13)" onClick={onMsg} badge={msgCount} />
+    <div className="corner-dock" style={{ position: "fixed", right: 12, bottom: 12, zIndex: 62, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+      {/* 윗줄 : 알림이 오는 두 개 — 크게 */}
+      <div style={box}>
+        <DockBtn big icon="✉️" label="메세지함" bg="linear-gradient(180deg,#e0a13d,#a86e13)" onClick={onMsg} badge={msgCount} alert={msgCount > 0} />
+        <DockBtn big icon="🗺" label="퀘스트함" bg="linear-gradient(180deg,#9b7bd4,#5b3f8f)" onClick={onQuest} badge={questCount} alert={questCount > 0} />
+      </div>
+      {/* 아랫줄 */}
+      <div style={{ ...box, gap: 7 }}>
+        <DockBtn pixel label="메뉴" bg={C.gem} onClick={onMenu} />
+        <DockBtn icon="🧑" label="내 프로필" bg="linear-gradient(180deg,#6fa8e8,#3a6fb5)" onClick={onProfile} badge={badgeCount} />
+        <DockBtn icon="🎒" label="인벤토리" bg="linear-gradient(180deg,#b98a4e,#7a5230)" onClick={onBag} />
+        <DockBtn icon="📖" label="안내책자" bg="linear-gradient(180deg,#7bbf8f,#2f7d5e)" onClick={onGuide} />
+      </div>
     </div>
+  );
+}
+
+/* ======================= 🗺 퀘스트함 ======================= */
+const QBOX_ICON = { new: "🆕", join: "🤝", start: "▶", done: "🏆", leave: "🚪", call: "📣", log: "📓", reward: "🎁" };
+const QBOX_TEXT = {
+  new: "새 퀘스트가 등록됐어요", join: "퀘스트에 참가했어요", start: "퀘스트가 시작됐어요",
+  done: "퀘스트를 완료했어요", leave: "퀘스트에서 나갔어요", call: "퀘스트 대화방으로 불렀어요",
+  log: "퀘스트 일지가 올라왔어요", reward: "퀘스트 보상을 받았어요",
+};
+
+function QuestBoxSheet({ onClose, rows = [], onRead, onClear, maps = [], accept = {}, cleared = {}, myName = "", onGo }) {
+  const [tab, setTab] = useState("alert");
+  useEffect(() => { if (tab === "alert") onRead && onRead(); }, [tab]);
+
+  /* 보스맵의 모든 퀘스트를 하나로 모아요 */
+  const all = useMemo(() => {
+    const out = [];
+    (maps || []).forEach((m) => {
+      (m.stages || []).forEach((st) => (st.quests || []).forEach((q) => out.push({ ...q, mapId: m.id, mapName: m.name, mapIcon: m.icon, mode: m.mode, stageName: st.name })));
+      if (m.boss) out.push({ ...m.boss, mapId: m.id, mapName: m.name, mapIcon: m.icon, mode: m.mode, stageName: "보스", isBoss: true });
+    });
+    return out;
+  }, [maps]);
+
+  const isDone = (q) => !!(cleared[q.mapId] && cleared[q.mapId][q.id]);
+  const mine = all.filter((q) => { const a = accept[q.id]; return a && (a.party || []).includes(myName) && !isDone(q); });
+  const rest = all.filter((q) => { const a = accept[q.id]; return !(a && (a.party || []).includes(myName)) && !isDone(q); });
+  const doneList = all.filter(isDone);
+  const unread = rows.filter((r) => !r.read).length;
+
+  const Row = ({ q, tone }) => {
+    const a = accept[q.id] || {};
+    const party = a.party || [];
+    return (
+      <button type="button" onClick={() => onGo && onGo(q)}
+        style={{ width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "'DotGothic16', monospace", display: "flex", alignItems: "center", gap: 9,
+          background: tone === "on" ? "#eef6ef" : tone === "done" ? "#f0ece2" : C.white, border: `2px solid ${tone === "on" ? C.good : C.ink}`, borderRadius: 9, padding: "9px 11px" }}>
+        <span style={{ fontSize: 24 }}>{q.icon || "🎯"}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: "bold", wordBreak: "keep-all" }}>{q.title}{q.exp > 0 ? <span style={{ color: C.danger, fontSize: 11 }}> ⭐{q.exp}</span> : null}</div>
+          <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 2 }}>
+            {q.mapIcon} {q.mapName} · {q.mode === "hard" ? "🔥 하드" : "🌱 이지"}{q.isBoss ? " · 👑 보스" : ""}
+          </div>
+          {tone === "on" && <div style={{ fontSize: 10, color: C.good, fontWeight: "bold", marginTop: 2 }}>{a.started ? "▶ 진행 중" : "🤝 수락함 (시작 전)"} · 파티 {party.length}명</div>}
+          {tone === "off" && party.length > 0 && <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 2 }}>🤝 {party.join(", ")} 참가 중</div>}
+        </div>
+        <span style={{ fontSize: 11, color: C.inkSoft, whiteSpace: "nowrap" }}>{tone === "done" ? "✓" : "이동 →"}</span>
+      </button>
+    );
+  };
+
+  return (
+    <Sheet title="🗺 퀘스트함" onClose={onClose}>
+      <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
+        {[["alert", `🔔 알림${unread ? " " + unread : ""}`], ["on", `▶ 진행중 ${mine.length}`], ["off", `📋 미참여 ${rest.length}`], ["done", `🏆 완료 ${doneList.length}`]].map(([k, lb]) => (
+          <PxButton key={k} tone={tab === k ? "gold" : "wood"} onClick={() => setTab(k)} style={{ flex: 1, fontSize: 10.5, padding: 9 }}>{lb}</PxButton>
+        ))}
+      </div>
+
+      {tab === "alert" && (
+        <>
+          {rows.length > 0 && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 7 }}>
+              <PxButton tone="ink" onClick={onClear} style={{ fontSize: 11, padding: "6px 11px" }}>🗑 알림 비우기</PxButton>
+            </div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {rows.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 30, lineHeight: 1.8 }}>아직 알림이 없어요 🔔<br />퀘스트가 등록되거나 누가 참가하면 여기에 쌓여요</div>}
+            {rows.map((r) => (
+              <button key={r.id} type="button" onClick={() => onGo && onGo({ id: r.qid, mapId: r.mapId })}
+                style={{ width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "'DotGothic16', monospace", display: "flex", alignItems: "center", gap: 9,
+                  background: r.read ? C.white : "#fff6e0", border: `2px solid ${r.read ? C.parchEdge : C.ink}`, borderRadius: 9, padding: "9px 11px" }}>
+                <span style={{ fontSize: 21 }}>{QBOX_ICON[r.kind] || "🔔"}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: "bold", wordBreak: "keep-all" }}>{r.title || "퀘스트"}</div>
+                  <div style={{ fontSize: 10.5, color: C.inkSoft, marginTop: 2 }}>{r.who ? `🧑 ${r.who}님이 ` : ""}{QBOX_TEXT[r.kind] || "소식이 있어요"}</div>
+                  <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 1 }}>{r.at}</div>
+                </div>
+                {!r.read && <span style={{ width: 9, height: 9, borderRadius: "50%", background: C.danger, flexShrink: 0 }} />}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {tab === "on" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {mine.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 30, lineHeight: 1.8 }}>진행 중인 퀘스트가 없어요 ▶<br />📋 미참여 탭에서 수락해보세요</div>}
+          {mine.map((q) => <Row key={q.id} q={q} tone="on" />)}
+        </div>
+      )}
+
+      {tab === "off" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {rest.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 30 }}>참가할 수 있는 퀘스트가 없어요 📋</div>}
+          {rest.map((q) => <Row key={q.id} q={q} tone="off" />)}
+        </div>
+      )}
+
+      {tab === "done" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {doneList.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 30 }}>아직 완료한 퀘스트가 없어요 🏆</div>}
+          {doneList.map((q) => <Row key={q.id} q={q} tone="done" />)}
+        </div>
+      )}
+    </Sheet>
   );
 }
 
@@ -10053,6 +10175,25 @@ function EchoTown() {
 
   /* ===== 메세지함 ===== */
   const MSG_KEY = "echotown_msgbox_v1";
+  /* 🗺 퀘스트함 — 등록·참가·시작·완료 소식이 쌓여요 */
+  const QBOX_KEY = "echotown_questbox_v1";
+  const [questBox, setQuestBox] = useState(() => { const v = loadJSON(QBOX_KEY, null); return Array.isArray(v) ? v : []; });
+  const [questBoxOpen, setQuestBoxOpen] = useState(false);
+  const [bossCleared, setBossCleared] = useState({});
+  const pushQuest = useCallback((row) => {
+    setQuestBox((v) => {
+      const next = [{ id: Date.now() + Math.random(), read: false, at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }), ...row }, ...v].slice(0, 60);
+      saveJSON(QBOX_KEY, next);
+      return next;
+    });
+  }, []);
+  const readQuestBox = useCallback(() => setQuestBox((v) => {
+    if (!v.some((r) => !r.read)) return v;
+    const next = v.map((r) => ({ ...r, read: true }));
+    saveJSON(QBOX_KEY, next); return next;
+  }), []);
+  const clearQuestBox = useCallback(() => { setQuestBox([]); saveJSON(QBOX_KEY, []); }, []);
+  const unreadQuestCount = questBox.filter((r) => !r.read).length;
   const [noticeSeen, setNoticeSeen] = useState(() => loadJSON("echotown_noticeseen_ids", {}) || {});
   const [msgBox, setMsgBox] = useState(() => { const v = loadJSON(MSG_KEY, null); return (v && typeof v === "object") ? { invite: [], gift: [], dm: [], call: [], ...v } : { invite: [], gift: [], dm: [], call: [] }; });
   const pushMsg = useCallback((kind, item) => {
@@ -10402,7 +10543,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "qcallack") {
@@ -10451,7 +10592,16 @@ function EchoTown() {
         if (p.sscale && typeof p.sscale === "object") setSpriteScale((v) => { const o = { ...p.sscale, ...v }; saveJSON("echotown_spritescale_v1", o); return o; });
         return;
       }
-      if (kind === "bmap") { applyBossOp(p); return; }
+      if (kind === "bmap") {
+        if (p.addQuest && p.addQuest.title) pushQuest({ kind: "new", who: p.addQuest.owner || p.by, title: p.addQuest.title, qid: p.addQuest.id, mapId: p.mapId });
+        if (p.addMap && p.addMap.name) pushQuest({ kind: "new", who: p.by, title: `새 보스맵 「${p.addMap.name}」`, mapId: p.addMap.id });
+        applyBossOp(p); return;
+      }
+      if (kind === "qdone") {
+        setBossCleared((c) => ({ ...c, [p.mapId]: { ...(c[p.mapId] || {}), [p.qid]: p.who || true } }));
+        if (p.who !== (myName || "나")) pushQuest({ kind: "done", who: p.who, title: p.title || "퀘스트", qid: p.qid, mapId: p.mapId });
+        return;
+      }
       if (kind === "fb") {
         if (p.row) setFeedback((v) => (v.some((x) => x.id === p.row.id) ? v : [p.row, ...v].slice(0, 60)));
         else if (p.del) setFeedback((v) => v.filter((x) => !(x.id === p.del && x.uid === p.uid)));   // 작성자 본인만 삭제
@@ -10563,6 +10713,7 @@ function EchoTown() {
         return;
       }
       if (kind === "qparty") {
+        if (p.who !== (myName || "나")) pushQuest({ kind: "join", who: p.who, title: p.title || "퀘스트", qid: p.qid });
         setQAccept((a) => {
           const cur = a[p.qid] || { party: [], agree: [], locked: false, started: false, title: p.title || "" };
           return { ...a, [p.qid]: { ...cur, title: cur.title || p.title || "", party: Array.from(new Set([...(cur.party || []), p.who])) } };
@@ -10570,6 +10721,7 @@ function EchoTown() {
         return;
       }
       if (kind === "qstart") {
+        if (p.who !== (myName || "나")) pushQuest({ kind: "start", who: p.who, title: p.title || "퀘스트", qid: p.qid });
         setQAccept((a) => {
           const cur = a[p.qid] || { party: [], agree: [], locked: false, started: false, title: p.title || "" };
           return { ...a, [p.qid]: { ...cur, started: true } };
@@ -10945,7 +11097,12 @@ function EchoTown() {
           accepted={qAccept} notes={qNotes} threads={qThreads}
           logs={qLogs} onLogAdd={addQLog} onLogDel={delQLog}
           onSyncParty={() => { askSync(); showNotice("🔄 다른 주민들에게 참가 명단을 다시 물어봤어요"); }}
-          onAccept={(qid, title) => { setQAccept((a) => (a[qid] && a[qid].locked ? a : { ...a, [qid]: a[qid] ? { ...a[qid], party: Array.from(new Set([...(a[qid].party || []), myName || "나"])) } : { party: [myName || "나"], agree: [], locked: false, started: false, title } })); if (netSendEvent) netSendEvent("qparty", { qid, who: myName || "나", title }); showNotice("🤝 퀘스트를 수락했어요"); }}
+          onClearedChange={setBossCleared}
+          onQuestDone={(mapId, q) => {
+            pushQuest({ kind: "done", who: myName || "나", title: q.title, qid: q.id, mapId, read: true });
+            if (netSendEvent) netSendEvent("qdone", { mapId, qid: q.id, title: q.title, who: myName || "나" });
+          }}
+          onAccept={(qid, title) => { setQAccept((a) => (a[qid] && a[qid].locked ? a : { ...a, [qid]: a[qid] ? { ...a[qid], party: Array.from(new Set([...(a[qid].party || []), myName || "나"])) } : { party: [myName || "나"], agree: [], locked: false, started: false, title } })); if (netSendEvent) netSendEvent("qparty", { qid, who: myName || "나", title }); pushQuest({ kind: "join", who: myName || "나", title, qid, read: true }); showNotice("🤝 퀘스트를 수락했어요"); }}
           onAgree={(qid) => {
             const me = myName || "나";
             setQAccept((a) => {
@@ -10970,7 +11127,7 @@ function EchoTown() {
             if (netSendEvent) netSendEvent("qleave", { qid, who: me });
             showNotice("🚪 퀘스트에서 나왔어요");
           }}
-          onStart={(qid) => { setQAccept((a) => ({ ...a, [qid]: { ...a[qid], started: true } })); if (netSendEvent) netSendEvent("qstart", { qid, who: myName || "나" }); showNotice("▶ 퀘스트를 시작했어요!"); }}
+          onStart={(qid) => { setQAccept((a) => ({ ...a, [qid]: { ...a[qid], started: true } })); if (netSendEvent) netSendEvent("qstart", { qid, who: myName || "나", title: (qAccept[qid] || {}).title }); pushQuest({ kind: "start", who: myName || "나", title: (qAccept[qid] || {}).title || "퀘스트", qid, read: true }); showNotice("▶ 퀘스트를 시작했어요!"); }}
           onShout={(msg) => { postChat(msg, true); showNotice("📢 마을에 알렸어요"); }}
           onBoard={(title) => { dbAddNotice("모집", `[파티모집] ${title}`, `${myName || "익명"}님이 「${title}」 퀘스트 파티원을 찾고 있어요!`); showNotice("📋 게시판에 모집글을 올렸어요"); }}
           onNote={(qid, v) => setQNotes((n) => ({ ...n, [qid]: v }))}
@@ -11201,11 +11358,19 @@ function EchoTown() {
       )}
       <CornerDock
         msgCount={unreadMsgCount}
+        questCount={unreadQuestCount}
         onMenu={() => setMenuOpen(true)}
         onProfile={() => setProfileOpen(true)}
         onBag={() => setBagOpen(true)}
         onGuide={() => setGuideOpen(true)}
+        onQuest={() => setQuestBoxOpen(true)}
         onMsg={() => setMsgOpen(true)} />
+
+      {questBoxOpen && (
+        <QuestBoxSheet onClose={() => setQuestBoxOpen(false)} rows={questBox} onRead={readQuestBox} onClear={clearQuestBox}
+          maps={bossMaps} accept={qAccept} cleared={bossCleared} myName={myName}
+          onGo={(q) => { setQuestBoxOpen(false); if (q && q.id) setQuestJump({ mapId: q.mapId, qid: q.id }); setView("project"); }} />
+      )}
 
       {menuOpen && <MenuSheet people={people} onClose={() => setMenuOpen(false)} myName={myName} myUid={myUid} feedback={feedback} onFeedback={addFeedback} onDelFeedback={delFeedback} onCheckFeedback={checkFeedback}
         sprites={allSprites} userSprites={sprites} cutCfg={cutCfg} onSetCut={setCut} scales={spriteScale} onSetScale={publishScale}
@@ -11403,6 +11568,10 @@ function StyleBlock() {
       @keyframes gemFloat { 0%{ transform: translateY(0); opacity:0;} 20%{opacity:1;} 100%{ transform: translateY(-40px); opacity:0;} }
       .gem-pop { animation: gemFloat 1.6s ease-out forwards; }
       @keyframes bob { 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-3px);} }
+      @keyframes dockShake { 0%,72%,100%{ transform: translateX(0) rotate(0);} 76%{ transform: translateX(-3px) rotate(-8deg);} 80%{ transform: translateX(3px) rotate(8deg);} 84%{ transform: translateX(-3px) rotate(-6deg);} 88%{ transform: translateX(2px) rotate(5deg);} 92%{ transform: translateX(-1px) rotate(-2deg);} }
+      .dock-alert { animation: dockShake 2.2s ease-in-out infinite; display: inline-block; }
+      @keyframes dockGlow { 0%,100%{ box-shadow: 0 3px 0 #2a1e14, 0 0 0 0 rgba(255,203,43,0);} 50%{ box-shadow: 0 3px 0 #2a1e14, 0 0 15px 5px rgba(255,203,43,0.9);} }
+      .dock-glow { animation: dockGlow 1.5s ease-in-out infinite; }
       .hero-bob { animation: bob .45s steps(2) infinite; }
       @keyframes spin { 0%{transform:rotate(0);} 100%{transform:rotate(360deg);} }
       .gem-spin { display:inline-block; animation: spin 6s linear infinite; }
