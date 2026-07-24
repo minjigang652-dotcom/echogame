@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v71 · 2026-07-24";
+const APP_VERSION = "v75 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -553,7 +553,7 @@ const ROOM_TIPS = {
   sea: ["🚏 위쪽 정류장으로 가면 마을로 돌아가요", "모래사장이 넓어졌어요 — 바위·조개·표류목 사이를 걸어보세요", "🧔 어부 아저씨에게 미끼와 낚싯대를 사세요", "📖 바다 도감에서 뭐가 잡히는지 볼 수 있어요", "선착장 끝 🎣 낚시터에서 낚시를 해보세요", "잡은 건 어부 아저씨에게 팔 수 있어요"],
   fishing: ["🎣 던지려면 🪱 미끼가 1개씩 필요해요", "❗ 입질이 오면 1.4초 안에 당기세요", "💎 젬과 💠 다이아는 잡는 즉시 들어와요", "🎁 비밀 상자는 어부에게 열어달라고 하세요", "낚싯대를 업그레이드하면 귀한 게 잘 걸려요"],
   petshop: ["🏗 시설 · 🐾 입양 · 🐠 수조 세 코너 앞에서 눌러 열어요", "아직 없는 동물·물고기는 ❓ 로 보이고 누르면 설명이 나와요", "먼저 🏗 시설에서 🌳 마당·🐟 수족관을 사세요", "마당이 있어야 반려동물을, 수족관이 있어야 물고기를 데려올 수 있어요", "데려나가기를 누르면 마을에서 나를 따라다니고 다른 사람에게도 보여요", "🤲 쓰다듬기·🍖 밥주기로 친밀도를 쌓아보세요"],
-  bank: ["퀴스트로 모은 💎 젖을 원화로 바꿀 수 있어요", "🪙 골드는 마을 안에서만 쓰고 환전은 안 돼요", "환전 내역은 아래에 쌓여요"],
+  bank: ["💎 젬 환전은 아직 준비 중이에요 — 열리면 공지로 알려드려요", "🪙 골드는 마을 안에서만 쓰고 환전은 안 돼요", "🪙 골드는 마을 안에서만 쓰고 환전은 안 돼요", "환전 내역은 아래에 쌓여요"],
   board: ["글을 올리면 모두가 봐요", "내가 쓴 글은 ✏️ 수정·🗑 삭제할 수 있어요", "업데이트 탭에서 새로 바뀐 기능을 확인하세요"],
   thanks: ["칠판에 남긴 쪽지는 모두에게 보여요", "🔒 받는 사람만 보게 할 수도 있어요", "🕶 익명으로 남겨도 내 글은 지울 수 있어요", "선반 상점에서 선물을 사서 우체통으로 보내보세요"],
   heart: ["고민을 익명으로 남기면 모두에게 보여요", "고해성사와 서운 점 중에 골라 넣어요", "글을 넣을 땐 🪙 골드가 필요해요"],
@@ -2460,7 +2460,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
         });
         /* ⚠️ 새 이벤트를 만들면 반드시 여기에 이름을 넣어야 상대에게 도착해요 */
-        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone"].forEach((ev) => {
+        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant"].forEach((ev) => {
           ch.on("broadcast", { event: ev }, ({ payload }) => {
             if (onChatRef && onChatRef.net) onChatRef.net(ev, payload);
           });
@@ -5752,7 +5752,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
   };
   const saveEdit = () => {
     if (!editing || !editing.title.trim()) return;
-    onEditQuest(map.id, { id: editing.id, title: editing.title.trim(), icon: editing.icon, gem: Number(editing.gem) || 0, exp: Math.max(0, Number(editing.exp) || 0), desc: editing.desc, task: editing.task, due: editing.due });
+    onEditQuest(map.id, { id: editing.id, title: editing.title.trim(), icon: editing.icon, gem: Number(editing.gem) || 0, exp: Math.max(0, Number(editing.exp) || 0), desc: editing.desc, task: editing.task, due: editing.due, registrar: (editing.registrar || "").trim() || undefined, split: editing.split === "split" ? "split" : "each" });
     setEditing(null); setSel(null);
   };
   const delQuest = (qid) => {
@@ -5769,7 +5769,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
   const [qView, setQView] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addTab, setAddTab] = useState("quest");
-  const [fQ, setFQ] = useState({ stage: 1, title: "", icon: "🎯", exp: 10, rewards: [{ kind: "gem", qty: 5 }], rKind: "gem", rQty: "", rName: "", rEmoji: "🎁", rPick: "", desc: "", task: "", level: "초보자", field: "naverschool", due: "", who: "all", whoList: [], regMode: "me", regName: "" });
+  const [fQ, setFQ] = useState({ stage: 1, title: "", icon: "🎯", exp: 10, split: "each", rewards: [{ kind: "gem", qty: 5 }], rKind: "gem", rQty: "", rName: "", rEmoji: "🎁", rPick: "", desc: "", task: "", level: "초보자", field: "naverschool", due: "", who: "all", whoList: [], regMode: "me", regName: "" });
   const [fM, setFM] = useState({ name: "", icon: "🗺", boss: "", bossIcon: "👹" });
   const [cleared, setCleared] = useState({});
   useEffect(() => { dbLoadBoss().then((d) => { if (d && Object.keys(d).length) setCleared((c) => ({ ...d, ...c })); }); }, []);
@@ -5958,6 +5958,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
     const nq = {
       id, title: fQ.title.trim(), icon: fQ.icon || "🎯", gem: reward.qty || 0, reward, rewards,
       exp: Math.max(1, Number(fQ.exp) || 0),
+      split: fQ.split === "split" ? "split" : "each",
       desc: fQ.desc.trim() || "새로 추가된 퀘스트", task: fQ.task.trim() || fQ.title.trim(),
       level: isPlaza ? null : fQ.level,
       field: !isPlaza && fQ.level === "초보자" ? fQ.field : null,
@@ -6448,6 +6449,19 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                   </div>
 
                   <div style={{ fontSize: 11, fontWeight: "bold" }}>🎁 보상 (여러 개 가능)</div>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    {[["each", "👥 인당 지급", "참여자 각각에게 전부"], ["split", "➗ N빵", "참여자 수로 나눠서"]].map(([v, lb, sub]) => (
+                      <button key={v} type="button" onClick={() => setFQ({ ...fQ, split: v })}
+                        style={{ flex: 1, cursor: "pointer", fontFamily: "'DotGothic16', monospace", textAlign: "center", padding: "8px 6px", borderRadius: 8,
+                          border: `2px solid ${C.ink}`, background: (fQ.split || "each") === v ? C.gem : C.white }}>
+                        <div style={{ fontSize: 11.5, fontWeight: "bold" }}>{lb}</div>
+                        <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 2 }}>{sub}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 10, color: C.inkSoft, lineHeight: 1.6 }}>
+                    ➗ N빵은 💎 젬·🪙 골드만 나눠요 · 🏆 아이템·🧠 스킬은 어느 쪽이든 각자 하나씩 받아요
+                  </div>
 
                   {/* 등록된 보상 목록 */}
                   {(fQ.rewards || []).length > 0 && (
@@ -6514,7 +6528,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                   </div>
 
                   <div style={{ fontSize: 10.5, color: C.inkSoft, background: "#fff5d6", border: `2px solid ${C.ink}`, borderRadius: 6, padding: "6px 9px", lineHeight: 1.6 }}>
-                    완료하면 <b style={{ color: C.danger }}>⭐ 경험치 {Number(fQ.exp) || 0}</b> + <b>{(fQ.rewards || []).length ? fQ.rewards.map((r) => (r.kind === "gem" ? `💎 젬${r.qty ? " " + r.qty : ""}` : r.kind === "gold" ? `🪙 골드${r.qty ? " " + r.qty : ""}` : `${r.emoji} ${r.name}${r.qty ? " " + r.qty + "개" : ""}`)).join(" · ") : "보상 없음"}</b> 지급
+                    완료하면 <b style={{ color: C.danger }}>⭐ 경험치 {Number(fQ.exp) || 0}</b> + <b>{(fQ.split || "each") === "split" ? "➗N빵 " : "👥인당 "}</b><b>{(fQ.rewards || []).length ? fQ.rewards.map((r) => (r.kind === "gem" ? `💎 젬${r.qty ? " " + r.qty : ""}` : r.kind === "gold" ? `🪙 골드${r.qty ? " " + r.qty : ""}` : `${r.emoji} ${r.name}${r.qty ? " " + r.qty + "개" : ""}`)).join(" · ") : "보상 없음"}</b> 지급
                     <br />🏆 아이템·🧠 스킬 보상은 🎒 선물함에 증표로 들어가요
                   </div>
 
@@ -6634,6 +6648,9 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                   <span style={{ fontSize: 10.5, color: C.inkSoft }}>완료 즉시 지급</span>
                 </div>
               )}
+              <div style={{ fontSize: 11, textAlign: "center", color: C.inkSoft, marginBottom: 10 }}>
+                🎁 보상은 <b style={{ color: C.ink }}>{(sel.split || "each") === "split" ? "➗ N빵 (참여자 수로 나눠서)" : "👥 인당 (참여자 각각 전부)"}</b>
+              </div>
               {!sel.isBoss && (
                 <div style={{ background: canJoin(sel) ? "#eef6ef" : "#fbe4e0", border: `2px solid ${canJoin(sel) ? C.good : C.danger}`, borderRadius: 8, padding: 9, marginBottom: 10 }}>
                   <div style={{ fontSize: 11.5, fontWeight: "bold", color: canJoin(sel) ? C.ink : C.danger, marginBottom: 4 }}>
@@ -6857,6 +6874,31 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                       style={{ width: 80, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 13, fontWeight: "bold" }} />
                     <span style={{ flex: 1, fontSize: 10, color: C.inkSoft }}>완료 즉시 지급돼요</span>
                   </div>
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 4 }}>📋 등록자 (검토 담당)</div>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {[myName, ...people.filter((p) => p !== myName)].filter(Boolean).map((p) => (
+                        <button key={p} type="button" onClick={() => setEditing({ ...editing, registrar: p })}
+                          style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "6px 11px", borderRadius: 14,
+                            border: `2px solid ${C.ink}`, background: editing.registrar === p ? C.gem : C.white, fontWeight: "bold" }}>
+                          {p === myName ? `🙋 ${p}` : `🧑 ${p}`}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 4 }}>
+                      바꾸면 <b style={{ color: C.ink }}>{editing.registrar || "미지정"}</b> 님이 검토하고, 파편이 올라오면 그분 퀘스트함에 알림이 가요
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 4 }}>🎁 보상 나눔</div>
+                    <div style={{ display: "flex", gap: 5 }}>
+                      {[["each", "👥 인당"], ["split", "➗ N빵"]].map(([v, lb]) => (
+                        <button key={v} type="button" onClick={() => setEditing({ ...editing, split: v })}
+                          style={{ flex: 1, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11.5, padding: 8, borderRadius: 8,
+                            border: `2px solid ${C.ink}`, background: (editing.split || "each") === v ? C.gem : C.white, fontWeight: "bold" }}>{lb}</button>
+                      ))}
+                    </div>
+                  </div>
                   <div style={{ display: "flex", gap: 7, marginTop: 9 }}>
                     <PxButton tone="ink" onClick={() => setEditing(null)} style={{ flex: 1, padding: 9, fontSize: 12 }}>취소</PxButton>
                     <PxButton tone="good" disabled={!editing.title.trim()} onClick={saveEdit} style={{ flex: 1, padding: 9, fontSize: 12 }}>저장</PxButton>
@@ -6864,7 +6906,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                 </div>
               ) : canEdit(sel) && (
                 <div style={{ display: "flex", gap: 7, marginBottom: 10 }}>
-                  <PxButton tone="wood" onClick={() => setEditing({ id: sel.id, title: sel.title, icon: sel.icon, gem: sel.gem, exp: sel.exp || 0, desc: sel.desc || "", task: sel.task || "" })} style={{ flex: 1, padding: 9, fontSize: 12 }}>✏️ 수정</PxButton>
+                  <PxButton tone="wood" onClick={() => setEditing({ id: sel.id, title: sel.title, icon: sel.icon, gem: sel.gem, exp: sel.exp || 0, desc: sel.desc || "", task: sel.task || "", registrar: sel.registrar || sel.owner || "", split: sel.split || "each" })} style={{ flex: 1, padding: 9, fontSize: 12 }}>✏️ 수정</PxButton>
                   <PxButton tone="danger" onClick={() => { if (window.confirm(`「${sel.title}」 퀘스트를 삭제할까요?`)) delQuest(sel.id); }} style={{ flex: 1, padding: 9, fontSize: 12 }}>🗑 삭제</PxButton>
                 </div>
               )}
@@ -7385,6 +7427,14 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n26", type: "수정", date: "2026-07-24", title: "🎨 남이 바꾼 건물 이미지가 안 보이던 문제",
+    body: "· [원인] 접속할 때 주고받는 데이터 한 덩어리에 건물 이미지까지 넣다 보니 용량이 넘쳐서, 전송이 통째로 실패하고 있었어요\n· 건물 이미지는 이제 한 장씩 따로 전달돼요 (제단 사진도 최근 것만 함께 보내요)\n· 그래서 참가 명단·대화·일지 같은 다른 동기화도 더 안정적으로 도착합니다\n· ☰ 메뉴 → 🎨 건물 이미지 에 「🔄 다시 불러오기」 버튼이 생겼어요\n· 눌러보면 서버에서 몇 개를 받아왔는지, 서버 보관이 되고 있는지 바로 알려줘요" },
+  { id: "u20260724n25", type: "업데이트", date: "2026-07-24", title: "📋 등록자 변경 · 접속 알림 팝업 · 제단 필터 수정",
+    body: "· [수정] 🏆 제단의 「미완 · 완료」 필터가 항상 비어 보이던 문제를 고쳤어요 (보상 완료 표시를 잘못 읽고 있었어요)\n· 퀘스트 ✏️ 수정에서 📋 등록자(검토 담당)를 바꿀 수 있어요 — 바꾸면 그분 퀘스트함으로 알림이 갑니다\n· 수정 창에서 🎁 보상 나눔(👥 인당 / ➗ N빵)도 바꿀 수 있어요\n· 접속하고 잠시 뒤, 확인하지 않은 🆕 새 퀘스트와 ✦ 새 파편이 있으면 「퀘스트함을 확인해보세요!」 팝업이 떠요\n· 팝업은 이 두 가지만 알려주고, 참가·시작 같은 소식으로는 뜨지 않아요" },
+  { id: "u20260724n24", type: "업데이트", date: "2026-07-24", title: "🎁 보상 받기 버튼",
+    body: "· 등록자가 🛡 검토 완료를 누르면 참여자 모두에게 보상 알림이 가요\n· 바로 들어오지 않고 🗺 퀘스트함에서 「🎁 받기」를 눌러야 지급돼요\n· 알림에 무엇을 받는지(💎 젬 · 🪙 골드 · 🏆 아이템 · 🧠 스킬) 미리 보여요\n· 접속 중이 아니었어도 다시 들어오면 못 받은 보상이 퀘스트함에 남아 있어요\n· 같은 퀘스트로 두 번 받을 수 없어요\n· 받으면 ✉️ 메세지함에도 기록이 남아요" },
+  { id: "u20260724n23", type: "업데이트", date: "2026-07-24", title: "➗ 보상 N빵/인당 · 🎁 검토하면 자동 지급",
+    body: "· 퀘스트를 만들 때 보상을 「👥 인당 지급」 / 「➗ N빵」 중에 고를 수 있어요\n· N빵은 💎 젬·🪙 골드만 참여자 수로 나누고, 나머지는 앞사람부터 1씩 더 받아요\n· 🏆 아이템·🧠 스킬은 어느 쪽이든 각자 하나씩 받아요\n· 🏆 제단에서 🛡 검토 완료를 누르면 참여자 전원에게 보상이 자동 지급돼요\n· 받는 사람에게는 벨소리 + 알림 + ✉️ 메세지함 기록이 남아요\n· ⭐ 보상 완료도 자동으로 체크되고, 같은 파편으로 두 번 지급되지 않아요\n· 🏦 중앙은행 환전 신청은 「🚧 아직 준비 중이에요」 안내로 바뀌었어요" },
   { id: "u20260724n22", type: "업데이트", date: "2026-07-24", title: "🎁 「보상을 확인해주세요」 알림 분리",
     body: "· 단순 「완료했어요」 알림은 더 이상 오지 않아요 — 🏆 제단에 파편이 올라올 때만 알려줘요\n· 내가 등록한 퀘스트의 보상 검토 알림은 맨 위에 빨간 테두리로 크게 분리했어요\n· 「🏆 제단에서 보상 주기」 버튼으로 바로 이동할 수 있어요\n· 🗺 퀘스트함 알림도 「✓ 확인」을 누르면 사라져요 (「🗑 전체 비우기」도 있어요)\n· 처리할 보상이 있으면 탭 이름이 🎁 로 바뀌어요\n· 진행중·미참여·내가등록 목록은 예전처럼 보스맵과 계속 연동돼요" },
   { id: "u20260724n21", type: "업데이트", date: "2026-07-24", title: "✍️ 퀘스트함 「내가 등록」 탭",
@@ -7818,6 +7868,7 @@ function BankView({ gems, lifetime, exchanged, history, onExchange, onBack }) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(0);
   const [flash, setFlash] = useState(null);
+  const [soon, setSoon] = useState(false);   // 🚧 환전 준비중 안내
   const canWithdraw = gems > 0;
   const validAmount = amount >= 1 && amount <= gems && Number.isFinite(amount);
   function confirm() {
@@ -7843,8 +7894,8 @@ function BankView({ gems, lifetime, exchanged, history, onExchange, onBack }) {
               <div style={{ fontSize: 13 }}>환율 <b>1 💎 = {GEM_TO_WON.toLocaleString()}원</b></div>
               <div style={{ fontSize: 13, marginTop: 4, color: C.inkSoft }}>현재 보유 젬은 최대 <b>{fmt(gems * GEM_TO_WON)}원</b> 상당</div>
             </div>
-            <PxButton tone={canWithdraw ? "danger" : "ink"} disabled={!canWithdraw} onClick={() => { setAmount(Math.floor(gems)); setOpen(true); }} style={{ padding: "12px 18px", fontSize: 14 }}>
-              {canWithdraw ? "💰 출금/환전 신청" : "환전할 젬이 없어요"}
+            <PxButton tone="ink" onClick={() => setSoon(true)} style={{ padding: "12px 18px", fontSize: 14 }}>
+              💰 출금/환전 신청
             </PxButton>
           </div>
           <div style={{ marginTop: 12, fontSize: 12, background: C.parch, border: `2px solid ${C.ink}`, padding: "8px 10px" }}>
@@ -7852,6 +7903,22 @@ function BankView({ gems, lifetime, exchanged, history, onExchange, onBack }) {
             <div style={{ color: C.inkSoft, marginTop: 3 }}>💎 젬 → 실물 리워드로 연동되는 정산 채널(시뮬레이션) · 🪙 골드는 환전 대상이 아니에요</div>
           </div>
         </div>
+        {soon && (
+          <div onClick={() => setSoon(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150, padding: 16 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 320 }}>
+              <div style={{ background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 22, textAlign: "center", boxShadow: "0 10px 26px rgba(0,0,0,0.45)" }}>
+                <div style={{ fontSize: 46 }}>🚧</div>
+                <div style={{ fontSize: 16, fontWeight: "bold", margin: "10px 0 8px" }}>아직 준비 중이에요</div>
+                <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.8 }}>
+                  💎 젬 환전 기능은 준비 중입니다.<br />
+                  열리면 공지사항으로 알려드릴게요!<br />
+                  <span style={{ fontSize: 11 }}>그때까지 젬은 그대로 쌓아두세요 💎</span>
+                </div>
+                <PxButton tone="ink" onClick={() => setSoon(false)} style={{ width: "100%", marginTop: 16, padding: 12, fontSize: 13.5 }}>확인</PxButton>
+              </div>
+            </div>
+          </div>
+        )}
         {flash && (
           <div className="gem-pop" style={{ marginTop: 12, background: C.good, color: C.white, border: `3px solid ${C.ink}`, padding: 12, fontSize: 13 }}>
             ✅ 정산 완료(시뮬레이션): <b>{fmt(flash.amount)} 💎</b> → <b>{fmt(flash.won)}원</b>
@@ -8722,13 +8789,13 @@ function GuideSheet({ onClose, onGo }) {
 }
 
 /* ☰ 메뉴 (마을주민들 + 피드백) */
-function MenuSheet({ onClose, people, onDm, onCall, sprites, userSprites, cutCfg, onSetCut, onSetSprite, onClearSprite, onClearSprites, myName, myUid, feedback = [], onFeedback, onDelFeedback, onCheckFeedback, scales = {}, onSetScale }) {
+function MenuSheet({ onClose, people, onDm, onCall, sprites, userSprites, cutCfg, onSetCut, onSetSprite, onClearSprite, onClearSprites, myName, myUid, feedback = [], onFeedback, onDelFeedback, onCheckFeedback, scales = {}, onSetScale, sprStatus, onReloadSprites }) {
   const [tab, setTab] = useState("villagers");
   return (
     <Sheet icon="☰" title="메뉴" onClose={onClose} tab={tab} setTab={setTab}
       tabs={[{ k: "villagers", label: "🏘️ 마을주민들" }, { k: "skin", label: "🎨 건물 이미지" }, { k: "fb", label: "⚙️ 피드백" }]}>
       {tab === "villagers" && <VillagersBody people={people} onDm={onDm} onCall={onCall} />}
-      {tab === "skin" && <SpriteSkinBody sprites={sprites} userSprites={userSprites} cutCfg={cutCfg} onSetCut={onSetCut} onSet={onSetSprite} onClear={onClearSprite} onClearAll={onClearSprites} scales={scales} onSetScale={onSetScale} />}
+      {tab === "skin" && <SpriteSkinBody sprites={sprites} userSprites={userSprites} cutCfg={cutCfg} onSetCut={onSetCut} onSet={onSetSprite} onClear={onClearSprite} onClearAll={onClearSprites} scales={scales} onSetScale={onSetScale} sprStatus={sprStatus} onReload={onReloadSprites} />}
       {tab === "fb" && <FeedbackBody onDone={onClose} myName={myName} myUid={myUid} list={feedback} onSend={onFeedback} onDelete={onDelFeedback} onCheck={onCheckFeedback} />}
     </Sheet>
   );
@@ -8973,9 +9040,10 @@ const QBOX_TEXT = {
   done: "퀘스트를 완료했어요", leave: "퀘스트에서 나갔어요", call: "퀘스트 대화방으로 불렀어요",
   log: "퀘스트 일지가 올라왔어요", reward: "퀘스트 보상을 받았어요",
   shrine: "내가 등록한 퀘스트를 완료했어요 — 🎁 보상을 확인해주세요",
+  reward: "퀘스트 보상이 도착했어요 — 받아가세요",
 };
 
-function QuestBoxSheet({ onClose, rows = [], onRead, onClear, onDoneRow, maps = [], accept = {}, cleared = {}, myName = "", onGo }) {
+function QuestBoxSheet({ onClose, rows = [], onRead, onClear, onDoneRow, onClaim, maps = [], accept = {}, cleared = {}, myName = "", onGo }) {
   const [tab, setTab] = useState("alert");
   useEffect(() => { if (tab === "alert") onRead && onRead(); }, [tab, rows.length]);
   /* 탭마다 「지난번에 본 개수」를 기억해서, 늘어났으면 뱃지를 띄워요 */
@@ -9043,7 +9111,7 @@ function QuestBoxSheet({ onClose, rows = [], onRead, onClear, onDoneRow, maps = 
   return (
     <Sheet title="🗺 퀘스트함" onClose={onClose}>
       <div style={{ display: "flex", gap: 5, marginBottom: 10, flexWrap: "wrap" }}>
-        {[["alert", rows.some((r) => r.kind === "shrine") ? "🎁 알림" : "🔔 알림", rows.length], ["on", `▶ 진행중 ${mine.length}`, nNew.on], ["off", `📋 미참여 ${rest.length}`, nNew.off], ["mine", `✍️ 내가 등록 ${byMe.length}`, nNew.mine], ["done", `🏆 완료 ${doneList.length}`, nNew.done]].map(([k, lb, n]) => (
+        {[["alert", rows.some((r) => r.kind === "reward" || r.kind === "shrine") ? "🎁 알림" : "🔔 알림", rows.length], ["on", `▶ 진행중 ${mine.length}`, nNew.on], ["off", `📋 미참여 ${rest.length}`, nNew.off], ["mine", `✍️ 내가 등록 ${byMe.length}`, nNew.mine], ["done", `🏆 완료 ${doneList.length}`, nNew.done]].map(([k, lb, n]) => (
           <PxButton key={k} tone={tab === k ? "gold" : "wood"} onClick={() => setTab(k)} style={{ position: "relative", flex: "1 1 88px", fontSize: 10.5, padding: 9 }}>
             {lb}
             {n > 0 && <span style={{ position: "absolute", right: -4, top: -5, background: C.danger, color: C.white, border: `2px solid ${C.ink}`, borderRadius: 9, fontSize: 9, padding: "0 4px", fontWeight: "bold" }}>{n > 99 ? "99+" : n}</span>}
@@ -9052,10 +9120,34 @@ function QuestBoxSheet({ onClose, rows = [], onRead, onClear, onDoneRow, maps = 
       </div>
 
       {tab === "alert" && (() => {
-        const todo = rows.filter((r) => r.kind === "shrine");     // 🎁 보상 검토가 필요한 것
-        const info = rows.filter((r) => r.kind !== "shrine");
+        const gets = rows.filter((r) => r.kind === "reward");      // 🎁 받아갈 보상
+        const todo = rows.filter((r) => r.kind === "shrine");      // 🛡 검토가 필요한 것
+        const info = rows.filter((r) => r.kind !== "shrine" && r.kind !== "reward");
+        const rwLabel = (rs) => (rs || []).map((r) =>
+          r.kind === "gold" ? `🪙 골드 ${r.qty}` : r.kind === "item" ? `${r.emoji || "🏆"} ${r.name}` :
+          r.kind === "skill" ? `${r.emoji || "🧠"} ${r.name}` : `💎 젬 ${r.qty}`).join(" · ");
         return (
           <>
+            {/* 🎁 받아갈 보상 */}
+            {gets.length > 0 && (
+              <div style={{ background: "#fff8dd", border: `3px solid ${C.gem}`, borderRadius: 10, padding: 11, marginBottom: 11, boxShadow: `0 3px 0 ${C.parchEdge}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
+                  <span className="gem-pop" style={{ fontSize: 19 }}>🎁</span>
+                  <b style={{ flex: 1, fontSize: 13, color: "#a86e13" }}>받아갈 보상이 있어요 ({gets.length})</b>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                  {gets.map((r) => (
+                    <div key={r.id} style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 9, padding: "10px 11px" }}>
+                      <div style={{ fontSize: 13, fontWeight: "bold", wordBreak: "keep-all" }}>{r.title}</div>
+                      <div style={{ fontSize: 12.5, color: "#a86e13", fontWeight: "bold", marginTop: 3 }}>{rwLabel(r.rewards) || "보상"}</div>
+                      <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 2 }}>🧑 {r.who}님이 검토 완료 · {r.at}</div>
+                      <PxButton tone="gold" onClick={() => onClaim && onClaim(r)} style={{ width: "100%", marginTop: 9, padding: 11, fontSize: 13.5 }}>🎁 받기</PxButton>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* ⚠️ 꼭 처리해야 하는 알림 */}
             {todo.length > 0 && (
               <div style={{ background: "#fff1d6", border: `3px solid ${C.danger}`, borderRadius: 10, padding: 11, marginBottom: 11, boxShadow: `0 3px 0 ${C.parchEdge}` }}>
@@ -9150,7 +9242,7 @@ function QuestBoxSheet({ onClose, rows = [], onRead, onClear, onDoneRow, maps = 
 }
 
 /* 🎨 건물 이미지 바꾸기 */
-function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSet, onClear, onClearAll, scales = {}, onSetScale }) {
+function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSet, onClear, onClearAll, scales = {}, onSetScale, sprStatus, onReload }) {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(null);
   const [err, setErr] = useState(null);
@@ -9198,7 +9290,14 @@ function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSe
         · 📁 <b>프로젝트 폴더</b> : <code style={{ background: "#efe6d2", padding: "0 4px" }}>public/sprites/건물id.png</code> 로 넣어도 돼요<br />
         · 배경이 투명하지 않아도 ✂️ 누끼가 자동으로 잘라줘요 (누끼 강도는 나만 적용)
       </div>
-
+      {onReload && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#eef4f7", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "8px 10px", marginBottom: 10, flexWrap: "wrap" }}>
+          <span style={{ flex: 1, minWidth: 120, fontSize: 11, color: C.inkSoft, lineHeight: 1.6 }}>
+            {sprStatus || "다른 사람이 바꾼 그림이 안 보이면 눌러보세요"}
+          </span>
+          <PxButton tone="blue" onClick={onReload} style={{ fontSize: 11, padding: "7px 11px", whiteSpace: "nowrap" }}>🔄 다시 불러오기</PxButton>
+        </div>
+      )}
       <div style={{ display: "flex", gap: 7, alignItems: "center", marginBottom: 9 }}>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 건물 이름 검색"
           style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
@@ -9463,7 +9562,7 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed,
   useEffect(() => {
     if (!draft) return;
     if (draft.autoAdd) {
-      onAdd && onAdd({ kind: draft.kind || "acc", text: draft.text, detail: draft.detail || "", reviewer: draft.reviewer || null, imgs: draft.imgs || [] });
+      onAdd && onAdd({ kind: draft.kind || "acc", text: draft.text, detail: draft.detail || "", reviewer: draft.reviewer || null, imgs: draft.imgs || [], pay: draft.pay || null });
       ping("🏆 완료의 제단에 등록되었습니다!");
     } else {
       setAccT(draft.text || "");
@@ -9492,13 +9591,13 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed,
     if (filter === "req" && it.kind !== "req") return false;
     if (filter === "acc" && it.kind !== "acc") return false;
     if (filter === "mine" && it.who !== myName && it.reviewer !== myName) return false;
-    if (filter === "wait" && (it.gm && it.reward)) return false;
-    if (filter === "done" && !(it.gm && it.reward)) return false;
+    if (filter === "wait" && (it.gm && it.rw)) return false;
+    if (filter === "done" && !(it.gm && it.rw)) return false;
     if (q.trim() && !((it.text || "") + (it.detail || "") + (it.who || "") + (it.reviewer || "")).includes(q.trim())) return false;
     return true;
   });
   const nGm = items.filter((i) => i.gm).length;
-  const nRw = items.filter((i) => i.reward).length;
+  const nRw = items.filter((i) => i.rw).length;
   const pct = items.length ? Math.round(((nGm + nRw) / (items.length * 2)) * 100) : 0;
 
   const Chip = ({ k, label }) => (
@@ -9823,6 +9922,7 @@ function EchoTown() {
     const it = {
       id: Date.now() + Math.random(), kind: row.kind || "acc", text: row.text, detail: row.detail || "",
       imgs: Array.isArray(row.imgs) ? row.imgs.slice(0, 3) : [],
+      pay: row.pay || null,
       who: myName || "익명", reviewer: row.reviewer || null,
       at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }),
       gm: false, reward: false,
@@ -9840,6 +9940,27 @@ function EchoTown() {
     const by = val ? (myName || "익명") : null;
     setShrineItems((v) => v.map((x) => (x.id === id ? { ...x, [key]: val, [key + "By"]: by } : x)));
     if (netSendEvent) netSendEvent("shr", { patch: { id, key, val, by } });
+    /* 🛡 검토 완료를 켜면 참여자 모두에게 보상을 자동 지급해요 */
+    if (key === "gm" && val) setTimeout(() => payShrine(id), 0);
+  };
+  /* 🎁 파편 검토 완료 → 참여자 전원에게 보상 자동 지급 */
+  const payShrine = (id) => {
+    const it = (shrineRef.current || []).find((x) => x.id === id);
+    if (!it || !it.pay || it.paid) return;
+    const party = ((it.pay.party && it.pay.party.length ? it.pay.party : [it.who]) || []).filter(Boolean);
+    const rewards = it.pay.rewards || [];
+    if (!rewards.length || !party.length) return;
+    const me = myName || "나";
+    party.forEach((name, i) => {
+      const share = shareFor(rewards, it.pay.split, party.length, i);
+      if (!share.length) return;
+      // 바로 지급하지 않고 「🎁 받기」 알림으로 보내요
+      if (name === me) pushGrant({ grantId: id, rewards: share, title: it.pay.title, who: me });
+      else if (netSendEvent) netSendEvent("grant", { to: name, rewards: share, title: it.pay.title, by: me, shrId: id });
+    });
+    setShrineItems((v) => v.map((x) => (x.id === id ? { ...x, paid: true, rw: true, rwBy: me } : x)));
+    if (netSendEvent) netSendEvent("shr", { patch: { id, key: "rw", val: true, by: me } });
+    showNotice(`🎁 ${party.join(", ")} 님에게 보상을 지급했어요 (${it.pay.split === "split" ? "N빵" : "인당"})`);
   };
   const delShrine = (id) => {
     setShrineItems((v) => v.filter((x) => x.id !== id));
@@ -10109,6 +10230,7 @@ function EchoTown() {
   const [sprites, setSprites] = useState(() => loadJSON(SPRITE_KEY, {}) || {});
   /* 🌍 모두가 함께 보는 건물 이미지 (서버 + 실시간 공유) */
   const SHARED_SPR_KEY = "echotown_sprites_shared_v1";
+  const [sprStatus, setSprStatus] = useState("");
   const [sharedSprites, setSharedSprites] = useState(() => loadJSON(SHARED_SPR_KEY, null) || {});
   /* 남이 바꾼 그림도 이 기기에 남겨둬요 — 새로고침하거나 아무도 접속 안 해 있어도 그대로 보여요 */
   useEffect(() => {
@@ -10290,6 +10412,7 @@ function EchoTown() {
   const QBOX_KEY = "echotown_questbox_v1";
   const [questBox, setQuestBox] = useState(() => { const v = loadJSON(QBOX_KEY, null); return Array.isArray(v) ? v : []; });
   const [questBoxOpen, setQuestBoxOpen] = useState(false);
+  const [startPop, setStartPop] = useState(null);   // 접속 직후 「확인해보세요」 팝업
   const [bossCleared, setBossCleared] = useState({});
   const pushQuest = useCallback((row) => {
     setQuestBox((v) => {
@@ -10305,12 +10428,48 @@ function EchoTown() {
   }), []);
   const clearQuestBox = useCallback(() => { setQuestBox([]); saveJSON(QBOX_KEY, []); }, []);
   /* ✓ 확인하면 그 알림만 사라져요 */
+  /* 🎁 받기 → 그때 실제로 지급돼요 */
+  const claimReward = (row) => {
+    if (!row || !row.rewards || !row.rewards.length) return;
+    applyRewards(row.rewards, `「${row.title}」 보상`);
+    pushMsg("gift", { from: row.who || "등록자", text: `「${row.title}」 퀘스트 보상을 받았어요 🎁`, read: true });
+    setQuestBox((v) => { const next = v.filter((r) => r.id !== row.id); saveJSON(QBOX_KEY, next); return next; });
+  };
   const doneQuestRow = useCallback((id) => setQuestBox((v) => {
     const next = v.filter((r) => r.id !== id);
     saveJSON(QBOX_KEY, next); return next;
   }), []);
   const unreadQuestCount = questBox.filter((r) => !r.read).length;
+  const questBoxRef = useRef([]);
+  questBoxRef.current = questBox;
   /* ✦ 내가 등록한 퀘스트를 누가 완료해서 파편이 올라오면 알려줘요 */
+  /* 🎁 「받기」를 눌러야 지급되는 보상 알림 */
+  const pushGrant = useCallback((g) => {
+    setQuestBox((v) => {
+      if (v.some((x) => x.kind === "reward" && x.grantId === g.grantId)) return v;   // 중복 방지
+      const next = [{
+        id: Date.now() + Math.random(), read: false, kind: "reward",
+        grantId: g.grantId, rewards: g.rewards || [], title: g.title || "퀘스트", who: g.who || "등록자",
+        at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+      }, ...v].slice(0, 60);
+      saveJSON(QBOX_KEY, next);
+      return next;
+    });
+  }, []);
+  /* 접속 중이 아니었어도, 지급된 파편을 보고 못 받은 보상을 찾아줘요 */
+  const noticeGrants = useCallback((rows) => {
+    const me = myNameRef.current || "";
+    if (!me) return;
+    (Array.isArray(rows) ? rows : [rows]).forEach((it) => {
+      if (!it || !it.paid || !it.pay) return;
+      const party = ((it.pay.party || []).filter(Boolean));
+      const i = party.indexOf(me);
+      if (i < 0) return;
+      const share = shareFor(it.pay.rewards || [], it.pay.split, party.length, i);
+      if (!share.length) return;
+      pushGrant({ grantId: it.id, rewards: share, title: it.pay.title, who: it.rwBy || it.reviewer || "등록자" });
+    });
+  }, [pushGrant]);
   const noticeShrine = useCallback((rows) => {
     const me = myNameRef.current || "";
     if (!me) return;
@@ -10531,6 +10690,19 @@ function EchoTown() {
   }, []);
   useEffect(() => { loadDict(); }, [loadDict]);
   /* 접속 후 다른 사람들에게 사전·갤러리를 요청 */
+  /* 접속하고 잠시 뒤, 아직 확인하지 않은 🆕 신규 퀘스트 · ✦ 새 파편이 있으면 알려줘요 */
+  const startPopDone = useRef(false);
+  useEffect(() => {
+    if (startPopDone.current || !myName) return;
+    const t = setTimeout(() => {
+      if (startPopDone.current) return;
+      const rows = questBoxRef.current || [];
+      const nNew = rows.filter((r) => !r.read && r.kind === "new").length;
+      const nShr = rows.filter((r) => !r.read && r.kind === "shrine").length;
+      if (nNew + nShr > 0) { startPopDone.current = true; setStartPop({ nNew, nShr }); }
+    }, 4200);
+    return () => clearTimeout(t);
+  }, [myName]);
   const askSync = useCallback(() => {
     if (netSendEventRef.current) netSendEventRef.current("dictreq", { from: myNameRef.current || "" });
   }, []);
@@ -10600,6 +10772,33 @@ function EchoTown() {
   const [profileTab, setProfileTab] = useState(null);
   const [notice, setNotice] = useState(null);
   const showNotice = (t) => { setNotice(t); setTimeout(() => setNotice(null), 3200); };
+  /* 🎁 보상 지급 (퀘스트 · 제단 검토 자동지급 공용) */
+  const applyRewards = (rs, from) => {
+    const list = typeof rs === "number" ? [{ kind: "gem", qty: rs }] : Array.isArray(rs) ? rs : [rs];
+    const said = [];
+    list.forEach((r, i) => {
+      if (!r) return;
+      if (r.kind === "gold") { if (r.qty) awardGold(r.qty); said.push(`🪙 골드${r.qty ? " " + r.qty : ""}`); return; }
+      if (r.kind === "item" || r.kind === "skill") {
+        setThanksInv((v) => [...v, { id: "qr" + Date.now() + i + Math.random(), name: r.qty ? `${r.name} ×${r.qty}` : r.name, emoji: r.emoji || (r.kind === "skill" ? "🧠" : "🎁"), acts: ["carry", "home"], from: from || "퀘스트 보상" }]);
+        setExp((e) => e + 10);
+        said.push(`${r.emoji || "🎁"} ${r.name}`);
+        return;
+      }
+      if (r.qty) award(r.qty);
+      said.push(`💎 젬${r.qty ? " " + r.qty : ""}`);
+    });
+    if (said.length) showNotice(`🎁 ${said.join(" · ")} 획득!${from ? " (" + from + ")" : ""}`);
+  };
+  /* 참여자별 몫 계산 — ➗N빵이면 젬·골드만 나누고, 아이템·스킬은 각자 하나씩 */
+  const shareFor = (rewards, split, n, idx) => (rewards || []).map((r) => {
+    if (!r) return null;
+    if (split !== "split" || (r.kind !== "gem" && r.kind !== "gold")) return r;
+    const total = Number(r.qty) || 0;
+    const base = Math.floor(total / Math.max(1, n));
+    const extra = idx < (total % Math.max(1, n)) ? 1 : 0;
+    return { ...r, qty: base + extra };
+  }).filter((r) => r && (r.kind === "item" || r.kind === "skill" || (Number(r.qty) || 0) > 0));
   const [visitor, setVisitor] = useState(null);
   const [invite, setInvite] = useState(null);
   const [declineOpen, setDeclineOpen] = useState(false);
@@ -10716,9 +10915,17 @@ function EchoTown() {
       if (kind === "dictreq") {
         if (p.from === (myName || "")) return;
         const mine = dictRef.current || [];
-        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current, shr: shrineRef.current, thx: thxRef.current, qacc: qAccRef.current, qth: qThRef.current, qlg: qLgRef.current, spr: sharedSprRef.current, sscale: scaleRef.current, sng: songsRef.current });
+        /* ⚠️ 한 번에 보낼 수 있는 크기가 정해져 있어서, 사진처럼 큰 건 따로 나눠 보내요.
+           예전엔 건물 이미지까지 한 덩어리로 보내다가 전체가 통째로 실패했어요. */
+        const lightShr = (shrineRef.current || []).map((x, i) => (i < 4 ? x : { ...x, imgs: [] }));
+        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current, shr: lightShr, thx: thxRef.current, qacc: qAccRef.current, qth: qThRef.current, qlg: qLgRef.current, sscale: scaleRef.current, sng: songsRef.current });
         const gs = galRef.current || [];
         gs.slice(0, 12).forEach((ph, i) => setTimeout(() => { if (netSendEvent) netSendEvent("gal", { photo: ph }); }, 350 * (i + 1)));
+        /* 🎨 건물 이미지는 한 장씩 따로 전달 */
+        const sp = sharedSprRef.current || {};
+        Object.keys(sp).slice(0, 16).forEach((id, i) => setTimeout(() => {
+          if (netSendEvent) netSendEvent("spr", { id, src: sp[id], sync: true });
+        }, 260 * (i + 1)));
         return;
       }
       if (kind === "dictres") {
@@ -10726,14 +10933,13 @@ function EchoTown() {
         if (p.maps) setBossMaps((v) => mergeMaps(BOSS_MAPS_INIT, mergeMaps(v, p.maps)));
         if (Array.isArray(p.fb)) setFeedback((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.fb.filter((x) => !ids.has(x.id))].sort((a, b) => b.id - a.id).slice(0, 60); });
         if (Array.isArray(p.thx)) setPostits((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.thx.filter((x) => !ids.has(x.id))].sort((a, b) => b.id - a.id).slice(0, 120); });
-        if (Array.isArray(p.shr)) { setShrineItems((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.shr.filter((x) => !ids.has(x.id))].sort((a, b) => b.id - a.id).slice(0, 120); }); noticeShrine(p.shr); }
+        if (Array.isArray(p.shr)) { setShrineItems((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.shr.filter((x) => !ids.has(x.id))].sort((a, b) => b.id - a.id).slice(0, 120); }); noticeShrine(p.shr); noticeGrants(p.shr); }
         if (Array.isArray(p.rec)) setRecList((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.rec.filter((x) => !ids.has(x.id))].slice(-60); });
         if (p.reel && typeof p.reel === "object") setReelExtra((v) => ({ ...p.reel, ...v }));
         if (Array.isArray(p.worry)) setWorries((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.worry.filter((x) => !ids.has(x.id))].sort((a, b) => b.id - a.id).slice(0, 80); });
         if (p.qacc && typeof p.qacc === "object") setQAccept((v) => mergeQAccept(v, p.qacc));
         if (p.qth && typeof p.qth === "object") setQThreads((v) => mergeQList(v, p.qth, "at", 200));
         if (p.qlg && typeof p.qlg === "object") setQLogs((v) => mergeQList(v, p.qlg, "id", 100));
-        if (p.spr && typeof p.spr === "object") setSharedSprites((v) => ({ ...p.spr, ...v }));
         if (Array.isArray(p.sng)) setSongs((v) => { const ids = new Set(v.map((x) => x.id)); return [...v, ...p.sng.filter((x) => x && !ids.has(x.id))].slice(-80); });
         if (p.sscale && typeof p.sscale === "object") setSpriteScale((v) => { const o = { ...p.sscale, ...v }; saveJSON("echotown_spritescale_v1", o); return o; });
         return;
@@ -10773,9 +10979,10 @@ function EchoTown() {
             showNotice(`✦ ${p.row.who}님이 「${p.row.text}」을 완료하고 파편을 봉헌했어요`);
           }
           noticeShrine(p.row);
+          noticeGrants(p.row);
         }
         else if (p.del) setShrineItems((v) => v.filter((x) => x.id !== p.del));
-        else if (p.patch) setShrineItems((v) => v.map((x) => (x.id === p.patch.id ? { ...x, [p.patch.key]: p.patch.val, [p.patch.key + "By"]: p.patch.by } : x)));
+        else if (p.patch) setShrineItems((v) => v.map((x) => (x.id === p.patch.id ? { ...x, [p.patch.key]: p.patch.val, [p.patch.key + "By"]: p.patch.by, ...(p.patch.key === "rw" && p.patch.val ? { paid: true } : {}) } : x)));
         return;
       }
       if (kind === "rec") { if (p.row) setRecList((v) => (v.some((x) => x.id === p.row.id) ? v : [...v, p.row].slice(-60))); return; }
@@ -10825,6 +11032,13 @@ function EchoTown() {
         if (p.who !== (myName || "나")) setCenterChat((v) => [...v, { who: p.who, text: p.text, me: false }].slice(-80));
         return;
       }
+      if (kind === "grant") {
+        if (p.to !== (myName || "나")) return;
+        playBell();
+        pushGrant({ grantId: p.shrId, rewards: p.rewards, title: p.title, who: p.by });
+        showNotice(`🎁 「${p.title}」 보상이 도착했어요 · 퀘스트함에서 받아가세요!`);
+        return;
+      }
       if (kind === "follow") {
         const me = myName || "나";
         if (p.from === me) return;
@@ -10838,6 +11052,10 @@ function EchoTown() {
       }
       if (kind === "spr") {
         if (!p.id) return;
+        if (p.sync) {   // 접속 동기화로 받은 그림은 조용히 반영해요
+          if (p.src) setSharedSprites((v) => (v[p.id] === p.src ? v : { ...v, [p.id]: p.src }));
+          return;
+        }
         if (p.scale != null) {
           const n = Math.max(0.4, Math.min(3, Number(p.scale) || 1));
           setSpriteScale((m) => { const o = { ...m, [p.id]: n }; saveJSON("echotown_spritescale_v1", o); return o; });
@@ -11203,23 +11421,7 @@ function EchoTown() {
         {view === "ikea" && <IkeaView gems={gold} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
         {view === "project" && <BossMapView myName={myName} onBack={backToWorld} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss, mode, title) => { bump(isBoss ? "boss" : "quest"); if (!isBoss && mode === "hard") learnSkill(title); }}
           people={people}
-          onReward={(rs) => {
-            const list = typeof rs === "number" ? [{ kind: "gem", qty: rs }] : Array.isArray(rs) ? rs : [rs];
-            const said = [];
-            list.forEach((r, i) => {
-              if (!r) return;
-              if (r.kind === "gold") { if (r.qty) awardGold(r.qty); said.push(`🪙 골드${r.qty ? " " + r.qty : ""}`); return; }
-              if (r.kind === "item" || r.kind === "skill") {
-                setThanksInv((v) => [...v, { id: "qr" + Date.now() + i, name: r.qty ? `${r.name} ×${r.qty}` : r.name, emoji: r.emoji || (r.kind === "skill" ? "🧠" : "🎁"), acts: ["carry", "home"], from: "퀘스트 보상" }]);
-                setExp((e) => e + 10);
-                said.push(`${r.emoji || "🎁"} ${r.name}`);
-                return;
-              }
-              if (r.qty) award(r.qty);
-              said.push(`💎 젬${r.qty ? " " + r.qty : ""}`);
-            });
-            if (said.length) showNotice(`🎁 ${said.join(" · ")} 획득!`);
-          }}
+          onReward={applyRewards}
           onGainExp={(n, title) => { if (n > 0) { setExp((e) => e + n); showNotice(`⭐ 「${title}」 완료 · 경험치 +${n}`); } }}
           jumpTo={questJump} onJumpUsed={() => setQuestJump(null)}
           onCallParty={(mapId, q, party) => {
@@ -11238,6 +11440,13 @@ function EchoTown() {
               detail: `${q.desc ? q.desc + "\n" : ""}✅ 완료 조건 : ${q.task || "-"}\n\n✍️ 제출 답변\n${ans}\n\n🎁 보상 : ${reward}${q.exp ? `\n⭐ 경험치 : +${q.exp} (지급 완료)` : ""}`,
               reviewer: q.registrar || q.owner || "등록자",
               imgs: Array.isArray(imgs) ? imgs : [],
+              /* 🎁 검토가 끝나면 자동으로 나눠줄 정보 */
+              pay: {
+                rewards: q.rewards && q.rewards.length ? q.rewards : (q.reward ? [q.reward] : []),
+                split: q.split === "split" ? "split" : "each",
+                party: ((qAccept[q.id] || {}).party || [myName || "나"]),
+                title: q.title,
+              },
             });
             showNotice("🏆 완료의 제단에 등록되었습니다!");
           }}
@@ -11518,8 +11727,27 @@ function EchoTown() {
         onQuest={() => { setQuestBoxOpen(true); dbLoadBoss().then((d) => d && setBossCleared((c) => { const n = { ...c }; Object.keys(d).forEach((k) => { n[k] = { ...(n[k] || {}), ...d[k] }; }); return n; })); }}
         onMsg={() => setMsgOpen(true)} />
 
+      {startPop && (
+        <div onClick={() => setStartPop(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 215, padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 330 }}>
+            <div style={{ background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 20, boxShadow: "0 10px 26px rgba(0,0,0,0.5)" }}>
+              <div className="gem-pop" style={{ textAlign: "center", fontSize: 44 }}>🗺</div>
+              <div style={{ textAlign: "center", fontSize: 15, fontWeight: "bold", margin: "9px 0 10px" }}>퀘스트함을 확인해보세요!</div>
+              <div style={{ background: C.white, border: `2px dashed ${C.ink}`, borderRadius: 8, padding: 12, fontSize: 12.5, lineHeight: 1.9 }}>
+                {startPop.nNew > 0 && <>🆕 새로 등록된 퀘스트 <b>{startPop.nNew}</b>건<br /></>}
+                {startPop.nShr > 0 && <>✦ 내가 등록한 퀘스트에 새 파편 <b>{startPop.nShr}</b>건<br /><span style={{ fontSize: 11, color: C.inkSoft }}>🎁 보상을 확인해주세요</span></>}
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                <PxButton tone="ink" onClick={() => setStartPop(null)} style={{ flex: 1, padding: 11, fontSize: 13 }}>나중에</PxButton>
+                <PxButton tone="gold" onClick={() => { setStartPop(null); setQuestBoxOpen(true); }} style={{ flex: 1.4, padding: 11, fontSize: 13 }}>🗺 퀘스트함 열기</PxButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {questBoxOpen && (
-        <QuestBoxSheet onClose={() => setQuestBoxOpen(false)} rows={questBox} onRead={readQuestBox} onClear={clearQuestBox} onDoneRow={doneQuestRow}
+        <QuestBoxSheet onClose={() => setQuestBoxOpen(false)} rows={questBox} onRead={readQuestBox} onClear={clearQuestBox} onDoneRow={doneQuestRow} onClaim={claimReward}
           maps={bossMaps} accept={qAccept} cleared={bossCleared} myName={myName}
           onGo={(q) => {
             setQuestBoxOpen(false);
@@ -11532,6 +11760,20 @@ function EchoTown() {
       {menuOpen && <MenuSheet people={people} onClose={() => setMenuOpen(false)} myName={myName} myUid={myUid} feedback={feedback} onFeedback={addFeedback} onDelFeedback={delFeedback} onCheckFeedback={checkFeedback}
         sprites={allSprites} userSprites={sprites} cutCfg={cutCfg} onSetCut={setCut} scales={spriteScale} onSetScale={publishScale}
         onSetSprite={setSprite} onClearSprite={clearSprite} onClearSprites={clearAllSprites}
+        sprStatus={sprStatus}
+        onReloadSprites={async () => {
+          setSprStatus("불러오는 중…");
+          const d = await dbSprites();
+          const imgs = {}, scl = {};
+          Object.keys(d || {}).forEach((k) => {
+            if (k.endsWith("|s")) { const n = Number(d[k]); if (n > 0) scl[k.slice(0, -2)] = n; } else imgs[k] = d[k];
+          });
+          const n = Object.keys(imgs).length;
+          if (n) setSharedSprites((v) => ({ ...v, ...imgs }));
+          if (Object.keys(scl).length) setSpriteScale((v) => { const o = { ...v, ...scl }; saveJSON("echotown_spritescale_v1", o); return o; });
+          setSprStatus(n ? `🌍 서버에서 ${n}개를 불러왔어요` : "⚠️ 서버에 저장된 이미지가 없어요 (접속 중인 사람에게서만 받아와요)");
+          if (netSendEventRef.current) netSendEventRef.current("dictreq", { from: myName || "" });   // 접속자들에게도 다시 요청
+        }}
         onDm={(p) => setDmWith(p)}
         onCall={(p) => { setCallWith(p); if (netSendEvent) netSendEvent("call", { to: p.name, from: myName || "나" }); }} />}
 
