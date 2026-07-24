@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v55 · 2026-07-24";
+const APP_VERSION = "v57 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -547,7 +547,7 @@ function GemBadge({ amount, big, kind = "gem" }) {
 /* ===== ❓ 방별 팁 =====
    기능을 추가하거나 바꿀 때마다 여기에도 한 줄씩 넣어주세요. */
 const ROOM_TIPS = {
-  world: ["⬆⬇⬅➡ 또는 화면을 눌러 이동해요", "건물 안에서는 아래쪽 🚪 문으로 걸어 내려가면 바로 나와요", "건물 앞에서 Space 를 누르면 들어가요", "탈것을 타면 빨라지고 입장 범위도 넘어져요", "다른 사람 캐릭터를 누르면 따라가기·찾아가기·선물하기를 고를 수 있어요", "우측 상단 접속자 버튼 → 🏃 을 누르면 그 사람 옆으로 바로 가요", "좌측 하단 채팅은 5초 뒤 사라져요 · 확성기(🪙2)는 계속 남아요"],
+  world: ["⬆⬇⬅➡ 또는 화면을 눌러 이동해요", "건물 안 왼쪽 아래 🚪 문 앞에서 Space 를 누르면 나와요", "건물 앞에서 Space 를 누르면 들어가요", "탈것을 타면 빨라지고 입장 범위도 넘어져요", "다른 사람 캐릭터를 누르면 따라가기·찾아가기·선물하기를 고를 수 있어요", "우측 상단 접속자 버튼 → 🏃 을 누르면 그 사람 옆으로 바로 가요", "좌측 하단 채팅은 5초 뒤 사라져요 · 확성기(🪙2)는 계속 남아요"],
   center: ["테이블을 눌러 주민들과 대화해요", "회의실 안에서 📋 회의 안건을 적고 완료 체크할 수 있어요", "회의실 3곳은 예약하고 채팅도 할 수 있어요", "회의실 안 📨 초대장으로 날짜·시간을 정해 보내보세요", "커피·자판기·정수기로 HP·MP 를 채워요"],
   house: ["🖥️ 책상에 메모를 여러 장 붙여둘 수 있어요 · 눌러서 자세히 보기", "🚪 현관문을 누르면 바로 나가요", "🔧 가구 배치를 켜고 가구를 끌어서 옮겨보세요", "집에 둔 선물을 누르면 🎒 가방에 넣거나 🗑 버릴 수 있어요", "🌳 마당과 🐟 수족관은 형욱이네에서 사야 생겨요", "집에 둔 선물을 누르면 누가 줌는지 보여요"],
   sea: ["🚏 위쪽 정류장으로 가면 마을로 돌아가요", "🧔 어부 아저씨에게 미끼와 낚싯대를 사세요", "📖 바다 도감에서 뭐가 잡히는지 볼 수 있어요", "선착장 끝 🎣 낚시터에서 낚시를 해보세요", "잡은 건 어부 아저씨에게 팔 수 있어요"],
@@ -651,8 +651,16 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
   const nearRef = useRef(null);
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
-  const furRef = useRef(furniture);
-  furRef.current = furniture;
+  /* 🚪 나가기 문 — 모든 건물 왼쪽 아래에 하나씩 있어요.
+     문 앞에 서서 Space 를 누르면 나갑니다 (눌러서 나가도 돼요). */
+  const exitFurniture = onBack
+    ? { id: "__exit", x: 18, y: roomH - 88, w: 76, h: 76, color: "#8b5a2b", emoji: "🚪", label: "나가기", onInteract: onBack, fixed: true }
+    : null;
+  /* 기존 가구를 먼저 두고 문을 마지막에 넣어요 — 가구와 겹쳐도 가구가 우선 인식됩니다 */
+  const allFurniture = exitFurniture ? [...(furniture || []), exitFurniture] : (furniture || []);
+  const furRef = useRef([]);
+
+  furRef.current = allFurniture;
 
   const showToast = useCallback((t) => { setToast(t); window.clearTimeout(showToast._t); showToast._t = window.setTimeout(() => setToast(null), 1600); }, []);
 
@@ -705,13 +713,6 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
           y = Math.max(30, Math.min(roomH - 24, y));
           posRef.current = { x, y }; setPos({ x, y });
           if (dx < 0) setFacing(-1); else if (dx > 0) setFacing(1);
-          /* 🚪 문 안으로 계속 걸어 내려가면 자동으로 나가요 */
-          if (!exitLockRef.current && dy > 0 && onBackRef.current
-              && y >= roomH - 25 && Math.abs(x - roomW / 2) <= 46) {
-            exitLockRef.current = true;
-            const go = onBackRef.current;
-            setTimeout(() => go(), 0);
-          }
         }
         setMoving(Boolean(dx || dy));
         // 근접 판정 (가구 사각형과의 거리)
@@ -746,7 +747,7 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
   };
   const endDrag = () => { dragRef.current = null; };
 
-  const nearFur = furniture.find((f) => f.id === near);
+  const nearFur = allFurniture.find((f) => f.id === near);
 
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
@@ -755,19 +756,8 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
       <div style={{ position: "relative", width: "100%", overflow: "hidden" }}>
         <div ref={roomElRef} onPointerMove={editable ? onDragMove : undefined} onPointerUp={editable ? endDrag : undefined} onPointerLeave={editable ? endDrag : undefined}
           style={{ position: "relative", width: roomW, height: roomH, margin: "0 auto", background: bg, borderBottom: `3px solid ${C.ink}`, touchAction: editable ? "none" : "auto" }}>
-          {/* 🚪 출구 — 여기로 걸어 내려가면 자동으로 나가요 */}
-          {onBack && (
-            <div onClick={onBack} title="여기로 걸어 내려가면 나가요"
-              style={{ position: "absolute", left: roomW / 2 - 46, top: roomH - 34, width: 92, height: 34, cursor: "pointer",
-                background: "linear-gradient(180deg, rgba(139,90,43,0.25), rgba(139,90,43,0.55))",
-                border: `3px solid ${C.ink}`, borderBottom: "none", borderTopLeftRadius: 10, borderTopRightRadius: 10,
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 4, zIndex: 1 }}>
-              <span style={{ fontSize: 15 }}>🚪</span>
-              <span style={{ fontSize: 10, fontWeight: "bold", color: C.ink, background: "rgba(255,253,246,0.9)", border: `1.5px solid ${C.ink}`, borderRadius: 8, padding: "0 6px", whiteSpace: "nowrap" }}>나가기</span>
-            </div>
-          )}
-          {/* 가구 */}
-          {furniture.map((f) => {
+          {/* 가구 (마지막 항목이 🚪 나가기 문이에요) */}
+          {allFurniture.map((f) => {
             const active = f.id === near;
             if (f.npc) {
               return (
@@ -781,13 +771,13 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
             }
             return (
               <div key={f.id} title={f.label}
-                onPointerDown={(e) => { if (!editable) return; e.stopPropagation(); startDrag(e, f); }}
-                onClick={(e) => { e.stopPropagation(); if (editable) return; if (pausedRef.current) return; if (f.onInteract) f.onInteract(); if (f.toast) showToast(f.toast); }}
+                onPointerDown={(e) => { if (!editable || f.fixed) return; e.stopPropagation(); startDrag(e, f); }}
+                onClick={(e) => { e.stopPropagation(); if (editable && !f.fixed) return; if (pausedRef.current) return; if (f.onInteract) f.onInteract(); if (f.toast) showToast(f.toast); }}
                 style={{ position: "absolute", left: f.x, top: f.y, width: f.w, height: f.h,
-                  cursor: editable ? "grab" : "pointer", touchAction: editable ? "none" : "auto",
+                  cursor: editable && !f.fixed ? "grab" : "pointer", touchAction: editable && !f.fixed ? "none" : "auto",
                   display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center",
-                  background: editable ? "rgba(255,255,255,0.35)" : "transparent",
-                  border: editable ? `2px dashed ${C.ink}` : "none", borderRadius: 10,
+                  background: f.fixed ? "rgba(139,90,43,0.22)" : editable ? "rgba(255,255,255,0.35)" : "transparent",
+                  border: f.fixed ? `3px solid ${C.ink}` : editable ? `2px dashed ${C.ink}` : "none", borderRadius: 10,
                   filter: active ? `drop-shadow(0 0 5px ${C.gem}) drop-shadow(0 0 2px ${C.gem})` : "drop-shadow(0 2px 1px rgba(0,0,0,0.28))",
                   transition: "filter .12s" }}>
                 <span style={{ fontSize: Math.max(22, Math.min(f.w, f.h) * 0.72), lineHeight: 1 }}>{f.emoji}</span>
@@ -2276,6 +2266,12 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
         });
         ch.on("broadcast", { event: "qleave" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
+        });
+        /* ⚠️ 새 이벤트를 만들면 반드시 여기에 이름을 넣어야 상대에게 도착해요 */
+        ["qcall", "qcallack", "qstart", "qlog", "mroom"].forEach((ev) => {
+          ch.on("broadcast", { event: ev }, ({ payload }) => {
+            if (onChatRef && onChatRef.net) onChatRef.net(ev, payload);
+          });
         });
         ch.on("broadcast", { event: "pwtry" }, ({ payload }) => {
           if (onChatRef && onChatRef.net) onChatRef.net("pwtry", payload);
@@ -7070,6 +7066,10 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n8", type: "업데이트", date: "2026-07-24", title: "🚪 모든 건물에 나가기 문 (Space)",
+    body: "· 걸어가면 자동으로 나가지던 방식을 없앴어요 (제대로 동작하지 않았고 나가기 버튼과 겹쳤어요)\n· 대신 모든 건물 왼쪽 아래에 🚪 나가기 문이 하나씩 생겼어요\n· 문 앞에 서면 「Space · 나가기」가 뜨고, Space 를 누르면 나갑니다 (마우스로 눌러도 돼요)\n· 다른 가구와 겹쳐도 가구가 우선 인식돼서 실수로 나가지지 않아요\n· 🔧 가구 배치 모드에서도 문은 움직이지 않고 그대로 있어요\n· [수정] 방 안에서 움직이는 동안 가구 안내(Space 표시)가 늦게 뜨던 문제도 함께 고쳤어요" },
+  { id: "u20260724n7", type: "수정", date: "2026-07-24", title: "🛠 모두 부르기 팝업이 안 뜨던 문제 수정",
+    body: "· [원인] 새로 만든 신호(호출·시작·일지·회의안건)를 받는 쪽에서 듣고 있지 않아 아예 도착하지 않았어요\n· 📣 파티원 모두 부르기 → 이제 지목된 사람 화면에 팝업이 정상적으로 떠요\n· 거절 회신도 부른 사람에게 도착해요\n· 📓 퀘스트 일지가 다른 사람에게 실시간으로 보여요\n· ▶ 퀘스트 시작 · 📋 회의실 안건 공유도 함께 고쳤어요" },
   { id: "u20260724n6", type: "수정", date: "2026-07-24", title: "🛠 참가 중 목록이 일부만 보이던 문제 수정",
     body: "· [원인] 내가 아직 수락하지 않은 퀘스트는 다른 사람의 수락 소식을 받아도 무시하고 있었어요 — 그래서 사람마다 명단이 다르게 보였습니다\n· 이제 누가 수락하든 모든 사람의 명단에 바로 추가돼요\n· 접속할 때 다른 주민들에게 참가 명단 · 대화 · 일지를 받아와 자동으로 합쳐요 (오프라인일 때 있었던 일도 따라옵니다)\n· ▶ 퀘스트 시작도 파티원 모두에게 전달돼요 (예전엔 시작한 사람만 알았어요)\n· 모집 화면의 「🔄 새로고침」을 누르면 명단을 다시 불러올 수 있어요\n· 🔒 파티 잠금 동의도 명단이 없던 사람에게 정상 반영돼요" },
   { id: "u20260724n5", type: "업데이트", date: "2026-07-24", title: "📓 퀘스트 일지 = 모두가 보는 공유 기록",
@@ -9966,7 +9966,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qlock" || kind === "qleave" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "qcallack") {
