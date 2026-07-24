@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v28 · 2026-07-24";
+const APP_VERSION = "v29 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -462,7 +462,7 @@ const HAIR_STYLES = [
 ];
 const DEFAULT_LOOK = { skin: "#f4c9a0", hair: "#6b4423", hairStyle: "short" };
 
-function Hero({ facing = 1, moving = false, size = 34, outfit = null, look = null, carry = null }) {
+function Hero({ facing = 1, moving = false, size = 34, outfit = null, look = null, carry = null, pet = null }) {
   const top = (outfit && outfit.top) ? outfit.top.color : C.bankRoof;
   const bottom = (outfit && outfit.bottom) ? outfit.bottom.color : C.woodDark;
   const shoes = (outfit && outfit.shoes) ? outfit.shoes.color : null;
@@ -489,6 +489,10 @@ function Hero({ facing = 1, moving = false, size = 34, outfit = null, look = nul
         {shoes && <rect x="4.5" y="19" width="3.5" height="2" fill={shoes} stroke={C.ink} strokeWidth="0.4" />}
         {shoes && <rect x="9" y="19" width="3.5" height="2" fill={shoes} stroke={C.ink} strokeWidth="0.4" />}
       </svg>
+      {/* 따라다니는 반려동물 */}
+      {pet && (
+        <span className="pet-trot" style={{ position: "absolute", left: -size * 0.62, bottom: 0, fontSize: size * 0.52, transform: `scaleX(${facing})`, pointerEvents: "none", filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.3))" }}>{pet}</span>
+      )}
       {/* 들고 있는 선물 */}
       {carry && (
         <span style={{ position: "absolute", right: -size * 0.28, top: size * 0.34, fontSize: size * 0.5, transform: `scaleX(${facing})`, pointerEvents: "none", filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.35))" }}>
@@ -560,7 +564,7 @@ function TitleBar({ icon, title, sub, onBack, right, bg = C.parch, fg = C.ink })
 
 /* ======================= 이동 가능한 룸(내부) ======================= */
 /* furniture: {id,x,y,w,h,label,emoji,color?,onInteract?,toast?} 좌표는 룸 px 기준 */
-function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, start, onBack, paused = false, children, headerBg = C.parch, banner = null, bubble = null, outfit = null, look = null, carry = null }) {
+function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, start, onBack, paused = false, children, headerBg = C.parch, banner = null, bubble = null, outfit = null, look = null, carry = null, pet = null }) {
   const net = useContext(NetContext);
   const [pos, setPos] = useState(start || { x: roomW / 2, y: roomH - 60 });
   useEffect(() => { if (net && net.roomPosRef) net.roomPosRef.current = pos; }, [pos, net]);
@@ -677,7 +681,7 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
               )}
               <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
               <div className={o.dm ? "dance-" + o.dm : ""} style={{ transformOrigin: "bottom center" }}>
-                <Hero facing={o.f || 1} moving={false} size={30} look={o.lk} carry={o.cy ? { emoji: o.cy } : null} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
+                <Hero facing={o.f || 1} moving={false} size={30} look={o.lk} pet={o.pt} carry={o.cy ? { emoji: o.cy } : null} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
               </div>
             </div>
           ))}
@@ -694,7 +698,7 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
                 Space · {nearFur.label}
               </div>
             )}
-            <Hero facing={facing} moving={moving} size={30} outfit={outfit} look={look} carry={carry} />
+            <Hero facing={facing} moving={moving} size={30} outfit={outfit} look={look} carry={carry} pet={pet} />
           </div>
           {/* 토스트 */}
           {toast && (
@@ -735,6 +739,7 @@ function buildWorld() {
   list.push({ id: "coredict", kind: "small", x: 1180, y: 640, r: 58, label: "📖 코어사전", tint: "#8a5a3b" });
   list.push({ id: "project", kind: "small", x: 1120, y: 970, r: 60, label: "🗺 보스맵 도전기" });
   list.push({ id: "questdone", kind: "shrine", x: 1300, y: 1080, r: 68, label: "🏆 퀘스트 완료의 제단" });
+  list.push({ id: "petshop", kind: "small", x: 1000, y: 1240, r: 62, label: "🐾 펫샵" });
   list.push({ id: "naverschool", kind: "small", x: 1800, y: 300, r: 70, label: "📗 네이버스쿨" });
   list.push({ id: "videoschool", kind: "small", x: 2030, y: 300, r: 70, label: "🎬 영상스쿨" });
   list.push({ id: "sandbag", kind: "small", x: 800, y: 360, r: 55, label: "🥊 샌드백", tint: "#c0563a" });
@@ -892,6 +897,7 @@ function spriteSize(o) {
   if (o.id === "project") return 110;
   if (o.kind === "shrine") return 160;
   if (o.id === "coredict") return 104;
+  if (o.id === "petshop") return 100;
   if (o.id === "sandbag") return 92;
   if (o.id === "naverschool" || o.id === "videoschool") return 140;
   switch (o.kind) {
@@ -1009,6 +1015,108 @@ function DecoSprite({ id, size, sprites, cutCfg, children }) {
   if (!src) return children;
   const cfg = (cutCfg && cutCfg[id]) || {};
   return <AutoSprite src={src} cut={cfg.cut !== undefined ? cfg.cut : true} tol={cfg.tol !== undefined ? cfg.tol : 32} width={size} alt={id} />;
+}
+
+/* 🐾 반려동물 · 🐠 반려물고기 */
+const PETS = [
+  { id: "dog", name: "강아지", emoji: "🐕", price: 40, desc: "따라다니며 꼬리를 흔들어요" },
+  { id: "cat", name: "고양이", emoji: "🐈", price: 40, desc: "가끔 딴 데를 봐요" },
+  { id: "rabbit", name: "토끼", emoji: "🐇", price: 30, desc: "폴짝폴짝 따라와요" },
+  { id: "hamster", name: "햄스터", emoji: "🐹", price: 20, desc: "주머니에 쏙" },
+  { id: "bird", name: "앵무새", emoji: "🦜", price: 35, desc: "어깨 위가 지정석" },
+  { id: "turtle", name: "거북이", emoji: "🐢", price: 25, desc: "느긋하게 따라와요" },
+  { id: "fox", name: "여우", emoji: "🦊", price: 60, desc: "영리하고 도도해요" },
+  { id: "penguin", name: "펭귄", emoji: "🐧", price: 55, desc: "뒤뚱뒤뚱" },
+];
+const FISHES = [
+  { id: "f1", name: "금붕어", emoji: "🐠", price: 8 },
+  { id: "f2", name: "열대어", emoji: "🐟", price: 10 },
+  { id: "f3", name: "복어", emoji: "🐡", price: 14 },
+  { id: "f4", name: "돌고래", emoji: "🐬", price: 30 },
+  { id: "f5", name: "상어", emoji: "🦈", price: 40 },
+  { id: "f6", name: "해파리", emoji: "🪼", price: 12 },
+  { id: "f7", name: "문어", emoji: "🐙", price: 18 },
+  { id: "f8", name: "새우", emoji: "🦐", price: 6 },
+];
+
+function PetShop({ onBack, gold, pets = [], activePet = null, fishes = [], onBuyPet, onSetActive, onBuyFish, bubble }) {
+  const [tab, setTab] = useState("pet");
+  const has = (id) => pets.includes(id);
+  const furniture = [
+    { id: "counter", x: 250, y: 60, w: 150, h: 70, color: "#a9814a", emoji: "🧑‍⚕️", label: "카운터", toast: "어떤 친구를 찾으세요? 🐾" },
+    { id: "cage", x: 60, y: 200, w: 120, h: 90, color: "#d9c9a8", emoji: "🐕", label: "강아지 우리", toast: "멍멍! 🐕" },
+    { id: "tank", x: 440, y: 200, w: 140, h: 90, color: "#bfe0f7", emoji: "🐠", label: "수조", toast: "물고기들이 헤엄쳐요 🐠" },
+  ];
+  return (
+    <RoomView title="펫샵" icon="🐾" sub="반려동물을 입양하고 🐠 물고기를 데려가요" bg="#f3ead8" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused headerBg="#7bbf8f" bubble={bubble}>
+      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", padding: 14, zIndex: 20 }}>
+        <div style={{ width: "100%", maxWidth: 460, maxHeight: "92%", overflow: "auto" }}>
+          <Panel style={{ padding: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <span style={{ fontSize: 22 }}>🐾</span>
+              <b style={{ flex: 1, fontSize: 15 }}>펫샵</b>
+              <GemBadge kind="gold" amount={gold} />
+            </div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+              <PxButton tone={tab === "pet" ? "good" : "wood"} onClick={() => setTab("pet")} style={{ flex: 1, fontSize: 12, padding: 9 }}>🐾 반려동물</PxButton>
+              <PxButton tone={tab === "fish" ? "good" : "wood"} onClick={() => setTab("fish")} style={{ flex: 1, fontSize: 12, padding: 9 }}>🐠 반려물고기</PxButton>
+            </div>
+
+            {tab === "pet" ? (
+              <>
+                <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 8, lineHeight: 1.7 }}>
+                  입양하면 마을에서 나를 졸졸 따라다녀요. 여러 마리를 키워도 <b>데리고 나가는 건 한 마리</b>씩이에요.
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
+                  {PETS.map((pt) => {
+                    const own = has(pt.id), act = activePet === pt.id;
+                    return (
+                      <div key={pt.id} style={{ background: act ? "#fff5d6" : C.white, border: `3px solid ${act ? C.gem : C.ink}`, borderRadius: 10, padding: 10, textAlign: "center" }}>
+                        <div style={{ fontSize: 34 }}>{pt.emoji}</div>
+                        <div style={{ fontSize: 13, fontWeight: "bold", marginTop: 3 }}>{pt.name}</div>
+                        <div style={{ fontSize: 10.5, color: C.inkSoft, lineHeight: 1.5, minHeight: 28, marginTop: 2 }}>{pt.desc}</div>
+                        {own ? (
+                          <PxButton tone={act ? "ink" : "good"} onClick={() => onSetActive(act ? null : pt.id)} style={{ width: "100%", marginTop: 6, fontSize: 11, padding: 8 }}>
+                            {act ? "🏠 집에 두기" : "🚶 데리고 나가기"}
+                          </PxButton>
+                        ) : (
+                          <PxButton tone="gold" disabled={gold < pt.price} onClick={() => onBuyPet(pt)} style={{ width: "100%", marginTop: 6, fontSize: 11, padding: 8 }}>
+                            {gold < pt.price ? `🪙${pt.price} 부족` : `🪙${pt.price} 입양`}
+                          </PxButton>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 8, lineHeight: 1.7 }}>
+                  데려간 물고기는 <b>우리 집 어항</b>에서 헤엄쳐요. 집에 들어가 어항을 눌러보세요 🐠
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 8 }}>
+                  {FISHES.map((f) => {
+                    const cnt = fishes.filter((x) => x === f.id).length;
+                    return (
+                      <div key={f.id} style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 10, textAlign: "center" }}>
+                        <div style={{ fontSize: 30 }}>{f.emoji}</div>
+                        <div style={{ fontSize: 12.5, fontWeight: "bold", marginTop: 3 }}>{f.name}</div>
+                        {cnt > 0 && <div style={{ fontSize: 10, color: C.good, fontWeight: "bold" }}>어항에 {cnt}마리</div>}
+                        <PxButton tone="blue" disabled={gold < f.price} onClick={() => onBuyFish(f)} style={{ width: "100%", marginTop: 6, fontSize: 11, padding: 8 }}>
+                          {gold < f.price ? `🪙${f.price} 부족` : `🪙${f.price} 데려가기`}
+                        </PxButton>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+            <PxButton tone="ink" onClick={onBack} style={{ width: "100%", marginTop: 12, padding: 11, fontSize: 13 }}>나가기</PxButton>
+          </Panel>
+        </div>
+      </div>
+    </RoomView>
+  );
 }
 
 function LetterN({ size = 80 }) {
@@ -1224,7 +1332,7 @@ async function dbAddNotice(type, title, body) {
   try { const s = await getSupa(); await s.from("notices").insert({ type, title, body: body || null }); } catch (e) {}
 }
 
-function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef, roomPosRef, danceRef, houseRef, lookRef, carryRef) {
+function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef, roomPosRef, danceRef, houseRef, lookRef, carryRef, petRef) {
   const [retry, setRetry] = useState(0);          // 연결이 끊기면 올라가며 재접속을 유발
   const [others, setOthers] = useState({});
   const [count, setCount] = useState(1);
@@ -1354,6 +1462,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
                   hs: (houseRef && houseRef.current) ? { r: houseRef.current.roof, w: houseRef.current.wall } : null,
                   lk: (lookRef && lookRef.current) || null,
                   cy: (carryRef && carryRef.current) ? (carryRef.current.emoji || "🎁") : null,
+                  pt: (petRef && petRef.current) || null,
                   oc: [of.top ? of.top.color : null, of.bottom ? of.bottom.color : null, of.shoes ? of.shoes.color : null] };
               })() });
             }, 160);
@@ -1410,7 +1519,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
   return { others, count, status, sendChat, sendEvent, reconnect };
 }
 
-function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = null, carry = null, shuffle = false, onShuffle, onNextTrack, onPrevTrack, onReconnect, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null, onGift = null, myNick = "" }) {
+function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = null, carry = null, pet = null, shuffle = false, onShuffle, onNextTrack, onPrevTrack, onReconnect, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null, onGift = null, myNick = "" }) {
   const [songOpen, setSongOpen] = useState(false);
   const [teleport, setTeleport] = useState(null);
   const [whoOpen, setWhoOpen] = useState(false);
@@ -1429,6 +1538,20 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
   const [followId, setFollowId] = useState(null);        // 🏃 따라갈 친구
   const followRef = useRef(null);
   followRef.current = followId ? (others[followId] || null) : null;
+  /* 🏃 찾아가기 : 그 사람 바로 옆으로 순간이동 */
+  const goTo = (o) => {
+    if (!o) return;
+    if (o.v && o.v !== "world") { setToast2(`${o.name}님은 지금 마을에 없어요 (${o.v})`); setTimeout(() => setToast2(null), 1800); return; }
+    const nx = Math.max(30, Math.min(WORLD.w - 30, (o.x || 0) + 46));
+    const ny = Math.max(40, Math.min(WORLD.h - 30, o.y || 0));
+    posRef.current = { x: nx, y: ny };
+    setPos({ x: nx, y: ny });
+    setWhoOpen(false);
+    setToast2(`🏃 ${o.name}님에게 찾아왔어요!`);
+    setTimeout(() => setToast2(null), 1600);
+  };
+  const [toast2, setToast2] = useState(null);
+  const [picked, setPicked] = useState(null);   // 클릭한 상대 (따라가기/선물)
   useEffect(() => { if (danceRef) danceRef.current = danceMove; }, [danceMove, danceRef]);
   const [danceMenu, setDanceMenu] = useState(false);
   const DANCE_MOVES = [
@@ -1663,13 +1786,13 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
 
           {/* 다른 접속자 */}
           {Object.values(others).filter((o) => (o.v || "world") === "world").map((o) => (
-            <div key={o.id} onClick={() => onGift && onGift(o.name)} title={`${o.name}님에게 선물하기`} style={{ position: "absolute", left: o.x, top: o.y, transform: "translate(-50%,-100%)", zIndex: 17, opacity: 0.95, transition: "left .18s linear, top .18s linear", cursor: "pointer" }}>
+            <div key={o.id} onClick={() => setPicked(o.id)} title={`${o.name} — 눌러서 메뉴 열기`} style={{ position: "absolute", left: o.x, top: o.y, transform: "translate(-50%,-100%)", zIndex: 17, opacity: 0.95, transition: "left .18s linear, top .18s linear", cursor: "pointer" }}>
               {o.bubble && (
                 <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 190, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>{o.bubble}</div>
               )}
               <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
               <div className={o.dm ? "dance-" + o.dm : ""} style={{ transformOrigin: "bottom center" }}>
-                <Hero facing={o.f || 1} moving={false} size={34} look={o.lk} carry={o.cy ? { emoji: o.cy } : null} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
+                <Hero facing={o.f || 1} moving={false} size={34} look={o.lk} pet={o.pt} carry={o.cy ? { emoji: o.cy } : null} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
               </div>
             </div>
           ))}
@@ -1687,12 +1810,29 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
               </div>
             )}
             <div className={danceMove ? "dance-" + danceMove : ""} style={{ transformOrigin: "bottom center" }}>
-              <Hero facing={facing} moving={moving} size={36} outfit={outfit} look={look} carry={carry} />
+              <Hero facing={facing} moving={moving} size={36} outfit={outfit} look={look} carry={carry} pet={pet} />
               {vehicle && <div style={{ position: "absolute", left: "50%", bottom: -6, transform: "translateX(-50%)", fontSize: 20 }}>{vehicle.emoji}</div>}
             </div>
           </div>
         </div>
 
+        {picked && others[picked] && (
+          <div onClick={() => setPicked(null)} style={{ position: "absolute", inset: 0, zIndex: 30, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18, width: "min(280px, 86%)", boxShadow: "0 10px 26px rgba(0,0,0,0.45)" }}>
+              <div style={{ textAlign: "center", fontSize: 30 }}>🧑</div>
+              <div style={{ textAlign: "center", fontSize: 16, fontWeight: "bold", margin: "6px 0 14px" }}>{others[picked].name}</div>
+              <PxButton tone={followId === picked ? "danger" : "good"} onClick={() => { setFollowId(followId === picked ? null : picked); setPicked(null); }} style={{ width: "100%", padding: 11, fontSize: 13 }}>
+                {followId === picked ? "🛑 따라가기 멈춤" : "🏃 따라가기"}
+              </PxButton>
+              <PxButton tone="blue" onClick={() => { goTo(others[picked]); setPicked(null); }} style={{ width: "100%", padding: 10, fontSize: 13, marginTop: 7 }}>📍 찾아가기 (바로 이동)</PxButton>
+              <PxButton tone="gold" onClick={() => { const n = others[picked].name; setPicked(null); onGift && onGift(n); }} style={{ width: "100%", padding: 10, fontSize: 13, marginTop: 7 }}>🎁 선물하기</PxButton>
+              <PxButton tone="ink" onClick={() => setPicked(null)} style={{ width: "100%", padding: 9, fontSize: 12, marginTop: 7 }}>닫기</PxButton>
+            </div>
+          </div>
+        )}
+        {toast2 && (
+          <div style={{ position: "absolute", left: "50%", top: 56, transform: "translateX(-50%)", zIndex: 28, background: C.ink, color: C.gem, border: `2px solid ${C.gem}`, borderRadius: 20, padding: "7px 16px", fontSize: 12.5, fontFamily: "'DotGothic16', monospace" }}>{toast2}</div>
+        )}
         {followId && others[followId] && (
           <div style={{ position: "absolute", left: "50%", top: 56, transform: "translateX(-50%)", zIndex: 26, background: C.ink, color: C.gem, border: `2px solid ${C.gem}`, borderRadius: 20, padding: "6px 14px", fontSize: 12, fontFamily: "'DotGothic16', monospace", display: "flex", alignItems: "center", gap: 8 }}>
             🏃 {others[followId].name} 따라가는 중
@@ -1718,17 +1858,13 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
               <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", right: 0, top: "120%", background: C.parch, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 8, minWidth: 130, zIndex: 40, textAlign: "left", boxShadow: `0 3px 0 ${C.parchEdge}` }}>
                 <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 4 }}>접속 중</div>
                 <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 2 }}>🟢 {myNick || "나"} (나)</div>
-                {Object.values(others).map((o) => {
-                  const on = followId === o.id;
-                  return (
-                    <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                      <span style={{ flex: 1, fontSize: 12, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🟢 {o.name}</span>
-                      <PxButton tone={on ? "danger" : "blue"} onClick={() => setFollowId(on ? null : o.id)} style={{ fontSize: 10, padding: "4px 7px" }}>
-                        {on ? "멈춤" : "🏃 따라가기"}
-                      </PxButton>
-                    </div>
-                  );
-                })}
+                {Object.values(others).map((o) => (
+                  <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                    <span style={{ flex: 1, fontSize: 12, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🟢 {o.name}</span>
+                    <button onClick={() => goTo(o)} title={`${o.name}님에게 찾아가기`}
+                      style={{ cursor: "pointer", background: C.gem, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 15, padding: "2px 8px", lineHeight: 1.4 }}>🏃</button>
+                  </div>
+                ))}
                 {Object.keys(others).length === 0 && <div style={{ fontSize: 11, color: C.inkSoft }}>아직 다른 주민이 없어요</div>}
                 <div style={{ borderTop: `2px solid ${C.parchEdge}`, marginTop: 6, paddingTop: 6 }}>
                   <div style={{ fontSize: 10.5, color: netStatus === "접속됨" ? C.good : C.danger, fontWeight: "bold", marginBottom: 5 }}>
@@ -1740,8 +1876,6 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
               </div>
             )}
           </button>
-          <span style={{ background: C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}` }}>📅 DAY {day}</span>
-          <PxButton tone="blue" onClick={onNextDay} style={{ fontSize: 11, padding: "6px 9px" }}>🌙 다음 날</PxButton>
           <div style={{ position: "relative" }}>
             <PxButton tone={danceMove ? "good" : "gold"} onClick={() => setDanceMenu((v) => !v)} style={{ fontSize: 14, padding: "5px 9px" }}>💃</PxButton>
             {danceMenu && (
@@ -2411,7 +2545,7 @@ function GiftModal({ target, inventory, myName, onSend, onClose }) {
   );
 }
 
-function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras = [], gifts = [], fridge = [] }) {
+function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras = [], gifts = [], fridge = [], fishes = [] }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(memo || "");
   const furniture = [
@@ -2434,6 +2568,13 @@ function HomeView({ house, memo, onSaveMemo, onBack, bubble, skin = null, extras
     furniture.push({ id: "gift" + i, x: gp[0], y: gp[1], w: 44, h: 44, color: "transparent", emoji: g.emoji || "🎁", label: g.name,
       toast: `${g.name}${g.from ? ` — ${g.from}님이 준 선물이에요` : "을(를) 집에 뒀어요"} ✨` });
   });
+  /* 🐠 어항 */
+  if (fishes && fishes.length) {
+    const counts = {};
+    fishes.forEach((id) => { counts[id] = (counts[id] || 0) + 1; });
+    const label = Object.entries(counts).map(([id, c]) => { const f = FISHES.find((x) => x.id === id); return f ? `${f.emoji} ${f.name} ${c}` : null; }).filter(Boolean).join(", ");
+    furniture.push({ id: "aqua", x: 210, y: 40, w: 120, h: 62, color: "#bfe0f7", emoji: "🐠", label: `어항 (${fishes.length})`, toast: `🐠 어항 : ${label}` });
+  }
   /* 🧊 냉장고 */
   furniture.push({ id: "fridge", x: 552, y: 285, w: 58, h: 80, color: "#dfe7ea", emoji: "🧊", label: `냉장고 (${fridge.length})`,
     toast: fridge.length ? `🧊 냉장고 안: ${fridge.map((f) => `${f.emoji || "🍽"} ${f.name}`).join(", ")}` : "🧊 냉장고가 비었어요" });
@@ -5276,6 +5417,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724z", type: "업데이트", date: "2026-07-24", title: "🐾 펫샵 오픈 · 🏃 찾아가기 · 📅 DAY 삭제",
+    body: "· 🐾 펫샵이 생겼어요 (마을 남쪽) — 강아지·고양이·토끼·햄스터·앵무새·거북이·여우·펭귄 8종\n· 입양하면 마을에서 나를 졸졸 따라다니고, 다른 사람에게도 보여요\n· 여러 마리를 키워도 데리고 나가는 건 한 마리씩이에요\n· 🐠 반려물고기 8종은 우리 집 어항에서 헤엄쳐요 (집에서 어항을 눌러보세요)\n· 🏃 접속자 목록의 달리기 버튼을 누르면 그 사람 옆으로 바로 이동해요\n· 마을에서 다른 사람 캐릭터를 누르면 따라가기 · 찾아가기 · 선물하기 메뉴가 떠요\n· 📅 DAY 표시와 「다음 날」 기능을 없앴어요" },
   { id: "u20260724y", type: "업데이트", date: "2026-07-24", title: "🏃 친구 따라가기 · 🛵 탈것 조준 개선 · 💬 채팅 중복 수정",
     body: "· 우측 상단 접속자 목록에서 「🏃 따라가기」 를 누르면 그 친구를 자동으로 쫓아가요 (70px 이내면 멈춤)\n· 방향키를 누르면 내 조작이 우선이고, 상단 배너의 「멈춤」 으로 해제합니다\n· 🛵 탈것을 타면 건물 입장 판정 범위가 1.55배 넓어져 조준이 쉬워요\n· 기본 걷기 속도를 4.2 → 3.5 로 살짝 줄였어요 (탈것 속도는 그대로 배율 적용)\n· 💬 내가 보낸 채팅이 한 번 더 뜨던 중복 문제를 고쳤어요" },
   { id: "u20260724x", type: "업데이트", date: "2026-07-24", title: "🚬 재떨이 수다방 실시간 채팅",
@@ -7056,8 +7199,9 @@ function EchoTown() {
   const netSendEventRef = useRef(null);
   const myNameRef = useRef("");
   const netCarryRef = useRef(null);
+  const netPetRef = useRef(null);
   const netRoomPosRef = useRef({ x: 0, y: 0 });
-  const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat, sendEvent: netSendEvent, reconnect: netReconnect } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef, netOutfitRef, netViewRef, netRoomPosRef, netDanceRef, netHouseRef, netLookRef, netCarryRef);
+  const { others: netOthers, count: netCount, status: netStatus, sendChat: netSendChat, sendEvent: netSendEvent, reconnect: netReconnect } = useMultiplayer(myName, netPosRef, netFacingRef, onChatRef, netOutfitRef, netViewRef, netRoomPosRef, netDanceRef, netHouseRef, netLookRef, netCarryRef, netPetRef);
   useEffect(() => { netSendEventRef.current = netSendEvent; }, [netSendEvent]);
   useEffect(() => { myNameRef.current = myName; }, [myName]);
   const [nameOpen, setNameOpen] = useState(() => !loadJSON("echotown_myname", ""));
@@ -7072,6 +7216,9 @@ function EchoTown() {
     if (typeof d.gold === "number") setGold(d.gold);
     if (typeof d.exp === "number") setExp(d.exp);
     if (d.profile) setProfile({ job: "", avatar: "🧑‍💻", ...d.profile, look: { ...DEFAULT_LOOK, ...(d.profile.look || {}) } });
+    if (d.pets) setPets(d.pets);
+    if (d.activePet !== undefined) setActivePet(d.activePet);
+    if (d.fishes) setFishes(d.fishes);
     if (d.homeGifts) setHomeGifts(d.homeGifts);
     if (d.fridge) setFridge(d.fridge);
     if (typeof d.lifetime === "number") setLifetime(d.lifetime);
@@ -7275,6 +7422,13 @@ function EchoTown() {
   useEffect(() => { netLookRef.current = myLook; }, [myLook]);
 
   /* 🎁 선물 행동 : 들고다니기 · 집에 두기 · 먹기 · 냉장고 */
+  /* 🐾 반려동물 · 🐠 어항 */
+  const [pets, setPets] = useState([]);
+  const [activePet, setActivePet] = useState(null);
+  const [fishes, setFishes] = useState([]);
+  const petEmoji = useMemo(() => { const p = PETS.find((x) => x.id === activePet); return p ? p.emoji : null; }, [activePet]);
+  useEffect(() => { netPetRef.current = petEmoji; }, [petEmoji]);
+
   const [carrying, setCarrying] = useState(null);        // { ...item, _i }
   const [homeGifts, setHomeGifts] = useState([]);        // 집에 둔 선물
   const [fridge, setFridge] = useState([]);              // 냉장고에 넣은 음식
@@ -7749,7 +7903,7 @@ function EchoTown() {
   const saveTimer = useRef(null);
   /* 현재 저장할 내용을 항상 최신으로 들고 있습니다 */
   const payloadRef = useRef(null);
-  payloadRef.current = { gems, gold, exp, lifetime, profile, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept };
+  payloadRef.current = { gems, gold, exp, lifetime, profile, pets, activePet, fishes, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept };
   const flushSaveRef = useRef(null);
   const flushSave = useCallback((name) => {
     const n = name || myNameRef.current;
@@ -7766,7 +7920,7 @@ function EchoTown() {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => flushSave(myName), 800);
     return () => clearTimeout(saveTimer.current);
-  }, [myName, gems, gold, exp, lifetime, profile, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept, flushSave]);
+  }, [myName, gems, gold, exp, lifetime, profile, pets, activePet, fishes, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept, flushSave]);
 
   /* 새로고침·탭 닫기·탭 전환 직전에 밀린 저장을 즉시 반영 */
   useEffect(() => {
@@ -7923,7 +8077,7 @@ function EchoTown() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gold} sprites={allSprites} cutCfg={cutCfg} look={myLook} carry={carrying} shuffle={shuffle} onShuffle={toggleShuffle} onNextTrack={() => stepTrack(1)} onPrevTrack={() => stepTrack(-1)} onReconnect={netReconnect} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} myNick={myName} onGift={(n) => setGiftTarget(n)} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gold} sprites={allSprites} cutCfg={cutCfg} look={myLook} carry={carrying} pet={petEmoji} shuffle={shuffle} onShuffle={toggleShuffle} onNextTrack={() => stepTrack(1)} onPrevTrack={() => stepTrack(-1)} onReconnect={netReconnect} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} myNick={myName} onGift={(n) => setGiftTarget(n)} />}
         {view === "center" && <CenterView meetings={myMeetings} meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => setCenterChat((c) => [...c, { who: "나", text: t, me: true }])} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} myName={myName} people={people}
           chat={meetingChat[meetingId] || []}
@@ -7936,7 +8090,7 @@ function EchoTown() {
           }}
           onUpdate={(id, patch) => setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } }))} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && (unlocked[houseId] ? (
-          <HomeView gifts={isMyHouse(houseMeta.name) ? homeGifts : []} fridge={isMyHouse(houseMeta.name) ? fridge : []} house={houseMeta} skin={isMyHouse(houseMeta.name) ? houseSkin : null} extras={isMyHouse(houseMeta.name) ? myFurni : []} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />
+          <HomeView fishes={isMyHouse(houseMeta.name) ? fishes : []} gifts={isMyHouse(houseMeta.name) ? homeGifts : []} fridge={isMyHouse(houseMeta.name) ? fridge : []} house={houseMeta} skin={isMyHouse(houseMeta.name) ? houseSkin : null} extras={isMyHouse(houseMeta.name) ? myFurni : []} memo={memos[houseId]} onSaveMemo={(t) => setMemos((m) => ({ ...m, [houseId]: t }))} onBack={backToWorld} bubble={bubble} />
         ) : (
           <HouseGate house={houseMeta} isMine={isMyHouse(houseMeta.name)} myName={myName} hasPw={!!housePw}
             onSetPw={(p) => { setHousePw(p); }}
@@ -7968,6 +8122,10 @@ function EchoTown() {
         {view === "coredict" && <CoreDictView myName={myName} onBack={backToWorld} netCount={netCount}
           dict={dict} gallery={gallery} onSaveWord={saveWord} onDelWord={delWord}
           onAddPhotos={addPhotos} onCaption={setCaption} onDelPhoto={delPhoto} onSync={askSync} />}
+        {view === "petshop" && <PetShop onBack={backToWorld} bubble={bubble} gold={gold} pets={pets} activePet={activePet} fishes={fishes}
+          onBuyPet={(pt) => { if (gold < pt.price) return; setGold((g) => g - pt.price); setPets((v) => [...v, pt.id]); setActivePet(pt.id); showNotice(`${pt.emoji} ${pt.name}를 입양했어요!`); }}
+          onSetActive={(id) => setActivePet(id)}
+          onBuyFish={(f) => { if (gold < f.price) return; setGold((g) => g - f.price); setFishes((v) => [...v, f.id]); showNotice(`${f.emoji} ${f.name}를 어항에 넣었어요!`); }} />}
         {view === "questdone" && <QuestDoneView myName={myName} onBack={backToWorld} bubble={bubble} draft={shrineDraft} onDraftUsed={() => setShrineDraft(null)} />}
         {view === "ikea" && <IkeaView gems={gold} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
         {view === "project" && <BossMapView myName={myName} onBack={backToWorld} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss) => bump(isBoss ? "boss" : "quest")}
@@ -8381,6 +8539,8 @@ function StyleBlock() {
       .echo-flag { animation: echoWave 2s ease-in-out infinite; }
       @keyframes redWave { 0%,100% { transform: skewY(0deg) scaleX(1); } 30% { transform: skewY(-9deg) scaleX(0.93); } 60% { transform: skewY(8deg) scaleX(1.04); } }
       .red-flag { animation: redWave .85s ease-in-out infinite; }
+      @keyframes petTrot { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+      .pet-trot { animation: petTrot .55s ease-in-out infinite; }
       @keyframes beaconBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
       .beacon { animation: beaconBlink 1.1s ease-in-out infinite; }
       @keyframes chatIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
@@ -8426,7 +8586,7 @@ function StyleBlock() {
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .gem-pop,.hero-bob,.gem-spin,.enter-prompt,.chat-bubble,.px-btn,.map-obj,.qs-aura,.qs-ring,.qs-float,.qs-spark circle,.rain-drop,.echo-flag,.red-flag,.palm-sway,.beacon,.chat-line { animation:none !important; transition:none !important; }
+        .gem-pop,.hero-bob,.gem-spin,.enter-prompt,.chat-bubble,.px-btn,.map-obj,.qs-aura,.qs-ring,.qs-float,.qs-spark circle,.rain-drop,.echo-flag,.red-flag,.palm-sway,.beacon,.chat-line,.pet-trot { animation:none !important; transition:none !important; }
       }
     `}</style>
   );
