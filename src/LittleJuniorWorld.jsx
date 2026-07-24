@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v69 · 2026-07-24";
+const APP_VERSION = "v71 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -7385,6 +7385,10 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n22", type: "업데이트", date: "2026-07-24", title: "🎁 「보상을 확인해주세요」 알림 분리",
+    body: "· 단순 「완료했어요」 알림은 더 이상 오지 않아요 — 🏆 제단에 파편이 올라올 때만 알려줘요\n· 내가 등록한 퀘스트의 보상 검토 알림은 맨 위에 빨간 테두리로 크게 분리했어요\n· 「🏆 제단에서 보상 주기」 버튼으로 바로 이동할 수 있어요\n· 🗺 퀘스트함 알림도 「✓ 확인」을 누르면 사라져요 (「🗑 전체 비우기」도 있어요)\n· 처리할 보상이 있으면 탭 이름이 🎁 로 바뀌어요\n· 진행중·미참여·내가등록 목록은 예전처럼 보스맵과 계속 연동돼요" },
+  { id: "u20260724n21", type: "업데이트", date: "2026-07-24", title: "✍️ 퀘스트함 「내가 등록」 탭",
+    body: "· 🗺 퀘스트함에 「✍️ 내가 등록」 탭이 생겼어요\n· 내가 만들었거나 검토를 맡은 퀘스트만 모아서 봐요\n· 각 퀘스트의 상태가 한눈에 보여요 — ⏳ 대기 중 · 🤝 수락됨 · ▶ 진행 중 · ✓ 완료(완료한 사람 이름까지)\n· 참가한 사람 이름과 「✍️ 내가 만듦 / 📋 내가 검토」 구분도 표시돼요\n· 새로 늘어나면 탭에 빨간 숫자가 떠요" },
   { id: "u20260724n20", type: "업데이트", date: "2026-07-24", title: "✦ 내가 등록한 퀘스트가 완료되면 알림",
     body: "· 내가 등록(검토 담당)한 퀘스트를 누가 완료해서 🏆 제단에 파편을 봉헌하면 바로 알려줘요\n· 벨소리 + 화면 알림 + 🗺 퀘스트함 기록이 함께 남아요\n· 퀘스트함에서 그 알림을 누르면 🏆 제단으로 바로 이동해서 검토할 수 있어요\n· 내가 접속해 있지 않았어도, 다시 들어오면 밀린 파편 알림을 받아요\n· 같은 파편으로 알림이 두 번 뜨지 않아요" },
   { id: "u20260724n19", type: "업데이트", date: "2026-07-24", title: "🔔 카테고리별 알림 숫자 · ✉️ 확인하면 사라지는 메세지함",
@@ -8968,15 +8972,15 @@ const QBOX_TEXT = {
   new: "새 퀘스트가 등록됐어요", join: "퀘스트에 참가했어요", start: "퀘스트가 시작됐어요",
   done: "퀘스트를 완료했어요", leave: "퀘스트에서 나갔어요", call: "퀘스트 대화방으로 불렀어요",
   log: "퀘스트 일지가 올라왔어요", reward: "퀘스트 보상을 받았어요",
-  shrine: "내가 등록한 퀘스트를 완료하고 파편을 봉헌했어요 — 검토해주세요",
+  shrine: "내가 등록한 퀘스트를 완료했어요 — 🎁 보상을 확인해주세요",
 };
 
-function QuestBoxSheet({ onClose, rows = [], onRead, onClear, maps = [], accept = {}, cleared = {}, myName = "", onGo }) {
+function QuestBoxSheet({ onClose, rows = [], onRead, onClear, onDoneRow, maps = [], accept = {}, cleared = {}, myName = "", onGo }) {
   const [tab, setTab] = useState("alert");
   useEffect(() => { if (tab === "alert") onRead && onRead(); }, [tab, rows.length]);
   /* 탭마다 「지난번에 본 개수」를 기억해서, 늘어났으면 뱃지를 띄워요 */
   const QSEEN = "echotown_qbox_seen_v1";
-  const [seen, setSeen] = useState(() => loadJSON(QSEEN, null) || { on: 0, off: 0, done: 0 });
+  const [seen, setSeen] = useState(() => loadJSON(QSEEN, null) || { on: 0, off: 0, done: 0, mine: 0 });
 
   /* 보스맵의 모든 퀘스트를 하나로 모아요 */
   const all = useMemo(() => {
@@ -8992,16 +8996,18 @@ function QuestBoxSheet({ onClose, rows = [], onRead, onClear, maps = [], accept 
   const mine = all.filter((q) => { const a = accept[q.id]; return a && (a.party || []).includes(myName) && !isDone(q); });
   const rest = all.filter((q) => { const a = accept[q.id]; return !(a && (a.party || []).includes(myName)) && !isDone(q); });
   const doneList = all.filter(isDone);
+  /* ✍️ 내가 만들었거나 검토를 맡은 퀘스트 */
+  const byMe = all.filter((q) => q.owner === myName || q.registrar === myName);
   const unread = rows.filter((r) => !r.read).length;
-  const nNew = { on: Math.max(0, mine.length - (seen.on || 0)), off: Math.max(0, rest.length - (seen.off || 0)), done: Math.max(0, doneList.length - (seen.done || 0)) };
+  const nNew = { on: Math.max(0, mine.length - (seen.on || 0)), off: Math.max(0, rest.length - (seen.off || 0)), done: Math.max(0, doneList.length - (seen.done || 0)), mine: Math.max(0, byMe.length - (seen.mine || 0)) };
   /* 탭을 열면 그 탭의 「새로운 것」 표시가 사라져요 (내용은 그대로 남아요) */
   useEffect(() => {
     if (tab === "alert") return;
-    const key = tab === "on" ? "on" : tab === "off" ? "off" : "done";
-    const cur = key === "on" ? mine.length : key === "off" ? rest.length : doneList.length;
+    const key = tab;
+    const cur = key === "on" ? mine.length : key === "off" ? rest.length : key === "mine" ? byMe.length : doneList.length;
     if ((seen[key] || 0) === cur) return;
     setSeen((v) => { const n = { ...v, [key]: cur }; saveJSON(QSEEN, n); return n; });
-  }, [tab, mine.length, rest.length, doneList.length]);
+  }, [tab, mine.length, rest.length, doneList.length, byMe.length]);
 
   const Row = ({ q, tone }) => {
     const a = accept[q.id] || {};
@@ -9009,7 +9015,8 @@ function QuestBoxSheet({ onClose, rows = [], onRead, onClear, maps = [], accept 
     return (
       <button type="button" onClick={() => onGo && onGo(q)}
         style={{ width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "'DotGothic16', monospace", display: "flex", alignItems: "center", gap: 9,
-          background: tone === "on" ? "#eef6ef" : tone === "done" ? "#f0ece2" : C.white, border: `2px solid ${tone === "on" ? C.good : C.ink}`, borderRadius: 9, padding: "9px 11px" }}>
+          background: tone === "on" ? "#eef6ef" : tone === "done" ? "#f0ece2" : tone === "mine" ? "#fdf3e0" : C.white,
+        border: `2px solid ${tone === "on" ? C.good : tone === "mine" ? "#c9a25f" : C.ink}`, borderRadius: 9, padding: "9px 11px" }}>
         <span style={{ fontSize: 24 }}>{q.icon || "🎯"}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: "bold", wordBreak: "keep-all" }}>{q.title}{q.exp > 0 ? <span style={{ color: C.danger, fontSize: 11 }}> ⭐{q.exp}</span> : null}</div>
@@ -9018,6 +9025,15 @@ function QuestBoxSheet({ onClose, rows = [], onRead, onClear, maps = [], accept 
           </div>
           {tone === "on" && <div style={{ fontSize: 10, color: C.good, fontWeight: "bold", marginTop: 2 }}>{a.started ? "▶ 진행 중" : "🤝 수락함 (시작 전)"} · 파티 {party.length}명</div>}
           {tone === "off" && party.length > 0 && <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 2 }}>🤝 {party.join(", ")} 참가 중</div>}
+          {tone === "mine" && (
+            <div style={{ fontSize: 10, marginTop: 3, display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
+              <span style={{ fontWeight: "bold", color: C.white, background: isDone(q) ? C.good : a.started ? "#5b8def" : party.length ? "#c9a25f" : "#9a94a6", borderRadius: 9, padding: "1px 8px" }}>
+                {isDone(q) ? `✓ 완료${typeof (cleared[q.mapId] || {})[q.id] === "string" ? " · " + (cleared[q.mapId] || {})[q.id] : ""}` : a.started ? "▶ 진행 중" : party.length ? "🤝 수락됨" : "⏳ 대기 중"}
+              </span>
+              {party.length > 0 && <span style={{ color: C.inkSoft }}>{party.join(", ")}</span>}
+              {q.owner === myName ? <span style={{ color: C.inkSoft }}>✍️ 내가 만듦</span> : <span style={{ color: C.inkSoft }}>📋 내가 검토</span>}
+            </div>
+          )}
         </div>
         <span style={{ fontSize: 11, color: C.inkSoft, whiteSpace: "nowrap" }}>{tone === "done" ? "✓" : "이동 →"}</span>
       </button>
@@ -9026,41 +9042,78 @@ function QuestBoxSheet({ onClose, rows = [], onRead, onClear, maps = [], accept 
 
   return (
     <Sheet title="🗺 퀘스트함" onClose={onClose}>
-      <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
-        {[["alert", "🔔 알림", unread], ["on", `▶ 진행중 ${mine.length}`, nNew.on], ["off", `📋 미참여 ${rest.length}`, nNew.off], ["done", `🏆 완료 ${doneList.length}`, nNew.done]].map(([k, lb, n]) => (
-          <PxButton key={k} tone={tab === k ? "gold" : "wood"} onClick={() => setTab(k)} style={{ position: "relative", flex: 1, fontSize: 10.5, padding: 9 }}>
+      <div style={{ display: "flex", gap: 5, marginBottom: 10, flexWrap: "wrap" }}>
+        {[["alert", rows.some((r) => r.kind === "shrine") ? "🎁 알림" : "🔔 알림", rows.length], ["on", `▶ 진행중 ${mine.length}`, nNew.on], ["off", `📋 미참여 ${rest.length}`, nNew.off], ["mine", `✍️ 내가 등록 ${byMe.length}`, nNew.mine], ["done", `🏆 완료 ${doneList.length}`, nNew.done]].map(([k, lb, n]) => (
+          <PxButton key={k} tone={tab === k ? "gold" : "wood"} onClick={() => setTab(k)} style={{ position: "relative", flex: "1 1 88px", fontSize: 10.5, padding: 9 }}>
             {lb}
             {n > 0 && <span style={{ position: "absolute", right: -4, top: -5, background: C.danger, color: C.white, border: `2px solid ${C.ink}`, borderRadius: 9, fontSize: 9, padding: "0 4px", fontWeight: "bold" }}>{n > 99 ? "99+" : n}</span>}
           </PxButton>
         ))}
       </div>
 
-      {tab === "alert" && (
-        <>
-          {rows.length > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 7 }}>
-              <span style={{ flex: 1, fontSize: 10.5, color: C.inkSoft, lineHeight: 1.6 }}>퀘스트함은 보스맵과 실시간으로 연동돼요 · 확인해도 목록은 그대로 남아요</span>
-              <PxButton tone="ink" onClick={onClear} style={{ fontSize: 11, padding: "6px 11px", whiteSpace: "nowrap" }}>🗑 알림 비우기</PxButton>
-            </div>
-          )}
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {rows.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 30, lineHeight: 1.8 }}>아직 알림이 없어요 🔔<br />퀘스트가 등록되거나 누가 참가하면 여기에 쌓여요</div>}
-            {rows.map((r) => (
-              <button key={r.id} type="button" onClick={() => onGo && onGo({ id: r.qid, mapId: r.mapId, goto: r.goto })}
-                style={{ width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "'DotGothic16', monospace", display: "flex", alignItems: "center", gap: 9,
-                  background: r.read ? C.white : "#fff6e0", border: `2px solid ${r.read ? C.parchEdge : C.ink}`, borderRadius: 9, padding: "9px 11px" }}>
-                <span style={{ fontSize: 21 }}>{QBOX_ICON[r.kind] || "🔔"}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: "bold", wordBreak: "keep-all" }}>{r.title || "퀘스트"}</div>
-                  <div style={{ fontSize: 10.5, color: C.inkSoft, marginTop: 2 }}>{r.who ? `🧑 ${r.who}님이 ` : ""}{QBOX_TEXT[r.kind] || "소식이 있어요"}</div>
-                  <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 1 }}>{r.at}{r.goto === "shrine" ? " · 눌러서 🏆 제단으로" : ""}</div>
+      {tab === "alert" && (() => {
+        const todo = rows.filter((r) => r.kind === "shrine");     // 🎁 보상 검토가 필요한 것
+        const info = rows.filter((r) => r.kind !== "shrine");
+        return (
+          <>
+            {/* ⚠️ 꼭 처리해야 하는 알림 */}
+            {todo.length > 0 && (
+              <div style={{ background: "#fff1d6", border: `3px solid ${C.danger}`, borderRadius: 10, padding: 11, marginBottom: 11, boxShadow: `0 3px 0 ${C.parchEdge}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
+                  <span className="gem-pop" style={{ fontSize: 19 }}>🎁</span>
+                  <b style={{ flex: 1, fontSize: 13, color: C.danger }}>보상을 확인해주세요 ({todo.length})</b>
+                  <span style={{ fontSize: 10, color: C.inkSoft }}>내가 등록한 퀘스트</span>
                 </div>
-                {!r.read && <span style={{ width: 9, height: 9, borderRadius: "50%", background: C.danger, flexShrink: 0 }} />}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                  {todo.map((r) => (
+                    <div key={r.id} style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 9, padding: "10px 11px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 22 }}>✦</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: "bold", wordBreak: "keep-all" }}>{r.title || "퀘스트"}</div>
+                          <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 2, lineHeight: 1.5 }}>🧑 <b style={{ color: C.ink }}>{r.who}</b>님이 완료하고 파편을 봉헌했어요</div>
+                          <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 1 }}>{r.at}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 6, marginTop: 9 }}>
+                        <PxButton tone="gold" onClick={() => onGo && onGo({ goto: "shrine" })} style={{ flex: 1.5, fontSize: 12, padding: 9 }}>🏆 제단에서 보상 주기</PxButton>
+                        <PxButton tone="ink" onClick={() => onDoneRow && onDoneRow(r.id)} style={{ flex: 1, fontSize: 12, padding: 9 }}>✓ 확인</PxButton>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {rows.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 7 }}>
+                <span style={{ flex: 1, fontSize: 10.5, color: C.inkSoft, lineHeight: 1.6 }}>✓ 확인을 누르면 그 알림은 사라져요 (진행중·미참여 목록은 보스맵과 계속 연동돼요)</span>
+                <PxButton tone="ink" onClick={onClear} style={{ fontSize: 11, padding: "6px 11px", whiteSpace: "nowrap" }}>🗑 전체 비우기</PxButton>
+              </div>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {rows.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 30, lineHeight: 1.8 }}>아직 알림이 없어요 🔔<br />퀘스트가 등록되거나 누가 참가하면 여기에 쌓여요</div>}
+              {info.map((r) => (
+                <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 9,
+                  background: r.read ? C.white : "#fff6e0", border: `2px solid ${r.read ? C.parchEdge : C.ink}`, borderRadius: 9, padding: "9px 11px" }}>
+                  <button type="button" onClick={() => onGo && onGo({ id: r.qid, mapId: r.mapId, goto: r.goto })}
+                    style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 9, textAlign: "left", cursor: "pointer", background: "none", border: "none", padding: 0, fontFamily: "'DotGothic16', monospace" }}>
+                    <span style={{ fontSize: 21 }}>{QBOX_ICON[r.kind] || "🔔"}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "block", fontSize: 12.5, fontWeight: "bold", wordBreak: "keep-all" }}>{r.title || "퀘스트"}</span>
+                      <span style={{ display: "block", fontSize: 10.5, color: C.inkSoft, marginTop: 2 }}>{r.who ? `🧑 ${r.who}님이 ` : ""}{QBOX_TEXT[r.kind] || "소식이 있어요"}</span>
+                      <span style={{ display: "block", fontSize: 9.5, color: C.inkSoft, marginTop: 1 }}>{r.at}</span>
+                    </span>
+                  </button>
+                  {!r.read && <span style={{ width: 8, height: 8, borderRadius: "50%", background: C.danger, flexShrink: 0 }} />}
+                  <PxButton tone="ink" onClick={() => onDoneRow && onDoneRow(r.id)} style={{ fontSize: 10.5, padding: "6px 9px", whiteSpace: "nowrap" }}>✓ 확인</PxButton>
+                </div>
+              ))}
+            </div>
+          </>
+        );
+      })()}
 
       {tab === "on" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -9073,6 +9126,16 @@ function QuestBoxSheet({ onClose, rows = [], onRead, onClear, maps = [], accept 
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {rest.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 30 }}>참가할 수 있는 퀘스트가 없어요 📋</div>}
           {rest.map((q) => <Row key={q.id} q={q} tone="off" />)}
+        </div>
+      )}
+
+      {tab === "mine" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ fontSize: 10.5, color: C.inkSoft, lineHeight: 1.6, marginBottom: 2 }}>
+            내가 <b>만들었거나</b> <b>검토를 맡은</b> 퀘스트예요 · 눌러서 바로 이동
+          </div>
+          {byMe.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 30, lineHeight: 1.8 }}>아직 등록한 퀘스트가 없어요 ✍️<br />🗺 보스맵 도전기의 ＋ 버튼으로 만들어보세요</div>}
+          {byMe.map((q) => <Row key={q.id} q={q} tone="mine" />)}
         </div>
       )}
 
@@ -10241,6 +10304,11 @@ function EchoTown() {
     saveJSON(QBOX_KEY, next); return next;
   }), []);
   const clearQuestBox = useCallback(() => { setQuestBox([]); saveJSON(QBOX_KEY, []); }, []);
+  /* ✓ 확인하면 그 알림만 사라져요 */
+  const doneQuestRow = useCallback((id) => setQuestBox((v) => {
+    const next = v.filter((r) => r.id !== id);
+    saveJSON(QBOX_KEY, next); return next;
+  }), []);
   const unreadQuestCount = questBox.filter((r) => !r.read).length;
   /* ✦ 내가 등록한 퀘스트를 누가 완료해서 파편이 올라오면 알려줘요 */
   const noticeShrine = useCallback((rows) => {
@@ -10676,8 +10744,8 @@ function EchoTown() {
         applyBossOp(p); return;
       }
       if (kind === "qdone") {
+        // 완료 자체는 알리지 않고, 🏆 제단에 파편이 올라올 때만 알려요
         setBossCleared((c) => ({ ...c, [p.mapId]: { ...(c[p.mapId] || {}), [p.qid]: p.who || true } }));
-        if (p.who !== (myName || "나")) pushQuest({ kind: "done", who: p.who, title: p.title || "퀘스트", qid: p.qid, mapId: p.mapId });
         return;
       }
       if (kind === "fb") {
@@ -11184,7 +11252,6 @@ function EchoTown() {
           onSyncParty={() => { askSync(); showNotice("🔄 다른 주민들에게 참가 명단을 다시 물어봤어요"); }}
           onClearedChange={setBossCleared}
           onQuestDone={(mapId, q) => {
-            pushQuest({ kind: "done", who: myName || "나", title: q.title, qid: q.id, mapId, read: true });
             if (netSendEvent) netSendEvent("qdone", { mapId, qid: q.id, title: q.title, who: myName || "나" });
           }}
           onAccept={(qid, title, mapId) => { setQAccept((a) => (a[qid] && a[qid].locked ? a : { ...a, [qid]: a[qid] ? { ...a[qid], party: Array.from(new Set([...(a[qid].party || []), myName || "나"])) } : { party: [myName || "나"], agree: [], locked: false, started: false, title } })); if (netSendEvent) netSendEvent("qparty", { qid, who: myName || "나", title, mapId }); pushQuest({ kind: "join", who: myName || "나", title, qid, read: true }); showNotice("🤝 퀘스트를 수락했어요"); }}
@@ -11452,7 +11519,7 @@ function EchoTown() {
         onMsg={() => setMsgOpen(true)} />
 
       {questBoxOpen && (
-        <QuestBoxSheet onClose={() => setQuestBoxOpen(false)} rows={questBox} onRead={readQuestBox} onClear={clearQuestBox}
+        <QuestBoxSheet onClose={() => setQuestBoxOpen(false)} rows={questBox} onRead={readQuestBox} onClear={clearQuestBox} onDoneRow={doneQuestRow}
           maps={bossMaps} accept={qAccept} cleared={bossCleared} myName={myName}
           onGo={(q) => {
             setQuestBoxOpen(false);
