@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v29 · 2026-07-24";
+const APP_VERSION = "v30 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -739,12 +739,13 @@ function buildWorld() {
   list.push({ id: "coredict", kind: "small", x: 1180, y: 640, r: 58, label: "📖 코어사전", tint: "#8a5a3b" });
   list.push({ id: "project", kind: "small", x: 1120, y: 970, r: 60, label: "🗺 보스맵 도전기" });
   list.push({ id: "questdone", kind: "shrine", x: 1300, y: 1080, r: 68, label: "🏆 퀘스트 완료의 제단" });
-  list.push({ id: "petshop", kind: "small", x: 1000, y: 1240, r: 62, label: "🐾 펫샵" });
+
   list.push({ id: "naverschool", kind: "small", x: 1800, y: 300, r: 70, label: "📗 네이버스쿨" });
   list.push({ id: "videoschool", kind: "small", x: 2030, y: 300, r: 70, label: "🎬 영상스쿨" });
   list.push({ id: "sandbag", kind: "small", x: 800, y: 360, r: 55, label: "🥊 샌드백", tint: "#c0563a" });
   list.push({ id: "musinsa", kind: "small", x: 1650, y: 1260, r: 55, label: "🛍️ 무신사", tint: "#2b2b2b" });
 list.push({ id: "jjeop", kind: "small", x: 1820, y: 1210, r: 55, label: "🍴 쩝쩝박사", tint: "#c0563a" });
+  list.push({ id: "petshop", kind: "small", x: 1820, y: 1400, r: 58, label: "🐾 펫샵" });
   // 은행 / 게시판
   list.push({ id: "bank", kind: "bank", x: 1000, y: 640, r: 65, label: "🏦 중앙은행" });
   list.push({ id: "board", kind: "board", x: 1585, y: 700, r: 60, label: "📋 게시판" });
@@ -1016,6 +1017,26 @@ function DecoSprite({ id, size, sprites, cutCfg, children }) {
   const cfg = (cutCfg && cutCfg[id]) || {};
   return <AutoSprite src={src} cut={cfg.cut !== undefined ? cfg.cut : true} tol={cfg.tol !== undefined ? cfg.tol : 32} width={size} alt={id} />;
 }
+
+/* 🧠 사고 스킬 — 하드모드(사고의 광장) 퀘스트를 깰 때마다 하나씩 배웁니다 */
+const SKILLS = [
+  { id: "s01", icon: "🔍", name: "관찰력", desc: "남들이 지나친 디테일이 보이기 시작한다" },
+  { id: "s02", icon: "🧩", name: "구조화", desc: "흩어진 정보를 틀에 넣어 정리한다" },
+  { id: "s03", icon: "❓", name: "질문력", desc: "답 대신 더 나은 질문을 던진다" },
+  { id: "s04", icon: "🪞", name: "메타인지", desc: "내가 무엇을 모르는지 알아챈다" },
+  { id: "s05", icon: "🔗", name: "연결짓기", desc: "관계없어 보이는 둘을 잇는다" },
+  { id: "s06", icon: "✂️", name: "덜어내기", desc: "핵심만 남기고 과감히 버린다" },
+  { id: "s07", icon: "🎯", name: "본질파악", desc: "증상이 아니라 원인을 본다" },
+  { id: "s08", icon: "🔄", name: "역발상", desc: "당연한 전제를 뒤집어 본다" },
+  { id: "s09", icon: "📐", name: "가설검증", desc: "추측을 실험 가능한 형태로 만든다" },
+  { id: "s10", icon: "🗣", name: "설득력", desc: "상대의 언어로 다시 말한다" },
+  { id: "s11", icon: "⏳", name: "인내심", desc: "성급한 결론을 한 박자 미룬다" },
+  { id: "s12", icon: "🌊", name: "몰입", desc: "한 문제에 오래 머무를 수 있다" },
+  { id: "s13", icon: "🧭", name: "우선순위", desc: "먼저 할 일과 안 할 일을 가른다" },
+  { id: "s14", icon: "💡", name: "직관", desc: "논리보다 먼저 도착하는 감각" },
+  { id: "s15", icon: "🛠", name: "실행력", desc: "생각을 일단 손으로 옮긴다" },
+  { id: "s16", icon: "🌱", name: "회복탄력", desc: "틀려도 다시 시작할 수 있다" },
+];
 
 /* 🐾 반려동물 · 🐠 반려물고기 */
 const PETS = [
@@ -2391,6 +2412,33 @@ function HouseGate({ house, isMine, myName, hasPw, onSetPw, onEnter, onBell, onM
   const [msg, setMsg] = useState(null);
   const owner = house.owner || (house.name || "").replace(/이네$|네$/, "");
   const say = (m) => { setMsg(m); setTimeout(() => setMsg(null), 1800); };
+  /* 남의 집 비밀번호를 5번 틀리면 1분간 입력 금지 */
+  const [fails, setFails] = useState(0);
+  const [lockUntil, setLockUntil] = useState(0);
+  const [lockLeft, setLockLeft] = useState(0);
+  const locked = lockLeft > 0;
+  useEffect(() => {
+    if (!lockUntil) return;
+    const tick = () => {
+      const left = lockUntil - Date.now();
+      setLockLeft(left > 0 ? left : 0);
+      if (left <= 0) { setLockUntil(0); setFails(0); }
+    };
+    tick();
+    const iv = setInterval(tick, 250);
+    return () => clearInterval(iv);
+  }, [lockUntil]);
+  const tryEnter = () => {
+    if (locked) return;
+    const r = onEnter(pw);
+    if (r === true) { setFails(0); return; }
+    setPw("");
+    if (r === "wait") { say("확인 중… 잠시만요"); return; }
+    const n = fails + 1;
+    setFails(n);
+    if (n >= 5) { setLockUntil(Date.now() + 60000); say("🚫 5번 틀렸어요 — 1분간 입력이 막힙니다"); }
+    else say(`비밀번호가 틀렸어요 (${n}/5)`);
+  };
 
   if (isMine && !hasPw) {
     return (
@@ -2413,10 +2461,25 @@ function HouseGate({ house, isMine, myName, hasPw, onSetPw, onEnter, onBell, onM
       <div style={{ padding: 18, background: C.parch }}>
         <div style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 14, marginBottom: 14 }}>
           <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8, textAlign: "center" }}>🔒 현관 비밀번호</div>
-          <div style={{ display: "flex", gap: 6 }}>
-            <input value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { const r = onEnter(pw); if (r === true) return; say(r === "wait" ? "확인 중… 잠시만요" : "비밀번호가 틀렸어요"); setPw(""); } }} maxLength={12} type="password" placeholder="비밀번호" style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, textAlign: "center" }} />
-            <PxButton tone="good" onClick={() => { const r = onEnter(pw); if (r === true) return; say(r === "wait" ? "확인 중… 잠시만요" : "비밀번호가 틀렸어요"); setPw(""); }} style={{ padding: "10px 14px", fontSize: 13 }}>입장</PxButton>
-          </div>
+          {locked ? (
+            <div style={{ background: "#fbe4e0", border: `3px solid ${C.danger}`, borderRadius: 8, padding: 14, textAlign: "center" }}>
+              <div style={{ fontSize: 30 }}>🚫</div>
+              <div style={{ fontSize: 14, fontWeight: "bold", color: C.danger, margin: "6px 0 4px" }}>비밀번호를 5번 틀렸어요</div>
+              <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.7 }}>
+                잠시 후 다시 시도할 수 있어요.<br />
+                <b style={{ fontSize: 20, color: C.danger }}>{Math.ceil(lockLeft / 1000)}초</b> 남음
+              </div>
+              <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 8 }}>🔔 초인종을 눌러 주인에게 물어보세요</div>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: "flex", gap: 6 }}>
+                <input value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") tryEnter(); }} maxLength={12} type="password" placeholder="비밀번호" style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, textAlign: "center" }} />
+                <PxButton tone="good" onClick={tryEnter} style={{ padding: "10px 14px", fontSize: 13 }}>입장</PxButton>
+              </div>
+              {fails > 0 && <div style={{ marginTop: 7, fontSize: 11.5, color: C.danger, textAlign: "center" }}>⚠️ {fails}번 틀렸어요 · {5 - fails}번 더 틀리면 1분간 입력이 막혀요</div>}
+            </>
+          )}
           {msg && <div style={{ marginTop: 8, fontSize: 12, color: C.danger, textAlign: "center" }}>{msg}</div>}
         </div>
 
@@ -4287,7 +4350,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
     dbClearBoss(map.id, nd.id, myName || null);
     // 보스는 즉시 보상, 일반 퀘스트는 제단에서 GM 검수 후 지급
     if (nd.isBoss) onReward && onReward(nd.reward || { kind: "gem", qty: nd.gem || 0 });
-    onClearQuest && onClearQuest(!!nd.isBoss);
+    onClearQuest && onClearQuest(!!nd.isBoss, map.mode, nd.title);
     return true;
   };
 
@@ -4831,7 +4894,11 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
               {lockReason(sel) && <div style={{ background: "#fbe4e0", border: `2px solid ${C.danger}`, borderRadius: 8, color: C.danger, padding: 9, fontSize: 12, margin: "10px 0", textAlign: "center", fontWeight: "bold" }}>🔒 {lockReason(sel)}</div>}
               {map.mode === "hard" && !done[sel.id] && !sel.isBoss && !lockReason(sel) && (
                 <div style={{ background: "#fff6e8", border: `2px solid ${C.ink}`, borderRadius: 10, padding: 11, marginBottom: 10 }}>
-                  {!accepted[sel.id] ? (
+                  {done[sel.id] ? (
+                    <div style={{ fontSize: 12.5, color: C.good, textAlign: "center", padding: 10, fontWeight: "bold", background: "#e6f4ec", border: `2px solid ${C.good}`, borderRadius: 8 }}>
+                      ✅ 이미 완료된 퀘스트예요<br /><span style={{ fontSize: 11, fontWeight: "normal", color: C.inkSoft }}>수락할 수 없어요</span>
+                    </div>
+                  ) : !accepted[sel.id] ? (
                     canJoin(sel)
                       ? <PxButton tone="gold" onClick={() => onAccept && onAccept(sel.id, sel.title)} style={{ width: "100%", padding: 11, fontSize: 13 }}>🤝 퀘스트 수락하기</PxButton>
                       : <div style={{ fontSize: 12, color: C.danger, textAlign: "center", padding: 8, fontWeight: "bold" }}>지정된 참가자만 수락할 수 있어요</div>
@@ -5417,6 +5484,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724aa", type: "업데이트", date: "2026-07-24", title: "🧠 사고 스킬 · 🔒 비밀번호 잠금 · 🐾 펫샵 이전",
+    body: "· 🧠 하드모드(사고의 광장) 퀘스트를 깰 때마다 사고 스킬을 하나씩 배워요 (총 16종)\n· 관찰력 · 구조화 · 질문력 · 메타인지 · 역발상 · 본질파악 등\n· 배운 스킬은 🧑 내 프로필에서 확인할 수 있어요\n· ✅ 이미 완료된 퀘스트는 수락할 수 없게 막았어요\n· 🔒 남의 집 비밀번호를 5번 틀리면 경고와 함께 1분간 입력이 금지돼요 (남은 시간 표시)\n· 🐾 펫샵을 쩝쩝박사 아래로 옮겼어요\n· 📮 피드백이 공지사항에 올라가지 않게 했어요 (메뉴 안에서만 보여요)" },
   { id: "u20260724z", type: "업데이트", date: "2026-07-24", title: "🐾 펫샵 오픈 · 🏃 찾아가기 · 📅 DAY 삭제",
     body: "· 🐾 펫샵이 생겼어요 (마을 남쪽) — 강아지·고양이·토끼·햄스터·앵무새·거북이·여우·펭귄 8종\n· 입양하면 마을에서 나를 졸졸 따라다니고, 다른 사람에게도 보여요\n· 여러 마리를 키워도 데리고 나가는 건 한 마리씩이에요\n· 🐠 반려물고기 8종은 우리 집 어항에서 헤엄쳐요 (집에서 어항을 눌러보세요)\n· 🏃 접속자 목록의 달리기 버튼을 누르면 그 사람 옆으로 바로 이동해요\n· 마을에서 다른 사람 캐릭터를 누르면 따라가기 · 찾아가기 · 선물하기 메뉴가 떠요\n· 📅 DAY 표시와 「다음 날」 기능을 없앴어요" },
   { id: "u20260724y", type: "업데이트", date: "2026-07-24", title: "🏃 친구 따라가기 · 🛵 탈것 조준 개선 · 💬 채팅 중복 수정",
@@ -6423,7 +6492,7 @@ function Sheet({ icon, title, onClose, tabs, tab, setTab, maxW = 470, children }
 }
 
 /* 🧑 내 프로필 (프로필 + 인벤토리 + 뱃지) */
-function MyPanel({ onClose, myName, gems, gold = 0, lifetime, hp, mp, level = 1, stats, outfit, ownedClothes, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, onEquipCloth, onToggleIkea, day, profile, onProfile, carrying, onGiftAct, initialTab }) {
+function MyPanel({ onClose, myName, gems, gold = 0, lifetime, hp, mp, level = 1, stats, outfit, ownedClothes, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, onEquipCloth, onToggleIkea, day, profile, onProfile, carrying, onGiftAct, initialTab, skills = [] }) {
   const [tab, setTab] = useState(initialTab || "me");
   const [editOpen, setEditOpen] = useState(false);
   const prof = profile || { job: "", avatar: "🧑‍💻", look: DEFAULT_LOOK };
@@ -6521,6 +6590,29 @@ function MyPanel({ onClose, myName, gems, gold = 0, lifetime, hp, mp, level = 1,
                     ))}
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* 🧠 배운 사고 스킬 */}
+          <div style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 12, marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
+              <span style={{ fontSize: 18 }}>🧠</span>
+              <b style={{ flex: 1, fontSize: 14 }}>사고 스킬</b>
+              <span style={{ fontSize: 11.5, color: C.inkSoft }}>{(skills || []).length} / {SKILLS.length}</span>
+            </div>
+            {(skills || []).length === 0 ? (
+              <div style={{ fontSize: 11.5, color: C.inkSoft, textAlign: "center", padding: 14, lineHeight: 1.7 }}>
+                아직 배운 스킬이 없어요 🧠<br />🗺 보스맵 하드모드 퀘스트를 깨면 하나씩 배워요
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 6 }}>
+                {SKILLS.filter((sk) => (skills || []).includes(sk.id)).map((sk) => (
+                  <div key={sk.id} title={sk.desc} style={{ background: "#f2ecff", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "8px 5px", textAlign: "center" }}>
+                    <div style={{ fontSize: 22 }}>{sk.icon}</div>
+                    <div style={{ fontSize: 11.5, fontWeight: "bold", marginTop: 2 }}>{sk.name}</div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -7216,6 +7308,7 @@ function EchoTown() {
     if (typeof d.gold === "number") setGold(d.gold);
     if (typeof d.exp === "number") setExp(d.exp);
     if (d.profile) setProfile({ job: "", avatar: "🧑‍💻", ...d.profile, look: { ...DEFAULT_LOOK, ...(d.profile.look || {}) } });
+    if (d.skills) setSkills(d.skills);
     if (d.pets) setPets(d.pets);
     if (d.activePet !== undefined) setActivePet(d.activePet);
     if (d.fishes) setFishes(d.fishes);
@@ -7422,6 +7515,20 @@ function EchoTown() {
   useEffect(() => { netLookRef.current = myLook; }, [myLook]);
 
   /* 🎁 선물 행동 : 들고다니기 · 집에 두기 · 먹기 · 냉장고 */
+  /* 🧠 배운 사고 스킬 */
+  const [skills, setSkills] = useState([]);
+  const [skillPop, setSkillPop] = useState(null);
+  const learnSkill = (questTitle) => {
+    setSkills((cur) => {
+      const left = SKILLS.filter((sk) => !cur.includes(sk.id));
+      const pool = left.length ? left : SKILLS;                 // 다 모으면 중복 허용 대신 그대로
+      if (!left.length) { setSkillPop({ all: true }); return cur; }
+      const got = pool[Math.floor(Math.random() * pool.length)];
+      setSkillPop({ ...got, from: questTitle });
+      return [...cur, got.id];
+    });
+  };
+
   /* 🐾 반려동물 · 🐠 어항 */
   const [pets, setPets] = useState([]);
   const [activePet, setActivePet] = useState(null);
@@ -7585,7 +7692,7 @@ function EchoTown() {
       at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
     setFeedback((v) => [row, ...v].slice(0, 60));
     if (netSendEvent) netSendEvent("fb", { row });
-    dbAddNotice("건의", `${row.by}님의 피드백`, text);   // 게시판에도 남겨요
+
   };
   const delFeedback = (id) => {
     setFeedback((v) => v.filter((x) => !(x.id === id && x.uid === myUid)));
@@ -7903,7 +8010,7 @@ function EchoTown() {
   const saveTimer = useRef(null);
   /* 현재 저장할 내용을 항상 최신으로 들고 있습니다 */
   const payloadRef = useRef(null);
-  payloadRef.current = { gems, gold, exp, lifetime, profile, pets, activePet, fishes, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept };
+  payloadRef.current = { gems, gold, exp, lifetime, profile, skills, pets, activePet, fishes, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept };
   const flushSaveRef = useRef(null);
   const flushSave = useCallback((name) => {
     const n = name || myNameRef.current;
@@ -7920,7 +8027,7 @@ function EchoTown() {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => flushSave(myName), 800);
     return () => clearTimeout(saveTimer.current);
-  }, [myName, gems, gold, exp, lifetime, profile, pets, activePet, fishes, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept, flushSave]);
+  }, [myName, gems, gold, exp, lifetime, profile, skills, pets, activePet, fishes, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept, flushSave]);
 
   /* 새로고침·탭 닫기·탭 전환 직전에 밀린 저장을 즉시 반영 */
   useEffect(() => {
@@ -8128,7 +8235,7 @@ function EchoTown() {
           onBuyFish={(f) => { if (gold < f.price) return; setGold((g) => g - f.price); setFishes((v) => [...v, f.id]); showNotice(`${f.emoji} ${f.name}를 어항에 넣었어요!`); }} />}
         {view === "questdone" && <QuestDoneView myName={myName} onBack={backToWorld} bubble={bubble} draft={shrineDraft} onDraftUsed={() => setShrineDraft(null)} />}
         {view === "ikea" && <IkeaView gems={gold} owned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni} onBuy={buyIkea} onBack={backToWorld} bubble={bubble} />}
-        {view === "project" && <BossMapView myName={myName} onBack={backToWorld} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss) => bump(isBoss ? "boss" : "quest")}
+        {view === "project" && <BossMapView myName={myName} onBack={backToWorld} onGoSchool={(id) => setView(id)} onClearQuest={(isBoss, mode, title) => { bump(isBoss ? "boss" : "quest"); if (!isBoss && mode === "hard") learnSkill(title); }}
           people={people}
           onReward={(r) => {
             if (typeof r === "number") { award(r); showNotice(`💎 젬 ${r} 획득!`); return; }
@@ -8319,6 +8426,30 @@ function EchoTown() {
           </div>
         </div>
       )}
+      {skillPop && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 153, padding: 14 }} onClick={() => setSkillPop(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 320 }}>
+            <div style={{ background: "radial-gradient(circle at 50% 0%, #3a2e6b, #1a1436 70%)", border: `4px solid ${C.ink}`, borderRadius: 14, padding: 22, textAlign: "center", boxShadow: "0 12px 30px rgba(0,0,0,0.55)" }}>
+              {skillPop.all ? (
+                <>
+                  <div style={{ fontSize: 46 }}>🏅</div>
+                  <div style={{ fontSize: 16, fontWeight: "bold", color: "#ffd75e", margin: "10px 0 6px" }}>모든 사고 스킬을 배웠어요!</div>
+                  <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.7)" }}>{SKILLS.length}개 전부 수집 완료 ✨</div>
+                </>
+              ) : (
+                <>
+                  <div className="gift-pop" style={{ fontSize: 52 }}>{skillPop.icon}</div>
+                  <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, color: "#7fe3ff", margin: "12px 0 8px" }}>SKILL LEARNED</div>
+                  <div style={{ fontSize: 19, fontWeight: "bold", color: "#ffd75e" }}>{skillPop.name}</div>
+                  <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.75)", lineHeight: 1.8, margin: "8px 0 4px" }}>{skillPop.desc}</div>
+                  {skillPop.from && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 6 }}>「{skillPop.from}」 를 해결하며 배웠어요</div>}
+                </>
+              )}
+              <PxButton tone="gold" onClick={() => setSkillPop(null)} style={{ width: "100%", padding: 12, fontSize: 14, marginTop: 16 }}>확인</PxButton>
+            </div>
+          </div>
+        </div>
+      )}
       {giftAlert && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 152, padding: 14 }}>
           <div style={{ width: "100%", maxWidth: 330 }}>
@@ -8377,7 +8508,7 @@ function EchoTown() {
         onCall={(p) => { setCallWith(p); if (netSendEvent) netSendEvent("call", { to: p.name, from: myName || "나" }); }} />}
 
       {profileOpen && <MyPanel key={profileTab || "me"} onClose={() => { setProfileOpen(false); setProfileTab(null); }} myName={myName} gems={gems} gold={gold} level={expInfo.lv} lifetime={lifetime} hp={hp} mp={mp} day={day}
-        profile={profile} onProfile={patchProfile} carrying={carrying} onGiftAct={giftAct} initialTab={profileTab}
+        profile={profile} onProfile={patchProfile} carrying={carrying} onGiftAct={giftAct} initialTab={profileTab} skills={skills}
         stats={stats} outfit={outfit} ownedClothes={owned} ikeaOwned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni}
         thanksInv={thanksInv} onEquipCloth={tryOnClothing} onToggleIkea={buyIkea} />}
 
