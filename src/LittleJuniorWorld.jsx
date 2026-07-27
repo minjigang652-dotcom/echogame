@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v81 · 2026-07-24";
+const APP_VERSION = "v82 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -7583,6 +7583,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n33", type: "수정", date: "2026-07-24", title: "🚪 로그아웃 버튼을 내 프로필 안에 추가",
+    body: "· 로그아웃 버튼이 시작 화면(이름창)에만 있어서, 이미 로그인된 상태에선 찾기 어려웠어요\n· 이제 우측 하단 🧑 내 프로필 → 「내 정보」 맨 아래에 🚪 로그아웃 버튼이 있어요\n· 누르면 이름과 디스코드 로그인이 모두 해제되고 시작 화면으로 돌아가요\n· 디스코드로 로그인한 경우 어떤 계정인지도 표시돼요" },
   { id: "u20260724n32", type: "업데이트", date: "2026-07-24", title: "🚪 완전 로그아웃 (이름 + 디스코드)",
     body: "· 시작 화면의 🧑 로그아웃이 이제 게임 이름과 디스코드 세션을 함께 지워요\n· 로그인 상태에서 「🎮 디스코드 로그아웃」으로 디스코드만 따로 뺄 수도 있어요\n· 자동 로그인 상태에서 디스코드 로그인을 테스트하려면 → 🧑 프로필 버튼 → 이름창에서 「완전히 로그아웃」 → 다시 로그인" },
   { id: "u20260724n31", type: "업데이트", date: "2026-07-24", title: "🎮 디스코드로 로그인",
@@ -8793,7 +8795,7 @@ function Sheet({ icon, title, onClose, tabs, tab, setTab, maxW = 470, children }
 }
 
 /* 🧑 내 프로필 (프로필 + 인벤토리 + 뱃지) */
-function MyPanel({ onClose, myName, gems, gold = 0, lifetime, hp, mp, level = 1, stats, outfit, ownedClothes, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, onEquipCloth, onToggleIkea, day, profile, onProfile, carrying, onGiftAct, initialTab, skills = [] }) {
+function MyPanel({ onClose, myName, gems, gold = 0, lifetime, hp, mp, level = 1, stats, outfit, ownedClothes, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, onEquipCloth, onToggleIkea, day, profile, onProfile, carrying, onGiftAct, initialTab, skills = [], onLogout, discord = null }) {
   const [tab, setTab] = useState(initialTab || "me");
   const [editOpen, setEditOpen] = useState(false);
   const prof = profile || { job: "", avatar: "🧑‍💻", look: DEFAULT_LOOK };
@@ -8925,6 +8927,25 @@ function MyPanel({ onClose, myName, gems, gold = 0, lifetime, hp, mp, level = 1,
         </div>
       )}
             {tab === "badge" && <BadgeBody stats={stats} />}
+      {tab === "me" && (
+        <div style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 12, marginTop: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
+            <span style={{ fontSize: 18 }}>🔐</span>
+            <b style={{ flex: 1, fontSize: 14 }}>계정</b>
+          </div>
+          {discord && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontSize: 12, color: C.inkSoft }}>
+              {discord.avatar ? <img src={discord.avatar} alt="" style={{ width: 26, height: 26, borderRadius: "50%", border: `2px solid ${C.ink}` }} /> : <span style={{ fontSize: 18 }}>🎮</span>}
+              <span>디스코드 <b style={{ color: C.ink }}>{discord.name}</b> 로 로그인됨</span>
+            </div>
+          )}
+          <div style={{ fontSize: 11.5, color: C.inkSoft, lineHeight: 1.7, marginBottom: 10 }}>
+            지금 <b style={{ color: C.ink }}>{myName}</b> 님으로 접속 중이에요.<br />
+            로그아웃하면 이름과 디스코드 로그인이 모두 해제되고 시작 화면으로 돌아가요.
+          </div>
+          <PxButton tone="danger" onClick={() => { onClose && onClose(); onLogout && onLogout(); }} style={{ width: "100%", padding: 11, fontSize: 13 }}>🚪 로그아웃</PxButton>
+        </div>
+      )}
     </Sheet>
   );
 }
@@ -12149,7 +12170,7 @@ function EchoTown() {
       {profileOpen && <MyPanel key={profileTab || "me"} onClose={() => { setProfileOpen(false); setProfileTab(null); }} myName={myName} gems={gems} gold={gold} level={expInfo.lv} lifetime={lifetime} hp={hp} mp={mp} day={day}
         profile={profile} onProfile={patchProfile} carrying={carrying} onGiftAct={giftAct} initialTab={profileTab} skills={skills}
         stats={stats} outfit={outfit} ownedClothes={owned} ikeaOwned={ikeaOwned} houseSkin={houseSkin} vehicle={vehicle} myFurni={myFurni}
-        thanksInv={thanksInv} onEquipCloth={tryOnClothing} onToggleIkea={buyIkea} />}
+        thanksInv={thanksInv} onEquipCloth={tryOnClothing} onToggleIkea={buyIkea} onLogout={forgetName} discord={discord} />}
 
       {guideOpen && <GuideSheet onClose={() => setGuideOpen(false)} onGo={(v) => { setGuideOpen(false); if (v === "world") backToWorld(); else setView(v); }} />}
 
