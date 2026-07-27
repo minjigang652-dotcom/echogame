@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v83 · 2026-07-27";
+const APP_VERSION = "v83 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2322,45 +2322,6 @@ async function discordUser() {
     };
   } catch (e) { return null; }
 }
-/* ===== 🎮 디스코드 계정 ↔ 게임 이름 매칭 =====
-   ⚠️ 새 테이블을 만들 필요 없이, 이미 쓰고 있는 notices 테이블을 재사용합니다.
-      type="identity" · title=디스코드 계정 id · body=게임 이름
-   · 이름 = 게임 계정(세이브). 디스코드는 그 이름으로 들어가는 «열쇠»일 뿐이에요.
-     그래서 기존 「민지」 세이브에 디스코드-민지가 로그인하면 자동으로 합쳐집니다. */
-async function dbNameForDiscord(discordId) {
-  if (!discordId) return null;
-  try {
-    const s = await getSupa();
-    const r = await s.from("notices").select("body").eq("type", "identity").eq("title", discordId).order("created_at", { ascending: false }).limit(1);
-    const row = r && r.data && r.data[0];
-    return row && row.body ? row.body : null;
-  } catch (e) { return null; }
-}
-/* 이 이름을 이미 가져간 디스코드 계정 id (없으면 null). 레거시 세이브만 있는 이름은 «주인 없음». */
-async function dbNameOwner(name) {
-  if (!name) return null;
-  try {
-    const s = await getSupa();
-    const r = await s.from("notices").select("title").eq("type", "identity").eq("body", name).order("created_at", { ascending: false }).limit(1);
-    const row = r && r.data && r.data[0];
-    return row && row.title ? row.title : null;
-  } catch (e) { return null; }
-}
-/* 이름을 이 디스코드 계정에 «처음 한 번» 묶습니다.
-   { ok:true } / { ok:false, reason:"taken" } (다른 계정이 이미 씀)
-   { ok:false, reason:"error", detail } (저장 실패 — 사용 중 아님) */
-async function dbClaimName(discordId, name) {
-  if (!discordId || !name) return { ok: false, reason: "error", detail: "no id/name" };
-  try {
-    const owner = await dbNameOwner(name);
-    if (owner && owner !== discordId) return { ok: false, reason: "taken" };   // 다른 사람이 이미 가져감
-    if (owner === discordId) return { ok: true };                              // 이미 내 이름
-    const s = await getSupa();
-    const { error } = await s.from("notices").insert({ type: "identity", title: discordId, body: name });
-    if (error) return { ok: false, reason: "error", detail: error.message || String(error) };
-    return { ok: true };
-  } catch (e) { return { ok: false, reason: "error", detail: (e && e.message) || String(e) }; }
-}
 async function dbSaveProfile(name, data) {
   if (!name) return false;
   try {
@@ -2435,7 +2396,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "identity").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -7622,8 +7583,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
-  { id: "u20260727n34", type: "업데이트", date: "2026-07-27", title: "🎮 디스코드 로그인 필수 · 이름은 계정에 고정",
-    body: "· 이제 디스코드로 로그인해야 게임에 들어올 수 있어요 (이름만 입력해서 시작하던 방식은 없어졌어요)\n· 처음 로그인하면 마을 이름을 «한 번» 정해요 — 이 이름이 디스코드 계정에 저장돼요\n· 다음부터는 어느 브라우저에서 로그인하든 그 이름·데이터로 바로 들어와요\n· 이름은 한 번 정하면 바꿀 수 없어요\n· 이미 쓰고 있는 이름은 다른 사람이 못 써요 (중복 금지) — 예전에 창민·정인 등으로 놀던 사람은 로그인 후 같은 이름을 넣으면 기존 데이터가 그대로 이어져요\n· 별도 DB 설정 없이 바로 동작해요" },
+  { id: "u20260724n34", type: "업데이트", date: "2026-07-24", title: "🔔 알림함으로 통합 (메세지 + 퀘스트 + 요약)",
+    body: "· 우측 하단 ✉️ 메세지함과 🗺 퀘스트함을 「🔔 알림함」 하나로 합쳤어요\n· 열면 탭으로 나뉘어요 — 🏠 요약 · 🗺 퀘스트 · ✉️ 메세지\n· 🏠 요약 탭에서 보스맵 진행도, 오늘의 정산(신규·파편·받을보상·메세지), 최근 소식을 한눈에 봐요\n· 최근 소식이나 요약 숫자를 누르면 해당 탭으로 바로 이동해요\n· 퀘스트·메세지 탭은 기존 기능 그대로예요 (진행중·미참여·완료, 공지·초대·선물·DM)\n· 독 버튼의 빨간 숫자는 메세지+퀘스트 미확인 합계예요" },
   { id: "u20260724n33", type: "수정", date: "2026-07-24", title: "🚪 로그아웃 버튼을 내 프로필 안에 추가",
     body: "· 로그아웃 버튼이 시작 화면(이름창)에만 있어서, 이미 로그인된 상태에선 찾기 어려웠어요\n· 이제 우측 하단 🧑 내 프로필 → 「내 정보」 맨 아래에 🚪 로그아웃 버튼이 있어요\n· 누르면 이름과 디스코드 로그인이 모두 해제되고 시작 화면으로 돌아가요\n· 디스코드로 로그인한 경우 어떤 계정인지도 표시돼요" },
   { id: "u20260724n32", type: "업데이트", date: "2026-07-24", title: "🚪 완전 로그아웃 (이름 + 디스코드)",
@@ -8808,7 +8769,31 @@ function VillagersBody({ people = [], onDm, onCall }) {
   );
 }
 /* ============ 우측 하단 도크 (메뉴 · 내 프로필 · 안내책자 · 메세지) ============ */
-function Sheet({ icon, title, onClose, tabs, tab, setTab, maxW = 470, children }) {
+function Sheet({ icon, title, onClose, tabs, tab, setTab, maxW = 470, children, embed = false }) {
+  const inner = (showHeader) => (
+    <>
+      {showHeader && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <span style={{ fontSize: 22 }}>{icon}</span>
+          <b style={{ flex: 1, fontSize: 15 }}>{title}</b>
+          <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+        </div>
+      )}
+      {tabs && (
+        <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
+          {tabs.map((t) => (
+            <button key={t.k} onClick={() => setTab(t.k)} style={{ position: "relative", cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "7px 10px", borderRadius: 16, border: `2px solid ${C.ink}`, background: tab === t.k ? "linear-gradient(180deg,#3fa07a,#1d6b4a)" : C.white, color: tab === t.k ? C.white : C.ink, fontWeight: "bold" }}>
+              {t.label}
+              {t.n > 0 && <span style={{ marginLeft: 4, background: C.danger, color: C.white, border: `1px solid ${C.ink}`, borderRadius: 8, fontSize: 9, padding: "0 4px" }}>{t.n}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+      {children}
+    </>
+  );
+  /* 허브 안에 끼워넣을 때는 배경·패널 없이 내용만 */
+  if (embed) return <div>{inner(false)}</div>;
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 95, padding: 14 }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: maxW, maxHeight: "90%", overflow: "auto" }}>
@@ -8818,17 +8803,7 @@ function Sheet({ icon, title, onClose, tabs, tab, setTab, maxW = 470, children }
             <b style={{ flex: 1, fontSize: 15 }}>{title}</b>
             <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
           </div>
-          {tabs && (
-            <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
-              {tabs.map((t) => (
-                <button key={t.k} onClick={() => setTab(t.k)} style={{ position: "relative", cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "7px 10px", borderRadius: 16, border: `2px solid ${C.ink}`, background: tab === t.k ? "linear-gradient(180deg,#3fa07a,#1d6b4a)" : C.white, color: tab === t.k ? C.white : C.ink, fontWeight: "bold" }}>
-                  {t.label}
-                  {t.n > 0 && <span style={{ marginLeft: 4, background: C.danger, color: C.white, border: `1px solid ${C.ink}`, borderRadius: 8, fontSize: 9, padding: "0 4px" }}>{t.n}</span>}
-                </button>
-              ))}
-            </div>
-          )}
-          {children}
+          {inner(false)}
         </Panel>
       </div>
     </div>
@@ -9046,7 +9021,7 @@ function MsgRow({ icon, title, body, at, unread, right, onClick }) {
   );
 }
 
-function MessageCenter({ onClose, myName, box, notices, onReadAll, onAnswerInvite, onOpenDm, onCallBack, onGoMeeting, onDone, onDoneNotice, onDoneAll }) {
+function MessageCenter({ onClose, myName, box, notices, onReadAll, onAnswerInvite, onOpenDm, onCallBack, onGoMeeting, onDone, onDoneNotice, onDoneAll, embed = false }) {
   const [tab, setTab] = useState("notice");
   const empty = (t) => <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 26, lineHeight: 1.8 }}>{t}</div>;
   /* 「✓ 확인」을 누르기 전까지 남아 있어요 — 그래서 개수 = 아직 확인 안 한 것 */
@@ -9057,7 +9032,7 @@ function MessageCenter({ onClose, myName, box, notices, onReadAll, onAnswerInvit
   );
   const curCount = tab === "notice" ? nUnreadNotice : unread(tab);
   return (
-    <Sheet icon="✉️" title="메세지함" onClose={onClose} tab={tab} setTab={setTab}
+    <Sheet icon="✉️" title="메세지함" onClose={onClose} tab={tab} setTab={setTab} embed={embed}
       tabs={[
         { k: "notice", label: "📢 공지", n: nUnreadNotice },
         { k: "invite", label: "📨 초대장", n: unread("invite") },
@@ -9243,14 +9218,13 @@ function InventorySheet({ onClose, gold, outfit, ownedClothes, ikeaOwned, houseS
   );
 }
 
-function CornerDock({ onMenu, onProfile, onBag, onGuide, onMsg, onQuest, msgCount, questCount, badgeCount }) {
+function CornerDock({ onMenu, onProfile, onBag, onGuide, onHub, msgCount, questCount, badgeCount }) {
   const box = { display: "flex", gap: 8, background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 7, boxShadow: `0 4px 0 ${C.parchEdge}, 0 8px 18px rgba(0,0,0,0.28)` };
   return (
     <div className="corner-dock" style={{ position: "fixed", right: 12, bottom: 12, zIndex: 62, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
-      {/* 윗줄 : 알림이 오는 두 개 — 크게 */}
+      {/* 윗줄 : 알림 허브 — 크게 */}
       <div style={box}>
-        <DockBtn big icon="✉️" label="메세지함" bg="linear-gradient(180deg,#e0a13d,#a86e13)" onClick={onMsg} badge={msgCount} alert={msgCount > 0} />
-        <DockBtn big icon="🗺" label="퀘스트함" bg="linear-gradient(180deg,#9b7bd4,#5b3f8f)" onClick={onQuest} badge={questCount} alert={questCount > 0} />
+        <DockBtn big icon="🔔" label="알림함" bg="linear-gradient(180deg,#e0a13d,#a86e13)" onClick={onHub} badge={(msgCount || 0) + (questCount || 0)} alert={(msgCount || 0) + (questCount || 0) > 0} />
       </div>
       {/* 아랫줄 */}
       <div style={{ ...box, gap: 7 }}>
@@ -9273,7 +9247,7 @@ const QBOX_TEXT = {
   reward: "퀘스트 보상이 도착했어요 — 받아가세요",
 };
 
-function QuestBoxSheet({ onClose, rows = [], onRead, onClear, onDoneRow, onClaim, maps = [], accept = {}, cleared = {}, myName = "", onGo }) {
+function QuestBoxSheet({ onClose, rows = [], onRead, onClear, onDoneRow, onClaim, maps = [], accept = {}, cleared = {}, myName = "", onGo, embed = false }) {
   const [tab, setTab] = useState("alert");
   useEffect(() => { if (tab === "alert") onRead && onRead(); }, [tab, rows.length]);
   /* 탭마다 「지난번에 본 개수」를 기억해서, 늘어났으면 뱃지를 띄워요 */
@@ -9339,7 +9313,7 @@ function QuestBoxSheet({ onClose, rows = [], onRead, onClear, onDoneRow, onClaim
   };
 
   return (
-    <Sheet title="🗺 퀘스트함" onClose={onClose}>
+    <Sheet title="🗺 퀘스트함" onClose={onClose} embed={embed}>
       <div style={{ display: "flex", gap: 5, marginBottom: 10, flexWrap: "wrap" }}>
         {[["alert", rows.some((r) => r.kind === "reward" || r.kind === "shrine") ? "🎁 알림" : "🔔 알림", rows.length], ["on", `▶ 진행중 ${mine.length}`, nNew.on], ["off", `📋 미참여 ${rest.length}`, nNew.off], ["mine", `✍️ 내가 등록 ${byMe.length}`, nNew.mine], ["done", `🏆 완료 ${doneList.length}`, nNew.done]].map(([k, lb, n]) => (
           <PxButton key={k} tone={tab === k ? "gold" : "wood"} onClick={() => setTab(k)} style={{ position: "relative", flex: "1 1 88px", fontSize: 10.5, padding: 9 }}>
@@ -10281,34 +10255,21 @@ function EchoTown() {
   const [questJump, setQuestJump] = useState(null);   // 바로 이동할 퀘스트
   const [qcDeclineOpen, setQcDeclineOpen] = useState(false);
   const [qcDeclineWhy, setQcDeclineWhy] = useState("");
-  const [nameOpen, setNameOpen] = useState(true);        // 로그인·이름 확정 전까지 항상 열림
-  const [authChecking, setAuthChecking] = useState(true);// 디스코드 세션 확인 중
+  const [nameOpen, setNameOpen] = useState(() => !loadJSON("echotown_myname", ""));
   const [discord, setDiscord] = useState(null);          // 로그인한 디스코드 사용자
   const [discordBusy, setDiscordBusy] = useState(false);
-  const [nameErr, setNameErr] = useState("");            // 이름 설정 오류 메시지
-  const [nameBusy, setNameBusy] = useState(false);       // 이름 확정 요청 중
-  /* 🎮 로그인 흐름 — 디스코드가 필수예요.
-     ① 디스코드 세션 확인 → ② 이 계정이 이미 이름을 정했으면 그 이름으로 바로 입장
-     → ③ 처음이면 이름 설정 화면. (브라우저에 이름을 기억하는 자동 로그인은 없앴어요) */
+  /* 디스코드에서 돌아왔는지 확인 — 돌아왔으면 이름칸을 닉네임으로 채워줘요 */
   useEffect(() => {
     let alive = true;
     (async () => {
       const u = await discordUser();
+      if (!alive || !u) return;
+      setDiscord(u);
       // 주소에 붙은 로그인 토큰 흔적 제거 (새로고침 시 지저분해지지 않게)
       if (window.location.hash.includes("access_token") || window.location.search.includes("code=")) {
         try { window.history.replaceState({}, "", window.location.pathname); } catch (e) {}
       }
-      if (!alive) return;
-      if (!u) { setAuthChecking(false); return; }        // 로그인 안 됨 → 디스코드 버튼 표시
-      setDiscord(u);
-      const savedName = await dbNameForDiscord(u.id);     // 이 계정이 이미 이름을 정했나?
-      if (!alive) return;
-      if (savedName) {
-        confirmName(savedName, u);                        // 이름 있음 → 바로 입장
-      } else {
-        setNameInput((v) => v || u.name || "");           // 처음 → 이름 설정 화면
-      }
-      setAuthChecking(false);
+      if (!loadJSON("echotown_myname", "")) setNameInput((v) => v || u.name || "");
     })();
     return () => { alive = false; };
   }, []);
@@ -10355,12 +10316,11 @@ function EchoTown() {
     if (d.qLogs) setQLogs(d.qLogs);
     return true;
   };
-  const confirmName = (nm, dc) => {
+  const confirmName = (nm) => {
     const t = (nm || "").trim(); if (!t) return;
-    setMyName(t); setNameOpen(false); setNameErr(""); setNameBusy(false);
-    saveJSON("echotown_myname", t);          // 표시·캐시용 (로그인 판정에는 안 씀)
-    const d = dc || discord;
-    if (d && d.id) saveJSON("echotown_discord_id", d.id);
+    setMyName(t); setNameOpen(false);
+    saveJSON("echotown_myname", t);
+    if (discord && discord.id) saveJSON("echotown_discord_id", discord.id);
     // ① 이 브라우저에 저장된 게 있으면 즉시 복원
     const local = loadJSON(saveKey(t), null);
     if (local) applySave(local);
@@ -10384,30 +10344,20 @@ function EchoTown() {
       }
     });
   };
-  /* 처음 로그인한 사람이 이름을 «한 번» 정할 때 — 중복 검사 후 디스코드 계정에 고정 */
-  const submitName = async (nm) => {
-    const t = (nm || "").trim();
-    if (!t) return;
-    if (!discord || !discord.id) { setNameErr("먼저 디스코드로 로그인해주세요."); return; }
-    if (nameBusy) return;
-    setNameBusy(true); setNameErr("");
-    const res = await dbClaimName(discord.id, t);
-    if (!res.ok) {
-      setNameBusy(false);
-      setNameErr(res.reason === "taken"
-        ? "이미 다른 사람이 쓰는 이름이에요. 다른 이름을 정해주세요."
-        : ("저장 실패: " + (res.detail || "알 수 없는 오류") + " · 잠시 뒤 다시 시도해주세요"));
-      return;
-    }
-    confirmName(t, discord);   // 성공 → 입장 (기존 세이브가 있으면 그대로 이어져요)
-  };
+  /* 이 브라우저에 저장된 이름이 있으면 바로 로그인 (캐시 삭제·시크릿 모드면 다시 물어봐요) */
+  const bootedRef = useRef(false);
+  useEffect(() => {
+    if (bootedRef.current) return;
+    bootedRef.current = true;
+    const saved = loadJSON("echotown_myname", "");
+    if (saved) confirmName(saved);
+  }, []);
   const forgetName = async () => {
     try { window.localStorage.removeItem("echotown_myname"); } catch (e) {}
     try { window.localStorage.removeItem("echotown_discord_id"); } catch (e) {}
     await discordLogout();              // 🎮 디스코드 세션도 함께 로그아웃
     setDiscord(null);
-    setMyName(""); setNameInput(""); setNameErr(""); setNameBusy(false);
-    setAuthChecking(false); setNameOpen(true);
+    setMyName(""); setNameInput(""); setNameOpen(true);
   };
   const isMyHouse = (n) => {
     if (!n || !myName) return false;
@@ -10779,7 +10729,8 @@ function EchoTown() {
   /* 🗺 퀘스트함 — 등록·참가·시작·완료 소식이 쌓여요 */
   const QBOX_KEY = "echotown_questbox_v1";
   const [questBox, setQuestBox] = useState(() => { const v = loadJSON(QBOX_KEY, null); return Array.isArray(v) ? v : []; });
-  const [questBoxOpen, setQuestBoxOpen] = useState(false);
+  const [hubOpen, setHubOpen] = useState(false);
+  const [hubTab, setHubTab] = useState("home");   // home | quest | msg
   const [startPop, setStartPop] = useState(null);   // 접속 직후 「확인해보세요」 팝업
   const [bossCleared, setBossCleared] = useState({});
   const pushQuest = useCallback((row) => {
@@ -11951,62 +11902,46 @@ function EchoTown() {
             <Panel style={{ padding: 18 }}>
               <div style={{ textAlign: "center", fontSize: 34 }}>🌱</div>
               <div style={{ textAlign: "center", fontFamily: "'Press Start 2P', monospace", fontSize: 12, margin: "8px 0" }}>ECHO TOWN</div>
+              <div style={{ fontSize: 13, textAlign: "center", marginBottom: 10 }}>마을에서 사용할 이름을 알려주세요!</div>
 
-              {authChecking ? (
-                /* ⏳ 로그인 상태 확인 중 */
-                <div style={{ fontSize: 12.5, textAlign: "center", color: C.inkSoft, padding: "18px 0" }}>로그인 확인 중…</div>
-              ) : !discord ? (
-                /* ① 디스코드 로그인 (필수) — 이름만으로는 못 들어와요 */
+              {/* 🎮 디스코드로 로그인 */}
+              {discord ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#eef0ff", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "8px 10px", marginBottom: 10 }}>
+                  {discord.avatar
+                    ? <img src={discord.avatar} alt="" style={{ width: 30, height: 30, borderRadius: "50%", border: `2px solid ${C.ink}` }} />
+                    : <span style={{ fontSize: 22 }}>🎮</span>}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 9.5, color: C.inkSoft }}>디스코드 로그인됨</div>
+                    <div style={{ fontSize: 12.5, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{discord.name || "이름 없음"}</div>
+                  </div>
+                  <button type="button" onClick={async () => { await discordLogout(); setDiscord(null); try { window.localStorage.removeItem("echotown_discord_id"); } catch (e) {} }}
+                    style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, padding: "5px 8px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white }}>🎮 디스코드 로그아웃</button>
+                </div>
+              ) : (
                 <>
-                  <div style={{ fontSize: 12.5, textAlign: "center", marginBottom: 12, lineHeight: 1.7 }}>디스코드로 로그인해서 시작해요.</div>
                   <button type="button" disabled={discordBusy}
                     onClick={() => { setDiscordBusy(true); discordLogin(); }}
                     style={{ width: "100%", cursor: "pointer", fontFamily: "'DotGothic16', monospace", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                      background: "#5865F2", color: "#fff", border: `3px solid ${C.ink}`, borderRadius: 8, padding: "12px 10px", fontSize: 13.5, fontWeight: "bold", boxShadow: `0 3px 0 ${C.ink}` }}>
+                      background: "#5865F2", color: "#fff", border: `3px solid ${C.ink}`, borderRadius: 8, padding: "11px 10px", fontSize: 13.5, fontWeight: "bold", boxShadow: `0 3px 0 ${C.ink}` }}>
                     <span style={{ fontSize: 17 }}>🎮</span> {discordBusy ? "디스코드로 이동 중…" : "디스코드로 로그인"}
                   </button>
-                  <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 10, textAlign: "center", lineHeight: 1.6 }}>⚠️ 로그인이 안 되면 Supabase Site URL / 디스코드 Redirect 주소에 지금 게임 주소가 등록돼 있는지 확인해주세요</div>
-                </>
-              ) : !myName ? (
-                /* ② 처음 로그인 — 이름을 «한 번» 정합니다 (이후 변경 불가) */
-                <>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#eef0ff", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "8px 10px", marginBottom: 12 }}>
-                    {discord.avatar
-                      ? <img src={discord.avatar} alt="" style={{ width: 30, height: 30, borderRadius: "50%", border: `2px solid ${C.ink}` }} />
-                      : <span style={{ fontSize: 22 }}>🎮</span>}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 9.5, color: C.inkSoft }}>디스코드 로그인됨</div>
-                      <div style={{ fontSize: 12.5, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{discord.name || "이름 없음"}</div>
-                    </div>
-                    <button type="button" onClick={async () => { await discordLogout(); setDiscord(null); setNameErr(""); try { window.localStorage.removeItem("echotown_discord_id"); } catch (e) {} }}
-                      style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, padding: "5px 8px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white }}>로그아웃</button>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0" }}>
+                    <div style={{ flex: 1, height: 2, background: C.parchEdge }} />
+                    <span style={{ fontSize: 10, color: C.inkSoft }}>또는 이름만 입력</span>
+                    <div style={{ flex: 1, height: 2, background: C.parchEdge }} />
                   </div>
-                  <div style={{ fontSize: 13, textAlign: "center", marginBottom: 8 }}>마을에서 쓸 이름을 정해주세요!</div>
-                  <input value={nameInput} onChange={(e) => { setNameInput(e.target.value); if (nameErr) setNameErr(""); }} onKeyDown={(e) => { if (e.key === "Enter" && !nameBusy) submitName(nameInput); }} maxLength={8} autoFocus placeholder="예: 정인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${nameErr ? C.danger : C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, background: C.white, textAlign: "center" }} />
-                  {nameErr && <div style={{ fontSize: 11, color: C.danger, marginTop: 6, textAlign: "center", fontWeight: "bold" }}>{nameErr}</div>}
-                  <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center" }}>주민 이름(정인·창민·도희·유리·민지·희정·의준·호종·슬이·상하)과 같으면 그 집이 내 집이 돼요!</div>
-                  <div style={{ fontSize: 10, color: C.danger, marginTop: 4, textAlign: "center", fontWeight: "bold" }}>⚠️ 이름은 한 번 정하면 바꿀 수 없어요</div>
-                  <PxButton tone="good" disabled={!nameInput.trim() || nameBusy} onClick={() => submitName(nameInput)} style={{ width: "100%", marginTop: 12, padding: 10, fontSize: 13 }}>{nameBusy ? "확인 중…" : "시작하기"}</PxButton>
-                </>
-              ) : (
-                /* ③ 이미 이름이 정해진 계정 (🧑 로 다시 연 경우) — 이름 고정, 로그아웃만 */
-                <>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#eef0ff", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "8px 10px", marginBottom: 10 }}>
-                    {discord && discord.avatar
-                      ? <img src={discord.avatar} alt="" style={{ width: 30, height: 30, borderRadius: "50%", border: `2px solid ${C.ink}` }} />
-                      : <span style={{ fontSize: 22 }}>🎮</span>}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 9.5, color: C.inkSoft }}>{discord ? "디스코드 로그인됨" : "로그인됨"}</div>
-                      <div style={{ fontSize: 12.5, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{discord ? discord.name : myName}</div>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 12.5, textAlign: "center", marginBottom: 4 }}>내 마을 이름</div>
-                  <div style={{ textAlign: "center", fontFamily: "'DotGothic16', monospace", fontSize: 20, fontWeight: "bold", padding: "8px 0", border: `3px solid ${C.ink}`, borderRadius: 8, background: C.parch }}>{myName}</div>
-                  <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center" }}>🔒 이름은 변경할 수 없어요</div>
-                  <PxButton tone="ink" onClick={() => setNameOpen(false)} style={{ width: "100%", marginTop: 12, padding: 10, fontSize: 13 }}>닫기</PxButton>
-                  <PxButton tone="danger" onClick={forgetName} style={{ width: "100%", marginTop: 8, padding: 9, fontSize: 12 }}>🚪 로그아웃 (디스코드 세션 해제)</PxButton>
                 </>
               )}
+
+              <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") confirmName(nameInput); }} maxLength={8} autoFocus placeholder="예: 정인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, background: C.white, textAlign: "center" }} />
+              <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center" }}>주민 이름(정인·창민·도희·유리·민지·희정·의준·호종·슬이·상하)과 같으면 그 집이 내 집이 돼요!</div>
+              <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 4, textAlign: "center" }}>🔐 한 번 정하면 이 브라우저에서는 다음부터 자동으로 로그인돼요</div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                {myName && <PxButton tone="ink" onClick={() => setNameOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>}
+                <PxButton tone="good" disabled={!nameInput.trim()} onClick={() => confirmName(nameInput)} style={{ flex: 1, padding: 10, fontSize: 13 }}>시작하기</PxButton>
+              </div>
+              {(myName || discord) && <PxButton tone="danger" onClick={forgetName} style={{ width: "100%", marginTop: 8, padding: 9, fontSize: 12 }}>🚪 완전히 로그아웃 (이름 + 디스코드)</PxButton>}
+              {(myName || discord) && <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 5, textAlign: "center", lineHeight: 1.6 }}>테스트하려면 여기서 로그아웃한 뒤 다시 디스코드로 로그인해보세요</div>}
             </Panel>
           </div>
         </div>
@@ -12191,8 +12126,7 @@ function EchoTown() {
         onProfile={() => setProfileOpen(true)}
         onBag={() => setBagOpen(true)}
         onGuide={() => setGuideOpen(true)}
-        onQuest={() => { setQuestBoxOpen(true); dbLoadBoss().then((d) => d && setBossCleared((c) => { const n = { ...c }; Object.keys(d).forEach((k) => { n[k] = { ...(n[k] || {}), ...d[k] }; }); return n; })); }}
-        onMsg={() => setMsgOpen(true)} />
+        onHub={() => { setHubOpen(true); dbLoadBoss().then((d) => d && setBossCleared((c) => { const n = { ...c }; Object.keys(d).forEach((k) => { n[k] = { ...(n[k] || {}), ...d[k] }; }); return n; })); }} />
 
       {startPop && (
         <div onClick={() => setStartPop(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 215, padding: 16 }}>
@@ -12206,23 +12140,14 @@ function EchoTown() {
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
                 <PxButton tone="ink" onClick={() => setStartPop(null)} style={{ flex: 1, padding: 11, fontSize: 13 }}>나중에</PxButton>
-                <PxButton tone="gold" onClick={() => { setStartPop(null); setQuestBoxOpen(true); }} style={{ flex: 1.4, padding: 11, fontSize: 13 }}>🗺 퀘스트함 열기</PxButton>
+                <PxButton tone="gold" onClick={() => { setStartPop(null); setHubTab(startPop && startPop.nShr > 0 ? "quest" : "quest"); setHubOpen(true); }} style={{ flex: 1.4, padding: 11, fontSize: 13 }}>🗺 퀘스트함 열기</PxButton>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {questBoxOpen && (
-        <QuestBoxSheet onClose={() => setQuestBoxOpen(false)} rows={questBox} onRead={readQuestBox} onClear={clearQuestBox} onDoneRow={doneQuestRow} onClaim={claimReward}
-          maps={bossMaps} accept={qAccept} cleared={bossCleared} myName={myName}
-          onGo={(q) => {
-            setQuestBoxOpen(false);
-            if (q && q.goto === "shrine") { setView("questdone"); return; }   // ✦ 파편 검토는 제단으로
-            if (q && q.id) setQuestJump({ mapId: q.mapId, qid: q.id });
-            setView("project");
-          }} />
-      )}
+
 
       {menuOpen && <MenuSheet people={people} onClose={() => setMenuOpen(false)} myName={myName} myUid={myUid} feedback={feedback} onFeedback={addFeedback} onDelFeedback={delFeedback} onCheckFeedback={checkFeedback}
         sprites={allSprites} userSprites={sprites} cutCfg={cutCfg} onSetCut={setCut} scales={spriteScale} onSetScale={publishScale}
@@ -12255,22 +12180,92 @@ function EchoTown() {
 
       {guideOpen && <GuideSheet onClose={() => setGuideOpen(false)} onGo={(v) => { setGuideOpen(false); if (v === "world") backToWorld(); else setView(v); }} />}
 
-      {msgOpen && <MessageCenter onClose={() => setMsgOpen(false)} myName={myName} box={msgBox} notices={allNotices} onReadAll={readAll}
-        onDone={doneMsg} onDoneAll={doneMsgAll} onDoneNotice={doneNotice}
-        onAnswerInvite={(m, ok) => {
-          let reason = "";
-          if (!ok) {
-            reason = (window.prompt(`${m.from}님에게 보낼 불참 사유를 적어주세요`, "") || "").trim();
-            if (!reason) return;
-          }
-          if (netSendEvent) netSendEvent("inviteack", { to: m.from, from: myName, ok, reason });
-          patchMsg("invite", m.id, { answered: ok ? "ok" : "no", read: true });
-          if (ok) { setMyMeetings((v) => [...v, { when: m.when, room: m.room, roomId: m.roomId, from: m.from, dur: m.dur }]); showNotice(`📅 ${m.room} ${m.when} 일정에 추가했어요`); }
-          else showNotice(`✉️ ${m.from}님에게 불참 사유를 보냈어요`);
-        }}
-        onGoMeeting={(m) => { setMsgOpen(false); setMeetingId(m.roomId || "m1"); setView("meeting"); }}
-        onOpenDm={(name) => { setMsgOpen(false); setDmWith({ name, avatar: "🧑" }); }}
-        onCallBack={(name) => { setMsgOpen(false); setCallWith({ name, avatar: "🧑" }); if (netSendEvent) netSendEvent("call", { to: name, from: myName || "나" }); }} />}
+      {hubOpen && (() => {
+        const goQuest = (q) => {
+          setHubOpen(false);
+          if (q && q.goto === "shrine") { setView("questdone"); return; }
+          if (q && q.id) setQuestJump({ mapId: q.mapId, qid: q.id });
+          setView("project");
+        };
+        const tabs = [
+          { k: "home", label: "🏠 요약" },
+          { k: "quest", label: "🗺 퀘스트", n: unreadQuestCount },
+          { k: "msg", label: "✉️ 메세지", n: unreadMsgCount },
+        ];
+        // 오늘 집계
+        const today = new Date().toLocaleDateString("sv-SE");
+        const isToday = (at) => (at || "").length > 0;   // 문자열 날짜라 대략 표시용
+        const feed = [
+          ...questBox.slice(0, 6).map((r) => ({ t: r.at, ic: QBOX_ICON[r.kind] || "🔔", who: r.who, txt: r.title, tab: "quest" })),
+        ];
+        const mapPct = (() => {
+          let done = 0, all = 0;
+          (bossMaps || []).forEach((m) => {
+            (m.stages || []).forEach((st) => (st.quests || []).forEach((q) => { all++; if (bossCleared[m.id] && bossCleared[m.id][q.id]) done++; }));
+          });
+          return all ? Math.round((done / all) * 100) : 0;
+        })();
+        return (
+          <Sheet icon="🔔" title="알림함" onClose={() => setHubOpen(false)} tab={hubTab} setTab={setHubTab} tabs={tabs} maxW={480}>
+            {hubTab === "home" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {/* 진행도 */}
+                <div style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}><span style={{ fontSize: 17 }}>🗺</span><b style={{ flex: 1, fontSize: 13.5 }}>보스맵 진행도</b><b style={{ fontSize: 13, color: C.good }}>{mapPct}%</b></div>
+                  <div style={{ height: 14, borderRadius: 8, background: "#eadfc6", border: `2px solid ${C.ink}`, overflow: "hidden" }}>
+                    <div style={{ width: mapPct + "%", height: "100%", background: "linear-gradient(90deg,#5fc99a,#2f9e6e)" }} />
+                  </div>
+                </div>
+                {/* 오늘의 정산 */}
+                <div style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}><span style={{ fontSize: 17 }}>📊</span><b style={{ flex: 1, fontSize: 13.5 }}>오늘의 정산</b></div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {[["🆕 신규", questBox.filter((r) => r.kind === "new").length], ["✦ 파편", questBox.filter((r) => r.kind === "shrine").length], ["🎁 받을 보상", questBox.filter((r) => r.kind === "reward").length], ["✉️ 메세지", unreadMsgCount]].map(([lb, n]) => (
+                      <div key={lb} style={{ flex: 1, textAlign: "center", background: C.parch, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "9px 4px" }}>
+                        <div style={{ fontSize: 18, fontWeight: "bold", color: n > 0 ? C.danger : C.inkSoft }}>{n}</div>
+                        <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 2 }}>{lb}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* 최근 소식 */}
+                <div style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}><span style={{ fontSize: 17 }}>📰</span><b style={{ flex: 1, fontSize: 13.5 }}>최근 소식</b><PxButton tone="wood" onClick={() => setHubTab("quest")} style={{ fontSize: 10, padding: "4px 8px" }}>전체 보기</PxButton></div>
+                  {feed.length === 0 ? <div style={{ fontSize: 11.5, color: C.inkSoft, textAlign: "center", padding: 16 }}>아직 새 소식이 없어요</div> : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                      {feed.map((f, i) => (
+                        <button key={i} type="button" onClick={() => setHubTab(f.tab)} style={{ cursor: "pointer", textAlign: "left", fontFamily: "'DotGothic16', monospace", display: "flex", alignItems: "center", gap: 8, background: C.parch, border: `2px solid ${C.parchEdge}`, borderRadius: 7, padding: "7px 9px" }}>
+                          <span style={{ fontSize: 15 }}>{f.ic}</span>
+                          <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.who ? `${f.who} · ` : ""}{f.txt}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            {hubTab === "quest" && (
+              <QuestBoxSheet embed onClose={() => setHubOpen(false)} rows={questBox} onRead={readQuestBox} onClear={clearQuestBox} onDoneRow={doneQuestRow} onClaim={claimReward}
+                maps={bossMaps} accept={qAccept} cleared={bossCleared} myName={myName} onGo={goQuest} />
+            )}
+            {hubTab === "msg" && (
+              <MessageCenter embed onClose={() => setHubOpen(false)} myName={myName} box={msgBox} notices={allNotices} onReadAll={readAll}
+                onDone={doneMsg} onDoneAll={doneMsgAll} onDoneNotice={doneNotice}
+                onAnswerInvite={(m, ok) => {
+                  let reason = "";
+                  if (!ok) { reason = (window.prompt(`${m.from}님에게 보낼 불참 사유를 적어주세요`, "") || "").trim(); if (!reason) return; }
+                  if (netSendEvent) netSendEvent("inviteack", { to: m.from, from: myName, ok, reason });
+                  patchMsg("invite", m.id, { answered: ok ? "ok" : "no", read: true });
+                  if (ok) { setMyMeetings((v) => [...v, { when: m.when, room: m.room, roomId: m.roomId, from: m.from, dur: m.dur }]); showNotice(`📅 ${m.room} ${m.when} 일정에 추가했어요`); }
+                  else showNotice(`✉️ ${m.from}님에게 불참 사유를 보냈어요`);
+                }}
+                onGoMeeting={(m) => { setHubOpen(false); setMeetingId(m.roomId || "m1"); setView("meeting"); }}
+                onOpenDm={(name) => { setHubOpen(false); setDmWith({ name, avatar: "🧑" }); }}
+                onCallBack={(name) => { setHubOpen(false); setCallWith({ name, avatar: "🧑" }); if (netSendEvent) netSendEvent("call", { to: name, from: myName || "나" }); }} />
+            )}
+          </Sheet>
+        );
+      })()}
 
       {dmWith && <DMChatModal person={dmWith} myName={myName} onClose={() => setDmWith(null)}
         thread={dmThreads[dmWith.name] || []}
