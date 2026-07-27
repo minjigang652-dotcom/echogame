@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v85 · 2026-07-24";
+const APP_VERSION = "v86 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -886,7 +886,6 @@ function buildWorld() {
   list.push({ id: "center", kind: "center", x: 1300, y: 760, r: 90, label: "🏛 주민센터", sub: "마을 중심 · 회의/모임" });
   list.push({ id: "ikea", kind: "small", x: 1470, y: 1000, r: 60, label: "🛒 이케아", tint: "#0051ba" });
   list.push({ id: "coredict", kind: "small", x: 1180, y: 640, r: 58, label: "📖 코어사전", tint: "#8a5a3b" });
-  list.push({ id: "project", kind: "small", x: 1120, y: 970, r: 60, label: "🗺 보스맵 도전기" });
   list.push({ id: "questdone", kind: "shrine", x: 1300, y: 1080, r: 68, label: "🏆 퀘스트 완료의 제단" });
 
   list.push({ id: "naverschool", kind: "small", x: 1800, y: 300, r: 70, label: "📗 네이버스쿨" });
@@ -7603,6 +7602,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n37", type: "업데이트", date: "2026-07-24", title: "🖥 HQ 퀘스트·로드맵 탭 · 🙋 상시 내 페이지 · 진행중 아이콘",
+    body: "· 🗺 보스맵 도전기 건물을 마을에서 없앴어요\n· 🖥 HQ에 📋 퀘스트 탭(카드형: 담당자·진행바·⭐·🪙·💎·마감일)과 🗺 로드맵 탭(챕터 세로 트리)을 예시로 넣었어요\n· 화면 왼쪽에 🙋 내 페이지 패널이 상시 떠요 (일일 미션 체크 · ◀로 접기)\n· 화면 오른쪽에 진행중 퀘스트 아이콘이 세로로 떠요 (아이콘은 우선 랜덤 · 누르면 HQ 열림)\n· HQ 퀘스트·로드맵은 지금은 예시 데이터예요 — 등록·편집은 다음 단계에서 붙입니다" },
   { id: "u20260724n36", type: "업데이트", date: "2026-07-24", title: "🖥 에코월드 HQ (대시보드) 1단계 · 홈 탭",
     body: "· 우측 하단에 🖥 HQ 버튼이 생겼어요 — 누르면 업무 대시보드가 전체화면으로 열려요\n· 상단 탭 : 🏠 홈 · 🗺 로드맵 · 📋 퀘스트 · 📄 문서 · 🙋 내 페이지 (이번엔 홈 탭부터)\n· 🏠 홈 : 공지 등록, 월드맵(보스맵별 진행도 바), 오늘의 정산, 최근 소식\n· 마을과 같은 데이터를 쓰기 때문에, 마을에서 한 활동이 HQ에 그대로 반영돼요\n· 월드맵 카드를 누르면 그 보스맵으로 바로 이동해요\n· 나머지 탭(로드맵·퀘스트·문서·내페이지)은 다음 단계에서 채웁니다" },
   { id: "u20260724n35", type: "업데이트", date: "2026-07-24", title: "🎮 디스코드 로그인 필수 · 이름 계정 규칙",
@@ -9242,10 +9243,95 @@ function InventorySheet({ onClose, gold, outfit, ownedClothes, ikeaOwned, houseS
   );
 }
 
+/* 🙋 왼쪽 상시 「내 페이지」 패널 */
+function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
+  const [open, setOpen] = useState(true);
+  const av = (myName || "?").trim().slice(0, 1);
+  let hh = 0; for (let i = 0; i < (myName || "").length; i++) hh = (hh * 31 + myName.charCodeAt(i)) % 360;
+  const color = `hsl(${hh},55%,60%)`;
+  const MISSIONS = ["코난놀이 작성 (10분 이내!)", "오늘의 사고 공유 [B]채널", "허들 AI 노트 정리", "허들 활동 시간 공지"];
+  const [done, setDone] = useState({});
+  const doneN = Object.values(done).filter(Boolean).length;
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} title="내 페이지 열기"
+        style={{ position: "fixed", left: 10, top: "50%", transform: "translateY(-50%)", zIndex: 60, cursor: "pointer", fontFamily: "'DotGothic16', monospace",
+          background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 10, padding: "12px 7px", writingMode: "vertical-rl", fontSize: 12, fontWeight: "bold", boxShadow: `0 4px 0 ${C.parchEdge}` }}>🙋 내 페이지</button>
+    );
+  }
+  return (
+    <div style={{ position: "fixed", left: 10, top: "50%", transform: "translateY(-50%)", zIndex: 60, width: 208, maxHeight: "82vh", overflow: "auto",
+      background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 12, boxShadow: `0 5px 0 ${C.parchEdge}, 0 10px 22px rgba(0,0,0,0.25)`, fontFamily: "'DotGothic16', monospace" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 10px", borderBottom: `2px solid ${C.ink}` }}>
+        <b style={{ flex: 1, fontSize: 12.5 }}>🙋 내 페이지</b>
+        <button type="button" onClick={() => setOpen(false)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: C.inkSoft }}>◀</button>
+      </div>
+      <div style={{ padding: 11 }}>
+        <div style={{ textAlign: "center", marginBottom: 10 }}>
+          <div style={{ width: 46, height: 46, borderRadius: "50%", background: color, color: C.white, fontSize: 20, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", border: `3px solid ${C.ink}` }}>{av}</div>
+          <div style={{ fontSize: 13, fontWeight: "bold", marginTop: 5 }}>{myName || "게스트"}</div>
+        </div>
+        <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 9, marginBottom: 9 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 7 }}><span style={{ fontSize: 14 }}>🎯</span><b style={{ flex: 1, fontSize: 11.5 }}>일일 미션</b><span style={{ fontSize: 10, color: C.inkSoft }}>{doneN}/{MISSIONS.length}</span></div>
+          {MISSIONS.map((m, i) => (
+            <label key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 10.5, marginBottom: 5, cursor: "pointer", lineHeight: 1.4 }}>
+              <input type="checkbox" checked={!!done[i]} onChange={() => setDone((d) => ({ ...d, [i]: !d[i] }))} style={{ marginTop: 1 }} />
+              <span style={{ textDecoration: done[i] ? "line-through" : "none", color: done[i] ? C.inkSoft : C.ink }}>{m}</span>
+            </label>
+          ))}
+        </div>
+        <PxButton tone="gem" onClick={onOpenHQ} style={{ width: "100%", fontSize: 11, padding: 8 }}>🖥 HQ 열기</PxButton>
+      </div>
+    </div>
+  );
+}
+
+/* 🔸 오른쪽 진행중 퀘스트 아이콘 레일 (아이콘 랜덤) */
+const RAIL_ICONS = ["🚀", "🎨", "📦", "🛠", "🧪", "📊", "🎯", "🏗", "💡", "🔍"];
+function HQQuestRail({ quests = [], onOpenHQ }) {
+  const items = quests.slice(0, 5).map((q, i) => ({ ...q, ic: RAIL_ICONS[(q.id.charCodeAt(q.id.length - 1) + i) % RAIL_ICONS.length] }));
+  if (!items.length) return null;
+  return (
+    <div style={{ position: "fixed", right: 12, top: "50%", transform: "translateY(-50%)", zIndex: 60, display: "flex", flexDirection: "column", gap: 10 }}>
+      {items.map((q) => (
+        <button key={q.id} type="button" onClick={onOpenHQ} title={q.title}
+          style={{ width: 52, height: 52, borderRadius: 14, cursor: "pointer", fontFamily: "'DotGothic16', monospace",
+            background: C.parch, border: `3px solid ${C.ink}`, boxShadow: `0 3px 0 ${C.parchEdge}`, fontSize: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>{q.ic}</button>
+      ))}
+    </div>
+  );
+}
+
+/* 🖥 HQ 예시 데이터 (보스맵과 별개) */
+const HQ_CATS = [
+  { id: "core", name: "코어 앱", icon: "🟦", color: "#3b82f6" },
+  { id: "comm", name: "제품 (이커머스)", icon: "🟧", color: "#f97316" },
+  { id: "game", name: "에코월드 게임", icon: "🟪", color: "#8b5cf6" },
+  { id: "guild", name: "길드 홀", icon: "🟨", color: "#eab308" },
+];
+const HQ_QUESTS_INIT = [
+  { id: "hq1", cat: "core", title: "코어 앱 8월 정식 런칭", star: 3, gold: 500, gem: 30, chapter: "프리런칭 — Core Hunt", due: "2026-08-03",
+    subs: [{ who: "의준", t: "서버 안정화 & 배포 파이프라인", pct: 0 }, { who: "유리", t: "코어헌트 스테이지1 운영", pct: 75 }, { who: "유리", t: "런칭 프레스킷 제작", pct: 20 }], editedBy: "창민", editedAt: "07-25 09:26" },
+  { id: "hq2", cat: "comm", title: "향균 속옷 상세페이지 리뉴얼", star: 2, gold: 250, gem: 12, chapter: "상세페이지 리뉴얼", due: "2026-08-10",
+    subs: [{ who: "정인", t: "페르소나별 카피 라이팅", pct: 50 }, { who: "희정", t: "상세페이지 디자인 시안", pct: 40 }, { who: "도희", t: "리뷰 취합 & 베스트 선별", pct: 70 }], editedBy: "유리", editedAt: "07-27 12:22" },
+  { id: "hq3", cat: "comm", title: "꾀꼬리 캔디 신제품 출시 준비", star: 3, gold: 400, gem: 25, chapter: "신제품 출시", due: "2026-09-01",
+    subs: [{ who: "민지", t: "샘플 테스트 & 맛 확정", pct: 55 }, { who: "호종", t: "물류 · 재고 세팅", pct: 35 }, { who: "세연", t: "원가 정산 시트", pct: 80 }], editedBy: "민지", editedAt: "07-25 09:26" },
+  { id: "hq4", cat: "guild", title: "길드 시스템 (HQ) 구축", star: 3, gold: 450, gem: 28, chapter: "HQ 시스템 구축", due: "2026-08-15",
+    subs: [{ who: "민지", t: "HQ 구조 기획 확정", pct: 65 }, { who: "창민", t: "골드/젬 보상 규칙 확정", pct: 30 }], editedBy: "상하", editedAt: "07-25 09:26" },
+];
+const HQ_ROADMAP = {
+  core: [{ name: "프리런칭 — Core Hunt", pct: 32, cur: true }, { name: "정식 런칭 & 온보딩", pct: 0 }, { name: "개강 시즌 확장 (희기·희양)", pct: 0 }, { name: "새 챕터", pct: 0 }],
+  comm: [{ name: "상세페이지 리뉴얼", pct: 40, cur: true }, { name: "신제품 출시", pct: 10 }, { name: "시즌 프로모션", pct: 0 }],
+  game: [{ name: "에코타운 베타", pct: 48, cur: true }, { name: "정식 오픈", pct: 0 }],
+  guild: [{ name: "HQ 시스템 구축", pct: 0, cur: true }, { name: "보상 경제 설계", pct: 0 }],
+};
+
 /* ======================= 🖥 에코월드 HQ (대시보드) ======================= */
 function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo }) {
   const [tab, setTab] = useState("home");
   const [notice, setNotice] = useState("");
+  const [qcat, setQcat] = useState("all");
+  const [rcat, setRcat] = useState("core");
 
   const avatarOf = (nm) => (nm || "?").trim().slice(0, 1);
   const colorOf = (nm) => { let h = 0; for (let i = 0; i < (nm || "").length; i++) h = (h * 31 + nm.charCodeAt(i)) % 360; return `hsl(${h},55%,62%)`; };
@@ -9378,8 +9464,88 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
             </div>
           </>
         )}
-        {tab === "road" && soon("🗺 로드맵")}
-        {tab === "quest" && soon("📋 퀘스트")}
+        {tab === "quest" && (() => {
+          const list = HQ_QUESTS_INIT.filter((q) => qcat === "all" || q.cat === qcat);
+          const catInfo = (id) => HQ_CATS.find((c) => c.id === id) || { name: "", color: "#888", icon: "" };
+          const avgPct = (q) => Math.round((q.subs.reduce((n, x) => n + x.pct, 0) / Math.max(1, q.subs.length)));
+          return (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+                <b style={{ fontSize: 14, marginRight: 4 }}>📋 퀘스트 게시판</b>
+                {[["all", "전체"], ...HQ_CATS.map((c) => [c.id, `${c.icon} ${c.name}`])].map(([k, lb]) => (
+                  <button key={k} type="button" onClick={() => setQcat(k)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: qcat === k ? C.ink : C.white, color: qcat === k ? C.white : C.ink }}>{lb}</button>
+                ))}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
+                {list.map((q) => {
+                  const ci = catInfo(q.cat);
+                  return (
+                    <div key={q.id} style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 14 }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+                        <b style={{ flex: 1, fontSize: 14, wordBreak: "keep-all" }}>{q.title}</b>
+                        <span style={{ fontSize: 10, color: C.white, background: ci.color, borderRadius: 8, padding: "2px 7px", whiteSpace: "nowrap" }}>{ci.icon}</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "7px 0", fontSize: 11, color: C.inkSoft, flexWrap: "wrap" }}>
+                        <span style={{ color: "#e0a13d" }}>{"★".repeat(q.star)}{"☆".repeat(3 - q.star)}</span>
+                        <span>🪙 {q.gold}</span><span>💎 {q.gem}</span>
+                        <span>📁 {q.chapter}</span>
+                      </div>
+                      <div style={{ fontSize: 10.5, color: C.inkSoft, marginBottom: 8 }}>📅 {q.due}</div>
+                      {q.subs.map((sb, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
+                          <span style={{ width: 20, height: 20, borderRadius: "50%", background: colorOf(sb.who), color: C.white, fontSize: 10, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{avatarOf(sb.who)}</span>
+                          <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sb.t}</span>
+                          <div style={{ width: 60, height: 6, borderRadius: 4, background: "#eadfc6", overflow: "hidden", flexShrink: 0 }}><div style={{ width: sb.pct + "%", height: "100%", background: ci.color }} /></div>
+                          <span style={{ fontSize: 10, color: C.inkSoft, width: 30, textAlign: "right", flexShrink: 0 }}>{sb.pct}%</span>
+                        </div>
+                      ))}
+                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 9, paddingTop: 8, borderTop: `1px solid ${C.parchEdge}`, fontSize: 10, color: C.inkSoft }}>
+                        <span>진행 {avgPct(q)}%</span><span>수정 {q.editedBy} · {q.editedAt}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 14 }}>※ 예시 데이터예요 · 등록·수정 기능은 다음 단계에서 붙여요</div>
+            </>
+          );
+        })()}
+        {tab === "road" && (() => {
+          const chapters = HQ_ROADMAP[rcat] || [];
+          const ci = HQ_CATS.find((c) => c.id === rcat) || { color: "#888" };
+          return (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+                <b style={{ fontSize: 14, marginRight: 4 }}>🗺 로드맵</b>
+                {HQ_CATS.map((c) => (
+                  <button key={c.id} type="button" onClick={() => setRcat(c.id)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: rcat === c.id ? C.ink : C.white, color: rcat === c.id ? C.white : C.ink }}>{c.icon} {c.name}</button>
+                ))}
+              </div>
+              <div style={{ maxWidth: 460, margin: "0 auto" }}>
+                {chapters.map((ch, i) => {
+                  const locked = ch.pct === 0 && !ch.cur;
+                  return (
+                    <div key={i}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ width: 54, height: 54, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22,
+                          background: ch.cur ? ci.color : locked ? "#d8d2c4" : "#bfe3cf", border: `3px solid ${C.ink}`, color: C.white }}>
+                          {locked ? "🔒" : ch.cur ? "📍" : "✓"}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13.5, fontWeight: "bold" }}>{ch.name}{ch.cur ? <span style={{ fontSize: 10, color: ci.color, marginLeft: 6 }}>지금 여기</span> : null}</div>
+                          <div style={{ height: 7, borderRadius: 5, background: "#eadfc6", overflow: "hidden", marginTop: 5 }}><div style={{ width: ch.pct + "%", height: "100%", background: ci.color }} /></div>
+                          <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 3 }}>{ch.pct}%</div>
+                        </div>
+                      </div>
+                      {i < chapters.length - 1 && <div style={{ width: 3, height: 26, background: C.parchEdge, margin: "4px 0 4px 26px" }} />}
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 16 }}>※ 예시 데이터예요 · 챕터 추가/편집은 다음 단계에서 붙여요</div>
+            </>
+          );
+        })()}
         {tab === "doc" && soon("📄 문서")}
         {tab === "me" && soon("🙋 내 페이지")}
       </div>
@@ -12302,6 +12468,12 @@ function EchoTown() {
       )}
       {notice && (
         <div style={{ position: "fixed", left: "50%", top: 16, transform: "translateX(-50%)", zIndex: 150, background: C.ink, color: C.white, border: `3px solid ${C.gem}`, borderRadius: 10, padding: "10px 18px", fontSize: 13, fontFamily: "'DotGothic16', monospace", boxShadow: "0 6px 16px rgba(0,0,0,0.4)" }}>{notice}</div>
+      )}
+      {view === "world" && (
+        <HQSidePanel myName={myName} people={people} questBox={questBox} onOpenHQ={() => { setHqOpen(true); }} />
+      )}
+      {view === "world" && (
+        <HQQuestRail quests={HQ_QUESTS_INIT} onOpenHQ={() => { setHqOpen(true); }} />
       )}
       <CornerDock
         msgCount={unreadMsgCount}
