@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v105 · 2026-07-24";
+const APP_VERSION = "v106 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -5353,6 +5353,7 @@ function LottoRoom({ onBack, bubble, gold = 0, onBuy }) {
             <PxButton tone={canBuy ? "gold" : "ink"} disabled={!canBuy || phase === "scratch"} onClick={buy} style={{ width: "100%", padding: 13, fontSize: 15 }}>
               {phase === "scratch" ? "긁는 중…" : canBuy ? `🎟 복권 사기 (🪙${LOTTO_PRICE})` : "골드가 부족해요"}
             </PxButton>
+            <PxButton tone="ink" onClick={onBack} style={{ width: "100%", padding: 11, fontSize: 13, marginTop: 8 }}>← 복권방 나가기</PxButton>
 
             {history.length > 0 && (
               <div style={{ marginTop: 12, textAlign: "left" }}>
@@ -8258,6 +8259,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n57", type: "수정", date: "2026-07-24", title: "🎟 복권방 나가기 버튼 추가",
+    body: "· 복권 화면에서 나가기 버튼이 잘 안 보이던 문제를 고쳤어요\n· 복권 사기 버튼 아래에 「← 복권방 나가기」 버튼을 넣었어요" },
   { id: "u20260724n56", type: "업데이트", date: "2026-07-24", title: "🎟 복권방 추가 (즉석 추첨)",
     body: "· 집 클러스터 좌측 위에 🎟 복권방이 생겼어요\n· 한 장 50골드 · 긁으면 바로 당첨 결과가 나와요\n· 꽝(45%) · 본전 30~80(35%) · 소액 100~300(15%) · 중당첨 500~1500(4.5%) · 🎊 대박 10000(0.5%)\n· 진짜 랜덤이라 50골드만 돌아올 수도, 10000골드가 터질 수도 있어요\n· 골드가 너무 많이 모일 때 재미있게 쓰는 배출구예요" },
   { id: "u20260724n55", type: "수정", date: "2026-07-24", title: "🛠 실행 오류 수정 (내 페이지 초기화 순서)",
