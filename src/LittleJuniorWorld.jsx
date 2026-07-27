@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v104 · 2026-07-24";
+const APP_VERSION = "v105 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -569,6 +569,7 @@ const ROOM_TIPS = {
   ikea: ["집 외관·가구·탈것을 살 수 있어요", "가구를 사면 내 집에 배치돼요", "탈것은 빠를수록 비싸지만 입장 조준도 쉬워져요"],
   project: ["이지모드는 순서대로, 하드모드는 광장에서 자유롭게", "＋ 버튼으로 퀘스트를 추가할 때 ⭐ 경험치를 꼭 정해야 해요", "보상은 💎 젬·🪙 골드·🏆 아이템·🧠 스킬 여러 개를 걸 수 있어요", "다 했으면 📮 제출 → 답변과 📷 인증 사진(최대 3장)을 올려요", "수락해야 💬 대화창이 열려요 · 수락 후엔 모집 화면과 자유롭게 오갈 수 있어요", "대화방의 📣 모두 부르기를 누르면 파티원 화면에 팝업이 떠요 (바로 이동·거절 선택)", "대화 내역은 새로고침해도 그대로 남아요", "📓 퀘스트 일지를 등록하면 파티원 모두가 볼 수 있어요 (여러 개 가능)", "하드모드 퀘스트를 깨면 🧠 사고 스킬을 배워요", "상단 🧠 도감을 누르고, 항목을 다시 누르면 완료한 사람이 보여요"],
   questdone: ["퀴스트 신청·수락 파편을 봉헌해요", "등록자가 🛡 검토하고 ⭐ 보상을 체크하면 지급돼요", "「🙋 내 관련」 필터로 내가 처리할 것만 볼 수 있어요"],
+  lotto: ["🎟 한 장 50골드예요 · 판매대 앞에서 눌러 사요", "긁으면 바로 당첨 결과가 나와요", "꽝일 수도, 대박(10000골드)일 수도 있어요 — 진짜 랜덤!", "골드가 남을 때 재미로 즐겨보세요"],
   coredict: ["우리만의 단어를 등록하고 가나다 순으로 찾아봐요", "🏷 필수개념·R·C·S 카테고리로 단어를 분류하고 걸러 볼 수 있어요", "🔗 뜻 안에 다른 등록 단어를 쓰면 자동으로 관련 개념으로 이어져요", "🖼 갤러리에 사진을, 🔒 비밀사전에 나만의 요약을 남길 수 있어요", "오른쪽 아래 📚 아이콘으로 어디서든 사전을 열 수 있어요"],
   meeting: ["📋 회의 안건을 추가하면 같은 회의실 사람 모두에게 보여요", "채팅으로 같은 회의실 사람들과 대화해요", "📨 초대장을 보내면 상대 메세지함으로 가요", "예약해두면 주민센터에 표시돼요"],
   naverschool: ["집을 하나씩 들러 퀴스트를 깨요", "앞 집을 깨야 다음 집이 열려요", "깨난 기록은 저장돼서 나갔다 와도 그대로예요"],
@@ -913,6 +914,7 @@ list.push({ id: "jjeop", kind: "small", x: 1820, y: 1210, r: 55, label: "🍴 �
     { id: "minigame", label: "🎮 미니게임 방", tint: "#8e5a9e", x: 1770, y: 950 },
     { id: "smoke", label: "🚬 흡연의 방", tint: "#7a8b99", x: 1990, y: 1160 },
     { id: "luck", label: "🍀 초심자의 행운", tint: "#3fa07a", x: 1120, y: 970 },
+    { id: "lotto", label: "🎟 복권방", tint: "#d94f70", x: 300, y: 470 },
   ];
   smalls.forEach((s) => list.push({ id: s.id, kind: "small", x: s.x, y: s.y, r: 55, label: s.label, tint: s.tint }));
   // 수영장 / 헬스장 (주민센터 남쪽)
@@ -2375,7 +2377,7 @@ const PLACE_NAME = {
   listening: "🎵 리스닝방", reels: "📱 릴스방", minigame: "🎮 미니게임", smoke: "🚬 흡연의 방", luck: "🍀 초심자의 행운",
   pool: "🏊 수영장", gym: "💪 헬스장", sandbag: "🥊 샌드백", jjeop: "🍴 쩝쩝박사",
   musinsa: "🛍 무신사", ikea: "🛒 이케아", project: "🗺 보스맵", questdone: "🏆 제단",
-  coredict: "📚 코어사전", meeting: "🎥 회의실", naverschool: "📗 네이버스쿨", videoschool: "🎬 영상스쿨",
+  coredict: "📚 코어사전", meeting: "🎥 회의실", naverschool: "📗 네이버스쿨", videoschool: "🎬 영상스쿨", lotto: "🎟 복권방",
   rent: "🏝 렌트하우스", big: "🏢 회사", alba: "💼 알바", gate: "🚧 검문소",
 };
 const placeLabel = (v) => PLACE_NAME[v || "world"] || "🏢 건물 안";
@@ -5285,6 +5287,97 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
   );
 }
 
+/* ======================= 🎟 복권방 (즉석 추첨) ======================= */
+/* 50골드 내고 긁으면 랜덤 당첨 · 골드를 빼는 게 목적이라 평균 환급률은 100% 미만이에요 */
+const LOTTO_PRICE = 50;
+const LOTTO_TIERS = [
+  { p: 0.45, min: 0,    max: 0,    label: "꽝",     emoji: "💨", color: "#7a8b99" },
+  { p: 0.35, min: 30,   max: 80,   label: "본전",   emoji: "🪙", color: "#a86e13" },
+  { p: 0.15, min: 100,  max: 300,  label: "소액 당첨", emoji: "🎉", color: "#3fa07a" },
+  { p: 0.045, min: 500, max: 1500, label: "중당첨",  emoji: "💰", color: "#5b8def" },
+  { p: 0.005, min: 10000, max: 10000, label: "🎊 대박!", emoji: "👑", color: "#d94f70" },
+];
+function drawLotto() {
+  let r = Math.random();
+  for (const t of LOTTO_TIERS) { if (r < t.p) { const amt = t.min + Math.round(Math.random() * (t.max - t.min)); return { ...t, amount: amt }; } r -= t.p; }
+  const t = LOTTO_TIERS[0]; return { ...t, amount: 0 };
+}
+function LottoRoom({ onBack, bubble, gold = 0, onBuy }) {
+  const [phase, setPhase] = useState("idle");   // idle | scratch | result
+  const [result, setResult] = useState(null);
+  const [history, setHistory] = useState([]);
+  const canBuy = gold >= LOTTO_PRICE;
+
+  const buy = () => {
+    if (!canBuy || phase === "scratch") return;
+    setPhase("scratch"); setResult(null);
+    setTimeout(() => {
+      const res = drawLotto();
+      setResult(res);
+      setHistory((h) => [{ ...res, at: Date.now() }, ...h].slice(0, 8));
+      setPhase("result");
+      onBuy && onBuy(res.amount);   // 부모가 -50 하고 +당첨금 처리
+    }, 900);
+  };
+
+  const furniture = [
+    { id: "counter", x: 250, y: 150, w: 140, h: 90, color: "transparent", emoji: "🎟", label: "복권 판매대",
+      onInteract: () => (phase === "scratch" ? null : buy()) },
+  ];
+
+  return (
+    <RoomView title="🎟 복권방" icon="🎟" sub={`한 장 ${LOTTO_PRICE}골드 · 긁으면 바로 당첨 확인! 꽝부터 대박(10000)까지 진짜 랜덤`} bg="#fce4ec" roomW={640} roomH={400}
+      furniture={furniture} onBack={onBack} paused bubble={bubble} headerBg="#d94f70">
+      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 14, zIndex: 20, background: "rgba(0,0,0,0.25)" }}>
+        <div style={{ width: "100%", maxWidth: 400 }}>
+          <Panel style={{ padding: 16, textAlign: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center", fontSize: 12, color: C.inkSoft, marginBottom: 10 }}>
+              <GemBadge kind="gold" amount={gold} /><span>· 한 장 🪙{LOTTO_PRICE}</span>
+            </div>
+
+            <div style={{ height: 150, display: "flex", alignItems: "center", justifyContent: "center", margin: "6px 0" }}>
+              {phase === "idle" && <div><div style={{ fontSize: 60 }}>🎟</div><div style={{ fontSize: 13, color: C.inkSoft, marginTop: 8 }}>복권을 긁어 행운을 시험해보세요!</div></div>}
+              {phase === "scratch" && <div><div className="gem-spin" style={{ fontSize: 56 }}>🎲</div><div style={{ fontSize: 13.5, color: C.inkSoft, marginTop: 8 }}>긁는 중…</div></div>}
+              {phase === "result" && result && (
+                <div className="enter-prompt">
+                  <div style={{ fontSize: 60 }}>{result.emoji}</div>
+                  <div style={{ fontSize: 18, fontWeight: "bold", color: result.color, marginTop: 6 }}>{result.label}</div>
+                  <div style={{ fontSize: 15, fontWeight: "bold", marginTop: 4 }}>
+                    {result.amount > 0 ? `🪙 ${result.amount.toLocaleString()} 골드 당첨!` : "아쉽게 꽝이에요 😢"}
+                  </div>
+                  {result.amount >= 10000 && <div style={{ fontSize: 12, color: "#d94f70", fontWeight: "bold", marginTop: 4 }}>🎊 축하합니다! 대박이에요!!</div>}
+                </div>
+              )}
+            </div>
+
+            <PxButton tone={canBuy ? "gold" : "ink"} disabled={!canBuy || phase === "scratch"} onClick={buy} style={{ width: "100%", padding: 13, fontSize: 15 }}>
+              {phase === "scratch" ? "긁는 중…" : canBuy ? `🎟 복권 사기 (🪙${LOTTO_PRICE})` : "골드가 부족해요"}
+            </PxButton>
+
+            {history.length > 0 && (
+              <div style={{ marginTop: 12, textAlign: "left" }}>
+                <div style={{ fontSize: 11, fontWeight: "bold", color: C.inkSoft, marginBottom: 5 }}>최근 결과</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 3, maxHeight: 110, overflow: "auto" }}>
+                  {history.map((h, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11.5, background: C.white, border: `1px solid ${C.parchEdge}`, borderRadius: 6, padding: "4px 8px" }}>
+                      <span>{h.emoji}</span>
+                      <span style={{ flex: 1, color: h.color, fontWeight: "bold" }}>{h.label}</span>
+                      <span style={{ color: h.amount > 0 ? C.good : C.inkSoft }}>{h.amount > 0 ? `+${h.amount.toLocaleString()}` : "0"}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 10, lineHeight: 1.6 }}>
+              당첨 확률 : 꽝 45% · 본전 35% · 소액 15% · 중당첨 4.5% · 🎊 대박(10000) 0.5%
+            </div>
+          </Panel>
+        </div>
+      </div>
+    </RoomView>
+  );
+}
+
 function MiniGameRoom({ onBack, onReward, bubble, myName = "", people = [] }) {
   const [game, setGame] = useState(null); // 'reaction' | 'rps' | 'sequence'
   const [contest, setContest] = useState(false);
@@ -8165,6 +8258,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n56", type: "업데이트", date: "2026-07-24", title: "🎟 복권방 추가 (즉석 추첨)",
+    body: "· 집 클러스터 좌측 위에 🎟 복권방이 생겼어요\n· 한 장 50골드 · 긁으면 바로 당첨 결과가 나와요\n· 꽝(45%) · 본전 30~80(35%) · 소액 100~300(15%) · 중당첨 500~1500(4.5%) · 🎊 대박 10000(0.5%)\n· 진짜 랜덤이라 50골드만 돌아올 수도, 10000골드가 터질 수도 있어요\n· 골드가 너무 많이 모일 때 재미있게 쓰는 배출구예요" },
   { id: "u20260724n55", type: "수정", date: "2026-07-24", title: "🛠 실행 오류 수정 (내 페이지 초기화 순서)",
     body: "· 접속하자마자 「Cannot access before initialization」 오류로 게임이 멈추던 문제를 고쳤어요\n· 내 페이지 서버 동기화 코드가 이름(myName)보다 먼저 실행되던 순서를 바로잡았어요\n· 이제 정상적으로 로딩됩니다" },
   { id: "u20260724n54", type: "업데이트", date: "2026-07-24", title: "🚪 집 문 하나로 · 📖 코어사전 카테고리·연결개념·상시 아이콘",
@@ -14146,6 +14241,14 @@ function EchoTown() {
           chat={musicChat} onChat={(t) => { setMusicChat((v) => [...v, { who: myName || "나", text: t, me: true }].slice(-80)); if (netSendEvent) netSendEvent("lchat", { who: myName || "나", text: t }); }} />}
         {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} extraCats={reelExtra} onAddCat={addReel} />}
         {view === "minigame" && <MiniGameRoom myName={myName} people={people} onBack={backToWorld} onReward={(n) => awardGold(n)} bubble={bubble} liarGame={liarGame} onLiarAction={lgAction} />}
+        {view === "lotto" && <LottoRoom onBack={backToWorld} bubble={bubble} gold={gold}
+          onBuy={(win) => {
+            // 먼저 50골드를 내고, 당첨금을 받아요
+            setGold((g) => Math.max(0, g - LOTTO_PRICE) + (win || 0));
+            if (win >= 10000) showNotice("🎊 대박! 복권 10000골드에 당첨됐어요!!");
+            else if (win > 0) showNotice(`🎟 복권 당첨! 🪙${win} 골드를 받았어요`);
+            else showNotice("🎟 복권 꽝… 다음 기회에!");
+          }} />}
         {view === "luck" && <LuckRoom myName={myName} people={people} onBack={backToWorld} bubble={bubble} netSendEvent={netSendEvent} luckData={luckData} onLuckChange={setLuckData} />}
         {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => awardGold(n)} scores={swimScores} onRecord={(nick, time) => { setSwimScores((s) => [...s, { nick, time }]); bump("swim"); dbAddRank("swim", nick, time, null).then(reloadRanks); }} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => { awardGold(4); bump("gym"); }} bubble={bubble} />}
