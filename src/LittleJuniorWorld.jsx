@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v86 · 2026-07-24";
+const APP_VERSION = "v87 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -7602,6 +7602,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n38", type: "수정", date: "2026-07-24", title: "🚨 HQ 열자마자 오류 나던 문제",
+    body: "· [원인] 🙋 내 페이지 패널의 「HQ 열기」 버튼에 없는 색상(gem)을 지정해서 화면이 멈췄어요\n· 올바른 색으로 바꿔 정상 작동합니다\n· 저장 데이터는 그대로예요 — 초기화하지 않으셔도 됩니다" },
   { id: "u20260724n37", type: "업데이트", date: "2026-07-24", title: "🖥 HQ 퀘스트·로드맵 탭 · 🙋 상시 내 페이지 · 진행중 아이콘",
     body: "· 🗺 보스맵 도전기 건물을 마을에서 없앴어요\n· 🖥 HQ에 📋 퀘스트 탭(카드형: 담당자·진행바·⭐·🪙·💎·마감일)과 🗺 로드맵 탭(챕터 세로 트리)을 예시로 넣었어요\n· 화면 왼쪽에 🙋 내 페이지 패널이 상시 떠요 (일일 미션 체크 · ◀로 접기)\n· 화면 오른쪽에 진행중 퀘스트 아이콘이 세로로 떠요 (아이콘은 우선 랜덤 · 누르면 HQ 열림)\n· HQ 퀘스트·로드맵은 지금은 예시 데이터예요 — 등록·편집은 다음 단계에서 붙입니다" },
   { id: "u20260724n36", type: "업데이트", date: "2026-07-24", title: "🖥 에코월드 HQ (대시보드) 1단계 · 홈 탭",
@@ -9280,7 +9282,7 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
             </label>
           ))}
         </div>
-        <PxButton tone="gem" onClick={onOpenHQ} style={{ width: "100%", fontSize: 11, padding: 8 }}>🖥 HQ 열기</PxButton>
+        <PxButton tone="gold" onClick={onOpenHQ} style={{ width: "100%", fontSize: 11, padding: 8 }}>🖥 HQ 열기</PxButton>
       </div>
     </div>
   );
