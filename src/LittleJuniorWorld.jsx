@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v89 · 2026-07-24";
+const APP_VERSION = "v91 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -4855,7 +4855,21 @@ function LiarGame({ onClose, onReward, myName = "", people = [], game, onAction 
   );
 }
 
-/* ======================= 🍀 초심자의 행운 (이름별 캘린더 투두) ======================= */
+/* ======================= 🍀 초심자의 행운 (관리자 업무 배정 · 알바 체크) ======================= */
+const LUCK_ADMIN_PW = "ckdals987?";
+function shiftHHMM(hhmm, deltaMin) {
+  const [h, m] = (hhmm || "00:00").split(":").map((x) => parseInt(x, 10) || 0);
+  let total = h * 60 + m + Math.round(deltaMin || 0);
+  total = ((total % 1440) + 1440) % 1440;   // 하루 안으로 wrap
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+function fmtDur(min) {
+  const m = Math.max(0, Math.round(min || 0));
+  const h = Math.floor(m / 60), mm = m % 60;
+  if (h && mm) return `${h}시간 ${mm}분`;
+  if (h) return `${h}시간`;
+  return `${mm}분`;
+}
 function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luckData = {}, onLuckChange }) {
   const names = Object.keys(luckData);
   const [active, setActive] = useState(myName && names.includes(myName) ? myName : (myName || names[0] || ""));
@@ -4863,9 +4877,21 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
   const [newTab, setNewTab] = useState("");
   const [cur, setCur] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
   const [selDay, setSelDay] = useState(() => new Date().toLocaleDateString("sv-SE"));
-  const [tTitle, setTTitle] = useState("");
-  const [tFrom, setTFrom] = useState("09:00");
-  const [tTo, setTTo] = useState("10:00");
+
+  /* 관리자 모드 */
+  const [admin, setAdmin] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pw, setPw] = useState("");
+  const [pwErr, setPwErr] = useState(false);
+
+  /* 업무 등록 폼 */
+  const [qTitle, setQTitle] = useState("");
+  const [qStart, setQStart] = useState("09:00");
+  const [qDur, setQDur] = useState(60);
+
+  /* 초과 입력 모달 */
+  const [overFor, setOverFor] = useState(null);   // {id}
+  const [overMin, setOverMin] = useState("");
 
   const pushTab = (nm) => {
     const t = (nm || "").trim(); if (!t) return;
@@ -4873,29 +4899,71 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
     setActive(t); setNewTab("");
   };
   const myTab = luckData[active] || {};
-  const canEdit = active === myName;   // 자기 탭만 편집
-
   const setTab = (data) => {
     const next = { ...luckData, [active]: data };
     onLuckChange(next);
     if (netSendEvent) netSendEvent("luck", { name: active, data });
   };
+  const daySel = myTab[selDay] || [];
+
   const addTask = () => {
-    if (!tTitle.trim() || !canEdit) return;
-    const day = myTab[selDay] || [];
-    setTab({ ...myTab, [selDay]: [...day, { id: Date.now(), t: tTitle.trim(), from: tFrom, to: tTo, done: false }].sort((a, b) => a.from.localeCompare(b.from)) });
-    setTTitle("");
+    if (!qTitle.trim() || !admin) return;
+    const row = { id: Date.now(), t: qTitle.trim(), start: qStart, dur: Number(qDur) || 0, done: false, over: null };
+    setTab({ ...myTab, [selDay]: [...daySel, row].sort((a, b) => (a.start || "").localeCompare(b.start || "")) });
+    setQTitle("");
   };
-  const toggleTask = (id) => {
-    if (!canEdit) return;
-    setTab({ ...myTab, [selDay]: (myTab[selDay] || []).map((x) => (x.id === id ? { ...x, done: !x.done } : x)) });
+  const delTask = (id) => { if (!admin) return; setTab({ ...myTab, [selDay]: daySel.filter((x) => x.id !== id) }); };
+
+  /* 이 업무보다 "시작 시간이 뒤"인 업무들의 시작을 delta 만큼 밀거나 당겨요 */
+  const shiftLaterTasks = (rows, pivotId, delta) => {
+    const pivot = rows.find((x) => x.id === pivotId);
+    if (!pivot || !delta) return rows;
+    return rows.map((x) => {
+      if (x.id === pivotId) return x;
+      if ((x.start || "") > (pivot.start || "")) return { ...x, start: shiftHHMM(x.start, delta) };
+      return x;
+    });
   };
-  const delTask = (id) => {
-    if (!canEdit) return;
-    setTab({ ...myTab, [selDay]: (myTab[selDay] || []).filter((x) => x.id !== id) });
+  /* 알바 체크 : 시작+소요 로 마감시각 계산, 지금 시각과 비교 · 뒤 업무 자동 조정 */
+  const checkTask = (row) => {
+    if (row.done) {
+      // 체크 해제 → 밀거나 당겼던 만큼 되돌려요 (adj 반대로)
+      const back = -(row.adj || 0);
+      let rows = daySel.map((x) => (x.id === row.id ? { ...x, done: false, over: null, early: null, late: false, adj: 0 } : x));
+      if (back) rows = shiftLaterTasks(rows, row.id, back);
+      setTab({ ...myTab, [selDay]: rows });
+      return;
+    }
+    const due = new Date(`${selDay}T${row.start || "00:00"}:00`);
+    due.setMinutes(due.getMinutes() + (Number(row.dur) || 0));
+    const now = new Date();
+    const diff = Math.round((now - due) / 60000);   // +면 초과, -면 일찍
+    if (diff > 0) {
+      // 🔴 초과 : 완료+빨강, 뒤 업무 +diff, 모달에서 정확히 조정 가능
+      let rows = daySel.map((x) => (x.id === row.id ? { ...x, done: true, late: true, over: diff, early: null, adj: diff } : x));
+      rows = shiftLaterTasks(rows, row.id, diff);
+      setTab({ ...myTab, [selDay]: rows });
+      setOverMin(String(diff)); setOverFor(row.id);
+    } else {
+      // 🔵 시간 내 완료 : 일찍 끝냈으면 그만큼 뒤 업무 당겨요
+      const early = -diff;   // 0 이상
+      let rows = daySel.map((x) => (x.id === row.id ? { ...x, done: true, late: false, over: null, early: early > 0 ? early : null, adj: early > 0 ? -early : 0 } : x));
+      if (early > 0) rows = shiftLaterTasks(rows, row.id, -early);
+      setTab({ ...myTab, [selDay]: rows });
+    }
+  };
+  /* 초과 분을 관리자/알바가 다시 입력하면 그 차이만큼 뒤 업무를 재조정해요 */
+  const saveOver = () => {
+    const v = Math.max(0, Number(overMin) || 0);
+    const row = daySel.find((x) => x.id === overFor);
+    const prevAdj = (row && row.adj) || 0;
+    const delta = v - prevAdj;   // 이미 민 것과의 차이만큼 추가로 조정
+    let rows = daySel.map((x) => (x.id === overFor ? { ...x, over: v, adj: v } : x));
+    if (delta) rows = shiftLaterTasks(rows, overFor, delta);
+    setTab({ ...myTab, [selDay]: rows });
+    setOverFor(null); setOverMin("");
   };
 
-  /* 달력 */
   const first = new Date(cur.y, cur.m, 1);
   const startDow = first.getDay();
   const daysIn = new Date(cur.y, cur.m + 1, 0).getDate();
@@ -4904,16 +4972,23 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
   for (let d = 1; d <= daysIn; d++) cells.push(d);
   const dateStr = (d) => `${cur.y}-${String(cur.m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   const shown = names.filter((n) => !search.trim() || n.includes(search.trim()));
-  const daySel = myTab[selDay] || [];
 
   return (
-    <RoomView title="🍀 초심자의 행운" icon="🍀" sub="이름별 탭 · 캘린더에 내 할 일을 담아요" bg="#e9f5ec" roomW={640} roomH={400} furniture={[]} onBack={onBack} paused headerBg="#3fa07a" bubble={bubble} side={
+    <RoomView title="🍀 초심자의 행운" icon="🍀" sub="관리자가 업무를 배정하고 · 담당자가 완료 체크해요" bg="#e9f5ec" roomW={640} roomH={400} furniture={[]} onBack={onBack} paused headerBg="#3fa07a" bubble={bubble} side={
       <div style={{ padding: 12, fontFamily: "'DotGothic16', monospace", height: "100%", overflow: "auto", boxSizing: "border-box" }}>
-        {/* 이름 검색 + 탭 추가 */}
-        <div style={{ display: "flex", gap: 5, marginBottom: 8 }}>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 이름 검색"
-            style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
+        {/* 관리자 토글 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+          <span style={{ flex: 1, fontSize: 10.5, color: admin ? C.good : C.inkSoft, fontWeight: "bold" }}>{admin ? "🔓 관리자 모드 — 업무 등록 가능" : "🔒 보기 · 체크 모드"}</span>
+          {admin ? (
+            <PxButton tone="ink" onClick={() => setAdmin(false)} style={{ fontSize: 10, padding: "5px 9px" }}>관리자 해제</PxButton>
+          ) : (
+            <PxButton tone="gold" onClick={() => { setPwOpen(true); setPw(""); setPwErr(false); }} style={{ fontSize: 10, padding: "5px 9px" }}>🔑 관리자</PxButton>
+          )}
         </div>
+
+        {/* 이름 검색 + 탭 */}
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 이름 검색"
+          style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, marginBottom: 8 }} />
         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
           {shown.map((n) => (
             <button key={n} type="button" onClick={() => setActive(n)}
@@ -4921,10 +4996,10 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
               {n === myName ? `⭐ ${n}` : n}
             </button>
           ))}
-          {shown.length === 0 && <span style={{ fontSize: 11, color: C.inkSoft }}>탭이 없어요. 아래에서 추가하세요.</span>}
+          {shown.length === 0 && <span style={{ fontSize: 11, color: C.inkSoft }}>탭이 없어요.</span>}
         </div>
         <div style={{ display: "flex", gap: 5, marginBottom: 12 }}>
-          <input value={newTab} onChange={(e) => setNewTab(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") pushTab(newTab); }} placeholder="＋ 이름 탭 추가 (예: 민지)"
+          <input value={newTab} onChange={(e) => setNewTab(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") pushTab(newTab); }} placeholder="＋ 이름 탭 추가"
             style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
           <PxButton tone="good" onClick={() => pushTab(newTab)} style={{ fontSize: 11, padding: "6px 10px" }}>추가</PxButton>
           {myName && !names.includes(myName) && <PxButton tone="gold" onClick={() => pushTab(myName)} style={{ fontSize: 11, padding: "6px 10px" }}>내 탭</PxButton>}
@@ -4932,10 +5007,7 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
 
         {active ? (
           <>
-            <div style={{ fontSize: 13, fontWeight: "bold", marginBottom: 8 }}>
-              {active === myName ? "⭐ 내 캘린더" : `🔒 ${active}님의 캘린더`}
-              {active !== myName && <span style={{ fontSize: 10, color: C.inkSoft, fontWeight: "normal" }}> · 보기 전용</span>}
-            </div>
+            <div style={{ fontSize: 13, fontWeight: "bold", marginBottom: 8 }}>{active === myName ? "⭐ " : ""}{active}님의 업무 캘린더</div>
             {/* 달력 */}
             <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 9, padding: 10, marginBottom: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
@@ -4962,39 +5034,97 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
               </div>
             </div>
 
-            {/* 선택 날짜 타임테이블 */}
-            <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>📅 {selDay}</div>
-            {daySel.length === 0 && <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>이 날짜에 할 일이 없어요.</div>}
-            {daySel.map((t) => (
-              <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "7px 9px", marginBottom: 5 }}>
-                <button type="button" onClick={() => toggleTask(t.id)} disabled={!canEdit}
-                  style={{ cursor: canEdit ? "pointer" : "default", width: 20, height: 20, flexShrink: 0, borderRadius: 5, border: `2px solid ${C.ink}`, background: t.done ? "#3fa07a" : C.white, color: C.white, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
-                  {t.done ? "✓" : ""}
-                </button>
-                <span style={{ flex: 1, minWidth: 0, fontSize: 12, textDecoration: t.done ? "line-through" : "none", color: t.done ? C.inkSoft : C.ink, wordBreak: "break-word" }}>{t.t}</span>
-                <span style={{ fontSize: 10.5, color: C.inkSoft, whiteSpace: "nowrap" }}>{t.from}~{t.to}</span>
-                {canEdit && <button type="button" onClick={() => delTask(t.id)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.inkSoft }}>✕</button>}
-              </div>
-            ))}
-
-            {/* 추가 폼 (내 탭만) */}
-            {canEdit ? (
-              <div style={{ background: "#f2f9f4", border: `2px dashed ${C.ink}`, borderRadius: 8, padding: 9, marginTop: 8 }}>
-                <input value={tTitle} onChange={(e) => setTTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addTask(); }} placeholder="작업명"
+            {/* 업무 등록 (관리자만) */}
+            {admin && (
+              <div style={{ background: "#fff6e0", border: `2px solid ${C.ink}`, borderRadius: 8, padding: 10, marginBottom: 10 }}>
+                <div style={{ fontSize: 11.5, fontWeight: "bold", marginBottom: 7 }}>＋ 업무 등록 · 📅 {selDay}</div>
+                <input value={qTitle} onChange={(e) => setQTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addTask(); }} placeholder="퀘스트 내용"
                   style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, marginBottom: 6 }} />
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <input type="time" value={tFrom} onChange={(e) => setTFrom(e.target.value)} style={{ flex: 1, minWidth: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 11 }} />
-                  <span style={{ fontSize: 12 }}>~</span>
-                  <input type="time" value={tTo} onChange={(e) => setTTo(e.target.value)} style={{ flex: 1, minWidth: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 11 }} />
-                  <PxButton tone="good" onClick={addTask} style={{ fontSize: 11, padding: "7px 11px" }}>추가</PxButton>
+                  <label style={{ fontSize: 10.5, color: C.inkSoft }}>시작</label>
+                  <input type="time" value={qStart} onChange={(e) => setQStart(e.target.value)} style={{ padding: 5, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 11 }} />
+                  <label style={{ fontSize: 10.5, color: C.inkSoft }}>소요</label>
+                  <input type="number" value={qDur} min={0} onChange={(e) => setQDur(e.target.value)} style={{ width: 54, padding: 5, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 11 }} />
+                  <span style={{ fontSize: 10.5, color: C.inkSoft }}>분</span>
+                  <PxButton tone="good" onClick={addTask} style={{ flex: 1, fontSize: 11, padding: "6px 8px" }}>등록</PxButton>
                 </div>
               </div>
-            ) : (
-              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 8 }}>다른 사람의 캘린더는 볼 수만 있어요. 내 탭에서 편집하세요.</div>
             )}
+
+            {/* 업무 표 */}
+            <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>📅 {selDay} 업무</div>
+            <div style={{ border: `2px solid ${C.ink}`, borderRadius: 8, overflow: "hidden" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "34px 1fr 52px 74px", background: "#3fa07a", color: C.white, fontSize: 10, fontWeight: "bold" }}>
+                <div style={{ padding: "6px 4px", textAlign: "center" }}>완료</div>
+                <div style={{ padding: "6px 6px" }}>퀘스트</div>
+                <div style={{ padding: "6px 4px", textAlign: "center" }}>시작</div>
+                <div style={{ padding: "6px 4px", textAlign: "center" }}>소요</div>
+              </div>
+              {daySel.length === 0 ? (
+                <div style={{ fontSize: 11, color: C.inkSoft, textAlign: "center", padding: 16, background: C.white }}>등록된 업무가 없어요{admin ? "" : " · 관리자가 배정하면 표시돼요"}</div>
+              ) : daySel.map((t, i) => (
+                <div key={t.id} style={{ display: "grid", gridTemplateColumns: "34px 1fr 52px 74px", alignItems: "center", background: C.white, borderTop: `1px solid ${C.parchEdge}`, fontSize: 11.5 }}>
+                  <div style={{ textAlign: "center", padding: "7px 2px" }}>
+                    <button type="button" onClick={() => checkTask(t)} title={t.done ? "완료 취소" : "완료 체크"}
+                      style={{ cursor: "pointer", width: 22, height: 22, borderRadius: 5, border: `2px solid ${t.done ? (t.late ? C.danger : "#3b82f6") : C.ink}`, background: t.done ? (t.late ? C.danger : "#3b82f6") : C.white, color: C.white, fontSize: 13, lineHeight: 1, padding: 0 }}>
+                      {t.done ? "✓" : ""}
+                    </button>
+                  </div>
+                  <div style={{ padding: "7px 6px", wordBreak: "break-word", display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ flex: 1, textDecoration: t.done ? "line-through" : "none", color: t.done ? C.inkSoft : C.ink }}>{t.t}</span>
+                    {admin && <button type="button" onClick={() => delTask(t.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: C.inkSoft }}>✕</button>}
+                  </div>
+                  <div style={{ textAlign: "center", padding: "7px 2px", color: C.inkSoft }}>{t.start}</div>
+                  <div style={{ textAlign: "center", padding: "7px 3px" }}>
+                    {fmtDur(t.dur)}
+                    {t.over > 0 && <span style={{ color: C.danger, fontWeight: "bold" }}> +{fmtDur(t.over)}</span>}
+                    {t.early > 0 && <span style={{ color: "#3b82f6", fontWeight: "bold" }}> −{fmtDur(t.early)}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 7, lineHeight: 1.6 }}>
+              🔵 일찍/정시 완료 · 🔴 초과 완료<br />초과하면 <b style={{ color: C.danger }}>+초과분</b>(빨강)·일찍 끝내면 <b style={{ color: "#3b82f6" }}>−단축분</b>(파랑)이 붙고, <b>뒤 업무 시작 시간</b>이 자동으로 밀리거나 당겨져요
+            </div>
           </>
         ) : (
-          <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 30, lineHeight: 1.8 }}>탭을 추가하거나 선택하세요 🍀<br />「내 탭」을 눌러 내 캘린더를 만들어보세요</div>
+          <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 30, lineHeight: 1.8 }}>탭을 추가하거나 선택하세요 🍀</div>
+        )}
+
+        {/* 관리자 비밀번호 모달 */}
+        {pwOpen && (
+          <div onClick={() => setPwOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 300, background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 20 }}>
+              <div style={{ textAlign: "center", fontSize: 30 }}>🔑</div>
+              <div style={{ textAlign: "center", fontSize: 14, fontWeight: "bold", margin: "8px 0 12px" }}>관리자 비밀번호</div>
+              <input type="password" value={pw} autoFocus onChange={(e) => { setPw(e.target.value); setPwErr(false); }}
+                onKeyDown={(e) => { if (e.key === "Enter") { if (pw === LUCK_ADMIN_PW) { setAdmin(true); setPwOpen(false); } else setPwErr(true); } }}
+                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${pwErr ? C.danger : C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, textAlign: "center" }} />
+              {pwErr && <div style={{ fontSize: 11, color: C.danger, textAlign: "center", marginTop: 6, fontWeight: "bold" }}>⚠️ 비밀번호가 틀렸어요</div>}
+              <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                <PxButton tone="ink" onClick={() => setPwOpen(false)} style={{ flex: 1, padding: 10, fontSize: 12 }}>취소</PxButton>
+                <PxButton tone="good" onClick={() => { if (pw === LUCK_ADMIN_PW) { setAdmin(true); setPwOpen(false); } else setPwErr(true); }} style={{ flex: 1, padding: 10, fontSize: 12 }}>확인</PxButton>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 초과 시간 입력 모달 */}
+        {overFor != null && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 }}>
+            <div style={{ width: "100%", maxWidth: 300, background: C.parch, border: `4px solid ${C.danger}`, borderRadius: 14, padding: 20 }}>
+              <div style={{ textAlign: "center", fontSize: 30 }}>⏱</div>
+              <div style={{ textAlign: "center", fontSize: 14, fontWeight: "bold", margin: "8px 0 4px", color: C.danger }}>시간 초과!</div>
+              <div style={{ textAlign: "center", fontSize: 11.5, color: C.inkSoft, marginBottom: 12, lineHeight: 1.6 }}>몇 분 초과했나요?<br />입력하면 소요시간 옆에 <b style={{ color: C.danger }}>+분</b>으로 표시돼요</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
+                <span style={{ fontSize: 13 }}>+</span>
+                <input type="number" value={overMin} autoFocus min={0} onChange={(e) => setOverMin(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveOver(); }}
+                  style={{ width: 80, padding: 9, border: `3px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 15, textAlign: "center" }} />
+                <span style={{ fontSize: 13 }}>분</span>
+              </div>
+              <PxButton tone="danger" onClick={saveOver} style={{ width: "100%", marginTop: 14, padding: 11, fontSize: 13 }}>기록하기</PxButton>
+            </div>
+          </div>
         )}
       </div>
     } />
@@ -7830,6 +7960,10 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n42", type: "업데이트", date: "2026-07-24", title: "⏱ 업무 시간 자동 조정 (초과=밀기 / 단축=당기기)",
+    body: "· 완료 체크하면 실제 시각으로 초과·단축을 자동 계산해요\n· 🔴 초과하면 소요시간 옆에 +초과분(빨강) · 🔵 일찍 끝내면 −단축분(파랑)이 붙어요\n· 초과하거나 일찍 끝낸 만큼, 그 뒤 업무들의 시작 시간이 자동으로 밀리거나 당겨져요 (누적 반영)\n· 체크를 취소하면 밀거나 당겼던 시간도 원래대로 되돌아가요\n· 초과 분을 다시 입력하면 그 차이만큼 뒤 일정이 다시 조정돼요" },
+  { id: "u20260724n41", type: "업데이트", date: "2026-07-24", title: "🍀 초심자의 행운 → 관리자 업무 배정 시스템",
+    body: "· 🔑 관리자 비밀번호로 관리자 모드에 들어가면 업무를 등록할 수 있어요\n· 관리자만 등록 버튼이 보이고, 그 외에는 완료 체크만 할 수 있어요\n· 업무 등록 항목 : 퀘스트 내용 · 시작 시간 · 소요 시간\n· 표 형식 : [완료여부] · [퀘스트] · [시작시간] · [소요시간]\n· 체크할 때 시간 안에 끝내면 🔵 파란 체크, 초과하면 🔴 빨간 체크\n· 초과하면 초과 분을 입력하는 화면이 뜨고, 소요시간 옆에 「1시간 +20분」 처럼 +초과분이 빨갛게 붙어요\n· 이름별 탭 · 🔍 검색 · 캘린더는 그대로예요" },
   { id: "u20260724n40", type: "업데이트", date: "2026-07-24", title: "🎥 회의실 음성 회의 + 회의록 → 디스코드 정리 (봇 연동 준비)",
     body: "· 🎥 회의실에 「🔊 음성 회의 시작」 버튼을 넣었어요 (봇이 준비되면 임시 음성채널을 자동 생성해요)\n· 📝 회의록 정리 : 제목·내용을 적고 디스코드 채널을 골라 전송 대기열에 담아요\n· 채널 선택 : 🌐 에코월드 · 🖥 카페24 · 😈 코어시크릿 · 🏛 코어어플\n· 회의록은 서버에 저장되고, 봇이 준비되면 고른 채널에 자동으로 정리해 올립니다\n· 회의 안건도 회의록에 함께 담겨서 넘어가요\n· ⚠️ 아직 봇 연결 전이라 실제 디스코드 게시는 봇 완성 후 작동해요" },
   { id: "u20260724n39", type: "업데이트", date: "2026-07-24", title: "🙋 내 페이지 확장 · 🍀 초심자의 행운 방",
