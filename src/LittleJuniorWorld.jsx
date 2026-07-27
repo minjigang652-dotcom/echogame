@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v97 · 2026-07-24";
+const APP_VERSION = "v98 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -8003,6 +8003,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n49", type: "업데이트", date: "2026-07-24", title: "🙋 HQ 내 페이지 탭 (등록·수정 가능)",
+    body: "· 🖥 HQ 🙋 내 페이지 탭을 실제로 채웠어요 — 프로필·일일미션·내 할일·오늘의 허들·내 서랍·마감 일지\n· 나만 볼 수 있고 나만 편집할 수 있어요\n· 왼쪽 상시 🙋 패널과 같은 데이터를 써서, 어느 쪽에서 적어도 서로 반영돼요\n· 참고: 초심자의 행운 업무 등록·삭제, HQ 로드맵 챕터 추가·수정·삭제는 이미 들어가 있어요 (배포 후 확인해보세요)" },
   { id: "u20260724n48", type: "수정", date: "2026-07-24", title: "🛠 빌드 오류 수정 · 📗 네이버스쿨 패널 복구",
     body: "· 카페 워크플로우(CafeWorkflow) 함수가 중간에 잘려서 빌드가 안 되던 문제를 고쳤어요\n· 📗 네이버스쿨 패널(NaverSchoolPanel)을 새로 넣었어요 — 네이버키워드·카페발행·URL·카페최신글·지식인·튜토리얼 탭\n· 네이버스쿨 건물에 들어가면 이 패널이 열려요 (영상스쿨은 기존 그대로)" },
   { id: "u20260724n47", type: "업데이트", date: "2026-07-24", title: "🗺 HQ 로드맵 챕터 추가·수정·삭제 (진행률 자동)",
@@ -9829,6 +9831,18 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const [rcat, setRcat] = useState("core");
   const [qEdit, setQEdit] = useState(null);   // 편집/등록 중인 퀘스트 (null=닫힘)
   const [saveMsg, setSaveMsg] = useState("");   // HQ 자체 저장 상태 표시
+  /* 🙋 내 페이지 탭 (왼쪽 상시 패널과 같은 데이터 · 나만 편집) */
+  const MP_KEY = "echotown_mypage_" + (myName || "guest");
+  const mpLoad = (k, d) => { try { const v = JSON.parse(window.localStorage.getItem(MP_KEY) || "{}"); return v[k] !== undefined ? v[k] : d; } catch (e) { return d; } };
+  const mpSaveAll = (patch) => { try { const v = JSON.parse(window.localStorage.getItem(MP_KEY) || "{}"); window.localStorage.setItem(MP_KEY, JSON.stringify({ ...v, ...patch })); } catch (e) {} };
+  const MP_MISSIONS = ["코난놀이 작성 (10분 이내!)", "[B] 채널: 오늘 생긴 병목지점을 어떤 사고로 어떻게 뚫었는지 공유", "진행한 허들: AI 노트 + 투두 정리 후 채널 공유", "허들 활동 시간 공지"];
+  const [mpDone, setMpDone] = useState(() => mpLoad("mission", {}));
+  const [mpTodos, setMpTodos] = useState(() => mpLoad("todos", []));
+  const [mpHuddles, setMpHuddles] = useState(() => mpLoad("huddles", []));
+  const [mpNotes, setMpNotes] = useState(() => mpLoad("notes", []));
+  const [mpDiary, setMpDiary] = useState("");
+  const [mpTi, setMpTi] = useState("");
+  useEffect(() => { mpSaveAll({ mission: mpDone, todos: mpTodos, huddles: mpHuddles, notes: mpNotes }); }, [mpDone, mpTodos, mpHuddles, mpNotes]);
   const blankQuest = () => ({ id: "q" + Date.now(), cat: "core", title: "", star: 2, gold: 0, gem: 0, chapter: "", due: "", subs: [] });
   const commitQuest = (q) => {
     const clean = { ...q, star: Number(q.star) || 1, gold: Number(q.gold) || 0, gem: Number(q.gem) || 0, editedBy: myName || "익명", editedAt: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
@@ -10135,7 +10149,86 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
           );
         })()}
         {tab === "doc" && soon("📄 문서")}
-        {tab === "me" && soon("🙋 내 페이지")}
+        {tab === "me" && (() => {
+          const mpDoneN = Object.values(mpDone).filter(Boolean).length;
+          const card = { background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 15, marginBottom: 14 };
+          const hd = (ic, t, right) => (<div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 11 }}><span style={{ fontSize: 18 }}>{ic}</span><b style={{ flex: 1, fontSize: 14 }}>{t}</b>{right}</div>);
+          const addBtn = (fn) => <button type="button" onClick={fn} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "5px 10px" }}>＋</button>;
+          return (
+            <div style={{ maxWidth: 620, margin: "0 auto" }}>
+              {/* 프로필 */}
+              <div style={{ ...card, display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: colorOf(myName), color: C.white, fontSize: 24, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", border: `3px solid ${C.ink}`, flexShrink: 0 }}>{avatarOf(myName)}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 17, fontWeight: "bold" }}>{myName || "게스트"}</div>
+                  <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 3 }}>나만 볼 수 있는 개인 페이지예요 · 왼쪽 🙋 패널과 같은 내용이에요</div>
+                </div>
+                <div style={{ display: "flex", gap: 16, textAlign: "center", fontSize: 11 }}>
+                  <div><div style={{ fontSize: 19, fontWeight: "bold" }}>{mpTodos.filter((t) => !t.done).length}</div><div style={{ color: C.inkSoft }}>할 일</div></div>
+                  <div><div style={{ fontSize: 19, fontWeight: "bold" }}>{mpDoneN}</div><div style={{ color: C.inkSoft }}>미션</div></div>
+                  <div><div style={{ fontSize: 19, fontWeight: "bold" }}>{mpHuddles.length}</div><div style={{ color: C.inkSoft }}>허들</div></div>
+                </div>
+              </div>
+
+              {/* 일일 미션 */}
+              <div style={card}>
+                {hd("🎯", "일일 미션", <span style={{ fontSize: 11, color: C.inkSoft }}>{mpDoneN}/{MP_MISSIONS.length} · +10🪙</span>)}
+                {MP_MISSIONS.map((m, i) => (
+                  <label key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12.5, marginBottom: 8, cursor: "pointer", lineHeight: 1.5 }}>
+                    <input type="checkbox" checked={!!mpDone[i]} onChange={() => setMpDone((d) => ({ ...d, [i]: !d[i] }))} style={{ marginTop: 2, flexShrink: 0 }} />
+                    <span style={{ textDecoration: mpDone[i] ? "line-through" : "none", color: mpDone[i] ? C.inkSoft : C.ink }}>{m}</span>
+                  </label>
+                ))}
+              </div>
+
+              {/* 내 할 일 */}
+              <div style={card}>
+                {hd("📋", "내 할 일")}
+                {mpTodos.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>할 일이 없어요.</div>}
+                {mpTodos.map((t, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, marginBottom: 6 }}>
+                    <input type="checkbox" checked={t.done} onChange={() => setMpTodos((v) => v.map((x, j) => (j === i ? { ...x, done: !x.done } : x)))} style={{ flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0, textDecoration: t.done ? "line-through" : "none", color: t.done ? C.inkSoft : C.ink, wordBreak: "break-word" }}>{t.t}</span>
+                    <button type="button" onClick={() => setMpTodos((v) => v.filter((_, j) => j !== i))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: C.inkSoft }}>✕</button>
+                  </div>
+                ))}
+                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                  <input value={mpTi} onChange={(e) => setMpTi(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && mpTi.trim()) { setMpTodos((v) => [...v, { t: mpTi.trim(), done: false }]); setMpTi(""); } }}
+                    placeholder="개인 할 일 입력 후 Enter" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5 }} />
+                  {addBtn(() => { if (mpTi.trim()) { setMpTodos((v) => [...v, { t: mpTi.trim(), done: false }]); setMpTi(""); } })}
+                </div>
+              </div>
+
+              {/* 오늘의 허들 */}
+              <div style={card}>
+                {hd("🎧", "오늘의 허들", addBtn(() => { const t = (window.prompt("허들 기록 (회의/AI노트/투두)") || "").trim(); if (t) setMpHuddles((v) => [{ t, at: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }) }, ...v]); }))}
+                {mpHuddles.length === 0 ? <div style={{ fontSize: 12, color: C.inkSoft }}>오늘 기록된 허들이 없어요.</div> : mpHuddles.map((h, i) => (
+                  <div key={i} style={{ fontSize: 12.5, marginBottom: 5, lineHeight: 1.5 }}>· {h.t} <span style={{ color: C.inkSoft }}>{h.at}</span></div>
+                ))}
+              </div>
+
+              {/* 내 서랍 */}
+              <div style={card}>
+                {hd("📒", "내 서랍", addBtn(() => { const t = (window.prompt("개인 노트 (나에게만 보여요)") || "").trim(); if (t) setMpNotes((v) => [{ t, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v]); }))}
+                {mpNotes.length === 0 ? <div style={{ fontSize: 12, color: C.inkSoft }}>노트가 없어요.</div> : mpNotes.map((n, i) => (
+                  <div key={i} style={{ display: "flex", gap: 6, fontSize: 12.5, marginBottom: 5, lineHeight: 1.5 }}>
+                    <span style={{ flex: 1, wordBreak: "break-word" }}>· {n.t}</span>
+                    <span style={{ fontSize: 10, color: C.inkSoft, flexShrink: 0 }}>{n.at}</span>
+                    <button type="button" onClick={() => setMpNotes((v) => v.filter((_, j) => j !== i))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.inkSoft }}>✕</button>
+                  </div>
+                ))}
+              </div>
+
+              {/* 마감 일지 */}
+              <div style={card}>
+                {hd("✍️", "마감 일지")}
+                <textarea value={mpDiary} onChange={(e) => setMpDiary(e.target.value)} rows={3} placeholder="오늘 한 일 / 막힌 부분 / 내일 계획"
+                  style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, resize: "vertical" }} />
+                <PxButton tone="ink" onClick={() => { if (mpDiary.trim()) { setMpNotes((v) => [{ t: "📝 " + mpDiary.trim(), at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v]); setMpDiary(""); } }} style={{ width: "100%", fontSize: 12.5, padding: 9, marginTop: 8 }}>일지 남기기</PxButton>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       <div style={{ textAlign: "center", fontSize: 10, color: C.inkSoft, padding: "8px", background: C.white, borderTop: `2px solid ${C.parchEdge}` }}>
