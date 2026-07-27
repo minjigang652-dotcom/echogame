@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v100 · 2026-07-24";
+const APP_VERSION = "v101 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -551,7 +551,7 @@ const ROOM_TIPS = {
   center: ["테이블을 눌러 주민들과 대화해요", "회의실 안에서 📋 회의 안건을 적고 완료 체크할 수 있어요", "회의실 3곳은 예약하고 채팅도 할 수 있어요", "회의실 안 📨 초대장으로 날짜·시간을 정해 보내보세요", "커피·자판기·정수기로 HP·MP 를 채워요"],
   house: ["📺 티비를 누르면 「요즘 보는 작품」을 올리고 서로 댓글을 달 수 있어요", "🖥️ 책상에 메모를 여러 장 붙여둘 수 있어요 · 눌러서 자세히 보기", "🚪 현관문을 누르면 바로 나가요", "🔧 가구 배치를 켜고 가구를 끌어서 옮겨보세요", "집에 둔 선물을 누르면 🎒 가방에 넣거나 🗑 버릴 수 있어요", "🌳 마당과 🐟 수족관은 형욱이네에서 사야 생겨요", "집에 둔 선물을 누르면 누가 줌는지 보여요"],
   sea: ["🚏 위쪽 정류장으로 가면 마을로 돌아가요", "모래사장이 넓어졌어요 — 바위·조개·표류목 사이를 걸어보세요", "🧔 어부 아저씨에게 미끼와 낚싯대를 사세요", "📖 바다 도감에서 뭐가 잡히는지 볼 수 있어요", "선착장 끝 🎣 낚시터에서 낚시를 해보세요", "잡은 건 어부 아저씨에게 팔 수 있어요"],
-  fishing: ["🎣 던지려면 🪱 미끼가 1개씩 필요해요", "❗ 입질이 오면 1.4초 안에 당기세요", "💎 젬과 💠 다이아는 잡는 즉시 들어와요", "🎁 비밀 상자는 어부에게 열어달라고 하세요", "낚싯대를 업그레이드하면 귀한 게 잘 걸려요"],
+  fishing: ["🎣 던지려면 🪱 미끼가 1개씩 필요해요", "❗ 입질이 오면 1.4초 안에 당기세요", "💎 젬과 💠 다이아는 잡는 즉시 들어와요", "🎁 비밀 상자는 어부에게 열어달라고 하세요 · 📖 도감에서 나오는 보물·확률을 봐요", "🎣 튼튼·전설 낚싯대는 드물게 부러져 대나무로 바뀌어요"],
   petshop: ["🏗 시설 · 🐾 입양 · 🐠 수조 세 코너 앞에서 눌러 열어요", "아직 없는 동물·물고기는 ❓ 로 보이고 누르면 설명이 나와요", "먼저 🏗 시설에서 🌳 마당·🐟 수족관을 사세요", "마당이 있어야 반려동물을, 수족관이 있어야 물고기를 데려올 수 있어요", "데려나가기를 누르면 마을에서 나를 따라다니고 다른 사람에게도 보여요", "🤲 쓰다듬기·🍖 밥주기로 친밀도를 쌓아보세요"],
   bank: ["💎 젬 환전은 아직 준비 중이에요 — 열리면 공지로 알려드려요", "🪙 골드는 마을 안에서만 쓰고 환전은 안 돼요", "🪙 골드는 마을 안에서만 쓰고 환전은 안 돼요", "환전 내역은 아래에 쌓여요"],
   board: ["글을 올리면 모두가 봐요", "내가 쓴 글은 ✏️ 수정·🗑 삭제할 수 있어요", "업데이트 탭에서 새로 바뀐 기능을 확인하세요"],
@@ -1625,19 +1625,19 @@ function PetShop({ onBack, gold, pets = [], activePet = null, fishes = [], facil
 /* ===== 🎣 바다 낚시 =====
    잡을 수 있는 것 : 물고기 · 쓰레기 · 젬/다이아 · 비밀 상자 */
 const SEA_CATCH = [
-  { id: "fish1",   emoji: "🐟", name: "작은 물고기", type: "fish",  sell: 3,  w: 30, rare: 0 },
-  { id: "fish2",   emoji: "🐠", name: "열대어",     type: "fish",  sell: 6,  w: 18, rare: 0 },
-  { id: "shrimp",  emoji: "🦐", name: "새우",       type: "fish",  sell: 4,  w: 12, rare: 0 },
-  { id: "squid",   emoji: "🦑", name: "오징어",     type: "fish",  sell: 9,  w: 8,  rare: 1 },
-  { id: "puffer",  emoji: "🐡", name: "복어",       type: "fish",  sell: 12, w: 6,  rare: 1 },
-  { id: "crab",    emoji: "🦀", name: "꽃게",       type: "fish",  sell: 11, w: 6,  rare: 1 },
-  { id: "octopus", emoji: "🐙", name: "문어",       type: "fish",  sell: 18, w: 3,  rare: 2 },
+  { id: "fish1",   emoji: "🐟", name: "작은 물고기", type: "fish",  sell: 1,  w: 30, rare: 0 },
+  { id: "fish2",   emoji: "🐠", name: "열대어",     type: "fish",  sell: 2,  w: 18, rare: 0 },
+  { id: "shrimp",  emoji: "🦐", name: "새우",       type: "fish",  sell: 2,  w: 12, rare: 0 },
+  { id: "squid",   emoji: "🦑", name: "오징어",     type: "fish",  sell: 3,  w: 8,  rare: 1 },
+  { id: "puffer",  emoji: "🐡", name: "복어",       type: "fish",  sell: 4,  w: 6,  rare: 1 },
+  { id: "crab",    emoji: "🦀", name: "꽃게",       type: "fish",  sell: 4,  w: 6,  rare: 1 },
+  { id: "octopus", emoji: "🐙", name: "문어",       type: "fish",  sell: 7,  w: 3,  rare: 2 },
   { id: "can",     emoji: "🥫", name: "녹슨 깡통",   type: "trash", sell: 1,  w: 9,  rare: 0 },
   { id: "shoe",    emoji: "👟", name: "낡은 신발",   type: "trash", sell: 1,  w: 7,  rare: 0 },
-  { id: "boot",    emoji: "🥾", name: "헌 장화",     type: "trash", sell: 2,  w: 4,  rare: 0 },
-  { id: "gem",     emoji: "💎", name: "바다 젬",     type: "gem",   sell: 0,  w: 3,  rare: 2 },
-  { id: "diamond", emoji: "💠", name: "다이아",      type: "gem",   sell: 0,  w: 1,  rare: 3 },
-  { id: "box",     emoji: "🎁", name: "비밀 상자",   type: "box",   sell: 20, w: 2,  rare: 2 },
+  { id: "boot",    emoji: "🥾", name: "헌 장화",     type: "trash", sell: 1,  w: 4,  rare: 0 },
+  { id: "gem",     emoji: "💎", name: "바다 젬",     type: "gem",   sell: 0,  w: 2,    rare: 1 },
+  { id: "diamond", emoji: "💠", name: "다이아",      type: "gem",   sell: 0,  w: 0.4,  rare: 1 },
+  { id: "box",     emoji: "🎁", name: "비밀 상자",   type: "box",   sell: 8,  w: 1.2,  rare: 1 },
 ];
 const RODS = [
   { id: 0, name: "대나무 낚싯대", emoji: "🎣", price: 0,   desc: "기본 낚싯대예요" },
@@ -1646,7 +1646,7 @@ const RODS = [
 ];
 /* 낚싯대 등급이 높을수록 희귀한 것의 확률이 올라가요 */
 function catchWeights(rod) {
-  const boost = [1, 1.8, 3.2][rod] || 1;
+  const boost = [1, 1.5, 2.1][rod] || 1;
   return SEA_CATCH.map((f) => ({ ...f, ww: f.rare > 0 ? f.w * Math.pow(boost, f.rare) : f.w }));
 }
 function pickCatch(rod) {
@@ -1657,10 +1657,27 @@ function pickCatch(rod) {
   return list[0];
 }
 const BOX_GIFTS = [
-  { id: "bx1", name: "진주 목걸이", emoji: "📿" }, { id: "bx2", name: "보물 지도", emoji: "🗺️" },
-  { id: "bx3", name: "유리병 편지", emoji: "🍾" }, { id: "bx4", name: "소라 고둥", emoji: "🐚" },
-  { id: "bx5", name: "황금 열쇠", emoji: "🗝️" }, { id: "bx6", name: "산호 조각", emoji: "🪸" },
-  { id: "bx7", name: "낡은 나침반", emoji: "🧭" }, { id: "bx8", name: "해적 모자", emoji: "👒" },
+  { id: "bx4", name: "소라 고둥",   emoji: "🐚", w: 24, sell: 15,  grade: "common", desc: "흔한 바다 기념품이에요" },
+  { id: "bx3", name: "유리병 편지", emoji: "🍾", w: 20, sell: 20,  grade: "common", desc: "누군가의 오래된 편지예요" },
+  { id: "bx6", name: "산호 조각",   emoji: "🪸", w: 18, sell: 25,  grade: "common", desc: "곱게 부서진 산호예요" },
+  { id: "bx1", name: "진주 목걸이", emoji: "📿", w: 12, sell: 60,  grade: "rare",   desc: "윤이 나는 진주 목걸이예요" },
+  { id: "bx7", name: "낡은 나침반", emoji: "🧭", w: 10, sell: 70,  grade: "rare",   desc: "아직도 북쪽을 가리켜요" },
+  { id: "bx8", name: "해적 모자",   emoji: "👒", w: 8,  sell: 90,  grade: "rare",   desc: "진짜 해적이 썼을까요?" },
+  { id: "bx2", name: "보물 지도",   emoji: "🗺️", w: 5,  sell: 150, grade: "epic",   desc: "어딘가의 보물이 표시돼 있어요 · 조합 재료" },
+  { id: "bx5", name: "황금 열쇠",   emoji: "🗝️", w: 3,  sell: 200, grade: "epic",   desc: "무언가를 여는 열쇠예요 · 조합 재료" },
+];
+const BOX_GRADE = { common: ["일반", "#7a8b99"], rare: ["희귀", "#5b8def"], epic: ["에픽", "#b76bd7"] };
+function pickBoxGift() {
+  const total = BOX_GIFTS.reduce((a, g) => a + g.w, 0);
+  let r = Math.random() * total;
+  for (const g of BOX_GIFTS) { r -= g.w; if (r <= 0) return g; }
+  return BOX_GIFTS[0];
+}
+/* 🎁 보물 조합 : 재료 → 결과 */
+const TREASURE_RECIPES = [
+  { id: "rc1", need: { bx2: 1, bx5: 1 }, name: "숨겨진 보물 상자", emoji: "💰", reward: { gold: 500 }, desc: "보물 지도 + 황금 열쇠 → 🪙500" },
+  { id: "rc2", need: { bx1: 3 }, name: "진주 왕관", emoji: "👑", reward: { gem: 2 }, desc: "진주 목걸이 3개 → 💎2" },
+  { id: "rc3", need: { bx4: 2, bx6: 2 }, name: "바다의 선물", emoji: "🌊", reward: { gold: 120 }, desc: "소라 2 + 산호 2 → 🪙120" },
 ];
 
 /* 📖 바다 도감 */
@@ -1710,8 +1727,72 @@ function SeaDex({ rod = 0, caught = {}, onClose }) {
   );
 }
 
+/* 🎁 보물 상자 도감 — 획득 아이템 리스트·확률 + 보유 보물 판매·조합 */
+function BoxDex({ onClose, treasures = {}, onSell, onCombine }) {
+  const total = BOX_GIFTS.reduce((a, g) => a + g.w, 0);
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 145, padding: 14 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, maxHeight: "calc(100vh - 28px)", overflowY: "auto" }}>
+        <Panel style={{ padding: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 22 }}>🎁</span>
+            <b style={{ flex: 1, fontSize: 15 }}>비밀 상자 도감</b>
+            <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
+          </div>
+
+          <div style={{ fontSize: 11.5, fontWeight: "bold", color: C.inkSoft, margin: "4px 0 8px" }}>상자에서 나오는 것 · 확률</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            {BOX_GIFTS.map((g) => {
+              const [gn, gc] = BOX_GRADE[g.grade];
+              const pct = ((g.w / total) * 100).toFixed(1);
+              const have = treasures[g.id] || 0;
+              return (
+                <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 9, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "8px 10px" }}>
+                  <span style={{ fontSize: 24 }}>{g.emoji}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: "bold" }}>{g.name} {have > 0 && <span style={{ fontSize: 10, color: C.inkSoft }}>· {have}개 보유</span>}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
+                      <span style={{ fontSize: 9, background: gc, color: C.white, borderRadius: 8, padding: "1px 6px" }}>{gn}</span>
+                      <span style={{ fontSize: 10, color: C.inkSoft }}>{g.desc}</span>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 11.5, fontWeight: "bold", color: "#a86e13" }}>🪙 {g.sell}</div>
+                    <div style={{ fontSize: 10.5, color: C.inkSoft }}>{pct}%</div>
+                  </div>
+                  {have > 0 && onSell && <PxButton tone="gold" onClick={() => onSell(g.id)} style={{ fontSize: 10, padding: "5px 8px" }}>팔기</PxButton>}
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ fontSize: 11.5, fontWeight: "bold", color: C.inkSoft, margin: "14px 0 8px" }}>🔨 보물 조합</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            {TREASURE_RECIPES.map((rc) => {
+              const can = Object.keys(rc.need).every((k) => (treasures[k] || 0) >= rc.need[k]);
+              return (
+                <div key={rc.id} style={{ display: "flex", alignItems: "center", gap: 9, background: can ? "#f2f9f4" : "#efeae0", border: `2px solid ${can ? C.ink : "#b5ad9c"}`, borderRadius: 8, padding: "8px 10px" }}>
+                  <span style={{ fontSize: 22 }}>{rc.emoji}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: "bold" }}>{rc.name}</div>
+                    <div style={{ fontSize: 10, color: C.inkSoft }}>{rc.desc}</div>
+                  </div>
+                  <PxButton tone={can ? "good" : "ink"} disabled={!can} onClick={() => onCombine && onCombine(rc)} style={{ fontSize: 10.5, padding: "6px 9px" }}>조합</PxButton>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 10, lineHeight: 1.6 }}>
+            보물은 어부에게 팔거나(🪙) · 조합해서 더 큰 보상으로 바꿀 수 있어요<br />집에 전시할 수도 있어요 (🎒 소지품 → 집에 두기)
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
 /* 🧔 어부 아저씨 — 미끼·낚싯대 판매 / 잡은 것 매입 */
-function FisherShop({ onClose, gold, bait, rod, bag = {}, onBuyBait, onBuyRod, onSell, onSellAll, onOpenBox }) {
+function FisherShop({ onClose, gold, bait, rod, bag = {}, treasures = {}, onBuyBait, onBuyRod, onSell, onSellAll, onOpenBox, onBoxDex }) {
   const [tab, setTab] = useState("buy");
   const items = SEA_CATCH.filter((f) => (bag[f.id] || 0) > 0 && f.type !== "gem");
   const totalGold = items.reduce((a, f) => a + f.sell * (bag[f.id] || 0), 0);
@@ -1749,20 +1830,24 @@ function FisherShop({ onClose, gold, bait, rod, bag = {}, onBuyBait, onBuyRod, o
                 </div>
               </div>
 
+              {onBoxDex && <PxButton tone="blue" onClick={onBoxDex} style={{ width: "100%", fontSize: 11.5, padding: 9, marginBottom: 10 }}>🎁 비밀 상자 도감 · 보물 판매·조합</PxButton>}
               <div style={{ fontSize: 11.5, fontWeight: "bold", marginBottom: 6 }}>🎣 낚싯대</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {RODS.map((r) => {
-                  const own = rod >= r.id;
+                  const current = rod === r.id;   // 지금 쓰는 낚싯대
+                  const lower = r.id < rod;        // 이미 지나온 하위 등급
                   return (
-                    <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 9, background: rod === r.id ? "#fff5d6" : C.white, border: `2px solid ${rod === r.id ? C.gem : C.ink}`, borderRadius: 8, padding: 9 }}>
+                    <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 9, background: current ? "#fff5d6" : C.white, border: `2px solid ${current ? C.gem : C.ink}`, borderRadius: 8, padding: 9, opacity: lower ? 0.6 : 1 }}>
                       <span style={{ fontSize: 26 }}>{r.emoji}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: "bold" }}>{r.name}{rod === r.id ? " ✓" : ""}</div>
+                        <div style={{ fontSize: 13, fontWeight: "bold" }}>{r.name}{current ? " ✓" : ""}</div>
                         <div style={{ fontSize: 10.5, color: C.inkSoft }}>{r.desc}</div>
                       </div>
-                      {own
-                        ? <span style={{ fontSize: 11, color: C.good, fontWeight: "bold", whiteSpace: "nowrap" }}>보유중</span>
-                        : <PxButton tone="gold" disabled={gold < r.price} onClick={() => onBuyRod(r)} style={{ fontSize: 11, padding: "8px 10px", whiteSpace: "nowrap" }}>🪙{r.price}</PxButton>}
+                      {current
+                        ? <span style={{ fontSize: 11, color: C.good, fontWeight: "bold", whiteSpace: "nowrap" }}>사용중</span>
+                        : lower
+                          ? <span style={{ fontSize: 10.5, color: C.inkSoft, whiteSpace: "nowrap" }}>지난 등급</span>
+                          : <PxButton tone="gold" disabled={gold < r.price} onClick={() => onBuyRod(r)} style={{ fontSize: 11, padding: "8px 10px", whiteSpace: "nowrap" }}>🪙{r.price}</PxButton>}
                     </div>
                   );
                 })}
@@ -1783,6 +1868,7 @@ function FisherShop({ onClose, gold, bait, rod, bag = {}, onBuyBait, onBuyRod, o
                           <div style={{ fontSize: 10.5, color: C.inkSoft }}>개당 🪙{f.sell}</div>
                         </div>
                         {f.id === "box" && <PxButton tone="blue" onClick={() => onOpenBox()} style={{ fontSize: 10.5, padding: "6px 8px" }}>🎁 열기</PxButton>}
+                        {f.id === "box" && onBoxDex && <PxButton tone="wood" onClick={onBoxDex} style={{ fontSize: 10.5, padding: "6px 8px" }}>📖 도감</PxButton>}
                         <PxButton tone="gold" onClick={() => onSell(f.id)} style={{ fontSize: 10.5, padding: "6px 8px" }}>🪙{f.sell * bag[f.id]}</PxButton>
                       </div>
                     ))}
@@ -1800,7 +1886,7 @@ function FisherShop({ onClose, gold, bait, rod, bag = {}, onBuyBait, onBuyRod, o
 }
 
 /* 🎣 낚시터 */
-function FishingView({ onBack, bubble, rod = 0, bait = 0, bag = {}, caught = {}, onCatch, onUseBait, onShop, onDex }) {
+function FishingView({ onBack, bubble, rod = 0, bait = 0, bag = {}, caught = {}, onCatch, onUseBait, onShop, onDex, onBreak }) {
   const [phase, setPhase] = useState("idle");   // idle | wait | bite | result | miss
   const [got, setGot] = useState(null);
   const [log, setLog] = useState([]);
@@ -1822,6 +1908,13 @@ function FishingView({ onBack, bubble, rod = 0, bait = 0, bag = {}, caught = {},
     if (phase === "wait") { clearTimeout(timer.current); setPhase("miss"); return; }
     if (phase !== "bite") return;
     clearTimeout(timer.current);
+    // 🎣 낚싯대가 부러질 확률 (기본 대나무는 안 부러짐 · 튼튼/전설 2%)
+    const breakChance = [0, 0.02, 0.02][rod] || 0;
+    if (rod > 0 && Math.random() < breakChance) {
+      setGot(null); setPhase("broke");
+      if (onBreak) onBreak();
+      return;
+    }
     const f = pickCatch(rod);
     setGot(f); setPhase("result");
     setLog((l) => [{ ...f, key: Date.now() }, ...l].slice(0, 10));
@@ -1864,6 +1957,7 @@ function FishingView({ onBack, bubble, rod = 0, bait = 0, bag = {}, caught = {},
                 </div>
               )}
               {phase === "miss" && <div><div style={{ fontSize: 50 }}>💨</div><div style={{ fontSize: 13.5, color: C.inkSoft, marginTop: 6 }}>놓쳤어요! 미끼만 날렸네요</div></div>}
+              {phase === "broke" && <div><div style={{ fontSize: 50 }}>💥</div><div style={{ fontSize: 14, color: C.danger, fontWeight: "bold", marginTop: 6 }}>낚싯대가 부러졌어요!</div><div style={{ fontSize: 11.5, color: C.inkSoft, marginTop: 4 }}>🎣 대나무 낚싯대로 바뀌었어요 · 어부에게 다시 사세요</div></div>}
             </div>
 
             <PxButton tone={phase === "bite" ? "danger" : "good"} disabled={bait <= 0 && phase !== "bite" && phase !== "wait"}
@@ -8003,6 +8097,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n52", type: "업데이트", date: "2026-07-24", title: "🎣 낚시 개편 · 젬/골드 밸런스 · 보물 사용처 · 낚싯대 부러짐",
+    body: "· 💎 젬이 너무 많이 나오던 걸 크게 낮췄어요 (전설 낚싯대 100미끼 기준 젬 65개 → 약 6개)\n· 🐟 물고기 판매가를 낮춰 골드가 덜 쌓이게 했어요\n· 🎣 튼튼·전설 낚싯대는 던질 때 드물게(2%) 부러져 대나무로 초기화돼요 (기본 대나무는 안 부러져요)\n· 🎣 상점 낚싯대 표시를 고쳤어요 — 지금 쓰는 건 「사용중」, 지나온 하위 등급은 「지난 등급」으로 보여요\n· 🎁 비밀 상자 도감을 추가했어요 — 나오는 보물 목록·확률을 볼 수 있어요 (어부 상점 → 도감)\n· 🎁 보물 사용처가 생겼어요 : 어부에게 팔거나(🪙) · 조합해서 더 큰 보상(🪙·💎)으로 바꾸거나 · 집에 전시할 수 있어요\n· 보물은 등급(일반·희귀·에픽)에 따라 판매가와 확률이 달라요" },
   { id: "u20260724n51", type: "수정", date: "2026-07-24", title: "🎉 서버 저장 문제 해결! (uid 칼럼 오류)",
     body: "· [진짜 원인] 저장할 때 notices 테이블에 없는 'uid' 칸에 값을 넣으려다 저장이 통째로 거부되고 있었어요\n· 집 꾸밈·건물 이미지·HQ 퀘스트·로드맵·회의록·공지 등이 다른 사람 화면에 안 보이던 것이 전부 이 때문이었어요\n· uid 를 모두 제거해서 이제 서버에 정상 저장·공유돼요\n· 배포 후 HQ 퀘스트를 저장하면 ✅ 저장됨이 뜨고, 다른 사람 화면에도 보이고, 새로고침해도 유지됩니다" },
   { id: "u20260724n50", type: "수정", date: "2026-07-24", title: "🖥 HQ 상단 탭 중앙 정렬",
@@ -12049,9 +12145,11 @@ function EchoTown() {
   const [rod, setRod] = useState(0);
   const [bait, setBait] = useState(10);
   const [catchBag, setCatchBag] = useState({});
+  const [treasures, setTreasures] = useState({});   // 🎁 보물 보유 {id:개수}
   const [caughtDex, setCaughtDex] = useState({});
   const [shopOpen, setShopOpen] = useState(false);
   const [dexOpen, setDexOpen] = useState(false);
+  const [boxDexOpen, setBoxDexOpen] = useState(false);
   const doCatch = (f) => {
     setCaughtDex((v) => ({ ...v, [f.id]: (v[f.id] || 0) + 1 }));
     bump("fish");
@@ -12082,11 +12180,28 @@ function EchoTown() {
   const openBox = () => {
     if (!(catchBag.box > 0)) return;
     setCatchBag((v) => ({ ...v, box: v.box - 1 }));
-    const g = BOX_GIFTS[Math.floor(Math.random() * BOX_GIFTS.length)];
-    const bonus = 10 + Math.floor(Math.random() * 30);
-    setThanksInv((v) => [...v, { ...g, id: g.id + Date.now(), acts: ["carry", "home"], from: "비밀 상자" }]);
-    awardGold(bonus);
-    showNotice(`🎁 상자에서 ${g.emoji} ${g.name} 과 🪙${bonus} 이 나왔어요!`);
+    const g = pickBoxGift();
+    setTreasures((v) => ({ ...v, [g.id]: (v[g.id] || 0) + 1 }));
+    // 집에 전시할 수 있게 소지품에도 하나 추가
+    setThanksInv((v) => [...v, { ...g, id: g.id + "_" + Date.now(), acts: ["carry", "home"], from: "비밀 상자" }]);
+    const gl = BOX_GRADE[g.grade] ? BOX_GRADE[g.grade][0] : "";
+    showNotice(`🎁 상자에서 [${gl}] ${g.emoji} ${g.name} 이(가) 나왔어요!`);
+  };
+  // 🎁 보물 판매
+  const sellTreasure = (id) => {
+    const g = BOX_GIFTS.find((x) => x.id === id); const n = treasures[id] || 0;
+    if (!g || !n) return;
+    awardGold(g.sell * n);
+    setTreasures((v) => { const c = { ...v }; delete c[id]; return c; });
+    showNotice(`💰 ${g.name} ${n}개를 팔아 🪙${g.sell * n} 받았어요`);
+  };
+  // 🎁 보물 조합
+  const combineTreasure = (rc) => {
+    for (const k in rc.need) { if ((treasures[k] || 0) < rc.need[k]) return; }
+    setTreasures((v) => { const c = { ...v }; for (const k in rc.need) c[k] -= rc.need[k]; return c; });
+    if (rc.reward.gold) awardGold(rc.reward.gold);
+    if (rc.reward.gem) award(rc.reward.gem);
+    showNotice(`${rc.emoji} ${rc.name} 완성! ${rc.reward.gold ? "🪙" + rc.reward.gold : ""}${rc.reward.gem ? "💎" + rc.reward.gem : ""} 획득`);
   };
   const [qs, setQs] = useState(() => {
     const o = {};
@@ -12396,6 +12511,7 @@ function EchoTown() {
     if (d.townRegion && REGIONS[d.townRegion]) { setTownRegion(d.townRegion); saveJSON("echotown_region", d.townRegion); }
     if (d.schoolDone) setSchoolDone(d.schoolDone);
     if (typeof d.rod === "number") setRod(d.rod);
+    if (d.treasures && typeof d.treasures === "object") setTreasures(d.treasures);
     if (typeof d.bait === "number") setBait(d.bait);
     if (d.catchBag) setCatchBag(d.catchBag);
     if (d.caughtDex) setCaughtDex(d.caughtDex);
@@ -13671,7 +13787,7 @@ function EchoTown() {
   const saveTimer = useRef(null);
   /* 현재 저장할 내용을 항상 최신으로 들고 있습니다 */
   const payloadRef = useRef(null);
-  payloadRef.current = { gems, gold, exp, lifetime, townRegion, profile, skills, schoolDone, rod, bait, catchBag, caughtDex, pets, activePet, fishes, facilities, homeLayout, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept, qThreads, qLogs };
+  payloadRef.current = { gems, gold, exp, lifetime, townRegion, profile, skills, schoolDone, rod, bait, catchBag, caughtDex, treasures, pets, activePet, fishes, facilities, homeLayout, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept, qThreads, qLogs };
   const flushSaveRef = useRef(null);
   const flushSave = useCallback((name) => {
     const n = name || myNameRef.current;
@@ -13688,7 +13804,7 @@ function EchoTown() {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => flushSave(myName), 800);
     return () => clearTimeout(saveTimer.current);
-  }, [myName, gems, gold, exp, lifetime, townRegion, profile, skills, schoolDone, rod, bait, catchBag, caughtDex, pets, activePet, fishes, facilities, homeLayout, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept, qThreads, qLogs, flushSave]);
+  }, [myName, gems, gold, exp, lifetime, townRegion, profile, skills, schoolDone, rod, bait, catchBag, caughtDex, treasures, pets, activePet, fishes, facilities, homeLayout, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept, qThreads, qLogs, flushSave]);
 
   /* 새로고침·탭 닫기·탭 전환 직전에 밀린 저장을 즉시 반영 */
   useEffect(() => {
@@ -13946,6 +14062,7 @@ function EchoTown() {
         {view === "fishing" && <FishingView onBack={() => setView("sea")} bubble={bubble}
           rod={rod} bait={bait} bag={catchBag} caught={caughtDex}
           onCatch={doCatch} onUseBait={() => setBait((b) => Math.max(0, b - 1))}
+          onBreak={() => { setRod(0); showNotice("💥 낚싯대가 부러져 대나무 낚싯대로 바뀌었어요"); }}
           onShop={() => setShopOpen(true)} onDex={() => setDexOpen(true)} />}
         {view === "petshop" && <PetShop onBack={backToWorld} bubble={bubble} gold={gold} pets={pets} activePet={activePet} fishes={fishes} facilities={facilities}
           onBuyFacility={(fc) => { if (gold < fc.price || facilities.includes(fc.id)) return; setGold((g) => g - fc.price); setFacilities((v) => [...v, fc.id]); showNotice(`${fc.emoji} ${fc.name}을(를) 마련했어요!`); }}
