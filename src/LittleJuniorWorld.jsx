@@ -2322,46 +2322,42 @@ async function discordUser() {
     };
   } catch (e) { return null; }
 }
-/* ===== 🎮 디스코드 계정 ↔ 게임 이름 매칭 (Supabase · discord_names 테이블) =====
-   · 이름 = 계정. 한 번 정하면 그 디스코드 계정에 고정됩니다.
-   · 어느 브라우저에서 로그인하든 discord_id 로 이름을 찾아와요. */
+/* ===== 🎮 디스코드 계정 ↔ 게임 이름 매칭 =====
+   ⚠️ 새 테이블을 만들 필요 없이, 이미 쓰고 있는 notices 테이블을 재사용합니다.
+      type="identity" · title=디스코드 계정 id · body=게임 이름
+   · 이름 = 게임 계정(세이브). 디스코드는 그 이름으로 들어가는 «열쇠»일 뿐이에요.
+     그래서 기존 「민지」 세이브에 디스코드-민지가 로그인하면 자동으로 합쳐집니다. */
 async function dbNameForDiscord(discordId) {
   if (!discordId) return null;
   try {
     const s = await getSupa();
-    const r = await s.from("discord_names").select("name").eq("discord_id", discordId).maybeSingle();
-    return r && r.data ? r.data.name : null;
+    const r = await s.from("notices").select("body").eq("type", "identity").eq("title", discordId).order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    return row && row.body ? row.body : null;
   } catch (e) { return null; }
 }
-/* 이 이름이 「다른」 디스코드 계정에 이미 묶여 있으면 true (= 사용 중).
-   레거시 세이브(이름만 있고 디스코드 매칭이 없던 사람)는 사용 중이 아니라 «주인 없음» 으로 봅니다. */
-async function dbNameTaken(name, myDiscordId) {
-  if (!name) return false;
+/* 이 이름을 이미 가져간 디스코드 계정 id (없으면 null). 레거시 세이브만 있는 이름은 «주인 없음». */
+async function dbNameOwner(name) {
+  if (!name) return null;
   try {
     const s = await getSupa();
-    const r = await s.from("discord_names").select("discord_id").eq("name", name).maybeSingle();
-    if (!r || !r.data || !r.data.discord_id) return false;   // 아무도 안 쓰는 이름(레거시 포함) → 사용 가능
-    return r.data.discord_id !== myDiscordId;                // 나 말고 다른 계정이 쓰면 사용 중
-  } catch (e) { return false; }
+    const r = await s.from("notices").select("title").eq("type", "identity").eq("body", name).order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    return row && row.title ? row.title : null;
+  } catch (e) { return null; }
 }
 /* 이름을 이 디스코드 계정에 «처음 한 번» 묶습니다.
-   { ok:true } / { ok:false, reason:"taken" }  (다른 사람이 이미 쓰는 이름)
-   { ok:false, reason:"error", detail } (테이블 없음·권한 등 저장 실패 → 이 경우는 «사용 중»이 아님!) */
+   { ok:true } / { ok:false, reason:"taken" } (다른 계정이 이미 씀)
+   { ok:false, reason:"error", detail } (저장 실패 — 사용 중 아님) */
 async function dbClaimName(discordId, name) {
   if (!discordId || !name) return { ok: false, reason: "error", detail: "no id/name" };
   try {
+    const owner = await dbNameOwner(name);
+    if (owner && owner !== discordId) return { ok: false, reason: "taken" };   // 다른 사람이 이미 가져감
+    if (owner === discordId) return { ok: true };                              // 이미 내 이름
     const s = await getSupa();
-    // ① 정말 「다른」 디스코드 계정이 쓰는 이름만 막습니다. (레거시 세이브만 있는 기존 이름은 통과)
-    const chk = await s.from("discord_names").select("discord_id").eq("name", name).maybeSingle();
-    if (chk && chk.data && chk.data.discord_id && chk.data.discord_id !== discordId) {
-      return { ok: false, reason: "taken" };
-    }
-    // ② 이 계정에 이름 저장
-    const { error } = await s.from("discord_names").upsert({ discord_id: discordId, name });
-    if (error) {
-      if (error.code === "23505") return { ok: false, reason: "taken" };   // 이름 unique 충돌(진짜 중복)
-      return { ok: false, reason: "error", detail: error.message || String(error) };  // 저장 실패 → 사용 중 아님
-    }
+    const { error } = await s.from("notices").insert({ type: "identity", title: discordId, body: name, uid: discordId });
+    if (error) return { ok: false, reason: "error", detail: error.message || String(error) };
     return { ok: true };
   } catch (e) { return { ok: false, reason: "error", detail: (e && e.message) || String(e) }; }
 }
@@ -2439,7 +2435,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "identity").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -7627,7 +7623,7 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
   { id: "u20260727n34", type: "업데이트", date: "2026-07-27", title: "🎮 디스코드 로그인 필수 · 이름은 계정에 고정",
-    body: "· 이제 디스코드로 로그인해야 게임에 들어올 수 있어요 (이름만 입력해서 시작하던 방식은 없어졌어요)\n· 처음 로그인하면 마을 이름을 «한 번» 정해요 — 이 이름이 디스코드 계정에 저장돼요\n· 다음부터는 어느 브라우저에서 로그인하든 그 이름·데이터로 바로 들어와요\n· 이름은 한 번 정하면 바꿀 수 없어요\n· 이미 쓰고 있는 이름은 다른 사람이 못 써요 (중복 금지) — 예전에 창민·정인 등으로 놀던 사람은 로그인 후 같은 이름을 넣으면 기존 데이터가 그대로 이어져요\n· ⚠️ 새 이름 저장을 위해 Supabase 에 discord_names 테이블이 필요해요 (아래 안내)" },
+    body: "· 이제 디스코드로 로그인해야 게임에 들어올 수 있어요 (이름만 입력해서 시작하던 방식은 없어졌어요)\n· 처음 로그인하면 마을 이름을 «한 번» 정해요 — 이 이름이 디스코드 계정에 저장돼요\n· 다음부터는 어느 브라우저에서 로그인하든 그 이름·데이터로 바로 들어와요\n· 이름은 한 번 정하면 바꿀 수 없어요\n· 이미 쓰고 있는 이름은 다른 사람이 못 써요 (중복 금지) — 예전에 창민·정인 등으로 놀던 사람은 로그인 후 같은 이름을 넣으면 기존 데이터가 그대로 이어져요\n· 별도 DB 설정 없이 바로 동작해요" },
   { id: "u20260724n33", type: "수정", date: "2026-07-24", title: "🚪 로그아웃 버튼을 내 프로필 안에 추가",
     body: "· 로그아웃 버튼이 시작 화면(이름창)에만 있어서, 이미 로그인된 상태에선 찾기 어려웠어요\n· 이제 우측 하단 🧑 내 프로필 → 「내 정보」 맨 아래에 🚪 로그아웃 버튼이 있어요\n· 누르면 이름과 디스코드 로그인이 모두 해제되고 시작 화면으로 돌아가요\n· 디스코드로 로그인한 경우 어떤 계정인지도 표시돼요" },
   { id: "u20260724n32", type: "업데이트", date: "2026-07-24", title: "🚪 완전 로그아웃 (이름 + 디스코드)",
@@ -10400,7 +10396,7 @@ function EchoTown() {
       setNameBusy(false);
       setNameErr(res.reason === "taken"
         ? "이미 다른 사람이 쓰는 이름이에요. 다른 이름을 정해주세요."
-        : ("저장 실패: " + (res.detail || "알 수 없는 오류") + " · Supabase discord_names 테이블/권한을 확인해주세요"));
+        : ("저장 실패: " + (res.detail || "알 수 없는 오류") + " · 잠시 뒤 다시 시도해주세요"));
       return;
     }
     confirmName(t, discord);   // 성공 → 입장 (기존 세이브가 있으면 그대로 이어져요)
