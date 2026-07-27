@@ -2340,22 +2340,30 @@ async function dbNameTaken(name, myDiscordId) {
   try {
     const s = await getSupa();
     const r = await s.from("discord_names").select("discord_id").eq("name", name).maybeSingle();
-    if (!r || !r.data) return false;                 // 아무도 안 쓰는 이름 → 사용 가능
-    return r.data.discord_id !== myDiscordId;        // 나 말고 다른 계정이 쓰면 사용 중
+    if (!r || !r.data || !r.data.discord_id) return false;   // 아무도 안 쓰는 이름(레거시 포함) → 사용 가능
+    return r.data.discord_id !== myDiscordId;                // 나 말고 다른 계정이 쓰면 사용 중
   } catch (e) { return false; }
 }
 /* 이름을 이 디스코드 계정에 «처음 한 번» 묶습니다.
-   { ok:true } / { ok:false, reason:"taken" | "error" } */
+   { ok:true } / { ok:false, reason:"taken" }  (다른 사람이 이미 쓰는 이름)
+   { ok:false, reason:"error", detail } (테이블 없음·권한 등 저장 실패 → 이 경우는 «사용 중»이 아님!) */
 async function dbClaimName(discordId, name) {
-  if (!discordId || !name) return { ok: false, reason: "error" };
+  if (!discordId || !name) return { ok: false, reason: "error", detail: "no id/name" };
   try {
-    if (await dbNameTaken(name, discordId)) return { ok: false, reason: "taken" };
     const s = await getSupa();
-    // discord_id 가 PK → 이 계정에 이름을 저장. name 은 unique 라 중복이면 error 로 막혀요(경쟁 안전장치).
+    // ① 정말 「다른」 디스코드 계정이 쓰는 이름만 막습니다. (레거시 세이브만 있는 기존 이름은 통과)
+    const chk = await s.from("discord_names").select("discord_id").eq("name", name).maybeSingle();
+    if (chk && chk.data && chk.data.discord_id && chk.data.discord_id !== discordId) {
+      return { ok: false, reason: "taken" };
+    }
+    // ② 이 계정에 이름 저장
     const { error } = await s.from("discord_names").upsert({ discord_id: discordId, name });
-    if (error) return { ok: false, reason: "taken" };
+    if (error) {
+      if (error.code === "23505") return { ok: false, reason: "taken" };   // 이름 unique 충돌(진짜 중복)
+      return { ok: false, reason: "error", detail: error.message || String(error) };  // 저장 실패 → 사용 중 아님
+    }
     return { ok: true };
-  } catch (e) { return { ok: false, reason: "error" }; }
+  } catch (e) { return { ok: false, reason: "error", detail: (e && e.message) || String(e) }; }
 }
 async function dbSaveProfile(name, data) {
   if (!name) return false;
@@ -10391,8 +10399,8 @@ function EchoTown() {
     if (!res.ok) {
       setNameBusy(false);
       setNameErr(res.reason === "taken"
-        ? "이미 사용 중인 이름이에요. 다른 이름을 정해주세요."
-        : "이름 설정에 실패했어요. 잠시 뒤 다시 시도해주세요.");
+        ? "이미 다른 사람이 쓰는 이름이에요. 다른 이름을 정해주세요."
+        : ("저장 실패: " + (res.detail || "알 수 없는 오류") + " · Supabase discord_names 테이블/권한을 확인해주세요"));
       return;
     }
     confirmName(t, discord);   // 성공 → 입장 (기존 세이브가 있으면 그대로 이어져요)
