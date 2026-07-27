@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v107 · 2026-07-24";
+const APP_VERSION = "v108 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2492,7 +2492,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "reeldata").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2528,6 +2528,23 @@ async function dbNameMap() {
   } catch (e) { return { byName: {}, byId: {} }; }
 }
 /* 🙋 내 페이지 서버 저장 (notices 재사용: type="mypage", title=이름 · 본인만 불러옴) */
+/* 📱 릴스방 영상 서버 저장 (notices 재사용: type="reeldata", 전체 맵을 최신 1행에) */
+async function dbLoadReels() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("body,created_at").eq("type", "reeldata").order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    if (!row) return null;
+    return JSON.parse(row.body || "null");
+  } catch (e) { return null; }
+}
+async function dbSaveReels(data) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "reeldata", title: "reels", body: JSON.stringify(data || {}) });
+    return !(r && r.error);
+  } catch (e) { return false; }
+}
 async function dbLoadMyPage(name) {
   try {
     const s = await getSupa();
@@ -4803,30 +4820,19 @@ function ReelsView({ onBack, bubble, extraCats = {}, onAddCat, myName = "" }) {
           <span style={{ fontSize: 15, fontWeight: "bold", color: "#fff", flex: 1 }}>📺 유튜브 · 인사이트 / 인풋</span>
           <PxButton tone="gold" onClick={() => setRemoteOpen(true)} style={{ fontSize: 12, padding: "6px 11px" }}>🎛 리모콘</PxButton>
         </div>
-        <div style={{ background: "#000", border: "3px solid #000", borderRadius: 10, overflow: "hidden", marginBottom: 6 }}>
+        <div style={{ maxWidth: 300, margin: "0 0 10px", background: "#000", border: "3px solid #000", borderRadius: 10, overflow: "hidden" }}>
           <div style={{ position: "relative", width: "100%", paddingTop: "56.25%" }}>
             {nowLong ? (
               <iframe title="long" src={`https://www.youtube.com/embed/${nowLong}?autoplay=1&rel=0`} allow="autoplay; encrypted-media; fullscreen" allowFullScreen
                 style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} />
             ) : (
               <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#8a97a5", background: "#0d141c" }}>
-                <div style={{ fontSize: 40 }}>📺</div>
-                <div style={{ fontSize: 12, marginTop: 6 }}>🎛 리모콘에서 영상을 골라 재생하세요</div>
+                <div style={{ fontSize: 28 }}>📺</div>
+                <div style={{ fontSize: 10, marginTop: 4, textAlign: "center", padding: "0 8px" }}>🎛 리모콘에서 영상을 골라 재생</div>
               </div>
             )}
           </div>
         </div>
-        {longList.length > 0 && (
-          <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 4 }}>
-            {longList.slice(0, 12).map((v) => (
-              <button key={v.id} type="button" onClick={() => setNowLong(v.videoId)}
-                style={{ flexShrink: 0, width: 128, cursor: "pointer", background: nowLong === v.videoId ? "#2a3b4d" : "#1e2b38", border: `2px solid ${nowLong === v.videoId ? "#ffd166" : "#33445a"}`, borderRadius: 8, padding: 5, textAlign: "left" }}>
-                <img src={`https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`} alt="" style={{ width: "100%", borderRadius: 4, display: "block" }} />
-                <div style={{ fontSize: 10, color: "#fff", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.tag ? `[${v.tag}] ` : ""}{v.title}</div>
-              </button>
-            ))}
-          </div>
-        )}
 
         {/* ── 📱 카테고리별 쇼츠 (9:16 세로) ── */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "16px 0 8px" }}>
@@ -8392,6 +8398,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n59", type: "업데이트", date: "2026-07-24", title: "📱 릴스방 서버 저장 · 가로 영상 화면 축소",
+    body: "· 📺 릴스방에 올린 유튜브 영상(롱폼·쇼츠)이 이제 서버에 영구 저장돼요 — 언제 접속해도 모두가 볼 수 있어요\n· 예전엔 접속 중인 사람끼리만 보였는데, 이제 나중에 접속해도 그대로 남아있어요\n· 가로 롱폼 화면을 많이 작게 줄이고, 아래 썸네일 줄을 없애서 쇼츠 카테고리가 바로 아래 오게 했어요" },
   { id: "u20260724n58", type: "업데이트", date: "2026-07-24", title: "📱 릴스방 개편 · 🎶 앉기 표시 간소화",
     body: "· 📺 릴스방 위쪽에 가로 16:9 유튜브 롱폼 화면을 넣었어요 — 인사이트·인풋 영상을 크게 봐요\n· 🎛 리모콘 버튼으로 롱폼 목록을 보고 유튜브 링크를 추가·재생할 수 있어요\n· 📱 아래쪽은 카테고리별 쇼츠 — 카테고리를 누르면 세로 스크롤로 유튜브 쇼츠를 넘겨봐요\n· 각 카테고리에서 ＋로 쇼츠 링크를 추가할 수 있고, 올린 영상은 모두에게 공유돼요\n· 🎶 관객석에 앉아 있을 때 뜨던 긴 안내를 작은 아이콘으로 줄였어요 (덜 방해돼요)" },
   { id: "u20260724n57", type: "수정", date: "2026-07-24", title: "🎟 복권방 나가기 버튼 추가",
@@ -12726,9 +12734,14 @@ function EchoTown() {
   const reelRef = useRef(reelExtra); reelRef.current = reelExtra;
   useEffect(() => { saveJSON(REEL_KEY, reelExtra); }, [reelExtra]);
   const addReel = (key, data) => {
-    setReelExtra((v) => ({ ...v, [key]: data }));
+    setReelExtra((v) => {
+      const next = { ...v, [key]: data };
+      dbSaveReels(next);   // 서버에 영구 저장 → 언제 접속해도 모두가 봐요
+      return next;
+    });
     if (netSendEvent) netSendEvent("reel", { key, data });
   };
+  useEffect(() => { dbLoadReels().then((d) => { if (d && typeof d === "object") { setReelExtra((v) => ({ ...d, ...v })); try { saveJSON(REEL_KEY, d); } catch (e) {} } }); }, []);
 
   /* 💌 마음의 방 — 저장 + 접속자 모두와 공유 (익명) */
   const WORRY_KEY = "echotown_worries_v1";
