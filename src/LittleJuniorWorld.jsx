@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v103 · 2026-07-24";
+const APP_VERSION = "v104 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -8165,6 +8165,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n55", type: "수정", date: "2026-07-24", title: "🛠 실행 오류 수정 (내 페이지 초기화 순서)",
+    body: "· 접속하자마자 「Cannot access before initialization」 오류로 게임이 멈추던 문제를 고쳤어요\n· 내 페이지 서버 동기화 코드가 이름(myName)보다 먼저 실행되던 순서를 바로잡았어요\n· 이제 정상적으로 로딩됩니다" },
   { id: "u20260724n54", type: "업데이트", date: "2026-07-24", title: "🚪 집 문 하나로 · 📖 코어사전 카테고리·연결개념·상시 아이콘",
     body: "· 🚪 집에 나가기 문이 두 개 보이던 걸 하나로 고쳤어요 (자체 현관문만 남겨요)\n· 🏷 코어사전 단어에 카테고리(필수개념·R·C·S)를 넣고, 탭으로 걸러 볼 수 있어요\n· 🔗 뜻풀이 안에 사전에 있는 다른 단어를 쓰면 자동으로 「관련」 개념으로 이어지고, 눌러서 바로 이동해요\n· 📚 오른쪽 아래 독에 코어사전 아이콘을 추가해 어디서든 사전을 열 수 있어요\n· 카테고리는 기존 사전 데이터와 호환돼요 (예전 단어는 카테고리 없이 그대로 보여요)" },
   { id: "u20260724n53", type: "업데이트", date: "2026-07-24", title: "🙋 내 페이지 서버 저장 (여러 기기에서 이어짐)",
@@ -12219,34 +12221,6 @@ function EchoTown() {
   const [bait, setBait] = useState(10);
   const [catchBag, setCatchBag] = useState({});
   const [treasures, setTreasures] = useState({});   // 🎁 보물 보유 {id:개수}
-  /* 🙋 내 페이지 서버 동기화 (본인만 · 여러 기기에서 이어짐)
-     - 로그인 시: 서버에서 불러와 localStorage 에 채워요 (그러면 패널/HQ탭이 그 값을 읽어요)
-     - 이후: 내 페이지가 바뀔 때마다 서버에도 저장해요 (2초 묶음) */
-  const [mpVersion, setMpVersion] = useState(0);   // 서버에서 불러오면 올라가 패널/HQ탭이 다시 읽어요
-  const [mpReady, setMpReady] = useState(false);
-  useEffect(() => {
-    if (!myName) return;
-    let alive = true;
-    dbLoadMyPage(myName).then((d) => {
-      if (!alive) return;
-      if (d && typeof d === "object") {
-        try { window.localStorage.setItem("echotown_mypage_" + myName, JSON.stringify(d)); } catch (e) {}
-        setMpVersion((v) => v + 1);
-      }
-      setMpReady(true);
-    });
-    return () => { alive = false; };
-  }, [myName]);
-  // localStorage 의 내 페이지가 바뀌면 서버에도 저장 (같은 탭에선 storage 이벤트가 안 와서 주기 확인)
-  useEffect(() => {
-    if (!myName || !mpReady) return;
-    let last = window.localStorage.getItem("echotown_mypage_" + myName) || "";
-    const iv = setInterval(() => {
-      const cur = window.localStorage.getItem("echotown_mypage_" + myName) || "";
-      if (cur !== last) { last = cur; try { dbSaveMyPage(myName, JSON.parse(cur || "{}")); } catch (e) {} }
-    }, 2500);
-    return () => clearInterval(iv);
-  }, [myName, mpReady]);
   const [caughtDex, setCaughtDex] = useState({});
   const [shopOpen, setShopOpen] = useState(false);
   const [dexOpen, setDexOpen] = useState(false);
@@ -12536,6 +12510,34 @@ function EchoTown() {
   };
   const [rented, setRented] = useState({});
   const [myName, setMyName] = useState("");
+  /* 🙋 내 페이지 서버 동기화 (본인만 · 여러 기기에서 이어짐)
+     - 로그인 시: 서버에서 불러와 localStorage 에 채워요 (그러면 패널/HQ탭이 그 값을 읽어요)
+     - 이후: 내 페이지가 바뀔 때마다 서버에도 저장해요 (2초 묶음) */
+  const [mpVersion, setMpVersion] = useState(0);   // 서버에서 불러오면 올라가 패널/HQ탭이 다시 읽어요
+  const [mpReady, setMpReady] = useState(false);
+  useEffect(() => {
+    if (!myName) return;
+    let alive = true;
+    dbLoadMyPage(myName).then((d) => {
+      if (!alive) return;
+      if (d && typeof d === "object") {
+        try { window.localStorage.setItem("echotown_mypage_" + myName, JSON.stringify(d)); } catch (e) {}
+        setMpVersion((v) => v + 1);
+      }
+      setMpReady(true);
+    });
+    return () => { alive = false; };
+  }, [myName]);
+  // localStorage 의 내 페이지가 바뀌면 서버에도 저장 (같은 탭에선 storage 이벤트가 안 와서 주기 확인)
+  useEffect(() => {
+    if (!myName || !mpReady) return;
+    let last = window.localStorage.getItem("echotown_mypage_" + myName) || "";
+    const iv = setInterval(() => {
+      const cur = window.localStorage.getItem("echotown_mypage_" + myName) || "";
+      if (cur !== last) { last = cur; try { dbSaveMyPage(myName, JSON.parse(cur || "{}")); } catch (e) {} }
+    }, 2500);
+    return () => clearInterval(iv);
+  }, [myName, mpReady]);
   const netPosRef = useRef({ x: 1300, y: 950 });
   const netFacingRef = useRef(1);
   useEffect(() => { netPosRef.current = worldPos; }, [worldPos]);
