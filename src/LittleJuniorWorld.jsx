@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v91 · 2026-07-24";
+const APP_VERSION = "v92 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2396,7 +2396,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2468,6 +2468,14 @@ async function dbSaveSprite(id, dataUrl, by) {
 /* 🎥 회의록 → 봇 서버가 읽어갈 큐에 저장 (notices 재사용: type="meetlog")
    봇이 나중에 type="meetlog" 이고 아직 처리 안 된 행을 읽어
    분류(cat)에 맞는 디스코드 채널로 정리해서 올리면 돼요. */
+/* 🤖 봇 신호 : 회의 시작/종료를 봇이 감시할 큐에 저장 (notices 재사용: type="meetstart") */
+async function dbMeetSignal(payload) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "meetstart", title: payload.room || "회의실", body: JSON.stringify(payload), uid: payload.by || null });
+    return !(r && r.error);
+  } catch (e) { return false; }
+}
 async function dbAddMeetLog(payload) {
   try {
     const s = await getSupa();
@@ -3601,14 +3609,14 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
           </div>
           {!voiceOn ? (
             <>
-              <PxButton tone="blue" onClick={() => { setVoiceOn(true); if (onStartVoice) onStartVoice(roomId); }} style={{ width: "100%", fontSize: 13, padding: 11 }}>🔊 음성 회의 시작</PxButton>
+              <PxButton tone="blue" onClick={() => { setVoiceOn(true); if (onStartVoice) onStartVoice(roomId, true); }} style={{ width: "100%", fontSize: 13, padding: 11 }}>🔊 음성 회의 시작</PxButton>
               <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, lineHeight: 1.6 }}>봇이 준비되면 임시 음성채널을 자동으로 만들어 통화를 시작해요 (지금은 회의록만 준비돼요)</div>
             </>
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "9px 11px" }}>
               <span className="gem-pop" style={{ fontSize: 18 }}>🔴</span>
               <span style={{ flex: 1, fontSize: 12 }}>음성 회의가 진행 중이에요</span>
-              <PxButton tone="danger" onClick={() => setVoiceOn(false)} style={{ fontSize: 11, padding: "6px 10px" }}>종료</PxButton>
+              <PxButton tone="danger" onClick={() => { setVoiceOn(false); if (onStartVoice) onStartVoice(roomId, false); }} style={{ fontSize: 11, padding: "6px 10px" }}>종료</PxButton>
             </div>
           )}
         </div>
@@ -7960,6 +7968,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n43", type: "업데이트", date: "2026-07-24", title: "🤖 회의실 → 봇 신호 연동 (음성 회의 자동 시작)",
+    body: "· 🔊 음성 회의 시작을 누르면 봇에게 신호를 보내요 (Supabase에 저장 → 봇이 감시)\n· 봇이 그 신호를 받으면 디스코드에 임시 음성채널을 자동으로 만들어요\n· 종료를 누르면 봇에게 종료 신호도 보내요\n· 신호는 notices 테이블에 type=\"meetstart\" 로 저장돼요 (봇이 이 타입을 감시하면 됩니다)\n· ⚠️ 봇 쪽에서 이 신호를 읽는 코드가 완성돼야 실제로 채널이 생겨요" },
   { id: "u20260724n42", type: "업데이트", date: "2026-07-24", title: "⏱ 업무 시간 자동 조정 (초과=밀기 / 단축=당기기)",
     body: "· 완료 체크하면 실제 시각으로 초과·단축을 자동 계산해요\n· 🔴 초과하면 소요시간 옆에 +초과분(빨강) · 🔵 일찍 끝내면 −단축분(파랑)이 붙어요\n· 초과하거나 일찍 끝낸 만큼, 그 뒤 업무들의 시작 시간이 자동으로 밀리거나 당겨져요 (누적 반영)\n· 체크를 취소하면 밀거나 당겼던 시간도 원래대로 되돌아가요\n· 초과 분을 다시 입력하면 그 차이만큼 뒤 일정이 다시 조정돼요" },
   { id: "u20260724n41", type: "업데이트", date: "2026-07-24", title: "🍀 초심자의 행운 → 관리자 업무 배정 시스템",
@@ -12509,7 +12519,12 @@ function EchoTown() {
             dbSendMail(p.to, myName || "나", body, null);
             showNotice(`📨 ${p.to}님에게 초대장을 보냈어요`);
           }}
-          onStartVoice={(rid) => { showNotice("🔊 음성 회의를 시작했어요 (봇 연결 대기 중)"); }}
+          onStartVoice={(rid, on) => {
+            const payload = { action: on ? "create" : "end", room: meetingRooms[rid] ? meetingRooms[rid].name || `회의실 ${rid}` : `회의실 ${rid}`, roomId: rid, by: myName || "익명", at: new Date().toISOString() };
+            dbMeetSignal(payload).then((ok) => {
+              showNotice(ok ? (on ? "🤖 봇에게 회의 시작을 요청했어요 (곧 음성채널이 생겨요)" : "🤖 봇에게 회의 종료를 알렸어요") : "⚠️ 봇 신호 저장 실패 — 잠시 뒤 다시 시도해주세요");
+            });
+          }}
           onSendMeetLog={(payload) => {
             dbAddMeetLog(payload).then((ok) => {
               showNotice(ok ? `📤 회의록을 ${payload.channel} 채널 전송 대기열에 담았어요` : "⚠️ 저장 실패 — 잠시 뒤 다시 시도해주세요");
