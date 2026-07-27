@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v101 · 2026-07-24";
+const APP_VERSION = "v103 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -569,7 +569,7 @@ const ROOM_TIPS = {
   ikea: ["집 외관·가구·탈것을 살 수 있어요", "가구를 사면 내 집에 배치돼요", "탈것은 빠를수록 비싸지만 입장 조준도 쉬워져요"],
   project: ["이지모드는 순서대로, 하드모드는 광장에서 자유롭게", "＋ 버튼으로 퀘스트를 추가할 때 ⭐ 경험치를 꼭 정해야 해요", "보상은 💎 젬·🪙 골드·🏆 아이템·🧠 스킬 여러 개를 걸 수 있어요", "다 했으면 📮 제출 → 답변과 📷 인증 사진(최대 3장)을 올려요", "수락해야 💬 대화창이 열려요 · 수락 후엔 모집 화면과 자유롭게 오갈 수 있어요", "대화방의 📣 모두 부르기를 누르면 파티원 화면에 팝업이 떠요 (바로 이동·거절 선택)", "대화 내역은 새로고침해도 그대로 남아요", "📓 퀘스트 일지를 등록하면 파티원 모두가 볼 수 있어요 (여러 개 가능)", "하드모드 퀘스트를 깨면 🧠 사고 스킬을 배워요", "상단 🧠 도감을 누르고, 항목을 다시 누르면 완료한 사람이 보여요"],
   questdone: ["퀴스트 신청·수락 파편을 봉헌해요", "등록자가 🛡 검토하고 ⭐ 보상을 체크하면 지급돼요", "「🙋 내 관련」 필터로 내가 처리할 것만 볼 수 있어요"],
-  coredict: ["우리만의 단어를 등록하고 가나다 순으로 찾아봐요", "🖼 갤러리에 사진을 올리고 한 줄 설명을 달 수 있어요", "🔒 비밀사전은 나만 보는 핵심 요약 보관함이에요", "상단 🔄 동기화로 다른 사람 기록을 받아와요"],
+  coredict: ["우리만의 단어를 등록하고 가나다 순으로 찾아봐요", "🏷 필수개념·R·C·S 카테고리로 단어를 분류하고 걸러 볼 수 있어요", "🔗 뜻 안에 다른 등록 단어를 쓰면 자동으로 관련 개념으로 이어져요", "🖼 갤러리에 사진을, 🔒 비밀사전에 나만의 요약을 남길 수 있어요", "오른쪽 아래 📚 아이콘으로 어디서든 사전을 열 수 있어요"],
   meeting: ["📋 회의 안건을 추가하면 같은 회의실 사람 모두에게 보여요", "채팅으로 같은 회의실 사람들과 대화해요", "📨 초대장을 보내면 상대 메세지함으로 가요", "예약해두면 주민센터에 표시돼요"],
   naverschool: ["집을 하나씩 들러 퀴스트를 깨요", "앞 집을 깨야 다음 집이 열려요", "깨난 기록은 저장돼서 나갔다 와도 그대로예요"],
   videoschool: ["집을 하나씩 들러 퀴스트를 깨요", "앞 집을 깨야 다음 집이 열려요", "깨난 기록은 저장돼서 나갔다 와도 그대로예요"],
@@ -2490,7 +2490,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2524,6 +2524,23 @@ async function dbNameMap() {
     });
     return { byName, byId };
   } catch (e) { return { byName: {}, byId: {} }; }
+}
+/* 🙋 내 페이지 서버 저장 (notices 재사용: type="mypage", title=이름 · 본인만 불러옴) */
+async function dbLoadMyPage(name) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("body,created_at").eq("type", "mypage").eq("title", name).order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    if (!row) return null;
+    return JSON.parse(row.body || "null");
+  } catch (e) { return null; }
+}
+async function dbSaveMyPage(name, data) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "mypage", title: name, body: JSON.stringify(data || {}) });
+    return !(r && r.error);
+  } catch (e) { return false; }
 }
 async function dbSaveNameMap(name, discordId) {
   try {
@@ -4182,7 +4199,7 @@ function HomeView({ house, notes = [], onSaveMemo, onDelMemo, onBack, bubble, sk
   ) : null;
 
   return (
-    <RoomView title={house.name} icon="🏠" sub={skin ? `내 집 · ${skin.name} 스타일` : "침대·쇼파·티비·책상 · 책상에서 메모 작성"} bg={skin ? skin.bg : "#efe6d2"} roomW={640} roomH={400} furniture={placed} onBack={onBack} paused={open || tvOpen || !!giftPick} headerBg={skin ? skin.roof : house.wall} bubble={bubble}
+    <RoomView title={house.name} icon="🏠" sub={skin ? `내 집 · ${skin.name} 스타일` : "침대·쇼파·티비·책상 · 책상에서 메모 작성"} bg={skin ? skin.bg : "#efe6d2"} roomW={640} roomH={400} furniture={placed} onBack={onBack} noExitDoor paused={open || tvOpen || !!giftPick} headerBg={skin ? skin.roof : house.wall} bubble={bubble}
       banner={arrangeBar} editable={arrange} onMoveFurni={onMoveFurni} tipId="house">
       {giftPick && (
         <RoomModal title={`${giftPick.emoji || "🎁"} ${giftPick.name}`} onClose={() => setGiftPick(null)} maxW={320}>
@@ -7746,9 +7763,25 @@ function compressImage(file, maxSide = 900, quality = 0.72, mime = "image/jpeg")
   });
 }
 
+const DICT_CATS = [
+  { id: "core", label: "필수개념", color: "#c0563a" },
+  { id: "R", label: "R", color: "#3fa07a" },
+  { id: "C", label: "C", color: "#5b8def" },
+  { id: "S", label: "S", color: "#b76bd7" },
+];
+/* 카테고리는 뜻 맨 앞에 [cat:xx] 로 숨겨 저장해요 (dictionary 테이블 변경 없이) */
+function parseCat(meaning) {
+  const m = /^\[cat:([a-zA-Z]+)\]\s*/.exec(meaning || "");
+  if (m) return { cat: m[1], text: (meaning || "").slice(m[0].length) };
+  return { cat: "", text: meaning || "" };
+}
+function packCat(cat, text) { return cat ? `[cat:${cat}] ${text}` : text; }
+function catInfo(id) { return DICT_CATS.find((c) => c.id === id) || null; }
 function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord, onDelWord, onAddPhotos, onCaption, onDelPhoto, onSync, netCount = 1 }) {
   const [tab, setTab] = useState("word");
   const [q, setQ] = useState("");
+  const [catFilter, setCatFilter] = useState("all");   // 단어 탭 카테고리 필터
+  const [jumpTo, setJumpTo] = useState(null);           // 🔗 관련 개념 클릭 시 이동할 단어
   const [msg, setMsg] = useState(null);
   const say = (m) => { setMsg(m); setTimeout(() => setMsg(null), 2400); };
 
@@ -7757,13 +7790,14 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
   const [editing, setEditing] = useState(null);
   const [word, setWord] = useState("");
   const [mean, setMean] = useState("");
-  const openNew = () => { setEditing(null); setWord(""); setMean(""); setFormOpen(true); };
-  const openEdit = (it) => { setEditing(it.word); setWord(it.word); setMean(it.meaning); setFormOpen(true); };
+  const [cat, setCat] = useState("core");
+  const openNew = () => { setEditing(null); setWord(""); setMean(""); setCat("core"); setFormOpen(true); };
+  const openEdit = (it) => { const p = parseCat(it.meaning); setEditing(it.word); setWord(it.word); setMean(p.text); setCat(p.cat || "core"); setFormOpen(true); };
   const submit = () => {
     const w = word.trim(), m = mean.trim();
     if (!w || !m) return;
-    onSaveWord(w, m, editing);
-    setFormOpen(false); setEditing(null); setWord(""); setMean("");
+    onSaveWord(w, packCat(cat, m), editing);
+    setFormOpen(false); setEditing(null); setWord(""); setMean(""); setCat("core");
     say(editing ? "수정했어요 ✏️ (모두에게 공유돼요)" : "등록했어요 📖 (모두에게 공유돼요)");
   };
 
@@ -7771,10 +7805,16 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
   const shown = useMemo(() => {
     const t = q.trim();
     return dict
-      .filter((it) => !t || it.word.includes(t) || (it.meaning || "").includes(t) || (it.updated_by || "").includes(t))
+      .filter((it) => catFilter === "all" || parseCat(it.meaning).cat === catFilter)
+      .filter((it) => !t || it.word.includes(t) || (parseCat(it.meaning).text || "").includes(t) || (it.updated_by || "").includes(t))
       .slice()
       .sort((a, b) => a.word.localeCompare(b.word, "ko"));
-  }, [dict, q]);
+  }, [dict, q, catFilter]);
+  /* 🔗 뜻풀이 안에 등장하는 "사전에 있는 다른 단어" 를 자동으로 찾아요 */
+  const relatedOf = (it) => {
+    const body = parseCat(it.meaning).text || "";
+    return dict.filter((o) => o.word !== it.word && o.word.length >= 2 && body.includes(o.word)).map((o) => o.word).slice(0, 6);
+  };
 
   /* 갤러리 */
   const [busy, setBusy] = useState(false);
@@ -7840,25 +7880,47 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
                 style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14 }} />
               <PxButton tone="gold" onClick={openNew} style={{ fontSize: 13, padding: "10px 14px", whiteSpace: "nowrap" }}>＋ 단어 등록</PxButton>
             </div>
+            <div style={{ display: "flex", gap: 5, marginBottom: 9, flexWrap: "wrap" }}>
+              <button type="button" onClick={() => setCatFilter("all")} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11.5, fontWeight: "bold", padding: "6px 12px", borderRadius: 16, border: `2px solid ${C.ink}`, background: catFilter === "all" ? C.ink : C.white, color: catFilter === "all" ? C.white : C.ink }}>전체</button>
+              {DICT_CATS.map((c) => (
+                <button key={c.id} type="button" onClick={() => setCatFilter(c.id)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11.5, fontWeight: "bold", padding: "6px 12px", borderRadius: 16, border: `2px solid ${C.ink}`, background: catFilter === c.id ? c.color : C.white, color: catFilter === c.id ? C.white : C.ink }}>{c.label}</button>
+              ))}
+            </div>
             <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>
-              가나다 순 · {shown.length}개{q.trim() ? ` (전체 ${dict.length}개 중)` : ""} · 👥 접속 {netCount}명과 공유 중
+              가나다 순 · {shown.length}개{q.trim() || catFilter !== "all" ? ` (전체 ${dict.length}개 중)` : ""} · 👥 접속 {netCount}명과 공유 중
             </div>
             <div style={{ maxHeight: 400, overflow: "auto", display: "flex", flexDirection: "column", gap: 7 }}>
               {shown.length === 0 ? (
                 <div style={{ fontSize: 12.5, color: C.inkSoft, textAlign: "center", padding: 30, lineHeight: 1.9 }}>
                   {q.trim() ? "검색 결과가 없어요 🔍" : <>아직 등록된 단어가 없어요 📖<br />＋ 단어 등록으로 첫 단어를 남겨보세요!</>}
                 </div>
-              ) : shown.map((it) => (
-                <div key={it.word} style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 11 }}>
+              ) : shown.map((it) => {
+                const p = parseCat(it.meaning);
+                const ci = catInfo(p.cat);
+                const rel = relatedOf(it);
+                const highlight = jumpTo === it.word;
+                return (
+                <div key={it.word} id={"dictword-" + it.word} style={{ background: highlight ? "#fff3d6" : C.white, border: `2px solid ${highlight ? "#e0a13d" : C.ink}`, borderRadius: 8, padding: 11, transition: "background .3s" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    {ci && <span style={{ fontSize: 9.5, background: ci.color, color: C.white, borderRadius: 8, padding: "2px 7px", whiteSpace: "nowrap" }}>{ci.label}</span>}
                     <b style={{ flex: 1, fontSize: 15, wordBreak: "break-word" }}>📗 {it.word}</b>
                     <PxButton tone="wood" onClick={() => openEdit(it)} style={{ fontSize: 10, padding: "4px 8px" }}>✏️</PxButton>
                     <PxButton tone="danger" onClick={() => { if (window.confirm(`「${it.word}」를 삭제할까요? 모두에게서 사라져요.`)) onDelWord(it.word); }} style={{ fontSize: 10, padding: "4px 8px" }}>🗑</PxButton>
                   </div>
-                  <div style={{ fontSize: 13.5, lineHeight: 1.75, marginTop: 6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{it.meaning}</div>
+                  <div style={{ fontSize: 13.5, lineHeight: 1.75, marginTop: 6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{p.text}</div>
+                  {rel.length > 0 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap", marginTop: 8, paddingTop: 7, borderTop: `1px dashed ${C.parchEdge}` }}>
+                      <span style={{ fontSize: 10.5, color: C.inkSoft }}>🔗 관련:</span>
+                      {rel.map((rw) => (
+                        <button key={rw} type="button" onClick={() => { setQ(""); setCatFilter("all"); setJumpTo(rw); setTimeout(() => { const el = document.getElementById("dictword-" + rw); if (el) el.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => setJumpTo(null), 1500); }, 60); }}
+                          style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, fontWeight: "bold", padding: "3px 9px", borderRadius: 12, border: `2px solid ${C.ink}`, background: "#f0e7d5", color: C.ink }}>{rw}</button>
+                      ))}
+                    </div>
+                  )}
                   {it.updated_by && <div style={{ fontSize: 10.5, color: C.inkSoft, marginTop: 6 }}>✍️ {it.updated_by}</div>}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}
@@ -7955,7 +8017,13 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
               </div>
               <input value={word} onChange={(e) => setWord(e.target.value)} autoFocus placeholder="단어 (예: 쩝쩝박사)"
                 style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 15, marginBottom: 8 }} />
-              <textarea value={mean} onChange={(e) => setMean(e.target.value)} rows={5} placeholder="뜻 · 설명을 자유롭게 적어주세요"
+              <div style={{ fontSize: 11.5, fontWeight: "bold", color: C.inkSoft, marginBottom: 5 }}>카테고리</div>
+              <div style={{ display: "flex", gap: 5, marginBottom: 9, flexWrap: "wrap" }}>
+                {DICT_CATS.map((c) => (
+                  <button key={c.id} type="button" onClick={() => setCat(c.id)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, fontWeight: "bold", padding: "7px 13px", borderRadius: 14, border: `2px solid ${C.ink}`, background: cat === c.id ? c.color : C.white, color: cat === c.id ? C.white : C.ink }}>{c.label}</button>
+                ))}
+              </div>
+              <textarea value={mean} onChange={(e) => setMean(e.target.value)} rows={5} placeholder="뜻 · 설명을 자유롭게 적어주세요 · 뜻 안에 다른 등록 단어를 쓰면 자동으로 🔗 관련 개념으로 이어져요"
                 style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13.5, resize: "vertical" }} />
               <PxButton tone="gold" disabled={!word.trim() || !mean.trim()} onClick={submit} style={{ width: "100%", marginTop: 10, padding: 12, fontSize: 14 }}>
                 {editing ? "수정 저장" : "📖 사전에 등록"}
@@ -8097,6 +8165,10 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n54", type: "업데이트", date: "2026-07-24", title: "🚪 집 문 하나로 · 📖 코어사전 카테고리·연결개념·상시 아이콘",
+    body: "· 🚪 집에 나가기 문이 두 개 보이던 걸 하나로 고쳤어요 (자체 현관문만 남겨요)\n· 🏷 코어사전 단어에 카테고리(필수개념·R·C·S)를 넣고, 탭으로 걸러 볼 수 있어요\n· 🔗 뜻풀이 안에 사전에 있는 다른 단어를 쓰면 자동으로 「관련」 개념으로 이어지고, 눌러서 바로 이동해요\n· 📚 오른쪽 아래 독에 코어사전 아이콘을 추가해 어디서든 사전을 열 수 있어요\n· 카테고리는 기존 사전 데이터와 호환돼요 (예전 단어는 카테고리 없이 그대로 보여요)" },
+  { id: "u20260724n53", type: "업데이트", date: "2026-07-24", title: "🙋 내 페이지 서버 저장 (여러 기기에서 이어짐)",
+    body: "· 내 페이지(일일미션·할일·허들·서랍)를 서버에도 저장해요\n· 이제 다른 기기·다른 브라우저에서 로그인해도 내 페이지가 그대로 따라와요\n· 여전히 나만 볼 수 있어요 (내 이름으로만 불러와요)\n· 로그인하면 서버에서 불러오고, 내용이 바뀌면 몇 초 안에 서버에 저장돼요\n· ⚠️ 서버 저장이 되려면 이전 uid 수정(v100)이 배포돼 있어야 해요" },
   { id: "u20260724n52", type: "업데이트", date: "2026-07-24", title: "🎣 낚시 개편 · 젬/골드 밸런스 · 보물 사용처 · 낚싯대 부러짐",
     body: "· 💎 젬이 너무 많이 나오던 걸 크게 낮췄어요 (전설 낚싯대 100미끼 기준 젬 65개 → 약 6개)\n· 🐟 물고기 판매가를 낮춰 골드가 덜 쌓이게 했어요\n· 🎣 튼튼·전설 낚싯대는 던질 때 드물게(2%) 부러져 대나무로 초기화돼요 (기본 대나무는 안 부러져요)\n· 🎣 상점 낚싯대 표시를 고쳤어요 — 지금 쓰는 건 「사용중」, 지나온 하위 등급은 「지난 등급」으로 보여요\n· 🎁 비밀 상자 도감을 추가했어요 — 나오는 보물 목록·확률을 볼 수 있어요 (어부 상점 → 도감)\n· 🎁 보물 사용처가 생겼어요 : 어부에게 팔거나(🪙) · 조합해서 더 큰 보상(🪙·💎)으로 바꾸거나 · 집에 전시할 수 있어요\n· 보물은 등급(일반·희귀·에픽)에 따라 판매가와 확률이 달라요" },
   { id: "u20260724n51", type: "수정", date: "2026-07-24", title: "🎉 서버 저장 문제 해결! (uid 칼럼 오류)",
@@ -10344,7 +10416,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   );
 }
 
-function CornerDock({ onMenu, onProfile, onBag, onGuide, onHub, onHQ, msgCount, questCount, badgeCount }) {
+function CornerDock({ onMenu, onProfile, onBag, onGuide, onHub, onHQ, onDict, msgCount, questCount, badgeCount }) {
   const box = { display: "flex", gap: 8, background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 7, boxShadow: `0 4px 0 ${C.parchEdge}, 0 8px 18px rgba(0,0,0,0.28)` };
   return (
     <div className="corner-dock" style={{ position: "fixed", right: 12, bottom: 12, zIndex: 62, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
@@ -10358,6 +10430,7 @@ function CornerDock({ onMenu, onProfile, onBag, onGuide, onHub, onHQ, msgCount, 
         <DockBtn pixel label="메뉴" bg={C.gem} onClick={onMenu} />
         <DockBtn icon="🧑" label="내 프로필" bg="linear-gradient(180deg,#6fa8e8,#3a6fb5)" onClick={onProfile} badge={badgeCount} />
         <DockBtn icon="🎒" label="인벤토리" bg="linear-gradient(180deg,#b98a4e,#7a5230)" onClick={onBag} />
+        <DockBtn icon="📚" label="코어사전" bg="linear-gradient(180deg,#b07a4e,#8a5a3b)" onClick={onDict} />
         <DockBtn icon="📖" label="안내책자" bg="linear-gradient(180deg,#7bbf8f,#2f7d5e)" onClick={onGuide} />
       </div>
     </div>
@@ -12146,6 +12219,34 @@ function EchoTown() {
   const [bait, setBait] = useState(10);
   const [catchBag, setCatchBag] = useState({});
   const [treasures, setTreasures] = useState({});   // 🎁 보물 보유 {id:개수}
+  /* 🙋 내 페이지 서버 동기화 (본인만 · 여러 기기에서 이어짐)
+     - 로그인 시: 서버에서 불러와 localStorage 에 채워요 (그러면 패널/HQ탭이 그 값을 읽어요)
+     - 이후: 내 페이지가 바뀔 때마다 서버에도 저장해요 (2초 묶음) */
+  const [mpVersion, setMpVersion] = useState(0);   // 서버에서 불러오면 올라가 패널/HQ탭이 다시 읽어요
+  const [mpReady, setMpReady] = useState(false);
+  useEffect(() => {
+    if (!myName) return;
+    let alive = true;
+    dbLoadMyPage(myName).then((d) => {
+      if (!alive) return;
+      if (d && typeof d === "object") {
+        try { window.localStorage.setItem("echotown_mypage_" + myName, JSON.stringify(d)); } catch (e) {}
+        setMpVersion((v) => v + 1);
+      }
+      setMpReady(true);
+    });
+    return () => { alive = false; };
+  }, [myName]);
+  // localStorage 의 내 페이지가 바뀌면 서버에도 저장 (같은 탭에선 storage 이벤트가 안 와서 주기 확인)
+  useEffect(() => {
+    if (!myName || !mpReady) return;
+    let last = window.localStorage.getItem("echotown_mypage_" + myName) || "";
+    const iv = setInterval(() => {
+      const cur = window.localStorage.getItem("echotown_mypage_" + myName) || "";
+      if (cur !== last) { last = cur; try { dbSaveMyPage(myName, JSON.parse(cur || "{}")); } catch (e) {} }
+    }, 2500);
+    return () => clearInterval(iv);
+  }, [myName, mpReady]);
   const [caughtDex, setCaughtDex] = useState({});
   const [shopOpen, setShopOpen] = useState(false);
   const [dexOpen, setDexOpen] = useState(false);
@@ -14402,7 +14503,7 @@ function EchoTown() {
         <div style={{ position: "fixed", left: "50%", top: 16, transform: "translateX(-50%)", zIndex: 150, background: C.ink, color: C.white, border: `3px solid ${C.gem}`, borderRadius: 10, padding: "10px 18px", fontSize: 13, fontFamily: "'DotGothic16', monospace", boxShadow: "0 6px 16px rgba(0,0,0,0.4)" }}>{notice}</div>
       )}
       {!hqOpen && myName && (
-        <HQSidePanel myName={myName} people={people} questBox={questBox} onOpenHQ={() => { setHqOpen(true); }} />
+        <HQSidePanel key={"mp" + mpVersion} myName={myName} people={people} questBox={questBox} onOpenHQ={() => { setHqOpen(true); }} />
       )}
       {!hqOpen && myName && (
         <HQQuestRail quests={hqQuests} onOpenHQ={() => { setHqOpen(true); }} />
@@ -14414,6 +14515,7 @@ function EchoTown() {
         onProfile={() => setProfileOpen(true)}
         onBag={() => setBagOpen(true)}
         onGuide={() => setGuideOpen(true)}
+        onDict={() => { setView("coredict"); loadDict && loadDict(); }}
         onHub={() => { setHubOpen(true); dbLoadBoss().then((d) => d && setBossCleared((c) => { const n = { ...c }; Object.keys(d).forEach((k) => { n[k] = { ...(n[k] || {}), ...d[k] }; }); return n; })); }}
         onHQ={() => { setHqOpen(true); dbLoadBoss().then((d) => d && setBossCleared((c) => { const n = { ...c }; Object.keys(d).forEach((k) => { n[k] = { ...(n[k] || {}), ...d[k] }; }); return n; })); }} />
 
