@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v88 · 2026-07-24";
+const APP_VERSION = "v89 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2396,7 +2396,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2463,6 +2463,16 @@ async function dbSaveSprite(id, dataUrl, by) {
     const s = await getSupa();
     const r = await s.from("notices").insert({ type: "sprite", title: id, body: dataUrl || "", uid: by || null });
     return !(r && r.error);   // supabase 는 예외 대신 error 를 돌려줘요
+  } catch (e) { return false; }
+}
+/* 🎥 회의록 → 봇 서버가 읽어갈 큐에 저장 (notices 재사용: type="meetlog")
+   봇이 나중에 type="meetlog" 이고 아직 처리 안 된 행을 읽어
+   분류(cat)에 맞는 디스코드 채널로 정리해서 올리면 돼요. */
+async function dbAddMeetLog(payload) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "meetlog", title: payload.cat || "기타", body: JSON.stringify(payload), uid: payload.by || null });
+    return !(r && r.error);
   } catch (e) { return false; }
 }
 async function dbAddNotice(type, title, body, uid) {
@@ -3417,7 +3427,7 @@ function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble
 }
 
 /* ======================= 회의실(별도 화면, 통화 목업) ======================= */
-function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, people = [], chat = [], onChat = () => {} }) {
+function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, people = [], chat = [], onChat = () => {}, onSendMeetLog, onStartVoice }) {
   const net = useContext(NetContext);
   const here = net && net.others ? Object.values(net.others).filter((o) => o.v === "meeting" && (o.rm || null) === (net.room || null)) : [];
   const [cText, setCText] = useState("");
@@ -3438,6 +3448,18 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
   const [mic, setMic] = useState(true);
   const [cam, setCam] = useState(true);
   const [share, setShare] = useState(false);
+  /* 🎥 음성 회의 + 회의록 (봇 서버 연동 준비) */
+  const [voiceOn, setVoiceOn] = useState(false);
+  const [mrTitle, setMrTitle] = useState("");
+  const [mrBody, setMrBody] = useState("");
+  const [mrCat, setMrCat] = useState("echoworld");
+  const [mrSent, setMrSent] = useState(false);
+  const MEET_CATS = [
+    { id: "echoworld", label: "🌐 에코월드", ch: "에코월드" },
+    { id: "cafe24", label: "🖥 카페24", ch: "카페24" },
+    { id: "coresecret", label: "😈 코어시크릿", ch: "코어시크릿" },
+    { id: "coreapp", label: "🏛 코어어플", ch: "코어어플" },
+  ];
   /* 📋 회의 안건 — 같은 회의실 사람들과 공유돼요 */
   const agenda = (room && room.agenda) || [];
   const [agTxt, setAgTxt] = useState("");
@@ -3568,6 +3590,65 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
               ))}
             </div>
           )}
+        </div>
+
+        {/* 🎙 디스코드 음성 회의 */}
+        <div style={{ marginTop: 14, background: "#eef0ff", border: `3px solid ${C.ink}`, borderRadius: 8, padding: 12, color: C.ink }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 9 }}>
+            <span style={{ fontSize: 18 }}>🎙</span>
+            <b style={{ flex: 1, fontSize: 14 }}>디스코드 음성 회의</b>
+            <span style={{ fontSize: 10, color: voiceOn ? C.good : C.inkSoft, fontWeight: "bold" }}>{voiceOn ? "🟢 진행 중" : "⚪ 대기"}</span>
+          </div>
+          {!voiceOn ? (
+            <>
+              <PxButton tone="blue" onClick={() => { setVoiceOn(true); if (onStartVoice) onStartVoice(roomId); }} style={{ width: "100%", fontSize: 13, padding: 11 }}>🔊 음성 회의 시작</PxButton>
+              <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, lineHeight: 1.6 }}>봇이 준비되면 임시 음성채널을 자동으로 만들어 통화를 시작해요 (지금은 회의록만 준비돼요)</div>
+            </>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "9px 11px" }}>
+              <span className="gem-pop" style={{ fontSize: 18 }}>🔴</span>
+              <span style={{ flex: 1, fontSize: 12 }}>음성 회의가 진행 중이에요</span>
+              <PxButton tone="danger" onClick={() => setVoiceOn(false)} style={{ fontSize: 11, padding: "6px 10px" }}>종료</PxButton>
+            </div>
+          )}
+        </div>
+
+        {/* 📝 회의록 → 디스코드 채널 자동 정리 */}
+        <div style={{ marginTop: 14, background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 8, padding: 12, color: C.ink }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 9 }}>
+            <span style={{ fontSize: 18 }}>📝</span>
+            <b style={{ flex: 1, fontSize: 14 }}>회의록 정리</b>
+            <span style={{ fontSize: 10, color: C.inkSoft }}>디스코드 채널로 전송</span>
+          </div>
+          <input value={mrTitle} onChange={(e) => setMrTitle(e.target.value)} placeholder="회의 제목 (예: 8월 런칭 킥오프)"
+            style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white, marginBottom: 7 }} />
+          <textarea value={mrBody} onChange={(e) => setMrBody(e.target.value)} rows={4} placeholder="회의 내용 · 결정사항 · 할 일 (안건을 붙여넣어도 좋아요)"
+            style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, background: C.white, resize: "vertical", marginBottom: 8 }} />
+          <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 5 }}>어느 채널로 보낼까요?</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 9 }}>
+            {MEET_CATS.map((c) => (
+              <button key={c.id} type="button" onClick={() => setMrCat(c.id)}
+                style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11.5, fontWeight: "bold", padding: "7px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: mrCat === c.id ? C.gem : C.white, color: C.ink }}>{c.label}</button>
+            ))}
+          </div>
+          <PxButton tone="good" disabled={!mrTitle.trim() || !mrBody.trim()}
+            onClick={() => {
+              const cat = MEET_CATS.find((c) => c.id === mrCat) || MEET_CATS[0];
+              onSendMeetLog && onSendMeetLog({
+                cat: cat.id, channel: cat.ch, title: mrTitle.trim(), body: mrBody.trim(),
+                room: `회의실 ${num}`, by: myName || "익명",
+                agenda: agenda.map((a) => ({ text: a.text, done: a.done })),
+                at: new Date().toISOString(),
+              });
+              setMrSent(true); setMrTitle(""); setMrBody("");
+              setTimeout(() => setMrSent(false), 2500);
+            }}
+            style={{ width: "100%", fontSize: 13, padding: 11 }}>
+            {mrSent ? "✅ 전송 대기열에 담았어요!" : `📤 ${(MEET_CATS.find((c) => c.id === mrCat) || {}).label} 로 정리 보내기`}
+          </PxButton>
+          <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, lineHeight: 1.6 }}>
+            지금은 서버에 저장만 돼요 · 봇이 준비되면 이 회의록을 골라둔 디스코드 채널에 자동으로 정리해 올립니다
+          </div>
         </div>
 
         {/* 예약 */}
@@ -7749,6 +7830,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n40", type: "업데이트", date: "2026-07-24", title: "🎥 회의실 음성 회의 + 회의록 → 디스코드 정리 (봇 연동 준비)",
+    body: "· 🎥 회의실에 「🔊 음성 회의 시작」 버튼을 넣었어요 (봇이 준비되면 임시 음성채널을 자동 생성해요)\n· 📝 회의록 정리 : 제목·내용을 적고 디스코드 채널을 골라 전송 대기열에 담아요\n· 채널 선택 : 🌐 에코월드 · 🖥 카페24 · 😈 코어시크릿 · 🏛 코어어플\n· 회의록은 서버에 저장되고, 봇이 준비되면 고른 채널에 자동으로 정리해 올립니다\n· 회의 안건도 회의록에 함께 담겨서 넘어가요\n· ⚠️ 아직 봇 연결 전이라 실제 디스코드 게시는 봇 완성 후 작동해요" },
   { id: "u20260724n39", type: "업데이트", date: "2026-07-24", title: "🙋 내 페이지 확장 · 🍀 초심자의 행운 방",
     body: "· 왼쪽 🙋 내 페이지 패널을 키우고 내용을 채웠어요 — 프로필·일일미션·내 할일·오늘의 허들·내 서랍(개인노트)·마감일지 (전부 이 기기에 저장)\n· 🍀 초심자의 행운 방을 새로 만들었어요 (마을에 건물 추가)\n· 이름별 탭을 추가하고, 🔍 이름 검색으로 내 탭을 찾을 수 있어요\n· 탭 안 캘린더에서 날짜를 누르면 그 날의 타임테이블(할 일)을 추가하고 완료 체크할 수 있어요\n· 형식: [✓] 작업명 · 09:00~10:00\n· 내 탭만 편집되고 다른 사람 탭은 보기 전용 · 모두에게 공유돼요" },
   { id: "u20260724n38", type: "수정", date: "2026-07-24", title: "🚨 HQ 열자마자 오류 나던 문제",
@@ -12291,6 +12374,12 @@ function EchoTown() {
             if (netSendEvent) netSendEvent("invite", { to: p.to, from: myName || "나", when: p.when, dur: p.dur, room: p.room, roomId: p.roomId });
             dbSendMail(p.to, myName || "나", body, null);
             showNotice(`📨 ${p.to}님에게 초대장을 보냈어요`);
+          }}
+          onStartVoice={(rid) => { showNotice("🔊 음성 회의를 시작했어요 (봇 연결 대기 중)"); }}
+          onSendMeetLog={(payload) => {
+            dbAddMeetLog(payload).then((ok) => {
+              showNotice(ok ? `📤 회의록을 ${payload.channel} 채널 전송 대기열에 담았어요` : "⚠️ 저장 실패 — 잠시 뒤 다시 시도해주세요");
+            });
           }}
           onUpdate={(id, patch) => { setMeetingRooms((m) => ({ ...m, [id]: { ...m[id], ...patch } })); if (netSendEvent) netSendEvent("mroom", { id, patch }); }} onBack={() => setView("center")} />}
         {view === "big" && bigMeta && (bigMeta.id === "alba" ? <AlbaView onBack={backToWorld} /> : <BigBuildingView b={bigMeta} qs={qs} day={day} onRun={runQuest} onBack={backToWorld} />)}        {view === "house" && houseMeta && (unlocked[houseId] ? (
