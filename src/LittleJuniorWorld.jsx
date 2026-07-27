@@ -2356,7 +2356,7 @@ async function dbClaimName(discordId, name) {
     if (owner && owner !== discordId) return { ok: false, reason: "taken" };   // 다른 사람이 이미 가져감
     if (owner === discordId) return { ok: true };                              // 이미 내 이름
     const s = await getSupa();
-    const { error } = await s.from("notices").insert({ type: "identity", title: discordId, body: name, uid: discordId });
+    const { error } = await s.from("notices").insert({ type: "identity", title: discordId, body: name });
     if (error) return { ok: false, reason: "error", detail: error.message || String(error) };
     return { ok: true };
   } catch (e) { return { ok: false, reason: "error", detail: (e && e.message) || String(e) }; }
