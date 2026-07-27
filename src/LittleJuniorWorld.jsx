@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v79 · 2026-07-24";
+const APP_VERSION = "v80 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2293,6 +2293,34 @@ async function getSupa() {
   const mod = await import(/* @vite-ignore */ "https://esm.sh/@supabase/supabase-js@2");
   _supa = mod.createClient(SUPA_URL, SUPA_KEY);
   return _supa;
+}
+/* 🎮 디스코드 로그인 (Supabase Auth · OAuth) */
+async function discordLogin() {
+  try {
+    const s = await getSupa();
+    await s.auth.signInWithOAuth({
+      provider: "discord",
+      options: { redirectTo: window.location.href.split("#")[0] },   // 돌아올 주소 = 지금 이 페이지
+    });
+  } catch (e) { alert("디스코드 로그인을 시작하지 못했어요. 잠시 뒤 다시 시도해주세요."); }
+}
+async function discordLogout() {
+  try { const s = await getSupa(); await s.auth.signOut(); } catch (e) {}
+}
+/* 로그인해서 돌아온 사용자 정보 읽기 */
+async function discordUser() {
+  try {
+    const s = await getSupa();
+    const { data } = await s.auth.getUser();
+    const u = data && data.user;
+    if (!u) return null;
+    const m = u.user_metadata || {};
+    return {
+      id: u.id,
+      name: m.global_name || m.full_name || m.name || m.user_name || m.preferred_username || "",
+      avatar: m.avatar_url || m.picture || null,
+    };
+  } catch (e) { return null; }
 }
 async function dbSaveProfile(name, data) {
   if (!name) return false;
@@ -7555,6 +7583,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n31", type: "업데이트", date: "2026-07-24", title: "🎮 디스코드로 로그인",
+    body: "· 시작 화면에 「🎮 디스코드로 로그인」 버튼이 생겼어요\n· 누르면 디스코드로 갔다가 돌아오면서 닉네임이 자동으로 채워져요\n· 마을 이름은 그대로 직접 정할 수 있어요 (주민 이름과 같으면 그 집이 내 집이 돼요)\n· 디스코드 없이 이름만 입력해서 시작하는 것도 그대로 됩니다\n· ⚠️ 로그인이 안 되면 Supabase Site URL / 디스코드 Redirect 주소에 지금 게임 주소가 등록돼 있는지 확인해주세요" },
   { id: "u20260724n30", type: "업데이트", date: "2026-07-24", title: "🏠 집주인이 없어도 꾸민 집이 보여요",
     body: "· 지금까지 꾸며둔 것도 그대로 반영돼요 — 다시 꾸미지 않아도 됩니다\n· 집주인이 게임을 한 번 열면 그 시점의 꾸밈이 서버에 저장돼요\n· 그 뒤로는 집주인이 접속해 있지 않아도 놀러 간 사람에게 똑같이 보여요\n· 접속 중이면 실시간으로, 아니면 서버에 저장된 마지막 모습으로 보여줍니다" },
   { id: "u20260724n29", type: "수정", date: "2026-07-24", title: "🏠 남의 집 꾸민 모습이 여전히 안 보이던 문제",
@@ -10188,6 +10218,23 @@ function EchoTown() {
   const [qcDeclineOpen, setQcDeclineOpen] = useState(false);
   const [qcDeclineWhy, setQcDeclineWhy] = useState("");
   const [nameOpen, setNameOpen] = useState(() => !loadJSON("echotown_myname", ""));
+  const [discord, setDiscord] = useState(null);          // 로그인한 디스코드 사용자
+  const [discordBusy, setDiscordBusy] = useState(false);
+  /* 디스코드에서 돌아왔는지 확인 — 돌아왔으면 이름칸을 닉네임으로 채워줘요 */
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const u = await discordUser();
+      if (!alive || !u) return;
+      setDiscord(u);
+      // 주소에 붙은 로그인 토큰 흔적 제거 (새로고침 시 지저분해지지 않게)
+      if (window.location.hash.includes("access_token") || window.location.search.includes("code=")) {
+        try { window.history.replaceState({}, "", window.location.pathname); } catch (e) {}
+      }
+      if (!loadJSON("echotown_myname", "")) setNameInput((v) => v || u.name || "");
+    })();
+    return () => { alive = false; };
+  }, []);
   const [nameInput, setNameInput] = useState("");
   const [couponOpen, setCouponOpen] = useState(false);
   const [couponDone, setCouponDone] = useState(false);
@@ -10235,6 +10282,7 @@ function EchoTown() {
     const t = (nm || "").trim(); if (!t) return;
     setMyName(t); setNameOpen(false);
     saveJSON("echotown_myname", t);
+    if (discord && discord.id) saveJSON("echotown_discord_id", discord.id);
     // ① 이 브라우저에 저장된 게 있으면 즉시 복원
     const local = loadJSON(saveKey(t), null);
     if (local) applySave(local);
@@ -11813,6 +11861,36 @@ function EchoTown() {
               <div style={{ textAlign: "center", fontSize: 34 }}>🌱</div>
               <div style={{ textAlign: "center", fontFamily: "'Press Start 2P', monospace", fontSize: 12, margin: "8px 0" }}>ECHO TOWN</div>
               <div style={{ fontSize: 13, textAlign: "center", marginBottom: 10 }}>마을에서 사용할 이름을 알려주세요!</div>
+
+              {/* 🎮 디스코드로 로그인 */}
+              {discord ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#eef0ff", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "8px 10px", marginBottom: 10 }}>
+                  {discord.avatar
+                    ? <img src={discord.avatar} alt="" style={{ width: 30, height: 30, borderRadius: "50%", border: `2px solid ${C.ink}` }} />
+                    : <span style={{ fontSize: 22 }}>🎮</span>}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 9.5, color: C.inkSoft }}>디스코드 로그인됨</div>
+                    <div style={{ fontSize: 12.5, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{discord.name || "이름 없음"}</div>
+                  </div>
+                  <button type="button" onClick={async () => { await discordLogout(); setDiscord(null); }}
+                    style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, padding: "5px 8px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white }}>로그아웃</button>
+                </div>
+              ) : (
+                <>
+                  <button type="button" disabled={discordBusy}
+                    onClick={() => { setDiscordBusy(true); discordLogin(); }}
+                    style={{ width: "100%", cursor: "pointer", fontFamily: "'DotGothic16', monospace", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                      background: "#5865F2", color: "#fff", border: `3px solid ${C.ink}`, borderRadius: 8, padding: "11px 10px", fontSize: 13.5, fontWeight: "bold", boxShadow: `0 3px 0 ${C.ink}` }}>
+                    <span style={{ fontSize: 17 }}>🎮</span> {discordBusy ? "디스코드로 이동 중…" : "디스코드로 로그인"}
+                  </button>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0" }}>
+                    <div style={{ flex: 1, height: 2, background: C.parchEdge }} />
+                    <span style={{ fontSize: 10, color: C.inkSoft }}>또는 이름만 입력</span>
+                    <div style={{ flex: 1, height: 2, background: C.parchEdge }} />
+                  </div>
+                </>
+              )}
+
               <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") confirmName(nameInput); }} maxLength={8} autoFocus placeholder="예: 정인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, background: C.white, textAlign: "center" }} />
               <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center" }}>주민 이름(정인·창민·도희·유리·민지·희정·의준·호종·슬이·상하)과 같으면 그 집이 내 집이 돼요!</div>
               <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 4, textAlign: "center" }}>🔐 한 번 정하면 이 브라우저에서는 다음부터 자동으로 로그인돼요</div>
