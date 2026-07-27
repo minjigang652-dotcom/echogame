@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v80 · 2026-07-24";
+const APP_VERSION = "v81 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -7583,6 +7583,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n32", type: "업데이트", date: "2026-07-24", title: "🚪 완전 로그아웃 (이름 + 디스코드)",
+    body: "· 시작 화면의 🧑 로그아웃이 이제 게임 이름과 디스코드 세션을 함께 지워요\n· 로그인 상태에서 「🎮 디스코드 로그아웃」으로 디스코드만 따로 뺄 수도 있어요\n· 자동 로그인 상태에서 디스코드 로그인을 테스트하려면 → 🧑 프로필 버튼 → 이름창에서 「완전히 로그아웃」 → 다시 로그인" },
   { id: "u20260724n31", type: "업데이트", date: "2026-07-24", title: "🎮 디스코드로 로그인",
     body: "· 시작 화면에 「🎮 디스코드로 로그인」 버튼이 생겼어요\n· 누르면 디스코드로 갔다가 돌아오면서 닉네임이 자동으로 채워져요\n· 마을 이름은 그대로 직접 정할 수 있어요 (주민 이름과 같으면 그 집이 내 집이 돼요)\n· 디스코드 없이 이름만 입력해서 시작하는 것도 그대로 됩니다\n· ⚠️ 로그인이 안 되면 Supabase Site URL / 디스코드 Redirect 주소에 지금 게임 주소가 등록돼 있는지 확인해주세요" },
   { id: "u20260724n30", type: "업데이트", date: "2026-07-24", title: "🏠 집주인이 없어도 꾸민 집이 보여요",
@@ -10314,8 +10316,11 @@ function EchoTown() {
     const saved = loadJSON("echotown_myname", "");
     if (saved) confirmName(saved);
   }, []);
-  const forgetName = () => {
+  const forgetName = async () => {
     try { window.localStorage.removeItem("echotown_myname"); } catch (e) {}
+    try { window.localStorage.removeItem("echotown_discord_id"); } catch (e) {}
+    await discordLogout();              // 🎮 디스코드 세션도 함께 로그아웃
+    setDiscord(null);
     setMyName(""); setNameInput(""); setNameOpen(true);
   };
   const isMyHouse = (n) => {
@@ -11872,8 +11877,8 @@ function EchoTown() {
                     <div style={{ fontSize: 9.5, color: C.inkSoft }}>디스코드 로그인됨</div>
                     <div style={{ fontSize: 12.5, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{discord.name || "이름 없음"}</div>
                   </div>
-                  <button type="button" onClick={async () => { await discordLogout(); setDiscord(null); }}
-                    style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, padding: "5px 8px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white }}>로그아웃</button>
+                  <button type="button" onClick={async () => { await discordLogout(); setDiscord(null); try { window.localStorage.removeItem("echotown_discord_id"); } catch (e) {} }}
+                    style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, padding: "5px 8px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white }}>🎮 디스코드 로그아웃</button>
                 </div>
               ) : (
                 <>
@@ -11898,7 +11903,8 @@ function EchoTown() {
                 {myName && <PxButton tone="ink" onClick={() => setNameOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>}
                 <PxButton tone="good" disabled={!nameInput.trim()} onClick={() => confirmName(nameInput)} style={{ flex: 1, padding: 10, fontSize: 13 }}>시작하기</PxButton>
               </div>
-              {myName && <PxButton tone="danger" onClick={forgetName} style={{ width: "100%", marginTop: 8, padding: 9, fontSize: 12 }}>🚪 이 브라우저에서 로그아웃</PxButton>}
+              {(myName || discord) && <PxButton tone="danger" onClick={forgetName} style={{ width: "100%", marginTop: 8, padding: 9, fontSize: 12 }}>🚪 완전히 로그아웃 (이름 + 디스코드)</PxButton>}
+              {(myName || discord) && <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 5, textAlign: "center", lineHeight: 1.6 }}>테스트하려면 여기서 로그아웃한 뒤 다시 디스코드로 로그인해보세요</div>}
             </Panel>
           </div>
         </div>
