@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v106 · 2026-07-24";
+const APP_VERSION = "v107 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -558,7 +558,7 @@ const ROOM_TIPS = {
   thanks: ["칠판에 남긴 쪽지는 모두에게 보여요", "🔒 받는 사람만 보게 할 수도 있어요", "🕶 익명으로 남겨도 내 글은 지울 수 있어요", "선반 상점에서 선물을 사서 우체통으로 보내보세요"],
   heart: ["고민을 익명으로 남기면 모두에게 보여요", "고해성사와 서운 점 중에 골라 넣어요", "글을 넣을 땐 🪙 골드가 필요해요"],
   listening: ["🪑 관객석을 누르면 앉으면서 📃 선곡 리스트가 열려요", "🎧 디제이 부스에서 🔗 링크·🎤 가수·🎵 제목을 넣어보세요", "등록한 노래는 모두의 리스트에 들어가요", "오른쪽 💬 채팅창에서 같이 들으며 얘기해요", "🎶 부스에서 틀면 다같이 · 🪑 관객석에서 고르면 나만 들어요", "우측 🎧 목록에서 다른 사람이 듣는 곡을 눌러 같이 들을 수 있어요", "등록하면 바로 재생되고 방을 나가도 계속 들려요", "좌측 하단 미니 플레이어로 멈추거나 접을 수 있어요"],
-  reels: ["핸드폰을 눌러 카테고리별 릴스를 봐요", "카테고리를 추가하면 모두에게 공유돼요"],
+  reels: ["📺 위쪽 큰 화면에서 유튜브 롱폼(인사이트·인풋)을 봐요", "🎛 리모콘으로 롱폼 목록을 보고 링크를 추가해요", "📱 아래 카테고리를 누르면 쇼츠를 세로로 넘겨봐요", "각 카테고리에서 ＋로 유튜브 쇼츠 링크를 추가해요", "올린 영상은 모두에게 공유돼요"],
   minigame: ["🕵️ 라이어 게임은 실제 접속자 3명부터 시작해요", "방을 만들면 다른 사람에게 참가 버튼이 떠요", "반사신경·가위바위보·순서기억으로 🪙 골드를 모아요"],
   smoke: ["재떨이를 누르면 실제 접속자들과 수다 떨어요", "채팅창 위에 지금 방에 있는 사람이 보여요", "창문을 열면 공기가 맑아져요"],
   pool: ["레인에서 수영 대결을 해보세요", "1등을 하면 🪙 골드와 랭킹 기록을 얻어요"],
@@ -841,8 +841,8 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
               </div>
             )}
             {sitAt && (
-              <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b3f8f", color: "#ffe680", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px", borderRadius: 8 }}>
-                🎶 앉아 있는 중 · 방향키로 일어나기
+              <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b3f8f", color: "#ffe680", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 5px", borderRadius: 8 }} title="방향키로 일어나기">
+                🎶
               </div>
             )}
             <div style={{ transform: sitAt ? "translateY(7px) scaleY(0.84)" : "none", transformOrigin: "bottom center" }}>
@@ -4732,54 +4732,161 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
   );
 }
 
-/* ======================= 릴스방(핸드폰 · 동물/쾌감/밈 + 카테고리 추가) ======================= */
-function ReelsView({ onBack, bubble, extraCats = {}, onAddCat }) {
-  const [open, setOpen] = useState(null);
+/* ======================= 릴스방 (📺 유튜브 롱폼 + 📱 카테고리별 쇼츠) ======================= */
+function ReelsView({ onBack, bubble, extraCats = {}, onAddCat, myName = "" }) {
+  const [open, setOpen] = useState(null);       // 열려있는 쇼츠 카테고리
   const [addOpen, setAddOpen] = useState(false);
   const [addText, setAddText] = useState("");
-  const [reels, setReels] = useState({
-    animal: { label: "동물", bg: "#bfe3c8", title: "댕댕이·냥이 모음.zip 🐾",
-      content: <div style={{ fontSize: 40, lineHeight: 1.3, textAlign: "center" }}>🐶🐱<br />🐰🐼<br />🦊🐹</div> },
-    satisfy: { label: "쾌감", bg: "repeating-linear-gradient(45deg,#ff8fb1 0 16px,#ffd36b 16px 32px,#8fd0ff 32px 48px,#b6f0c0 48px 64px)", title: "끝없이 보게 되는 쾌감 영상 ✨",
-      content: <div style={{ fontSize: 44 }}>🌈✨🫧</div> },
-    meme: { label: "밈", bg: "#1c1c1c", title: "밈 甲.jpg 😂",
-      content: (
-        <div style={{ textAlign: "center", color: "#fff" }}>
-          <div style={{ fontSize: 13, fontWeight: "bold", textShadow: "1px 1px 0 #000" }}>월요일 아침의 나</div>
-          <div style={{ fontSize: 54 }}>😵‍💫</div>
-          <div style={{ fontSize: 13, fontWeight: "bold", textShadow: "1px 1px 0 #000" }}>"5분만 더…"</div>
-        </div>
-      ) },
-  });
+  const [remoteOpen, setRemoteOpen] = useState(false);   // 🎛 롱폼 리모콘(목록/추가)
+  const [longUrl, setLongUrl] = useState("");
+  const [longTitle, setLongTitle] = useState("");
+  const [longTag, setLongTag] = useState("인사이트");
+  const [nowLong, setNowLong] = useState(null); // 지금 큰 화면에 튼 롱폼 videoId
+  const [shortUrl, setShortUrl] = useState("");
+  const [shortCat, setShortCat] = useState(null);
+
+  const BASE = {
+    animal: { label: "동물", bg: "#bfe3c8" },
+    satisfy: { label: "쾌감", bg: "#f6b8cf" },
+    meme: { label: "밈", bg: "#1c1c1c" },
+  };
+
+  /* 📺 롱폼 목록은 extraCats.__long 에 배열로 저장돼요 (모두 공유) */
+  const longList = (extraCats.__long && Array.isArray(extraCats.__long.videos)) ? extraCats.__long.videos : [];
+  /* 카테고리별 쇼츠는 각 cat 의 shorts 배열 */
+  const catData = (key) => {
+    if (extraCats[key] && Array.isArray(extraCats[key].shorts)) return extraCats[key];
+    if (BASE[key]) return { ...BASE[key], shorts: [] };
+    return { label: (extraCats[key] && extraCats[key].label) || key, bg: (extraCats[key] && extraCats[key].bg) || "#888", shorts: (extraCats[key] && extraCats[key].shorts) || [] };
+  };
+  const cats = Array.from(new Set([...Object.keys(BASE), ...Object.keys(extraCats).filter((k) => k !== "__long")]));
+
+  /* 롱폼 추가 */
+  const addLong = () => {
+    const vid = parseYouTubeId(longUrl);
+    if (!vid) { window.alert("유튜브 링크를 확인해주세요 (youtu.be / watch?v= / shorts)"); return; }
+    const item = { id: "L" + Date.now(), videoId: vid, title: longTitle.trim() || "유튜브 영상", tag: longTag, by: myName || "익명" };
+    onAddCat && onAddCat("__long", { videos: [item, ...longList].slice(0, 60) });
+    setLongUrl(""); setLongTitle(""); setNowLong(vid);
+  };
+  const delLong = (id) => { onAddCat && onAddCat("__long", { videos: longList.filter((v) => v.id !== id) }); };
+
+  /* 쇼츠 추가 */
+  const addShort = () => {
+    const vid = parseYouTubeId(shortUrl);
+    if (!vid || !shortCat) { window.alert("유튜브 쇼츠 링크를 확인해주세요"); return; }
+    const cur = catData(shortCat);
+    const item = { id: "S" + Date.now(), videoId: vid, by: myName || "익명" };
+    onAddCat && onAddCat(shortCat, { label: cur.label, bg: cur.bg, shorts: [item, ...(cur.shorts || [])].slice(0, 40) });
+    setShortUrl("");
+  };
+  const delShort = (key, id) => { const cur = catData(key); onAddCat && onAddCat(key, { label: cur.label, bg: cur.bg, shorts: (cur.shorts || []).filter((s) => s.id !== id) }); };
 
   const addCategory = () => {
     const name = addText.trim();
     if (!name) return;
     const key = "c" + Date.now();
     const palette = ["#bfe3c8", "#f6d8e5", "#cdeaf4", "#f1e2b0", "#e7cfe9", "#dfe3e6"];
-    onAddCat && onAddCat(key, { label: name, bg: palette[Object.keys(reels).length % palette.length], title: `${name} 릴스 🎬` });
+    onAddCat && onAddCat(key, { label: name, bg: palette[cats.length % palette.length], shorts: [] });
     setAddText(""); setAddOpen(false);
   };
 
   const phoneColors = ["#3fa07a", "#5b8def", "#e0a13d", "#d76b96", "#8e5a9e", "#c0563a"];
-  const merged = useMemo(() => ({ ...reels, ...Object.fromEntries(Object.entries(extraCats).map(([k, v]) => [k, { ...v, content: <div style={{ fontSize: 46 }}>🎬✨</div> }])) }), [reels, extraCats]);
-  const cats = Object.keys(merged);
-  const furniture = cats.map((key, i) => {
-    const col = i % 4, row = Math.floor(i / 4);
-    return { id: key, x: 40 + col * 150, y: 90 + row * 170, w: 90, h: 150, color: phoneColors[i % phoneColors.length], emoji: "📱", label: merged[key].label, onInteract: () => setOpen(key) };
-  });
-
-  const banner = (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#1b2530", color: C.white, borderBottom: `3px solid ${C.ink}`, flexWrap: "wrap" }}>
-      <span style={{ fontSize: 13 }}>📱 카테고리 {cats.length}개</span>
-      <PxButton tone="gold" onClick={() => setAddOpen(true)} style={{ fontSize: 12, padding: "4px 10px", marginLeft: "auto" }}>＋ 카테고리 추가</PxButton>
-    </div>
-  );
+  const LONG_TAGS = ["인사이트", "인풋", "기타"];
 
   return (
-    <RoomView title="릴스방" icon="📱" sub="핸드폰을 눌러 릴스 감상 · 카테고리 추가 가능" bg="#141c26" roomW={640} roomH={400} furniture={furniture} onBack={onBack} paused={!!open || addOpen} headerBg="#3fa07a" banner={banner} bubble={bubble}>
+    <RoomView title="릴스방" icon="📱" sub="📺 유튜브 롱폼 + 📱 카테고리별 쇼츠 · 세로로 스크롤하며 봐요" bg="#141c26" roomW={640} roomH={400} furniture={[]} onBack={onBack} paused headerBg="#3fa07a" bubble={bubble}>
+      <div style={{ position: "absolute", inset: 0, overflowY: "auto", padding: 14, zIndex: 20, background: "linear-gradient(180deg,#1b2530,#141c26)" }}>
+
+        {/* ── 📺 유튜브 롱폼 (가로 16:9) ── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <span style={{ fontSize: 15, fontWeight: "bold", color: "#fff", flex: 1 }}>📺 유튜브 · 인사이트 / 인풋</span>
+          <PxButton tone="gold" onClick={() => setRemoteOpen(true)} style={{ fontSize: 12, padding: "6px 11px" }}>🎛 리모콘</PxButton>
+        </div>
+        <div style={{ background: "#000", border: "3px solid #000", borderRadius: 10, overflow: "hidden", marginBottom: 6 }}>
+          <div style={{ position: "relative", width: "100%", paddingTop: "56.25%" }}>
+            {nowLong ? (
+              <iframe title="long" src={`https://www.youtube.com/embed/${nowLong}?autoplay=1&rel=0`} allow="autoplay; encrypted-media; fullscreen" allowFullScreen
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} />
+            ) : (
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#8a97a5", background: "#0d141c" }}>
+                <div style={{ fontSize: 40 }}>📺</div>
+                <div style={{ fontSize: 12, marginTop: 6 }}>🎛 리모콘에서 영상을 골라 재생하세요</div>
+              </div>
+            )}
+          </div>
+        </div>
+        {longList.length > 0 && (
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 4 }}>
+            {longList.slice(0, 12).map((v) => (
+              <button key={v.id} type="button" onClick={() => setNowLong(v.videoId)}
+                style={{ flexShrink: 0, width: 128, cursor: "pointer", background: nowLong === v.videoId ? "#2a3b4d" : "#1e2b38", border: `2px solid ${nowLong === v.videoId ? "#ffd166" : "#33445a"}`, borderRadius: 8, padding: 5, textAlign: "left" }}>
+                <img src={`https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`} alt="" style={{ width: "100%", borderRadius: 4, display: "block" }} />
+                <div style={{ fontSize: 10, color: "#fff", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.tag ? `[${v.tag}] ` : ""}{v.title}</div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ── 📱 카테고리별 쇼츠 (9:16 세로) ── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "16px 0 8px" }}>
+          <span style={{ fontSize: 15, fontWeight: "bold", color: "#fff", flex: 1 }}>📱 쇼츠 · 카테고리 {cats.length}개</span>
+          <PxButton tone="good" onClick={() => setAddOpen(true)} style={{ fontSize: 12, padding: "6px 11px" }}>＋ 카테고리</PxButton>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 10 }}>
+          {cats.map((key, i) => {
+            const cd = catData(key);
+            const cnt = (cd.shorts || []).length;
+            return (
+              <button key={key} type="button" onClick={() => setOpen(key)}
+                style={{ cursor: "pointer", background: phoneColors[i % phoneColors.length], border: "3px solid #000", borderRadius: 12, padding: "10px 6px", color: "#fff", position: "relative" }}>
+                <div style={{ fontSize: 30 }}>📱</div>
+                <div style={{ fontSize: 12, fontWeight: "bold", textShadow: "1px 1px 0 #000", marginTop: 3 }}>{cd.label}</div>
+                <div style={{ fontSize: 10, marginTop: 2, textShadow: "1px 1px 0 #000" }}>{cnt}개 쇼츠</div>
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ height: 10 }} />
+      </div>
+
+      {/* 🎛 롱폼 리모콘 : 목록 + 추가 */}
+      {remoteOpen && (
+        <RoomModal title="🎛 유튜브 롱폼 리모콘" onClose={() => setRemoteOpen(false)} maxW={400}>
+          <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 10, marginBottom: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>＋ 영상 추가</div>
+            <input value={longUrl} onChange={(e) => setLongUrl(e.target.value)} placeholder="🔗 유튜브 링크 (youtu.be / watch?v=)"
+              style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, marginBottom: 6 }} />
+            <input value={longTitle} onChange={(e) => setLongTitle(e.target.value)} placeholder="제목 (선택)"
+              style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, marginBottom: 6 }} />
+            <div style={{ display: "flex", gap: 5, marginBottom: 8 }}>
+              {LONG_TAGS.map((t) => (
+                <button key={t} type="button" onClick={() => setLongTag(t)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", padding: "5px 11px", borderRadius: 14, border: `2px solid ${C.ink}`, background: longTag === t ? "#5b8def" : C.white, color: longTag === t ? C.white : C.ink }}>{t}</button>
+              ))}
+            </div>
+            <PxButton tone="good" onClick={addLong} style={{ width: "100%", padding: 9, fontSize: 12.5 }}>＋ 추가하고 재생</PxButton>
+          </div>
+          <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>📺 영상 목록 {longList.length}개</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 260, overflow: "auto" }}>
+            {longList.length === 0 ? <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 20 }}>아직 영상이 없어요 · 위에서 추가해보세요</div> :
+              longList.map((v) => (
+                <div key={v.id} style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 6 }}>
+                  <img src={`https://i.ytimg.com/vi/${v.videoId}/default.jpg`} alt="" style={{ width: 60, borderRadius: 4, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
+                    <div style={{ fontSize: 10, color: C.inkSoft }}>{v.tag ? `[${v.tag}] ` : ""}✍️ {v.by}</div>
+                  </div>
+                  <PxButton tone="good" onClick={() => { setNowLong(v.videoId); setRemoteOpen(false); }} style={{ fontSize: 10.5, padding: "5px 8px" }}>▶</PxButton>
+                  <PxButton tone="danger" onClick={() => delLong(v.id)} style={{ fontSize: 10.5, padding: "5px 8px" }}>🗑</PxButton>
+                </div>
+              ))}
+          </div>
+        </RoomModal>
+      )}
+
+      {/* ＋ 카테고리 추가 */}
       {addOpen && (
-        <RoomModal title="＋ 카테고리 추가" onClose={() => setAddOpen(false)} maxW={340}>
+        <RoomModal title="＋ 쇼츠 카테고리 추가" onClose={() => setAddOpen(false)} maxW={340}>
           <input value={addText} onChange={(e) => setAddText(e.target.value)} placeholder="예: 요리, 여행, 운동…" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: C.white }} />
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <PxButton tone="ink" onClick={() => setAddOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>
@@ -4787,22 +4894,48 @@ function ReelsView({ onBack, bubble, extraCats = {}, onAddCat }) {
           </div>
         </RoomModal>
       )}
-      {open && (
-        <RoomModal title={`📱 릴스 · ${merged[open].label}`} onClose={() => setOpen(null)} maxW={320}>
-          <div style={{ margin: "0 auto", width: 230, background: "#111", border: "6px solid #000", borderRadius: 24, padding: "12px 10px" }}>
-            <div style={{ width: 56, height: 6, background: "#333", borderRadius: 6, margin: "0 auto 8px" }} />
-            <div style={{ aspectRatio: "9/16", background: merged[open].bg, border: "2px solid #000", borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-              {merged[open].content}
-              <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, color: "#fff", fontSize: 12, textShadow: "1px 1px 0 #000" }}>{merged[open].title}</div>
+
+      {/* 📱 쇼츠 카테고리 열기 : 세로 스크롤 피드 + 추가 */}
+      {open && (() => {
+        const cd = catData(open);
+        return (
+          <RoomModal title={`📱 ${cd.label} 쇼츠`} onClose={() => setOpen(null)} maxW={340}>
+            <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 8, marginBottom: 10 }}>
+              <div style={{ display: "flex", gap: 5 }}>
+                <input value={shortCat === open ? shortUrl : ""} onFocus={() => setShortCat(open)} onChange={(e) => { setShortCat(open); setShortUrl(e.target.value); }}
+                  placeholder="🔗 유튜브 쇼츠 링크" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
+                <PxButton tone="good" onClick={addShort} style={{ fontSize: 11, padding: "6px 10px" }}>＋</PxButton>
+              </div>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-around", marginTop: 8, fontSize: 18 }}><span>❤️</span><span>💬</span><span>🔁</span><span>🔖</span></div>
-          </div>
-          <div style={{ textAlign: "center", fontSize: 11, color: C.inkSoft, marginTop: 8 }}>예시 릴스 (데모 그래픽)</div>
-        </RoomModal>
-      )}
+            {(cd.shorts || []).length === 0 ? (
+              <div style={{ fontSize: 12.5, color: C.inkSoft, textAlign: "center", padding: 26 }}>아직 쇼츠가 없어요 🎬<br />위에 링크를 넣어보세요!</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: "62vh", overflowY: "auto", scrollSnapType: "y mandatory" }}>
+                {(cd.shorts || []).map((s) => (
+                  <div key={s.id} style={{ scrollSnapAlign: "start", position: "relative" }}>
+                    <div style={{ margin: "0 auto", width: 220, background: "#111", border: "5px solid #000", borderRadius: 20, padding: "8px 8px 10px" }}>
+                      <div style={{ width: 50, height: 5, background: "#333", borderRadius: 6, margin: "0 auto 6px" }} />
+                      <div style={{ position: "relative", width: "100%", paddingTop: "177.78%", background: "#000", borderRadius: 8, overflow: "hidden" }}>
+                        <iframe title={s.id} src={`https://www.youtube.com/embed/${s.videoId}?rel=0`} allow="encrypted-media; fullscreen" allowFullScreen
+                          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} />
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                        <span style={{ fontSize: 10, color: "#aaa" }}>✍️ {s.by}</span>
+                        <button type="button" onClick={() => delShort(open, s.id)} style={{ cursor: "pointer", background: "none", border: "none", color: "#e08", fontSize: 12 }}>🗑</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginTop: 8 }}>↕ 세로로 스크롤하며 쇼츠를 넘겨보세요</div>
+          </RoomModal>
+        );
+      })()}
     </RoomView>
   );
 }
+
 
 /* ======================= 미니게임 방 ======================= */
 
@@ -8259,6 +8392,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n58", type: "업데이트", date: "2026-07-24", title: "📱 릴스방 개편 · 🎶 앉기 표시 간소화",
+    body: "· 📺 릴스방 위쪽에 가로 16:9 유튜브 롱폼 화면을 넣었어요 — 인사이트·인풋 영상을 크게 봐요\n· 🎛 리모콘 버튼으로 롱폼 목록을 보고 유튜브 링크를 추가·재생할 수 있어요\n· 📱 아래쪽은 카테고리별 쇼츠 — 카테고리를 누르면 세로 스크롤로 유튜브 쇼츠를 넘겨봐요\n· 각 카테고리에서 ＋로 쇼츠 링크를 추가할 수 있고, 올린 영상은 모두에게 공유돼요\n· 🎶 관객석에 앉아 있을 때 뜨던 긴 안내를 작은 아이콘으로 줄였어요 (덜 방해돼요)" },
   { id: "u20260724n57", type: "수정", date: "2026-07-24", title: "🎟 복권방 나가기 버튼 추가",
     body: "· 복권 화면에서 나가기 버튼이 잘 안 보이던 문제를 고쳤어요\n· 복권 사기 버튼 아래에 「← 복권방 나가기」 버튼을 넣었어요" },
   { id: "u20260724n56", type: "업데이트", date: "2026-07-24", title: "🎟 복권방 추가 (즉석 추첨)",
@@ -14242,7 +14377,7 @@ function EchoTown() {
           songs={songs} onAddSong={addSong} onDelSong={delSong} onPlayYt={(sg) => playYt(sg, false)} onPlayBgm={playRoomBgm}
           onFollow={(who, title) => { if (!who || who === (myName || "나")) return; if (netSendEvent) netSendEvent("follow", { to: who, from: myName || "나", title }); showNotice(`🎧 ${who}님의 선곡을 같이 들어요`); }} ytNow={ytNow} myName={myName} roomBgm={roomBgm}
           chat={musicChat} onChat={(t) => { setMusicChat((v) => [...v, { who: myName || "나", text: t, me: true }].slice(-80)); if (netSendEvent) netSendEvent("lchat", { who: myName || "나", text: t }); }} />}
-        {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} extraCats={reelExtra} onAddCat={addReel} />}
+        {view === "reels" && <ReelsView onBack={backToWorld} bubble={bubble} extraCats={reelExtra} onAddCat={addReel} myName={myName} />}
         {view === "minigame" && <MiniGameRoom myName={myName} people={people} onBack={backToWorld} onReward={(n) => awardGold(n)} bubble={bubble} liarGame={liarGame} onLiarAction={lgAction} />}
         {view === "lotto" && <LottoRoom onBack={backToWorld} bubble={bubble} gold={gold}
           onBuy={(win) => {
