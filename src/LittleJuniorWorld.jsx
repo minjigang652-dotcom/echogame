@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v93 · 2026-07-24";
+const APP_VERSION = "v96 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2396,7 +2396,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2470,6 +2470,23 @@ async function dbSaveSprite(id, dataUrl, by) {
    분류(cat)에 맞는 디스코드 채널로 정리해서 올리면 돼요. */
 /* 🤖 봇 신호 : 회의 시작/종료를 봇이 감시할 큐에 저장 (notices 재사용: type="meetstart") */
 /* 🖥 HQ 퀘스트 저장 (notices 재사용: type="hqquest", body=JSON 배열 전체) */
+async function dbLoadRoad() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("body,created_at").eq("type", "hqroad").order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    if (!row) return null;
+    return JSON.parse(row.body || "null");
+  } catch (e) { return null; }
+}
+async function dbSaveRoad(data, by) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "hqroad", title: "hqroad", body: JSON.stringify(data || {}), uid: by || null });
+    if (r && r.error) return { ok: false, msg: r.error.message };
+    return { ok: true };
+  } catch (e) { return { ok: false, msg: String(e) }; }
+}
 async function dbLoadHQ() {
   try {
     const s = await getSupa();
@@ -2483,8 +2500,9 @@ async function dbSaveHQ(list, by) {
   try {
     const s = await getSupa();
     const r = await s.from("notices").insert({ type: "hqquest", title: "hq", body: JSON.stringify(list || []), uid: by || null });
-    return !(r && r.error);
-  } catch (e) { return false; }
+    if (r && r.error) { console.warn("[HQ 저장 실패]", r.error); return { ok: false, msg: r.error.message || String(r.error) }; }
+    return { ok: true };
+  } catch (e) { console.warn("[HQ 저장 예외]", e); return { ok: false, msg: (e && e.message) || String(e) }; }
 }
 async function dbMeetSignal(payload) {
   try {
@@ -2564,7 +2582,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
         });
         /* ⚠️ 새 이벤트를 만들면 반드시 여기에 이름을 넣어야 상대에게 도착해요 */
-        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor", "decorreq", "luck", "hq"].forEach((ev) => {
+        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor", "decorreq", "luck", "hq", "hqroad"].forEach((ev) => {
           ch.on("broadcast", { event: ev }, ({ payload }) => {
             if (onChatRef && onChatRef.net) onChatRef.net(ev, payload);
           });
@@ -7985,6 +8003,12 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n47", type: "업데이트", date: "2026-07-24", title: "🗺 HQ 로드맵 챕터 추가·수정·삭제 (진행률 자동)",
+    body: "· 🖥 HQ 🗺 로드맵에서 챕터를 추가·이름수정·삭제·순서이동할 수 있어요\n· 챕터 진행률은 직접 조절하지 않아요 — 퀘스트의 📁 챕터가 그 챕터 이름과 같은 것들의 평균으로 자동 계산돼요\n· 그래서 퀘스트 진행바를 움직이면 로드맵도 자동으로 채워지고, 100%가 되면 ✓ 완료로 바뀌어요\n· 첫 미완 챕터가 📍 지금 여기로 표시돼요\n· 로드맵도 모두가 함께 보고 수정하며 서버에 저장·공유돼요" },
+  { id: "u20260724n46", type: "수정", date: "2026-07-24", title: "🖥 HQ 저장 결과를 HQ 화면 안에서 바로 표시",
+    body: "· HQ 퀘스트를 저장하면 HQ 상단에 ✅ 저장됨 / ⚠️ 실패 배지가 바로 떠요\n· 실패하면 실제 오류 메시지도 함께 보여줘서 원인을 알 수 있어요\n· BUILD 번호가 v95 인지 확인해주세요 — 아니면 아직 배포 전 버전이에요" },
+  { id: "u20260724n45", type: "수정", date: "2026-07-24", title: "🔍 HQ 저장 실패 원인 표시",
+    body: "· HQ 퀘스트를 저장할 때 서버 저장이 실패하면, 화면에 실제 오류 메시지를 보여줘요\n· 저장이 안 되던 원인(권한/RLS 등)을 바로 확인할 수 있어요\n· 저장에 성공하면 「저장했어요」 안내가 떠요" },
   { id: "u20260724n44", type: "업데이트", date: "2026-07-24", title: "🖥 HQ 퀘스트 실제 등록·수정 · 좌우 패널 항상 표시",
     body: "· 🙋 내 페이지(좌측)와 진행중 아이콘(우측)이 마을뿐 아니라 어느 방에서도 항상 떠요 (HQ 열면 잠시 숨김)\n· 🙋 내 페이지 내용은 나만 볼 수 있어요 (내 기기에 저장)\n· 🖥 HQ 📋 퀘스트를 실제로 등록·수정·삭제할 수 있어요 (＋ 새 퀘스트 · ✏️ 수정)\n· 제목·카테고리·⭐·🪙·💎·챕터·마감일·담당 세부작업을 넣고, 진행바는 드래그로 바로 조절돼요\n· HQ 퀘스트는 모두가 함께 보고 수정하며 서버에 저장·공유돼요 (마을 보스맵과는 별개)\n· 홈 월드맵 진행도도 이제 HQ 퀘스트 기준으로 계산돼요\n· 로드맵·문서·내페이지 편집은 다음 단계에서 이어붙여요" },
   { id: "u20260724n43", type: "업데이트", date: "2026-07-24", title: "🤖 회의실 → 봇 신호 연동 (음성 회의 자동 시작)",
@@ -9796,18 +9820,22 @@ const HQ_ROADMAP = {
 };
 
 /* ======================= 🖥 에코월드 HQ (대시보드) ======================= */
-function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo, hqQuests = [], onHQChange }) {
+function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo, hqQuests = [], onHQChange, hqRoad = {}, onRoadChange }) {
   const [tab, setTab] = useState("home");
   const [notice, setNotice] = useState("");
   const [qcat, setQcat] = useState("all");
   const [rcat, setRcat] = useState("core");
   const [qEdit, setQEdit] = useState(null);   // 편집/등록 중인 퀘스트 (null=닫힘)
+  const [saveMsg, setSaveMsg] = useState("");   // HQ 자체 저장 상태 표시
   const blankQuest = () => ({ id: "q" + Date.now(), cat: "core", title: "", star: 2, gold: 0, gem: 0, chapter: "", due: "", subs: [] });
   const commitQuest = (q) => {
     const clean = { ...q, star: Number(q.star) || 1, gold: Number(q.gold) || 0, gem: Number(q.gem) || 0, editedBy: myName || "익명", editedAt: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
     const exists = hqQuests.some((x) => x.id === q.id);
     const next = exists ? hqQuests.map((x) => (x.id === q.id ? clean : x)) : [clean, ...hqQuests];
-    onHQChange && onHQChange(next);
+    Promise.resolve(onHQChange && onHQChange(next)).then((r) => {
+      setSaveMsg(r && r.ok === false ? "⚠️ 저장 실패: " + (r.msg || "").slice(0, 50) : "✅ 저장됨 · 모두에게 공유");
+      setTimeout(() => setSaveMsg(""), 3500);
+    });
     setQEdit(null);
   };
   const removeQuest = (id) => { onHQChange && onHQChange(hqQuests.filter((x) => x.id !== id)); setQEdit(null); };
@@ -9870,6 +9898,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
           ))}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
+          {saveMsg && <span style={{ fontSize: 10.5, fontWeight: "bold", color: saveMsg.startsWith("⚠️") ? C.danger : C.good, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "4px 8px" }}>{saveMsg}</span>}
           <span style={{ fontSize: 11, color: C.inkSoft }}>나: <b style={{ color: C.ink }}>{myName || "게스트"}</b></span>
           <button type="button" onClick={onClose} title="마을로 돌아가기"
             style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 13, padding: "6px 10px", borderRadius: 8, border: `2px solid ${C.ink}`, background: C.parch }}>🏘 마을</button>
@@ -10040,8 +10069,23 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
           );
         })()}
         {tab === "road" && (() => {
-          const chapters = HQ_ROADMAP[rcat] || [];
+          const chapters = hqRoad[rcat] || [];
           const ci = HQ_CATS.find((c) => c.id === rcat) || { color: "#888" };
+          const avgPct = (q) => Math.round(((q.subs || []).reduce((n, x) => n + (x.pct || 0), 0) / Math.max(1, (q.subs || []).length)));
+          // 챕터 진행률 = 그 챕터 이름과 일치하는 퀘스트들의 평균 (자동)
+          const chapterPct = (name) => {
+            const qs = hqQuests.filter((q) => (q.chapter || "").trim() === (name || "").trim());
+            if (!qs.length) return 0;
+            return Math.round(qs.reduce((n, q) => n + avgPct(q), 0) / qs.length);
+          };
+          const chapterQn = (name) => hqQuests.filter((q) => (q.chapter || "").trim() === (name || "").trim()).length;
+          const setChapters = (arr) => { onRoadChange && onRoadChange({ ...hqRoad, [rcat]: arr }); };
+          const move = (i, d) => { const a = [...chapters]; const j = i + d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; setChapters(a); };
+          const rename = (i) => { const nv = (window.prompt("챕터 이름", chapters[i].name) || "").trim(); if (nv) setChapters(chapters.map((c, j) => j === i ? { ...c, name: nv } : c)); };
+          const del = (i) => { if (window.confirm("이 챕터를 삭제할까요?")) setChapters(chapters.filter((_, j) => j !== i)); };
+          const add = () => { const nv = (window.prompt("새 챕터 이름") || "").trim(); if (nv) setChapters([...chapters, { id: "r" + Date.now(), name: nv }]); };
+          // 첫 미완(=진행률<100) 챕터가 "지금 여기"
+          const curIdx = chapters.findIndex((ch) => chapterPct(ch.name) < 100);
           return (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
@@ -10049,21 +10093,32 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 {HQ_CATS.map((c) => (
                   <button key={c.id} type="button" onClick={() => setRcat(c.id)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: rcat === c.id ? C.ink : C.white, color: rcat === c.id ? C.white : C.ink }}>{c.icon} {c.name}</button>
                 ))}
+                <PxButton tone="gold" onClick={add} style={{ fontSize: 11, padding: "7px 12px", marginLeft: "auto" }}>＋ 챕터 추가</PxButton>
               </div>
-              <div style={{ maxWidth: 460, margin: "0 auto" }}>
+              <div style={{ maxWidth: 500, margin: "0 auto" }}>
+                {chapters.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 30 }}>챕터가 없어요 · ＋ 챕터 추가로 만들어보세요</div>}
                 {chapters.map((ch, i) => {
-                  const locked = ch.pct === 0 && !ch.cur;
+                  const pct = chapterPct(ch.name);
+                  const qn = chapterQn(ch.name);
+                  const isCur = i === curIdx;
+                  const done = pct >= 100;
                   return (
-                    <div key={i}>
+                    <div key={ch.id}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                         <div style={{ width: 54, height: 54, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22,
-                          background: ch.cur ? ci.color : locked ? "#d8d2c4" : "#bfe3cf", border: `3px solid ${C.ink}`, color: C.white }}>
-                          {locked ? "🔒" : ch.cur ? "📍" : "✓"}
+                          background: done ? "#bfe3cf" : isCur ? ci.color : "#d8d2c4", border: `3px solid ${C.ink}`, color: C.white }}>
+                          {done ? "✓" : isCur ? "📍" : "🔒"}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13.5, fontWeight: "bold" }}>{ch.name}{ch.cur ? <span style={{ fontSize: 10, color: ci.color, marginLeft: 6 }}>지금 여기</span> : null}</div>
-                          <div style={{ height: 7, borderRadius: 5, background: "#eadfc6", overflow: "hidden", marginTop: 5 }}><div style={{ width: ch.pct + "%", height: "100%", background: ci.color }} /></div>
-                          <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 3 }}>{ch.pct}%</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            <span style={{ flex: 1, fontSize: 13.5, fontWeight: "bold" }}>{ch.name}{isCur ? <span style={{ fontSize: 10, color: ci.color, marginLeft: 6 }}>지금 여기</span> : null}</span>
+                            <button type="button" onClick={() => move(i, -1)} title="위로" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.inkSoft }}>▲</button>
+                            <button type="button" onClick={() => move(i, 1)} title="아래로" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.inkSoft }}>▼</button>
+                            <button type="button" onClick={() => rename(i)} title="이름 수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 12 }}>✏️</button>
+                            <button type="button" onClick={() => del(i)} title="삭제" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.inkSoft }}>✕</button>
+                          </div>
+                          <div style={{ height: 7, borderRadius: 5, background: "#eadfc6", overflow: "hidden", marginTop: 5 }}><div style={{ width: pct + "%", height: "100%", background: ci.color }} /></div>
+                          <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 3 }}>{pct}% · 연결된 퀘스트 {qn}개</div>
                         </div>
                       </div>
                       {i < chapters.length - 1 && <div style={{ width: 3, height: 26, background: C.parchEdge, margin: "4px 0 4px 26px" }} />}
@@ -10071,7 +10126,9 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                   );
                 })}
               </div>
-              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 16 }}>※ 예시 데이터예요 · 챕터 추가/편집은 다음 단계에서 붙여요</div>
+              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 16, lineHeight: 1.6 }}>
+                진행률은 <b>퀘스트의 📁 챕터</b>가 이 챕터 이름과 같은 것들의 평균으로 자동 계산돼요<br />퀘스트 진행바를 움직이면 여기 로드맵도 자동으로 채워져요
+              </div>
             </>
           );
         })()}
@@ -10796,7 +10853,255 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed,
     </Panel>
   );
 }
-
+// ============================================================================
+//  NaverSchoolPanel.jsx  —  에코월드 "네이버 스쿨" 패널
+//  몰입의 방 기능을 게임 안에 그대로 표시:
+//    ① 네이버키워드(순위)  ② URL(발행 URL 풀)  ③ 카페 최신글  ④ 지식인 최신글
+//
+//  [적용 방법]  src/ 폴더에 이 파일을 넣고, LittleJuniorWorld.jsx 에서:
+//
+//    import NaverSchoolPanel from './NaverSchoolPanel';
+//    const [naverOpen, setNaverOpen] = useState(false);
+//    // 플레이어가 "네이버 스쿨" 건물에 들어가 E를 누를 때 -> setNaverOpen(true)
+//    ...
+//    <NaverSchoolPanel open={naverOpen} onClose={() => setNaverOpen(false)} />
+//
+//  MOIP_API 만 네 몰입의 방 도메인으로 맞춰주면 돼요.
+//  서버 API가 아직 없으면 자동으로 예시(mock) 데이터를 보여줍니다.
+// ============================================================================
+const MOIP_API = 'https://ad.onlychat.co.kr'; // ← 몰입의 방 도메인
+// 카페 발행 시트 바로가기 링크
+const SHEETS = {
+  jehyu:  'https://docs.google.com/spreadsheets/d/1MMZOIT9KFcck6DfY3lT6Khsx8eZF695kpuc7G_OWk90/edit?pli=1&gid=903765666#gid=903765666',
+  molbal: 'https://docs.google.com/spreadsheets/d/1MMZOIT9KFcck6DfY3lT6Khsx8eZF695kpuc7G_OWk90/edit?pli=1&gid=214235798#gid=214235798',
+};
+// ---- 상태 뱃지 (몰입의 방 4단계와 동일) ------------------------------------
+const ST = {
+  high: { cls: 'st-high', label: '상위노출' },
+  low:  { cls: 'st-low',  label: '하위노출' },
+  miss: { cls: 'st-miss', label: '누락' },
+};
+// 서버가 '상위노출'/'하위노출'/'누락'(한글) 또는 'high'/'low'/'miss' 어느 쪽으로 줘도 처리
+function normStatus(s) {
+  const t = String(s || '');
+  if (t === 'high' || t.includes('상위')) return 'high';
+  if (t === 'low' || t.includes('하위')) return 'low';
+  return 'miss';
+}
+// ---- 출처 뱃지 --------------------------------------------------------------
+const SRC = {
+  cafe: { cls: 'tag-cafe', label: '카페' },
+  kin:  { cls: 'tag-kin',  label: '지식인' },
+  blog: { cls: 'tag-blog', label: '블로그' },
+};
+// 카페 답변 처리 상태 (드롭다운 4종)
+const WORK = {
+  answered: '답변 완료',
+  deleted:  '삭제',
+  joinwait: '가입대기',
+  levelup:  '등업 요망',
+};
+const WORK_ORDER = ['answered', 'deleted', 'joinwait', 'levelup'];
+// ---- 서버가 아직 없을 때 보여줄 예시 데이터 ---------------------------------
+const MOCK = {
+  keywords: [
+    // 그린레이
+    { keyword: '그린레이 효과',   product: '그린레이', ourRank: 1,    status: 'high', volume: 9200, important: true },
+    { keyword: '그린레이 후기',   product: '그린레이', ourRank: 4,    status: 'high', volume: 6100, important: false },
+    { keyword: '그린레이 부작용', product: '그린레이', ourRank: 12,   status: 'low',  volume: 3300, important: true },
+    { keyword: '그린레이 가격',   product: '그린레이', ourRank: null, status: 'miss', volume: 2100, important: false },
+    // 보이실린
+    { keyword: '보이실린 효과',   product: '보이실린', ourRank: 2,    status: 'high', volume: 7400, important: true },
+    { keyword: '보이실린 복용법', product: '보이실린', ourRank: 8,    status: 'high', volume: 2600, important: false },
+    { keyword: '보이실린 후기',   product: '보이실린', ourRank: 15,   status: 'low',  volume: 1800, important: false },
+    { keyword: '보이실린 성분',   product: '보이실린', ourRank: null, status: 'miss', volume: 900,  important: false },
+    // 키워드신고
+    { keyword: '키워드신고 방법',     product: '키워드신고', ourRank: 3,  status: 'high', volume: 5200, important: true },
+    { keyword: '키워드신고 기준',     product: '키워드신고', ourRank: 11, status: 'low',  volume: 1400, important: false },
+    { keyword: '키워드신고 처리기간', product: '키워드신고', ourRank: 19, status: 'low',  volume: 800,  important: false },
+    // 고음확장기
+    { keyword: '고음확장기 사용법', product: '고음확장기', ourRank: 1,    status: 'high', volume: 4300, important: true },
+    { keyword: '고음확장기 효과',   product: '고음확장기', ourRank: 6,    status: 'high', volume: 3900, important: false },
+    { keyword: '고음확장기 추천',   product: '고음확장기', ourRank: null, status: 'miss', volume: 2700, important: false },
+  ],
+  urls: [
+    { source: 'cafe', title: '목소리가 안 나와요 대처법 정리',   url: '#' },
+    { source: 'cafe', title: '성대결절 후기 모음',              url: '#' },
+    { source: 'kin',  title: '목쉼 질문 답변 (지식iN)',          url: '#' },
+    { source: 'kin',  title: '발성 연습 관련 답변',              url: '#' },
+  ],
+  cafe: [
+    { title: '목소리가 안 나와요 어떡하죠ㅠ 3일차 후기', date: '2026-07-27', url: '#' },
+    { title: '목쉼 빨리 낫는 법 (병원 다녀온 후기)',      date: '2026-07-25', url: '#' },
+    { title: '이비인후과 목소리 진료 비용 정리',          date: '2026-07-23', url: '#' },
+  ],
+  kin: [
+    { id: 'k1',  title: '목소리가 갈라지는데 성대결절일까요?',     date: '2026-07-27', url: '#' },
+    { id: 'k2',  title: '발성 연습 하루 몇 분이 적당한가요?',      date: '2026-07-27', url: '#' },
+    { id: 'k3',  title: '목쉼이 2주째인데 병원 가야 하나요?',      date: '2026-07-27', url: '#' },
+    { id: 'k4',  title: '그린레이 복용 중인데 물 많이 마셔야 하나요?', date: '2026-07-27', url: '#' },
+    { id: 'k5',  title: '고음이 안 올라가요 연습법 있을까요?',     date: '2026-07-27', url: '#' },
+    { id: 'k6',  title: '보이실린 언제 먹는 게 좋나요?',          date: '2026-07-27', url: '#' },
+    { id: 'k7',  title: '목소리 관리 영양제 추천해주세요',        date: '2026-07-27', url: '#' },
+    { id: 'k8',  title: '노래방 다녀오면 목이 쉬어요 왜그럴까요',  date: '2026-07-27', url: '#' },
+    { id: 'k9',  title: '성대결절 수술까지 가야 하는 경우는?',    date: '2026-07-27', url: '#' },
+    { id: 'k10', title: '아침에 목소리가 안 나오는데 정상인가요?', date: '2026-07-27', url: '#' },
+    { id: 'k11', title: '발성 좋아지는 습관 뭐가 있을까요?',      date: '2026-07-27', url: '#' },
+    { id: 'k12', title: '목 통증이랑 목소리 변화 같이 오는데요',  date: '2026-07-27', url: '#' },
+  ],
+  // 답변 요망: 키워드별로 수집한 카페 링크
+  cafeLinks: [
+    { id: 'c1', keyword: '그린레이 효과',   title: '그린레이 드셔보신 분 후기 부탁드려요',   url: 'https://cafe.naver.com/sample/1' },
+    { id: 'c2', keyword: '그린레이 효과',   title: '그린레이 3주차인데 효과 있나요?',        url: 'https://cafe.naver.com/sample/2' },
+    { id: 'c3', keyword: '그린레이 부작용', title: '그린레이 먹고 속쓰림 있으신 분?',        url: 'https://cafe.naver.com/sample/3' },
+    { id: 'c4', keyword: '보이실린 효과',   title: '보이실린 목소리에 도움되나요?',          url: 'https://cafe.naver.com/sample/4' },
+    { id: 'c5', keyword: '고음확장기 사용법', title: '고음확장기 사용법 알려주실 분ㅠ',       url: 'https://cafe.naver.com/sample/5' },
+  ],
+};
+const NSP_TABS = [
+  { id: 'kw',      label: '📊 네이버키워드' },
+  { id: 'cafepub', label: '📢 카페 발행' },
+  { id: 'url',     label: '🔗 URL' },
+  { id: 'cafe',    label: '☕ 카페 최신글' },
+  { id: 'kin',     label: '💬 지식인 최신글' },
+  { id: 'tutorial', label: '📖 튜토리얼' },
+];
+// ---- 답변 예시 등록 (링크 + 이미지) : 카페/지식인 탭에서 재사용 -------------
+// 지금은 화면(메모리)에만 저장돼요. 서버에 영구 저장하려면 addLink/onImages 에서
+// fetch(`${MOIP_API}/api/echo/examples`, {method:'POST', ...}) 로 보내면 됩니다.
+function ExampleRegister({ statusText, buttonLabel }) {
+  const [open, setOpen] = useState(false);
+  const [link, setLink] = useState('');
+  const [links, setLinks] = useState([]);
+  const [images, setImages] = useState([]);
+  const addLink = () => { const v = link.trim(); if (!v) return; setLinks((a) => [...a, v]); setLink(''); };
+  const removeLink = (i) => setLinks((a) => a.filter((_, k) => k !== i));
+  const onImages = (e) => {
+    Array.from(e.target.files || []).forEach((f) => {
+      const r = new FileReader();
+      r.onload = () => setImages((a) => [...a, { url: r.result, name: f.name }]);
+      r.readAsDataURL(f);
+    });
+    e.target.value = '';
+  };
+  const removeImage = (i) => setImages((a) => a.filter((_, k) => k !== i));
+  return (
+    <>
+      <div className="nsp-toolbar">
+        <span className="nsp-status">{statusText}</span>
+        <button className="nsp-btn nsp-right" onClick={() => setOpen((v) => !v)}>{buttonLabel}</button>
+      </div>
+      {open && (
+        <div className="nsp-expanel">
+          <div className="nsp-ex-h">답변 예시 등록</div>
+          <div className="nsp-ex-label">예시 링크</div>
+          <div className="nsp-ex-row">
+            <input
+              className="nsp-input"
+              placeholder="예시 링크 붙여넣기 (https://...)"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') addLink(); }}
+            />
+            <button className="nsp-btn" onClick={addLink}>추가</button>
+          </div>
+          {links.length > 0 && (
+            <ul className="nsp-ex-links">
+              {links.map((l, i) => (
+                <li key={i}>
+                  <a href={l} target="_blank" rel="noreferrer">{l}</a>
+                  <button className="nsp-x" onClick={() => removeLink(i)}>✕</button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="nsp-ex-label">예시 이미지</div>
+          <div className="nsp-ex-row">
+            <label className="nsp-btn nsp-file">
+              🖼 이미지 등록
+              <input type="file" accept="image/*" multiple hidden onChange={onImages} />
+            </label>
+            <span className="nsp-status">
+              {images.length > 0 ? `${images.length}개 등록됨` : '이미지를 추가하세요 (여러 장 가능)'}
+            </span>
+          </div>
+          {images.length > 0 && (
+            <div className="nsp-ex-imgs">
+              {images.map((im, i) => (
+                <div key={i} className="nsp-thumb">
+                  <img src={im.url} alt={im.name} />
+                  <button className="nsp-x" onClick={() => removeImage(i)}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+// ---- 작업자별 집계 ----------------------------------------------------------
+function workerSummary(processed) {
+  const m = {};
+  processed.forEach((p) => {
+    const w = (m[p.worker] = m[p.worker] || { name: p.worker, total: 0, answered: 0, deleted: 0, joinwait: 0, levelup: 0 });
+    w.total++;
+    if (w[p.status] != null) w[p.status]++;
+  });
+  return Object.values(m).sort((a, b) => b.total - a.total);
+}
+// ---- 캘린더 (날짜별 처리 건수) ----------------------------------------------
+function CafeCalendar({ processed }) {
+  const now = new Date();
+  const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() });
+  const startDow = new Date(ym.y, ym.m, 1).getDay();
+  const days = new Date(ym.y, ym.m + 1, 0).getDate();
+  const counts = {};
+  processed.forEach((p) => {
+    const d = new Date(p.at);
+    if (d.getFullYear() === ym.y && d.getMonth() === ym.m) counts[d.getDate()] = (counts[d.getDate()] || 0) + 1;
+  });
+  const cells = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= days; d++) cells.push(d);
+  const prev = () => setYm(({ y, m }) => (m === 0 ? { y: y - 1, m: 11 } : { y, m: m - 1 }));
+  const next = () => setYm(({ y, m }) => (m === 11 ? { y: y + 1, m: 0 } : { y, m: m + 1 }));
+  return (
+    <div className="nsp-cal">
+      <div className="nsp-calhd">
+        <button className="nsp-pill" onClick={prev}>‹</button>
+        <span>{ym.y}년 {ym.m + 1}월</span>
+        <button className="nsp-pill" onClick={next}>›</button>
+      </div>
+      <div className="nsp-calgrid">
+        {['일', '월', '화', '수', '목', '금', '토'].map((w) => (<div key={w} className="nsp-caldow">{w}</div>))}
+        {cells.map((d, i) => (
+          <div key={i} className={`nsp-calcell ${d ? '' : 'empty'}`}>
+            {d && <span className="nsp-calnum">{d}</span>}
+            {d && counts[d] && <span className="nsp-calbadge">{counts[d]}</span>}
+          </div>
+        ))}
+      </div>
+      <div className="nsp-status" style={{ marginTop: 8 }}>완료·처리한 작업이 날짜별로 표시돼요.</div>
+    </div>
+  );
+}
+// ---- 카페 최신글 워크플로우 (답변 요망 / 답변 완료 / 캘린더) ----------------
+function CafeWorkflow({ nickname, setNickname, links }) {
+  const GOAL = 30, LIMIT_MIN = 60;
+  const COUNTED = ['answered', 'joinwait', 'levelup']; // 삭제는 카운트 제외
+  const [sub, setSub] = useState('todo');          // todo | done | calendar
+  const [doneSub, setDoneSub] = useState('answered');
+  const [pending, setPending] = useState(links || []);
+  const [processed, setProcessed] = useState([]);
+  const [count, setCount] = useState(0);
+  const [startAt, setStartAt] = useState(null);
+  const [completedMs, setCompletedMs] = useState(null);
+  const [now, setNow] = useState(Date.now());
+  const [warnNick, setWarnNick] = useState(false);
+  // 서버에서 links가 새로 오면, 아직 처리 안 한 것만 pending 으로
+  useEffect(() => {
+    const doneIds = new Set(processed.map((p) => p.id));
 function EchoTown() {
   const [view, setView] = useState("world");
   const [houseId, setHouseId] = useState(null);
@@ -11621,13 +11926,28 @@ function EchoTown() {
   /* 🖥 HQ 퀘스트 — 편집 가능 · 모두 공유 */
   const [hqQuests, setHqQuests] = useState(() => loadJSON("echotown_hq_v1", null) || HQ_QUESTS_INIT);
   const hqQRef = useRef([]); hqQRef.current = hqQuests;
+  /* 🗺 로드맵 챕터 (카테고리별 이름 목록만 저장 · 진행률은 퀘스트에서 자동계산) */
+  const HQ_ROAD_INIT = { core: [{ id: "r1", name: "프리런칭 — Core Hunt" }, { id: "r2", name: "정식 런칭 & 온보딩" }], comm: [{ id: "r3", name: "상세페이지 리뉴얼" }, { id: "r4", name: "신제품 출시" }], game: [{ id: "r5", name: "에코타운 베타" }], guild: [{ id: "r6", name: "HQ 시스템 구축" }] };
+  const [hqRoad, setHqRoad] = useState(() => loadJSON("echotown_hqroad_v1", null) || HQ_ROAD_INIT);
+  const hqRoadRef = useRef({}); hqRoadRef.current = hqRoad;
+  const saveRoad = (data) => {
+    setHqRoad(data);
+    try { saveJSON("echotown_hqroad_v1", data); } catch (e) {}
+    if (netSendEventRef.current) netSendEventRef.current("hqroad", { data });
+    dbSaveRoad(data, myName || null);
+  };
   const saveHQ = (list) => {
     setHqQuests(list);
     try { saveJSON("echotown_hq_v1", list); } catch (e) {}
-    if (netSendEventRef.current) netSendEventRef.current("hq", { list });
-    dbSaveHQ(list, myName || null);
+    if (netSendEventRef.current) netSendEventRef.current("hq", { list });   // 접속자에겐 즉시 공유
+    return dbSaveHQ(list, myName || null).then((r) => {
+      if (r && r.ok) showNotice("🖥 HQ 퀘스트를 저장했어요 (모두에게 공유)");
+      else showNotice("⚠️ 서버 저장 실패: " + ((r && r.msg) ? r.msg.slice(0, 60) : "알 수 없는 오류"));
+      return r;
+    });
   };
   useEffect(() => { dbLoadHQ().then((d) => { if (d && Array.isArray(d)) { setHqQuests(d); try { saveJSON("echotown_hq_v1", d); } catch (e) {} } }); }, []);
+  useEffect(() => { dbLoadRoad().then((d) => { if (d && typeof d === "object") { setHqRoad(d); try { saveJSON("echotown_hqroad_v1", d); } catch (e) {} } }); }, []);
   const [hubTab, setHubTab] = useState("home");   // home | quest | msg
   const [startPop, setStartPop] = useState(null);   // 접속 직후 「확인해보세요」 팝업
   const [bossCleared, setBossCleared] = useState({});
@@ -12105,7 +12425,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "hq" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "hq" || kind === "hqroad" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "qcallack") {
@@ -12135,7 +12455,7 @@ function EchoTown() {
         /* ⚠️ 한 번에 보낼 수 있는 크기가 정해져 있어서, 사진처럼 큰 건 따로 나눠 보내요.
            예전엔 건물 이미지까지 한 덩어리로 보내다가 전체가 통째로 실패했어요. */
         const lightShr = (shrineRef.current || []).map((x, i) => (i < 4 ? x : { ...x, imgs: [] }));
-        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current, shr: lightShr, thx: thxRef.current, qacc: qAccRef.current, qth: qThRef.current, qlg: qLgRef.current, sscale: scaleRef.current, sng: songsRef.current, wtc: watchRef.current, dcr: decorRef.current, lck: luckRef.current, hq: hqQRef.current });
+        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current, shr: lightShr, thx: thxRef.current, qacc: qAccRef.current, qth: qThRef.current, qlg: qLgRef.current, sscale: scaleRef.current, sng: songsRef.current, wtc: watchRef.current, dcr: decorRef.current, lck: luckRef.current, hq: hqQRef.current, hqrd: hqRoadRef.current });
         const gs = galRef.current || [];
         gs.slice(0, 12).forEach((ph, i) => setTimeout(() => { if (netSendEvent) netSendEvent("gal", { photo: ph }); }, 350 * (i + 1)));
         /* 🎨 건물 이미지는 한 장씩 따로 전달 */
@@ -12158,6 +12478,7 @@ function EchoTown() {
         if (p.qth && typeof p.qth === "object") setQThreads((v) => mergeQList(v, p.qth, "at", 200));
         if (p.qlg && typeof p.qlg === "object") setQLogs((v) => mergeQList(v, p.qlg, "id", 100));
         if (Array.isArray(p.hq) && p.hq.length) { setHqQuests(p.hq); try { saveJSON("echotown_hq_v1", p.hq); } catch (e) {} }
+        if (p.hqrd && typeof p.hqrd === "object") { setHqRoad(p.hqrd); try { saveJSON("echotown_hqroad_v1", p.hqrd); } catch (e) {} }
         if (p.lck && typeof p.lck === "object") setLuckData((v) => { const o = { ...p.lck, ...v }; try { saveJSON("echotown_luck_v1", o); } catch (e) {} return o; });
         if (p.dcr && typeof p.dcr === "object") setHouseDecor((v) => {
           const o = { ...v };
@@ -12276,6 +12597,10 @@ function EchoTown() {
       }
       if (kind === "hq") {
         if (Array.isArray(p.list)) { setHqQuests(p.list); try { saveJSON("echotown_hq_v1", p.list); } catch (e) {} }
+        return;
+      }
+      if (kind === "hqroad") {
+        if (p.data && typeof p.data === "object") { setHqRoad(p.data); try { saveJSON("echotown_hqroad_v1", p.data); } catch (e) {} }
         return;
       }
       if (kind === "luck") {
@@ -12785,7 +13110,8 @@ function EchoTown() {
           onBoard={(title) => { dbAddNotice("모집", `[파티모집] ${title}`, `${myName || "익명"}님이 「${title}」 퀘스트 파티원을 찾고 있어요!`); showNotice("📋 게시판에 모집글을 올렸어요"); }}
           onNote={(qid, v) => setQNotes((n) => ({ ...n, [qid]: v }))}
           onThreadSend={(qid, text) => { const at = Date.now(); setQThreads((t) => ({ ...t, [qid]: [...(t[qid] || []), { who: myName || "나", text, at }].slice(-200) })); if (netSendEvent) netSendEvent("qchat", { qid, who: myName || "나", text, at }); }} />}
-        {(view === "naverschool" || view === "videoschool") && <SchoolView school={view} onBack={backToWorld} cleared={schoolDone} onClear={clearSchool} />}
+        {view === "naverschool" && <NaverSchoolPanel open onClose={backToWorld} nickname={myName} />}
+{view === "videoschool" && <SchoolView school={view} onBack={backToWorld} cleared={schoolDone} onClear={clearSchool} />}
         {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count, target) => {
           // 같은 닉네임이면 때린 수가 누적돼요
           setBoxScores((s) => {
@@ -13054,7 +13380,7 @@ function EchoTown() {
       {hqOpen && (
         <HQView onClose={() => setHqOpen(false)} myName={myName} people={people}
           notices={allNotices} bossMaps={bossMaps} bossCleared={bossCleared} qAccept={qAccept} questBox={questBox} unreadMsgCount={unreadMsgCount}
-          hqQuests={hqQuests} onHQChange={saveHQ}
+          hqQuests={hqQuests} onHQChange={saveHQ} hqRoad={hqRoad} onRoadChange={saveRoad}
           onPostNotice={(t) => { dbAddNotice("공지", t, `${myName || "익명"}님의 공지`, myUid); showNotice("📢 공지를 등록했어요"); }}
           onGo={(mapId) => { setHqOpen(false); setQuestJump({ mapId, qid: null }); setView("project"); }} />
       )}
