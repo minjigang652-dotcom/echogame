@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v92 · 2026-07-24";
+const APP_VERSION = "v93 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2396,7 +2396,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2469,6 +2469,23 @@ async function dbSaveSprite(id, dataUrl, by) {
    봇이 나중에 type="meetlog" 이고 아직 처리 안 된 행을 읽어
    분류(cat)에 맞는 디스코드 채널로 정리해서 올리면 돼요. */
 /* 🤖 봇 신호 : 회의 시작/종료를 봇이 감시할 큐에 저장 (notices 재사용: type="meetstart") */
+/* 🖥 HQ 퀘스트 저장 (notices 재사용: type="hqquest", body=JSON 배열 전체) */
+async function dbLoadHQ() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("body,created_at").eq("type", "hqquest").order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    if (!row) return null;
+    return JSON.parse(row.body || "null");
+  } catch (e) { return null; }
+}
+async function dbSaveHQ(list, by) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "hqquest", title: "hq", body: JSON.stringify(list || []), uid: by || null });
+    return !(r && r.error);
+  } catch (e) { return false; }
+}
 async function dbMeetSignal(payload) {
   try {
     const s = await getSupa();
@@ -2547,7 +2564,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
         });
         /* ⚠️ 새 이벤트를 만들면 반드시 여기에 이름을 넣어야 상대에게 도착해요 */
-        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor", "decorreq", "luck"].forEach((ev) => {
+        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor", "decorreq", "luck", "hq"].forEach((ev) => {
           ch.on("broadcast", { event: ev }, ({ payload }) => {
             if (onChatRef && onChatRef.net) onChatRef.net(ev, payload);
           });
@@ -7968,6 +7985,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n44", type: "업데이트", date: "2026-07-24", title: "🖥 HQ 퀘스트 실제 등록·수정 · 좌우 패널 항상 표시",
+    body: "· 🙋 내 페이지(좌측)와 진행중 아이콘(우측)이 마을뿐 아니라 어느 방에서도 항상 떠요 (HQ 열면 잠시 숨김)\n· 🙋 내 페이지 내용은 나만 볼 수 있어요 (내 기기에 저장)\n· 🖥 HQ 📋 퀘스트를 실제로 등록·수정·삭제할 수 있어요 (＋ 새 퀘스트 · ✏️ 수정)\n· 제목·카테고리·⭐·🪙·💎·챕터·마감일·담당 세부작업을 넣고, 진행바는 드래그로 바로 조절돼요\n· HQ 퀘스트는 모두가 함께 보고 수정하며 서버에 저장·공유돼요 (마을 보스맵과는 별개)\n· 홈 월드맵 진행도도 이제 HQ 퀘스트 기준으로 계산돼요\n· 로드맵·문서·내페이지 편집은 다음 단계에서 이어붙여요" },
   { id: "u20260724n43", type: "업데이트", date: "2026-07-24", title: "🤖 회의실 → 봇 신호 연동 (음성 회의 자동 시작)",
     body: "· 🔊 음성 회의 시작을 누르면 봇에게 신호를 보내요 (Supabase에 저장 → 봇이 감시)\n· 봇이 그 신호를 받으면 디스코드에 임시 음성채널을 자동으로 만들어요\n· 종료를 누르면 봇에게 종료 신호도 보내요\n· 신호는 notices 테이블에 type=\"meetstart\" 로 저장돼요 (봇이 이 타입을 감시하면 됩니다)\n· ⚠️ 봇 쪽에서 이 신호를 읽는 코드가 완성돼야 실제로 채널이 생겨요" },
   { id: "u20260724n42", type: "업데이트", date: "2026-07-24", title: "⏱ 업무 시간 자동 조정 (초과=밀기 / 단축=당기기)",
@@ -9777,21 +9796,36 @@ const HQ_ROADMAP = {
 };
 
 /* ======================= 🖥 에코월드 HQ (대시보드) ======================= */
-function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo }) {
+function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo, hqQuests = [], onHQChange }) {
   const [tab, setTab] = useState("home");
   const [notice, setNotice] = useState("");
   const [qcat, setQcat] = useState("all");
   const [rcat, setRcat] = useState("core");
+  const [qEdit, setQEdit] = useState(null);   // 편집/등록 중인 퀘스트 (null=닫힘)
+  const blankQuest = () => ({ id: "q" + Date.now(), cat: "core", title: "", star: 2, gold: 0, gem: 0, chapter: "", due: "", subs: [] });
+  const commitQuest = (q) => {
+    const clean = { ...q, star: Number(q.star) || 1, gold: Number(q.gold) || 0, gem: Number(q.gem) || 0, editedBy: myName || "익명", editedAt: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
+    const exists = hqQuests.some((x) => x.id === q.id);
+    const next = exists ? hqQuests.map((x) => (x.id === q.id ? clean : x)) : [clean, ...hqQuests];
+    onHQChange && onHQChange(next);
+    setQEdit(null);
+  };
+  const removeQuest = (id) => { onHQChange && onHQChange(hqQuests.filter((x) => x.id !== id)); setQEdit(null); };
+  const setSubPct = (qid, idx, pct) => {
+    onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: q.subs.map((sb, i) => i === idx ? { ...sb, pct: Math.max(0, Math.min(100, Number(pct) || 0)) } : sb), editedBy: myName || "익명", editedAt: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) } : q));
+  };
 
   const avatarOf = (nm) => (nm || "?").trim().slice(0, 1);
   const colorOf = (nm) => { let h = 0; for (let i = 0; i < (nm || "").length; i++) h = (h * 31 + nm.charCodeAt(i)) % 360; return `hsl(${h},55%,62%)`; };
 
-  /* 카테고리(보스맵)별 진행도 */
-  const cats = (bossMaps || []).map((m) => {
-    let done = 0, all = 0;
-    (m.stages || []).forEach((st) => (st.quests || []).forEach((q) => { all++; if (bossCleared[m.id] && bossCleared[m.id][q.id]) done++; }));
-    const running = (m.stages || []).reduce((n, st) => n + (st.quests || []).filter((q) => { const a = qAccept[q.id]; return a && a.started && !(bossCleared[m.id] && bossCleared[m.id][q.id]); }).length, 0);
-    return { id: m.id, name: m.name, icon: m.icon, color: m.color || "#5b8def", pct: all ? Math.round((done / all) * 100) : 0, done, running };
+  /* 카테고리별 진행도 (HQ 자체 데이터) */
+  const avgOf = (q) => Math.round((q.subs || []).reduce((n, x) => n + (x.pct || 0), 0) / Math.max(1, (q.subs || []).length));
+  const cats = HQ_CATS.map((c) => {
+    const qs = hqQuests.filter((q) => q.cat === c.id);
+    const done = qs.filter((q) => avgOf(q) >= 100).length;
+    const running = qs.filter((q) => avgOf(q) > 0 && avgOf(q) < 100).length;
+    const pct = qs.length ? Math.round(qs.reduce((n, q) => n + avgOf(q), 0) / qs.length) : 0;
+    return { id: c.id, name: c.name, icon: c.icon, color: c.color, pct, done, running };
   });
 
   /* 최근 소식 = 퀘스트함 알림 */
@@ -9915,9 +9949,9 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
           </>
         )}
         {tab === "quest" && (() => {
-          const list = HQ_QUESTS_INIT.filter((q) => qcat === "all" || q.cat === qcat);
+          const list = hqQuests.filter((q) => qcat === "all" || q.cat === qcat);
           const catInfo = (id) => HQ_CATS.find((c) => c.id === id) || { name: "", color: "#888", icon: "" };
-          const avgPct = (q) => Math.round((q.subs.reduce((n, x) => n + x.pct, 0) / Math.max(1, q.subs.length)));
+          const avgPct = (q) => Math.round(((q.subs || []).reduce((n, x) => n + (x.pct || 0), 0) / Math.max(1, (q.subs || []).length)));
           return (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
@@ -9925,6 +9959,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 {[["all", "전체"], ...HQ_CATS.map((c) => [c.id, `${c.icon} ${c.name}`])].map(([k, lb]) => (
                   <button key={k} type="button" onClick={() => setQcat(k)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: qcat === k ? C.ink : C.white, color: qcat === k ? C.white : C.ink }}>{lb}</button>
                 ))}
+                <PxButton tone="gold" onClick={() => setQEdit(blankQuest())} style={{ fontSize: 11, padding: "7px 12px", marginLeft: "auto" }}>＋ 새 퀘스트</PxButton>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
                 {list.map((q) => {
@@ -9934,29 +9969,73 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
                         <b style={{ flex: 1, fontSize: 14, wordBreak: "keep-all" }}>{q.title}</b>
                         <span style={{ fontSize: 10, color: C.white, background: ci.color, borderRadius: 8, padding: "2px 7px", whiteSpace: "nowrap" }}>{ci.icon}</span>
+                        <button type="button" onClick={() => setQEdit({ ...q, subs: (q.subs || []).map((x) => ({ ...x })) })} title="수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13 }}>✏️</button>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "7px 0", fontSize: 11, color: C.inkSoft, flexWrap: "wrap" }}>
-                        <span style={{ color: "#e0a13d" }}>{"★".repeat(q.star)}{"☆".repeat(3 - q.star)}</span>
+                        <span style={{ color: "#e0a13d" }}>{"★".repeat(q.star)}{"☆".repeat(Math.max(0, 3 - q.star))}</span>
                         <span>🪙 {q.gold}</span><span>💎 {q.gem}</span>
-                        <span>📁 {q.chapter}</span>
+                        {q.chapter && <span>📁 {q.chapter}</span>}
                       </div>
-                      <div style={{ fontSize: 10.5, color: C.inkSoft, marginBottom: 8 }}>📅 {q.due}</div>
-                      {q.subs.map((sb, i) => (
+                      {q.due && <div style={{ fontSize: 10.5, color: C.inkSoft, marginBottom: 8 }}>📅 {q.due}</div>}
+                      {(q.subs || []).map((sb, i) => (
                         <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
                           <span style={{ width: 20, height: 20, borderRadius: "50%", background: colorOf(sb.who), color: C.white, fontSize: 10, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{avatarOf(sb.who)}</span>
                           <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sb.t}</span>
-                          <div style={{ width: 60, height: 6, borderRadius: 4, background: "#eadfc6", overflow: "hidden", flexShrink: 0 }}><div style={{ width: sb.pct + "%", height: "100%", background: ci.color }} /></div>
+                          <input type="range" min={0} max={100} step={5} value={sb.pct} onChange={(e) => setSubPct(q.id, i, e.target.value)} style={{ width: 66, flexShrink: 0 }} />
                           <span style={{ fontSize: 10, color: C.inkSoft, width: 30, textAlign: "right", flexShrink: 0 }}>{sb.pct}%</span>
                         </div>
                       ))}
                       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 9, paddingTop: 8, borderTop: `1px solid ${C.parchEdge}`, fontSize: 10, color: C.inkSoft }}>
-                        <span>진행 {avgPct(q)}%</span><span>수정 {q.editedBy} · {q.editedAt}</span>
+                        <span>진행 {avgPct(q)}%</span><span>{q.editedBy ? `수정 ${q.editedBy} · ${q.editedAt}` : ""}</span>
                       </div>
                     </div>
                   );
                 })}
+                {list.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 30 }}>이 카테고리에 퀘스트가 없어요 · ＋ 새 퀘스트로 만들어보세요</div>}
               </div>
-              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 14 }}>※ 예시 데이터예요 · 등록·수정 기능은 다음 단계에서 붙여요</div>
+
+              {/* 등록/수정 모달 */}
+              {qEdit && (
+                <div onClick={() => setQEdit(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 }}>
+                  <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, maxHeight: "90%", overflow: "auto", background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18 }}>
+                    <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
+                      <b style={{ flex: 1, fontSize: 15 }}>{hqQuests.some((x) => x.id === qEdit.id) ? "✏️ 퀘스트 수정" : "＋ 새 퀘스트"}</b>
+                      <button type="button" onClick={() => setQEdit(null)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16 }}>✕</button>
+                    </div>
+                    <input value={qEdit.title} onChange={(e) => setQEdit({ ...qEdit, title: e.target.value })} placeholder="퀘스트 제목"
+                      style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, marginBottom: 8 }} />
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
+                      {HQ_CATS.map((c) => (
+                        <button key={c.id} type="button" onClick={() => setQEdit({ ...qEdit, cat: c.id })} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: qEdit.cat === c.id ? c.color : C.white, color: qEdit.cat === c.id ? C.white : C.ink }}>{c.icon} {c.name}</button>
+                      ))}
+                    </div>
+                    <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+                      <label style={{ fontSize: 11, color: C.inkSoft, display: "flex", alignItems: "center", gap: 4 }}>⭐<select value={qEdit.star} onChange={(e) => setQEdit({ ...qEdit, star: Number(e.target.value) })} style={{ fontFamily: "'DotGothic16', monospace", padding: 4 }}>{[1,2,3].map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
+                      <label style={{ fontSize: 11, color: C.inkSoft, display: "flex", alignItems: "center", gap: 4 }}>🪙<input type="number" value={qEdit.gold} onChange={(e) => setQEdit({ ...qEdit, gold: e.target.value })} style={{ width: 60, padding: 5, border: `2px solid ${C.ink}`, borderRadius: 5, fontFamily: "'DotGothic16', monospace" }} /></label>
+                      <label style={{ fontSize: 11, color: C.inkSoft, display: "flex", alignItems: "center", gap: 4 }}>💎<input type="number" value={qEdit.gem} onChange={(e) => setQEdit({ ...qEdit, gem: e.target.value })} style={{ width: 60, padding: 5, border: `2px solid ${C.ink}`, borderRadius: 5, fontFamily: "'DotGothic16', monospace" }} /></label>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                      <input value={qEdit.chapter} onChange={(e) => setQEdit({ ...qEdit, chapter: e.target.value })} placeholder="📁 챕터 (선택)" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
+                      <input type="date" value={qEdit.due} onChange={(e) => setQEdit({ ...qEdit, due: e.target.value })} style={{ padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 11 }} />
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>담당 · 세부 작업</div>
+                    {(qEdit.subs || []).map((sb, i) => (
+                      <div key={i} style={{ display: "flex", gap: 5, marginBottom: 5 }}>
+                        <input value={sb.who} onChange={(e) => setQEdit({ ...qEdit, subs: qEdit.subs.map((x, j) => j === i ? { ...x, who: e.target.value } : x) })} placeholder="이름" style={{ width: 60, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 11 }} />
+                        <input value={sb.t} onChange={(e) => setQEdit({ ...qEdit, subs: qEdit.subs.map((x, j) => j === i ? { ...x, t: e.target.value } : x) })} placeholder="작업 내용" style={{ flex: 1, minWidth: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 11 }} />
+                        <button type="button" onClick={() => setQEdit({ ...qEdit, subs: qEdit.subs.filter((_, j) => j !== i) })} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 12, color: C.inkSoft }}>✕</button>
+                      </div>
+                    ))}
+                    <PxButton tone="wood" onClick={() => setQEdit({ ...qEdit, subs: [...(qEdit.subs || []), { who: "", t: "", pct: 0 }] })} style={{ fontSize: 11, padding: "6px 10px", marginBottom: 12 }}>＋ 작업 추가</PxButton>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {hqQuests.some((x) => x.id === qEdit.id) && <PxButton tone="danger" onClick={() => { if (window.confirm("이 퀘스트를 삭제할까요?")) removeQuest(qEdit.id); }} style={{ fontSize: 12, padding: 10 }}>🗑 삭제</PxButton>}
+                      <PxButton tone="good" disabled={!qEdit.title.trim()} onClick={() => commitQuest(qEdit)} style={{ flex: 1, fontSize: 13, padding: 10 }}>저장</PxButton>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 14 }}>모든 데이터는 함께 보고 수정돼요 · 진행바를 드래그하면 바로 저장·공유돼요</div>
             </>
           );
         })()}
@@ -11539,6 +11618,16 @@ function EchoTown() {
   const [questBox, setQuestBox] = useState(() => { const v = loadJSON(QBOX_KEY, null); return Array.isArray(v) ? v : []; });
   const [hubOpen, setHubOpen] = useState(false);
   const [hqOpen, setHqOpen] = useState(false);
+  /* 🖥 HQ 퀘스트 — 편집 가능 · 모두 공유 */
+  const [hqQuests, setHqQuests] = useState(() => loadJSON("echotown_hq_v1", null) || HQ_QUESTS_INIT);
+  const hqQRef = useRef([]); hqQRef.current = hqQuests;
+  const saveHQ = (list) => {
+    setHqQuests(list);
+    try { saveJSON("echotown_hq_v1", list); } catch (e) {}
+    if (netSendEventRef.current) netSendEventRef.current("hq", { list });
+    dbSaveHQ(list, myName || null);
+  };
+  useEffect(() => { dbLoadHQ().then((d) => { if (d && Array.isArray(d)) { setHqQuests(d); try { saveJSON("echotown_hq_v1", d); } catch (e) {} } }); }, []);
   const [hubTab, setHubTab] = useState("home");   // home | quest | msg
   const [startPop, setStartPop] = useState(null);   // 접속 직후 「확인해보세요」 팝업
   const [bossCleared, setBossCleared] = useState({});
@@ -12016,7 +12105,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "hq" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "qcallack") {
@@ -12046,7 +12135,7 @@ function EchoTown() {
         /* ⚠️ 한 번에 보낼 수 있는 크기가 정해져 있어서, 사진처럼 큰 건 따로 나눠 보내요.
            예전엔 건물 이미지까지 한 덩어리로 보내다가 전체가 통째로 실패했어요. */
         const lightShr = (shrineRef.current || []).map((x, i) => (i < 4 ? x : { ...x, imgs: [] }));
-        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current, shr: lightShr, thx: thxRef.current, qacc: qAccRef.current, qth: qThRef.current, qlg: qLgRef.current, sscale: scaleRef.current, sng: songsRef.current, wtc: watchRef.current, dcr: decorRef.current, lck: luckRef.current });
+        if (netSendEvent) netSendEvent("dictres", { to: p.from, dict: mine, maps: bossMapsRef.current, fb: fbRef.current, worry: worryRef.current, rec: recRef.current, reel: reelRef.current, shr: lightShr, thx: thxRef.current, qacc: qAccRef.current, qth: qThRef.current, qlg: qLgRef.current, sscale: scaleRef.current, sng: songsRef.current, wtc: watchRef.current, dcr: decorRef.current, lck: luckRef.current, hq: hqQRef.current });
         const gs = galRef.current || [];
         gs.slice(0, 12).forEach((ph, i) => setTimeout(() => { if (netSendEvent) netSendEvent("gal", { photo: ph }); }, 350 * (i + 1)));
         /* 🎨 건물 이미지는 한 장씩 따로 전달 */
@@ -12068,6 +12157,7 @@ function EchoTown() {
         if (p.qacc && typeof p.qacc === "object") setQAccept((v) => mergeQAccept(v, p.qacc));
         if (p.qth && typeof p.qth === "object") setQThreads((v) => mergeQList(v, p.qth, "at", 200));
         if (p.qlg && typeof p.qlg === "object") setQLogs((v) => mergeQList(v, p.qlg, "id", 100));
+        if (Array.isArray(p.hq) && p.hq.length) { setHqQuests(p.hq); try { saveJSON("echotown_hq_v1", p.hq); } catch (e) {} }
         if (p.lck && typeof p.lck === "object") setLuckData((v) => { const o = { ...p.lck, ...v }; try { saveJSON("echotown_luck_v1", o); } catch (e) {} return o; });
         if (p.dcr && typeof p.dcr === "object") setHouseDecor((v) => {
           const o = { ...v };
@@ -12182,6 +12272,10 @@ function EchoTown() {
       if (kind === "decor") {
         if (!p.hid || !p.d) return;
         setHouseDecor((v) => { const o = { ...v, [p.hid]: p.d }; try { saveJSON("echotown_housedecor_v1", o); } catch (e) {} return o; });
+        return;
+      }
+      if (kind === "hq") {
+        if (Array.isArray(p.list)) { setHqQuests(p.list); try { saveJSON("echotown_hq_v1", p.list); } catch (e) {} }
         return;
       }
       if (kind === "luck") {
@@ -12941,11 +13035,11 @@ function EchoTown() {
       {notice && (
         <div style={{ position: "fixed", left: "50%", top: 16, transform: "translateX(-50%)", zIndex: 150, background: C.ink, color: C.white, border: `3px solid ${C.gem}`, borderRadius: 10, padding: "10px 18px", fontSize: 13, fontFamily: "'DotGothic16', monospace", boxShadow: "0 6px 16px rgba(0,0,0,0.4)" }}>{notice}</div>
       )}
-      {view === "world" && (
+      {!hqOpen && myName && (
         <HQSidePanel myName={myName} people={people} questBox={questBox} onOpenHQ={() => { setHqOpen(true); }} />
       )}
-      {view === "world" && (
-        <HQQuestRail quests={HQ_QUESTS_INIT} onOpenHQ={() => { setHqOpen(true); }} />
+      {!hqOpen && myName && (
+        <HQQuestRail quests={hqQuests} onOpenHQ={() => { setHqOpen(true); }} />
       )}
       <CornerDock
         msgCount={unreadMsgCount}
@@ -12960,6 +13054,7 @@ function EchoTown() {
       {hqOpen && (
         <HQView onClose={() => setHqOpen(false)} myName={myName} people={people}
           notices={allNotices} bossMaps={bossMaps} bossCleared={bossCleared} qAccept={qAccept} questBox={questBox} unreadMsgCount={unreadMsgCount}
+          hqQuests={hqQuests} onHQChange={saveHQ}
           onPostNotice={(t) => { dbAddNotice("공지", t, `${myName || "익명"}님의 공지`, myUid); showNotice("📢 공지를 등록했어요"); }}
           onGo={(mapId) => { setHqOpen(false); setQuestJump({ mapId, qid: null }); setView("project"); }} />
       )}
