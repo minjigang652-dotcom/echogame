@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v82 · 2026-07-24";
+const APP_VERSION = "v83 · 2026-07-27";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2321,6 +2321,41 @@ async function discordUser() {
       avatar: m.avatar_url || m.picture || null,
     };
   } catch (e) { return null; }
+}
+/* ===== 🎮 디스코드 계정 ↔ 게임 이름 매칭 (Supabase · discord_names 테이블) =====
+   · 이름 = 계정. 한 번 정하면 그 디스코드 계정에 고정됩니다.
+   · 어느 브라우저에서 로그인하든 discord_id 로 이름을 찾아와요. */
+async function dbNameForDiscord(discordId) {
+  if (!discordId) return null;
+  try {
+    const s = await getSupa();
+    const r = await s.from("discord_names").select("name").eq("discord_id", discordId).maybeSingle();
+    return r && r.data ? r.data.name : null;
+  } catch (e) { return null; }
+}
+/* 이 이름이 「다른」 디스코드 계정에 이미 묶여 있으면 true (= 사용 중).
+   레거시 세이브(이름만 있고 디스코드 매칭이 없던 사람)는 사용 중이 아니라 «주인 없음» 으로 봅니다. */
+async function dbNameTaken(name, myDiscordId) {
+  if (!name) return false;
+  try {
+    const s = await getSupa();
+    const r = await s.from("discord_names").select("discord_id").eq("name", name).maybeSingle();
+    if (!r || !r.data) return false;                 // 아무도 안 쓰는 이름 → 사용 가능
+    return r.data.discord_id !== myDiscordId;        // 나 말고 다른 계정이 쓰면 사용 중
+  } catch (e) { return false; }
+}
+/* 이름을 이 디스코드 계정에 «처음 한 번» 묶습니다.
+   { ok:true } / { ok:false, reason:"taken" | "error" } */
+async function dbClaimName(discordId, name) {
+  if (!discordId || !name) return { ok: false, reason: "error" };
+  try {
+    if (await dbNameTaken(name, discordId)) return { ok: false, reason: "taken" };
+    const s = await getSupa();
+    // discord_id 가 PK → 이 계정에 이름을 저장. name 은 unique 라 중복이면 error 로 막혀요(경쟁 안전장치).
+    const { error } = await s.from("discord_names").upsert({ discord_id: discordId, name });
+    if (error) return { ok: false, reason: "taken" };
+    return { ok: true };
+  } catch (e) { return { ok: false, reason: "error" }; }
 }
 async function dbSaveProfile(name, data) {
   if (!name) return false;
@@ -7583,6 +7618,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260727n34", type: "업데이트", date: "2026-07-27", title: "🎮 디스코드 로그인 필수 · 이름은 계정에 고정",
+    body: "· 이제 디스코드로 로그인해야 게임에 들어올 수 있어요 (이름만 입력해서 시작하던 방식은 없어졌어요)\n· 처음 로그인하면 마을 이름을 «한 번» 정해요 — 이 이름이 디스코드 계정에 저장돼요\n· 다음부터는 어느 브라우저에서 로그인하든 그 이름·데이터로 바로 들어와요\n· 이름은 한 번 정하면 바꿀 수 없어요\n· 이미 쓰고 있는 이름은 다른 사람이 못 써요 (중복 금지) — 예전에 창민·정인 등으로 놀던 사람은 로그인 후 같은 이름을 넣으면 기존 데이터가 그대로 이어져요\n· ⚠️ 새 이름 저장을 위해 Supabase 에 discord_names 테이블이 필요해요 (아래 안내)" },
   { id: "u20260724n33", type: "수정", date: "2026-07-24", title: "🚪 로그아웃 버튼을 내 프로필 안에 추가",
     body: "· 로그아웃 버튼이 시작 화면(이름창)에만 있어서, 이미 로그인된 상태에선 찾기 어려웠어요\n· 이제 우측 하단 🧑 내 프로필 → 「내 정보」 맨 아래에 🚪 로그아웃 버튼이 있어요\n· 누르면 이름과 디스코드 로그인이 모두 해제되고 시작 화면으로 돌아가요\n· 디스코드로 로그인한 경우 어떤 계정인지도 표시돼요" },
   { id: "u20260724n32", type: "업데이트", date: "2026-07-24", title: "🚪 완전 로그아웃 (이름 + 디스코드)",
@@ -10240,21 +10277,34 @@ function EchoTown() {
   const [questJump, setQuestJump] = useState(null);   // 바로 이동할 퀘스트
   const [qcDeclineOpen, setQcDeclineOpen] = useState(false);
   const [qcDeclineWhy, setQcDeclineWhy] = useState("");
-  const [nameOpen, setNameOpen] = useState(() => !loadJSON("echotown_myname", ""));
+  const [nameOpen, setNameOpen] = useState(true);        // 로그인·이름 확정 전까지 항상 열림
+  const [authChecking, setAuthChecking] = useState(true);// 디스코드 세션 확인 중
   const [discord, setDiscord] = useState(null);          // 로그인한 디스코드 사용자
   const [discordBusy, setDiscordBusy] = useState(false);
-  /* 디스코드에서 돌아왔는지 확인 — 돌아왔으면 이름칸을 닉네임으로 채워줘요 */
+  const [nameErr, setNameErr] = useState("");            // 이름 설정 오류 메시지
+  const [nameBusy, setNameBusy] = useState(false);       // 이름 확정 요청 중
+  /* 🎮 로그인 흐름 — 디스코드가 필수예요.
+     ① 디스코드 세션 확인 → ② 이 계정이 이미 이름을 정했으면 그 이름으로 바로 입장
+     → ③ 처음이면 이름 설정 화면. (브라우저에 이름을 기억하는 자동 로그인은 없앴어요) */
   useEffect(() => {
     let alive = true;
     (async () => {
       const u = await discordUser();
-      if (!alive || !u) return;
-      setDiscord(u);
       // 주소에 붙은 로그인 토큰 흔적 제거 (새로고침 시 지저분해지지 않게)
       if (window.location.hash.includes("access_token") || window.location.search.includes("code=")) {
         try { window.history.replaceState({}, "", window.location.pathname); } catch (e) {}
       }
-      if (!loadJSON("echotown_myname", "")) setNameInput((v) => v || u.name || "");
+      if (!alive) return;
+      if (!u) { setAuthChecking(false); return; }        // 로그인 안 됨 → 디스코드 버튼 표시
+      setDiscord(u);
+      const savedName = await dbNameForDiscord(u.id);     // 이 계정이 이미 이름을 정했나?
+      if (!alive) return;
+      if (savedName) {
+        confirmName(savedName, u);                        // 이름 있음 → 바로 입장
+      } else {
+        setNameInput((v) => v || u.name || "");           // 처음 → 이름 설정 화면
+      }
+      setAuthChecking(false);
     })();
     return () => { alive = false; };
   }, []);
@@ -10301,11 +10351,12 @@ function EchoTown() {
     if (d.qLogs) setQLogs(d.qLogs);
     return true;
   };
-  const confirmName = (nm) => {
+  const confirmName = (nm, dc) => {
     const t = (nm || "").trim(); if (!t) return;
-    setMyName(t); setNameOpen(false);
-    saveJSON("echotown_myname", t);
-    if (discord && discord.id) saveJSON("echotown_discord_id", discord.id);
+    setMyName(t); setNameOpen(false); setNameErr(""); setNameBusy(false);
+    saveJSON("echotown_myname", t);          // 표시·캐시용 (로그인 판정에는 안 씀)
+    const d = dc || discord;
+    if (d && d.id) saveJSON("echotown_discord_id", d.id);
     // ① 이 브라우저에 저장된 게 있으면 즉시 복원
     const local = loadJSON(saveKey(t), null);
     if (local) applySave(local);
@@ -10329,20 +10380,30 @@ function EchoTown() {
       }
     });
   };
-  /* 이 브라우저에 저장된 이름이 있으면 바로 로그인 (캐시 삭제·시크릿 모드면 다시 물어봐요) */
-  const bootedRef = useRef(false);
-  useEffect(() => {
-    if (bootedRef.current) return;
-    bootedRef.current = true;
-    const saved = loadJSON("echotown_myname", "");
-    if (saved) confirmName(saved);
-  }, []);
+  /* 처음 로그인한 사람이 이름을 «한 번» 정할 때 — 중복 검사 후 디스코드 계정에 고정 */
+  const submitName = async (nm) => {
+    const t = (nm || "").trim();
+    if (!t) return;
+    if (!discord || !discord.id) { setNameErr("먼저 디스코드로 로그인해주세요."); return; }
+    if (nameBusy) return;
+    setNameBusy(true); setNameErr("");
+    const res = await dbClaimName(discord.id, t);
+    if (!res.ok) {
+      setNameBusy(false);
+      setNameErr(res.reason === "taken"
+        ? "이미 사용 중인 이름이에요. 다른 이름을 정해주세요."
+        : "이름 설정에 실패했어요. 잠시 뒤 다시 시도해주세요.");
+      return;
+    }
+    confirmName(t, discord);   // 성공 → 입장 (기존 세이브가 있으면 그대로 이어져요)
+  };
   const forgetName = async () => {
     try { window.localStorage.removeItem("echotown_myname"); } catch (e) {}
     try { window.localStorage.removeItem("echotown_discord_id"); } catch (e) {}
     await discordLogout();              // 🎮 디스코드 세션도 함께 로그아웃
     setDiscord(null);
-    setMyName(""); setNameInput(""); setNameOpen(true);
+    setMyName(""); setNameInput(""); setNameErr(""); setNameBusy(false);
+    setAuthChecking(false); setNameOpen(true);
   };
   const isMyHouse = (n) => {
     if (!n || !myName) return false;
@@ -11886,46 +11947,62 @@ function EchoTown() {
             <Panel style={{ padding: 18 }}>
               <div style={{ textAlign: "center", fontSize: 34 }}>🌱</div>
               <div style={{ textAlign: "center", fontFamily: "'Press Start 2P', monospace", fontSize: 12, margin: "8px 0" }}>ECHO TOWN</div>
-              <div style={{ fontSize: 13, textAlign: "center", marginBottom: 10 }}>마을에서 사용할 이름을 알려주세요!</div>
 
-              {/* 🎮 디스코드로 로그인 */}
-              {discord ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#eef0ff", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "8px 10px", marginBottom: 10 }}>
-                  {discord.avatar
-                    ? <img src={discord.avatar} alt="" style={{ width: 30, height: 30, borderRadius: "50%", border: `2px solid ${C.ink}` }} />
-                    : <span style={{ fontSize: 22 }}>🎮</span>}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 9.5, color: C.inkSoft }}>디스코드 로그인됨</div>
-                    <div style={{ fontSize: 12.5, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{discord.name || "이름 없음"}</div>
-                  </div>
-                  <button type="button" onClick={async () => { await discordLogout(); setDiscord(null); try { window.localStorage.removeItem("echotown_discord_id"); } catch (e) {} }}
-                    style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, padding: "5px 8px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white }}>🎮 디스코드 로그아웃</button>
-                </div>
-              ) : (
+              {authChecking ? (
+                /* ⏳ 로그인 상태 확인 중 */
+                <div style={{ fontSize: 12.5, textAlign: "center", color: C.inkSoft, padding: "18px 0" }}>로그인 확인 중…</div>
+              ) : !discord ? (
+                /* ① 디스코드 로그인 (필수) — 이름만으로는 못 들어와요 */
                 <>
+                  <div style={{ fontSize: 12.5, textAlign: "center", marginBottom: 12, lineHeight: 1.7 }}>디스코드로 로그인해서 시작해요.</div>
                   <button type="button" disabled={discordBusy}
                     onClick={() => { setDiscordBusy(true); discordLogin(); }}
                     style={{ width: "100%", cursor: "pointer", fontFamily: "'DotGothic16', monospace", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                      background: "#5865F2", color: "#fff", border: `3px solid ${C.ink}`, borderRadius: 8, padding: "11px 10px", fontSize: 13.5, fontWeight: "bold", boxShadow: `0 3px 0 ${C.ink}` }}>
+                      background: "#5865F2", color: "#fff", border: `3px solid ${C.ink}`, borderRadius: 8, padding: "12px 10px", fontSize: 13.5, fontWeight: "bold", boxShadow: `0 3px 0 ${C.ink}` }}>
                     <span style={{ fontSize: 17 }}>🎮</span> {discordBusy ? "디스코드로 이동 중…" : "디스코드로 로그인"}
                   </button>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0" }}>
-                    <div style={{ flex: 1, height: 2, background: C.parchEdge }} />
-                    <span style={{ fontSize: 10, color: C.inkSoft }}>또는 이름만 입력</span>
-                    <div style={{ flex: 1, height: 2, background: C.parchEdge }} />
+                  <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 10, textAlign: "center", lineHeight: 1.6 }}>⚠️ 로그인이 안 되면 Supabase Site URL / 디스코드 Redirect 주소에 지금 게임 주소가 등록돼 있는지 확인해주세요</div>
+                </>
+              ) : !myName ? (
+                /* ② 처음 로그인 — 이름을 «한 번» 정합니다 (이후 변경 불가) */
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#eef0ff", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "8px 10px", marginBottom: 12 }}>
+                    {discord.avatar
+                      ? <img src={discord.avatar} alt="" style={{ width: 30, height: 30, borderRadius: "50%", border: `2px solid ${C.ink}` }} />
+                      : <span style={{ fontSize: 22 }}>🎮</span>}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 9.5, color: C.inkSoft }}>디스코드 로그인됨</div>
+                      <div style={{ fontSize: 12.5, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{discord.name || "이름 없음"}</div>
+                    </div>
+                    <button type="button" onClick={async () => { await discordLogout(); setDiscord(null); setNameErr(""); try { window.localStorage.removeItem("echotown_discord_id"); } catch (e) {} }}
+                      style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, padding: "5px 8px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white }}>로그아웃</button>
                   </div>
+                  <div style={{ fontSize: 13, textAlign: "center", marginBottom: 8 }}>마을에서 쓸 이름을 정해주세요!</div>
+                  <input value={nameInput} onChange={(e) => { setNameInput(e.target.value); if (nameErr) setNameErr(""); }} onKeyDown={(e) => { if (e.key === "Enter" && !nameBusy) submitName(nameInput); }} maxLength={8} autoFocus placeholder="예: 정인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${nameErr ? C.danger : C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, background: C.white, textAlign: "center" }} />
+                  {nameErr && <div style={{ fontSize: 11, color: C.danger, marginTop: 6, textAlign: "center", fontWeight: "bold" }}>{nameErr}</div>}
+                  <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center" }}>주민 이름(정인·창민·도희·유리·민지·희정·의준·호종·슬이·상하)과 같으면 그 집이 내 집이 돼요!</div>
+                  <div style={{ fontSize: 10, color: C.danger, marginTop: 4, textAlign: "center", fontWeight: "bold" }}>⚠️ 이름은 한 번 정하면 바꿀 수 없어요</div>
+                  <PxButton tone="good" disabled={!nameInput.trim() || nameBusy} onClick={() => submitName(nameInput)} style={{ width: "100%", marginTop: 12, padding: 10, fontSize: 13 }}>{nameBusy ? "확인 중…" : "시작하기"}</PxButton>
+                </>
+              ) : (
+                /* ③ 이미 이름이 정해진 계정 (🧑 로 다시 연 경우) — 이름 고정, 로그아웃만 */
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#eef0ff", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "8px 10px", marginBottom: 10 }}>
+                    {discord && discord.avatar
+                      ? <img src={discord.avatar} alt="" style={{ width: 30, height: 30, borderRadius: "50%", border: `2px solid ${C.ink}` }} />
+                      : <span style={{ fontSize: 22 }}>🎮</span>}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 9.5, color: C.inkSoft }}>{discord ? "디스코드 로그인됨" : "로그인됨"}</div>
+                      <div style={{ fontSize: 12.5, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{discord ? discord.name : myName}</div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12.5, textAlign: "center", marginBottom: 4 }}>내 마을 이름</div>
+                  <div style={{ textAlign: "center", fontFamily: "'DotGothic16', monospace", fontSize: 20, fontWeight: "bold", padding: "8px 0", border: `3px solid ${C.ink}`, borderRadius: 8, background: C.parch }}>{myName}</div>
+                  <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center" }}>🔒 이름은 변경할 수 없어요</div>
+                  <PxButton tone="ink" onClick={() => setNameOpen(false)} style={{ width: "100%", marginTop: 12, padding: 10, fontSize: 13 }}>닫기</PxButton>
+                  <PxButton tone="danger" onClick={forgetName} style={{ width: "100%", marginTop: 8, padding: 9, fontSize: 12 }}>🚪 로그아웃 (디스코드 세션 해제)</PxButton>
                 </>
               )}
-
-              <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") confirmName(nameInput); }} maxLength={8} autoFocus placeholder="예: 정인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, background: C.white, textAlign: "center" }} />
-              <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center" }}>주민 이름(정인·창민·도희·유리·민지·희정·의준·호종·슬이·상하)과 같으면 그 집이 내 집이 돼요!</div>
-              <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 4, textAlign: "center" }}>🔐 한 번 정하면 이 브라우저에서는 다음부터 자동으로 로그인돼요</div>
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                {myName && <PxButton tone="ink" onClick={() => setNameOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>}
-                <PxButton tone="good" disabled={!nameInput.trim()} onClick={() => confirmName(nameInput)} style={{ flex: 1, padding: 10, fontSize: 13 }}>시작하기</PxButton>
-              </div>
-              {(myName || discord) && <PxButton tone="danger" onClick={forgetName} style={{ width: "100%", marginTop: 8, padding: 9, fontSize: 12 }}>🚪 완전히 로그아웃 (이름 + 디스코드)</PxButton>}
-              {(myName || discord) && <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 5, textAlign: "center", lineHeight: 1.6 }}>테스트하려면 여기서 로그아웃한 뒤 다시 디스코드로 로그인해보세요</div>}
             </Panel>
           </div>
         </div>
