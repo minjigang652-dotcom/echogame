@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v98 · 2026-07-24";
+const APP_VERSION = "v100 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2454,14 +2454,14 @@ async function dbDecors() {
 async function dbSaveDecor(hid, decor, by) {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").insert({ type: "decor", title: hid, body: JSON.stringify(decor || {}), uid: by || null });
+    const r = await s.from("notices").insert({ type: "decor", title: hid, body: JSON.stringify(decor || {}) });
     return !(r && r.error);
   } catch (e) { return false; }
 }
 async function dbSaveSprite(id, dataUrl, by) {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").insert({ type: "sprite", title: id, body: dataUrl || "", uid: by || null });
+    const r = await s.from("notices").insert({ type: "sprite", title: id, body: dataUrl || "" });
     return !(r && r.error);   // supabase 는 예외 대신 error 를 돌려줘요
   } catch (e) { return false; }
 }
@@ -2482,7 +2482,7 @@ async function dbLoadRoad() {
 async function dbSaveRoad(data, by) {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").insert({ type: "hqroad", title: "hqroad", body: JSON.stringify(data || {}), uid: by || null });
+    const r = await s.from("notices").insert({ type: "hqroad", title: "hqroad", body: JSON.stringify(data || {}) });
     if (r && r.error) return { ok: false, msg: r.error.message };
     return { ok: true };
   } catch (e) { return { ok: false, msg: String(e) }; }
@@ -2499,7 +2499,7 @@ async function dbLoadHQ() {
 async function dbSaveHQ(list, by) {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").insert({ type: "hqquest", title: "hq", body: JSON.stringify(list || []), uid: by || null });
+    const r = await s.from("notices").insert({ type: "hqquest", title: "hq", body: JSON.stringify(list || []) });
     if (r && r.error) { console.warn("[HQ 저장 실패]", r.error); return { ok: false, msg: r.error.message || String(r.error) }; }
     return { ok: true };
   } catch (e) { console.warn("[HQ 저장 예외]", e); return { ok: false, msg: (e && e.message) || String(e) }; }
@@ -2507,19 +2507,19 @@ async function dbSaveHQ(list, by) {
 async function dbMeetSignal(payload) {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").insert({ type: "meetstart", title: payload.room || "회의실", body: JSON.stringify(payload), uid: payload.by || null });
+    const r = await s.from("notices").insert({ type: "meetstart", title: payload.room || "회의실", body: JSON.stringify(payload) });
     return !(r && r.error);
   } catch (e) { return false; }
 }
 async function dbAddMeetLog(payload) {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").insert({ type: "meetlog", title: payload.cat || "기타", body: JSON.stringify(payload), uid: payload.by || null });
+    const r = await s.from("notices").insert({ type: "meetlog", title: payload.cat || "기타", body: JSON.stringify(payload) });
     return !(r && r.error);
   } catch (e) { return false; }
 }
 async function dbAddNotice(type, title, body, uid) {
-  try { const s = await getSupa(); await s.from("notices").insert({ type, title, body: body || null, uid: uid || null }); } catch (e) {}
+  try { const s = await getSupa(); await s.from("notices").insert({ type, title, body: body || null }); } catch (e) {}
 }
 async function dbEditNotice(id, title, body) {
   try { const s = await getSupa(); await s.from("notices").update({ title, body: body || null }).eq("id", id); return true; } catch (e) { return false; }
@@ -8003,6 +8003,10 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n51", type: "수정", date: "2026-07-24", title: "🎉 서버 저장 문제 해결! (uid 칼럼 오류)",
+    body: "· [진짜 원인] 저장할 때 notices 테이블에 없는 'uid' 칸에 값을 넣으려다 저장이 통째로 거부되고 있었어요\n· 집 꾸밈·건물 이미지·HQ 퀘스트·로드맵·회의록·공지 등이 다른 사람 화면에 안 보이던 것이 전부 이 때문이었어요\n· uid 를 모두 제거해서 이제 서버에 정상 저장·공유돼요\n· 배포 후 HQ 퀘스트를 저장하면 ✅ 저장됨이 뜨고, 다른 사람 화면에도 보이고, 새로고침해도 유지됩니다" },
+  { id: "u20260724n50", type: "수정", date: "2026-07-24", title: "🖥 HQ 상단 탭 중앙 정렬",
+    body: "· HQ 상단 메뉴(홈·로드맵·퀘스트·문서·내 페이지)를 화면 중앙에 배치했어요\n· 좁은 화면에서는 자동으로 줄바꿈돼요" },
   { id: "u20260724n49", type: "업데이트", date: "2026-07-24", title: "🙋 HQ 내 페이지 탭 (등록·수정 가능)",
     body: "· 🖥 HQ 🙋 내 페이지 탭을 실제로 채웠어요 — 프로필·일일미션·내 할일·오늘의 허들·내 서랍·마감 일지\n· 나만 볼 수 있고 나만 편집할 수 있어요\n· 왼쪽 상시 🙋 패널과 같은 데이터를 써서, 어느 쪽에서 적어도 서로 반영돼요\n· 참고: 초심자의 행운 업무 등록·삭제, HQ 로드맵 챕터 추가·수정·삭제는 이미 들어가 있어요 (배포 후 확인해보세요)" },
   { id: "u20260724n48", type: "수정", date: "2026-07-24", title: "🛠 빌드 오류 수정 · 📗 네이버스쿨 패널 복구",
@@ -9900,13 +9904,14 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   return (
     <div style={{ position: "fixed", inset: 0, background: "#f0eee9", zIndex: 130, display: "flex", flexDirection: "column", fontFamily: "'DotGothic16', monospace" }}>
       {/* 상단 바 */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", background: C.white, borderBottom: `3px solid ${C.ink}`, flexWrap: "wrap" }}>
+      <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", background: C.white, borderBottom: `3px solid ${C.ink}`, flexWrap: "wrap" }}>
         <div style={{ width: 30, height: 30, borderRadius: 8, background: "linear-gradient(135deg,#5fc99a,#4b6cf0)", flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: "bold", lineHeight: 1.1 }}>에코월드 HQ</div>
           <div style={{ fontSize: 8.5, color: C.inkSoft, letterSpacing: 1 }}>ECHO WORLD HQ</div>
         </div>
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        {/* 탭 : 넓은 화면에선 정중앙, 좁으면 흐름대로 */}
+        <div className="hq-tabs" style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
           {TAB.map(([k, lb]) => (
             <button key={k} type="button" onClick={() => setTab(k)}
               style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, fontWeight: "bold", padding: "7px 11px", borderRadius: 8, border: "none",
@@ -9921,6 +9926,11 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
         </div>
       </div>
 
+      <style>{`
+        @media (min-width: 720px) {
+          .hq-tabs { position: absolute; left: 50%; transform: translateX(-50%); flex-wrap: nowrap !important; }
+        }
+      `}</style>
       {/* 본문 */}
       <div style={{ flex: 1, overflow: "auto", padding: "16px", maxWidth: 940, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
         {tab === "home" && (
