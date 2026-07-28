@@ -11963,7 +11963,7 @@ function EchoTown() {
   /* 🌊 바다 맵에 들어가면 배경음악을 바다 곡으로 바꾸고, 나오면 원래 곡으로 되돌려요 */
   const seaBgmPrevRef = useRef(null);
   useEffect(() => {
-    const SEA_TRACK = WORLD_TRACKS.find((t) => t.title === "파도") || WORLD_TRACKS.find((t) => t.title === "Aqua Man") || WORLD_TRACKS[0];
+    const SEA_TRACK = { title: "🌊 바다", file: "ocean.mp3" };   // public/ocean.mp3 를 씁니다
     if (view === "sea") {
       setWorldBgm((b) => {
         if (b.file === SEA_TRACK.file) return b;                 // 이미 바다 곡이면 그대로
@@ -13177,7 +13177,7 @@ function EchoTown() {
     <NetContext.Provider value={{ others: netOthers, view, room: netRoomIdRef.current, roomPosRef: netRoomPosRef, me: { outfit, look: myLook, carry: carrying, pet: petEmoji } }}>
     <div style={{ fontFamily: "'DotGothic16', monospace", minHeight: "100vh", background: `repeating-linear-gradient(45deg, ${C.grass} 0 24px, ${C.grassDark} 24px 48px)`, color: C.ink, padding: 14, boxSizing: "border-box" }}>
       <StyleBlock />
-      <audio ref={audioRef} src={import.meta.env.BASE_URL + encodeURIComponent(worldBgm.file)} preload="auto" onEnded={() => stepTrack(1)} />
+      <audio ref={audioRef} src={import.meta.env.BASE_URL + encodeURIComponent(worldBgm.file)} preload="auto" loop={worldBgm.file === "ocean.mp3"} onEnded={() => { if (worldBgm.file !== "ocean.mp3") stepTrack(1); }} />
       <div style={{ maxWidth: 960, margin: "0 auto 12px" }}>
         <Panel style={{ padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
