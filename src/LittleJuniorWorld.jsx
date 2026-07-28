@@ -10225,22 +10225,19 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
             <span><b style={{ fontSize: 14 }}>{(pSelf ? vTodos : (vTodos || []).filter((t) => (t.cat || "game") !== "life")).filter((t) => !t.done).length}</b><br /><span style={{ color: C.inkSoft }}>할 일</span></span>
             <span><b style={{ fontSize: 14 }}>{vDoneN}</b><br /><span style={{ color: C.inkSoft }}>미션</span></span>
           </div>
-          {/* 🏷 해시태그 (누구나) */}
+          {/* 🏷 해시태그 — 남의 프로필일 때만 보임 (내 것은 숨김) · 추가는 HQ에서 */}
+          {!pSelf && (
           <div style={{ marginTop: 9, paddingTop: 9, borderTop: `1px solid ${C.parchEdge}`, textAlign: "left" }}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
+              <span style={{ fontSize: 10 }}>🏷</span>
               {(pTags || []).length === 0 && <span style={{ fontSize: 9.5, color: C.inkSoft }}>해시태그 없음</span>}
               {(pTags || []).map((t) => (
-                <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9.5, fontWeight: "bold", color: "#4b3fb0", background: "#ece9fb", border: "1px solid #cfc7f2", borderRadius: 12, padding: "2px 7px" }}>
-                  #{t}<button type="button" onClick={() => pDelTag(t)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 9, color: C.inkSoft, padding: 0 }}>✕</button>
-                </span>
+                <span key={t} style={{ fontSize: 9.5, fontWeight: "bold", color: "#4b3fb0", background: "#ece9fb", border: "1px solid #cfc7f2", borderRadius: 12, padding: "2px 7px" }}>#{t}</span>
               ))}
-            </div>
-            <div style={{ display: "flex", gap: 4 }}>
-              <input value={pTagIn} onChange={(e) => setPTagIn(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") pAddTag(); }} placeholder={pSelf ? "해시태그 추가" : "태그 달기"} maxLength={20}
-                style={{ flex: 1, minWidth: 0, padding: 5, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 10 }} />
-              <button type="button" onClick={pAddTag} disabled={!pTagIn.trim()} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 9.5, fontWeight: "bold", background: pTagIn.trim() ? "#b07a4e" : "#cfc2ad", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "4px 7px" }}>＋</button>
+              <button type="button" onClick={() => onOpenHQ && onOpenHQ()} title="HQ 내페이지에서 해시태그 추가" style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 9.5, fontWeight: "bold", background: "#b07a4e", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 12, padding: "2px 8px" }}>＋</button>
             </div>
           </div>
+          )}
         </div>
 
         {/* 일일 미션 */}
@@ -10308,7 +10305,7 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
             style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 10.5, marginBottom: 5 }} />
           <input value={nkAction} onChange={(e) => setNkAction(e.target.value)} placeholder="액션 (어떻게 뚫을까요?)"
             style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 10.5 }} />
-          <PxButton tone="ink" onClick={() => { if (nkPoint.trim() || nkAction.trim()) { setNeck((v) => [...v, { point: nkPoint.trim(), action: nkAction.trim(), done: false, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }]); setNkPoint(""); setNkAction(""); } }} style={{ width: "100%", fontSize: 10.5, padding: 7, marginTop: 6 }}>＋ 추가</PxButton>
+          <PxButton tone="ink" onClick={() => { if (nkPoint.trim() || nkAction.trim()) { setNeck((v) => [{ point: nkPoint.trim(), action: nkAction.trim(), done: false, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v]); setNkPoint(""); setNkAction(""); } }} style={{ width: "100%", fontSize: 10.5, padding: 7, marginTop: 6 }}>＋ 추가</PxButton>
           {neck.length > 0 && (
             <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
               {neck.map((n, i) => (
@@ -10403,6 +10400,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const [calOff, setCalOff] = useState(0);     // 📅 캘린더 월 이동 (0=이번 달)
   const [homeSub, setHomeSub] = useState("notice");   // 홈 상단: notice | cal
   const [calDay, setCalDay] = useState(null);   // 날짜 클릭 팝업 (YYYY-MM-DD | null)
+  const [dragId, setDragId] = useState(null);   // 🗺 로드맵 챕터 드래그 중인 id
   const [saveMsg, setSaveMsg] = useState("");   // HQ 자체 저장 상태 표시
   /* 📅 마감까지 남은 날 (due = "YYYY-MM-DD") */
   const dDay = (due) => {
@@ -10486,6 +10484,9 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   };
   const setSubWho = (qid, idx, who) => {
     onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: q.subs.map((sb, i) => i === idx ? { ...sb, who } : sb), ...editStamp() } : q));
+  };
+  const toggleSubActive = (qid, idx) => {   // 더블클릭: 진행중(색 있음) ↔ 지정만(색 없음)
+    onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: q.subs.map((sb, i) => i === idx ? { ...sb, active: !sb.active } : sb), ...editStamp() } : q));
   };
 
   const avatarOf = (nm) => (nm || "?").trim().slice(0, 1);
@@ -10748,8 +10749,8 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                         return (
                           <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                             <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isD ? "line-through" : "none", color: isD ? C.inkSoft : C.ink }}>{sb.t}</span>
-                            <select value={sb.who || ""} onChange={(e) => setSubWho(q.id, i, e.target.value)} title="담당 계정 선택 (누가 진행중인지)"
-                              style={{ flexShrink: 0, maxWidth: 84, fontFamily: "'DotGothic16', monospace", fontSize: 10, padding: "2px 3px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white }}>
+                            <select value={sb.who || ""} onChange={(e) => setSubWho(q.id, i, e.target.value)} onDoubleClick={() => toggleSubActive(q.id, i)} title="담당 계정 선택 · 더블클릭 = 진행중 표시"
+                              style={{ flexShrink: 0, maxWidth: 90, fontFamily: "'DotGothic16', monospace", fontSize: 10, fontWeight: sb.active ? "bold" : "normal", padding: "2px 3px", border: `2px solid ${sb.active ? (sb.who ? colorOf(sb.who) : "#4b8f5f") : C.ink}`, borderRadius: 6, background: sb.active ? (sb.who ? colorOf(sb.who) : "#cfe7d6") : C.white, color: sb.active && sb.who ? C.white : C.ink }}>
                               <option value="">미지정</option>
                               {(sb.who && !acctNames.includes(sb.who) ? [sb.who, ...acctNames] : acctNames).map((nm) => (<option key={nm} value={nm}>{nm}</option>))}
                             </select>
@@ -10796,7 +10797,12 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                       <label style={{ fontSize: 11, color: C.inkSoft, display: "flex", alignItems: "center", gap: 4 }}>💎<input type="number" value={qEdit.gem} onChange={(e) => setQEdit({ ...qEdit, gem: e.target.value })} style={{ width: 60, padding: 5, border: `2px solid ${C.ink}`, borderRadius: 5, fontFamily: "'DotGothic16', monospace" }} /></label>
                     </div>
                     <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                      <input value={qEdit.chapter} onChange={(e) => setQEdit({ ...qEdit, chapter: e.target.value })} placeholder="📁 챕터 (선택)" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
+                      <select value={qEdit.chapter || ""} onChange={(e) => setQEdit({ ...qEdit, chapter: e.target.value })} title="로드맵 챕터" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, background: C.white }}>
+                        <option value="">📁 챕터 없음</option>
+                        {(hqRoad[qEdit.cat] || []).map((ch) => (<option key={ch.id} value={ch.name}>{ch.name}</option>))}
+                        {qEdit.chapter && !(hqRoad[qEdit.cat] || []).some((ch) => ch.name === qEdit.chapter) && <option value={qEdit.chapter}>{qEdit.chapter} (로드맵에 없음)</option>}
+                      </select>
+                      <button type="button" onClick={() => window.alert("로드맵 탭에서 새 챕터를 추가해주세요.\n(🗺 로드맵 → ＋ 챕터 추가)")} title="새 챕터 추가" style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 13, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "0 11px" }}>＋</button>
                       <input type="date" value={qEdit.due} onChange={(e) => setQEdit({ ...qEdit, due: e.target.value })} style={{ padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 11 }} />
                     </div>
                     <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>세부 미션 (담당 계정 · 완료 체크는 카드에서)</div>
@@ -10865,7 +10871,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                           <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
                             <span style={{ fontSize: 14 }}>{isD ? "✅" : "⬜"}</span>
                             <span style={{ flex: 1, minWidth: 0, fontSize: 12, wordBreak: "break-word", textDecoration: isD ? "line-through" : "none", color: isD ? C.inkSoft : C.ink }}>{sb.t || "(내용 없음)"}</span>
-                            <span style={{ fontSize: 10.5, color: C.inkSoft, flexShrink: 0 }}>{sb.who ? `🧑 ${sb.who}` : "미지정"}</span>
+                            <span style={{ fontSize: 10.5, color: C.inkSoft, flexShrink: 0, display: "flex", alignItems: "center", gap: 5 }}>{sb.active && <span style={{ fontSize: 9, fontWeight: "bold", color: C.white, background: "#4b8f5f", borderRadius: 8, padding: "1px 6px" }}>진행중</span>}{sb.who ? `🧑 ${sb.who}` : "미지정"}</span>
                           </div>
                         );
                       })}
@@ -10905,79 +10911,111 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 </div>
               )}
 
-              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 14 }}>퀘스트를 누르면 자세히 볼 수 있어요 · 미션 체크·담당 선택은 바로 저장·공유돼요</div>
+              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 14 }}>퀘스트를 누르면 자세히 · 담당 드롭다운을 <b>더블클릭</b>하면 진행중(색) 표시돼요</div>
             </>
           );
         })()}
         {tab === "road" && (() => {
-          const chapters = hqRoad[rcat] || [];
+          const rawCh = hqRoad[rcat] || [];
           const ci = HQ_CATS.find((c) => c.id === rcat) || { color: "#888" };
-          const avgPct = avgOf;   // 완료 미션 비율 (avgOf 재사용)
-          // 챕터 진행률 = 그 챕터 이름과 일치하는 퀘스트들의 평균 (자동)
+          const avgPct = avgOf;
           const chapterPct = (name) => {
             const qs = hqQuests.filter((q) => (q.chapter || "").trim() === (name || "").trim());
             if (!qs.length) return 0;
             return Math.round(qs.reduce((n, q) => n + avgPct(q), 0) / qs.length);
           };
           const chapterQn = (name) => hqQuests.filter((q) => (q.chapter || "").trim() === (name || "").trim()).length;
-          const setChapters = (arr) => { onRoadChange && onRoadChange({ ...hqRoad, [rcat]: arr }); };
-          const move = (i, d) => { const a = [...chapters]; const j = i + d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; setChapters(a); };
-          const rename = (i) => { const nv = (window.prompt("챕터 이름", chapters[i].name) || "").trim(); if (nv) setChapters(chapters.map((c, j) => j === i ? { ...c, name: nv } : c)); };
-          const del = (i) => { if (window.confirm("정말로 삭제하시겠습니까?")) setChapters(chapters.filter((_, j) => j !== i)); };
-          const add = () => { const nv = (window.prompt("새 챕터 이름") || "").trim(); if (nv) setChapters([...chapters, { id: "r" + Date.now(), name: nv }]); };
-          // 첫 미완(=진행률<100) 챕터가 "지금 여기"
-          const curIdx = chapters.findIndex((ch) => chapterPct(ch.name) < 100);
+          const plainKey = "__plain_" + rcat;
+          const plainMap = (hqRoad[plainKey] && typeof hqRoad[plainKey] === "object") ? hqRoad[plainKey] : {};
+          // stage 정규화 (없으면 배열 순서로 · 0=맨 아래)
+          const withS = rawCh.map((c, i) => ({ ...c, stage: (c.stage != null ? c.stage : i) }));
+          const stageVals = [...new Set(withS.map((c) => c.stage))].sort((a, b) => a - b);
+          const byStage = (sv) => withS.filter((c) => c.stage === sv);
+          const persist = (arr) => {
+            const ws = arr.map((c, i) => ({ ...c, stage: (c.stage != null ? c.stage : i) }));
+            const keys = [...new Set(ws.map((c) => c.stage))].sort((a, b) => a - b);
+            const remap = {}; keys.forEach((k, idx) => (remap[k] = idx));
+            const out = ws.map((c) => ({ ...c, stage: remap[c.stage] })).sort((a, b) => a.stage - b.stage);
+            onRoadChange && onRoadChange({ ...hqRoad, [rcat]: out });
+          };
+          const togglePlain = (gap) => { onRoadChange && onRoadChange({ ...hqRoad, [plainKey]: { ...plainMap, [gap]: !plainMap[gap] } }); };
+          const rename = (id) => { const c = rawCh.find((x) => x.id === id); const nv = (window.prompt("챕터 이름", c ? c.name : "") || "").trim(); if (nv) persist(rawCh.map((x) => x.id === id ? { ...x, name: nv } : x)); };
+          const del = (id) => { if (window.confirm("정말로 삭제하시겠습니까?")) persist(rawCh.filter((x) => x.id !== id)); };
+          const add = () => { const nv = (window.prompt("새 챕터 이름") || "").trim(); if (nv) { const maxS = stageVals.length ? Math.max(...stageVals) : -1; persist([...withS, { id: "r" + Date.now(), name: nv, stage: maxS + 1 }]); } };
+          const dropToStage = (sv) => { if (dragId == null) return; persist(withS.map((c) => c.id === dragId ? { ...c, stage: sv } : c)); setDragId(null); };
+          const dropAt = (sv) => { if (dragId == null) return; persist(withS.map((c) => c.id === dragId ? { ...c, stage: sv } : c)); setDragId(null); };
+          // "지금 여기" = 미완 챕터가 있는 가장 아래 단계
+          const curStage = stageVals.find((sv) => byStage(sv).some((c) => chapterPct(c.name) < 100));
+          const rows = stageVals.slice().reverse();   // 위=높은 단계, 아래=0단계
           return (
             <>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
                 <b style={{ fontSize: 14, marginRight: 4 }}>🗺 로드맵</b>
                 {HQ_CATS.map((c) => (
                   <button key={c.id} type="button" onClick={() => setRcat(c.id)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: rcat === c.id ? C.ink : C.white, color: rcat === c.id ? C.white : C.ink }}>{c.icon} {c.name}</button>
                 ))}
                 <PxButton tone="gold" onClick={add} style={{ fontSize: 11, padding: "7px 12px", marginLeft: "auto" }}>＋ 챕터 추가</PxButton>
               </div>
-              <div style={{ maxWidth: 500, margin: "0 auto" }}>
-                {chapters.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 30 }}>챕터가 없어요 · ＋ 챕터 추가로 만들어보세요</div>}
-                {chapters.map((ch, i) => ({ ch, i })).reverse().map(({ ch, i }, di, arr) => {
-                  const pct = chapterPct(ch.name);
-                  const qn = chapterQn(ch.name);
-                  const isCur = i === curIdx;
-                  const done = pct >= 100;
-                  const atTop = i === chapters.length - 1;   // 배열 끝 = 화면 맨 위
+              <div style={{ maxWidth: 560, margin: "0 auto" }}>
+                {rawCh.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 30 }}>챕터가 없어요 · ＋ 챕터 추가로 만들어보세요</div>}
+                {/* 맨 위: 새 단계 드롭존 */}
+                {rawCh.length > 0 && (
+                  <div onDragOver={(e) => e.preventDefault()} onDrop={() => dropAt(Math.max(...stageVals) + 1)}
+                    style={{ textAlign: "center", fontSize: 9.5, color: dragId != null ? ci.color : "transparent", border: `2px dashed ${dragId != null ? ci.color : "transparent"}`, borderRadius: 8, padding: "4px 0", marginBottom: 6 }}>＋ 여기로 끌면 맨 위 새 단계</div>
+                )}
+                {rows.map((sv, ri) => {
+                  const origIdx = stageVals.length - 1 - ri;   // sv = stageVals[origIdx]
+                  const chs = byStage(sv);
+                  const hasBelow = origIdx > 0;
+                  const gapIdx = origIdx - 1;                  // 아래 단계와의 연결선 index
+                  const belowStage = hasBelow ? stageVals[origIdx - 1] : null;
+                  const isCurStage = sv === curStage;
                   return (
-                    <div key={ch.id}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        {/* ⬆ 위로 이동 + 동그라미 */}
-                        <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                          <button type="button" onClick={() => move(i, 1)} disabled={atTop} title="위로 이동"
-                            style={{ cursor: atTop ? "default" : "pointer", background: "none", border: "none", fontSize: 16, color: atTop ? "#d8d2c4" : ci.color, padding: 0, lineHeight: 1 }}>⬆</button>
-                          <div style={{ width: 52, height: 52, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22,
-                            background: done ? "#bfe3cf" : isCur ? ci.color : "#d8d2c4", border: `3px solid ${C.ink}`, color: C.white }}>
-                            {done ? "✓" : isCur ? "📍" : "🔒"}
-                          </div>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                            <span style={{ flex: 1, fontSize: 13.5, fontWeight: "bold" }}>{ch.name}{isCur ? <span style={{ fontSize: 10, color: ci.color, marginLeft: 6 }}>지금 여기</span> : null}</span>
-                            <button type="button" onClick={() => rename(i)} title="이름 수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 12 }}>✏️</button>
-                            <button type="button" onClick={() => del(i)} title="삭제" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.inkSoft }}>✕</button>
-                          </div>
-                          <div style={{ height: 7, borderRadius: 5, background: "#eadfc6", overflow: "hidden", marginTop: 5 }}><div style={{ width: pct + "%", height: "100%", background: ci.color }} /></div>
-                          <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 3 }}>{pct}% · 연결된 퀘스트 {qn}개</div>
-                        </div>
+                    <div key={"st" + sv}>
+                      {/* 단계 줄 (같은 단계 = 동시 진행 · 여기로 드롭하면 합류) */}
+                      <div onDragOver={(e) => e.preventDefault()} onDrop={() => dropToStage(sv)}
+                        style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", padding: 8, borderRadius: 12, background: dragId != null ? "rgba(75,63,176,0.06)" : "transparent", outline: dragId != null ? `2px dashed ${ci.color}55` : "none" }}>
+                        {chs.map((ch) => {
+                          const pct = chapterPct(ch.name);
+                          const done = pct >= 100;
+                          const isCur = isCurStage && pct < 100;
+                          return (
+                            <div key={ch.id} draggable onDragStart={() => setDragId(ch.id)} onDragEnd={() => setDragId(null)}
+                              style={{ cursor: "grab", width: 200, maxWidth: "100%", background: C.white, border: `3px solid ${isCur ? ci.color : C.ink}`, borderRadius: 12, padding: 10, opacity: dragId === ch.id ? 0.4 : 1, boxShadow: `0 3px 0 ${C.parchEdge}` }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <div style={{ width: 38, height: 38, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, background: done ? "#bfe3cf" : isCur ? ci.color : "#d8d2c4", border: `3px solid ${C.ink}`, color: C.white }}>{done ? "✓" : isCur ? "📍" : "🔒"}</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                                    <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: "bold", wordBreak: "break-word" }}>{ch.name}</span>
+                                    <button type="button" onClick={() => rename(ch.id)} title="이름 수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11 }}>✏️</button>
+                                    <button type="button" onClick={() => del(ch.id)} title="삭제" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 10, color: C.inkSoft }}>✕</button>
+                                  </div>
+                                  {isCur && <span style={{ fontSize: 9, color: ci.color, fontWeight: "bold" }}>📍 지금 여기</span>}
+                                </div>
+                              </div>
+                              <div style={{ height: 6, borderRadius: 4, background: "#eadfc6", overflow: "hidden", marginTop: 7 }}><div style={{ width: pct + "%", height: "100%", background: ci.color }} /></div>
+                              <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 3 }}>{pct}% · 퀘스트 {chapterQn(ch.name)}개</div>
+                            </div>
+                          );
+                        })}
                       </div>
-                      {di < arr.length - 1 && (
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 52, margin: "2px 0" }}>
-                          <span style={{ fontSize: 12, color: ci.color, lineHeight: 1 }}>↑</span>
-                          <div style={{ width: 3, height: 16, background: C.parchEdge }} />
+                      {/* 연결선 (아래 단계 전부 → 이 단계 전부) · 클릭하면 화살표/일반 전환 */}
+                      {hasBelow && (
+                        <div onDragOver={(e) => e.preventDefault()} onDrop={() => dropAt((sv + belowStage) / 2)}
+                          style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "3px 0" }}>
+                          <button type="button" onClick={() => togglePlain(gapIdx)} title="화살표 / 일반선 전환"
+                            style={{ cursor: "pointer", background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", padding: "2px 10px" }}>
+                            <span style={{ fontSize: 15, color: ci.color, lineHeight: 1 }}>{plainMap[gapIdx] ? "│" : "↑"}</span>
+                            <div style={{ width: 3, height: 14, background: ci.color, opacity: 0.5 }} />
+                          </button>
                         </div>
                       )}
                     </div>
                   );
                 })}
               </div>
-              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 16, lineHeight: 1.6 }}>
-                아래 → 위로 진행돼요 · ⬆로 챕터 순서를 바꿀 수 있어요<br />진행률은 <b>퀘스트의 📁 챕터</b>가 이 챕터 이름과 같은 것들의 평균으로 자동 계산돼요 (미션을 체크하면 채워져요)
+              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 16, lineHeight: 1.7 }}>
+                아래 → 위로 진행돼요 · 카드를 <b>드래그</b>해서 단계를 옮겨요 (같은 줄 = 동시 진행)<br />연결선을 누르면 <b>↑ 화살표 ↔ │ 일반선</b> 전환 · 챕터를 두 단계 사이로 끌면 새 단계가 생겨요<br />진행률은 <b>퀘스트의 📁 챕터</b> 평균으로 자동 계산돼요
               </div>
             </>
           );
@@ -11087,7 +11125,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                   style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, marginBottom: 6 }} />
                 <input value={mpNkAction} onChange={(e) => setMpNkAction(e.target.value)} placeholder="액션 (어떻게 뚫을까요?)"
                   style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5 }} />
-                <PxButton tone="ink" onClick={() => { if (mpNkPoint.trim() || mpNkAction.trim()) { setMpNeck((v) => [...v, { point: mpNkPoint.trim(), action: mpNkAction.trim(), done: false, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }]); setMpNkPoint(""); setMpNkAction(""); } }} style={{ width: "100%", fontSize: 12.5, padding: 9, marginTop: 8 }}>＋ 추가</PxButton>
+                <PxButton tone="ink" onClick={() => { if (mpNkPoint.trim() || mpNkAction.trim()) { setMpNeck((v) => [{ point: mpNkPoint.trim(), action: mpNkAction.trim(), done: false, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v]); setMpNkPoint(""); setMpNkAction(""); } }} style={{ width: "100%", fontSize: 12.5, padding: 9, marginTop: 8 }}>＋ 추가</PxButton>
                 {mpNeck.length > 0 && (
                   <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
                     {mpNeck.map((n, i) => (
