@@ -10313,8 +10313,8 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
             <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
               {neck.map((n, i) => (
                 <div key={i} style={{ display: "flex", gap: 4, alignItems: "stretch" }}>
-                  <div style={{ flex: 1, minWidth: 0, maxHeight: 46, overflowY: "auto", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "4px 5px", fontSize: 9.5, lineHeight: 1.35, wordBreak: "break-word", textDecoration: n.done ? "line-through" : "none", color: n.done ? C.inkSoft : C.ink }}>{n.point || "(병목)"}</div>
-                  <div style={{ flex: 1, minWidth: 0, maxHeight: 46, overflowY: "auto", background: C.parch, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "4px 5px", fontSize: 9.5, lineHeight: 1.35, wordBreak: "break-word", color: C.inkSoft }}>{n.action || "-"}</div>
+                  <div style={{ flex: 1, minWidth: 0, maxHeight: 46, overflowY: "auto", background: n.done ? "#d7ecdc" : C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "4px 5px", fontSize: 9.5, lineHeight: 1.35, wordBreak: "break-word", textDecoration: n.done ? "line-through" : "none", color: n.done ? C.inkSoft : C.ink }}>{n.point || "(병목)"}</div>
+                  <div style={{ flex: 1, minWidth: 0, maxHeight: 46, overflowY: "auto", background: n.done ? "#d7ecdc" : C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "4px 5px", fontSize: 9.5, lineHeight: 1.35, wordBreak: "break-word", color: C.inkSoft }}>{n.action || "-"}</div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, flexShrink: 0 }}>
                     <span style={{ fontSize: 8, color: C.inkSoft }}>{n.at}</span>
                     <input type="checkbox" checked={!!n.done} onChange={() => setNeck((v) => v.map((x, j) => j === i ? { ...x, done: !x.done } : x))} />
@@ -10724,12 +10724,12 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 {list.map((q) => {
                   const ci = catInfo(q.cat);
                   return (
-                    <div key={q.id} style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 14 }}>
+                    <div key={q.id} onClick={() => setQView(q)} style={{ cursor: "pointer", background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 14 }}>
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
-                        <b onClick={() => setQView(q)} title="자세히 보기" style={{ flex: 1, fontSize: 14, wordBreak: "keep-all", cursor: "pointer" }}>{q.title}</b>
+                        <b style={{ flex: 1, fontSize: 14, wordBreak: "keep-all" }}>{q.title}</b>
                         <span style={{ fontSize: 10, color: C.white, background: ci.color, borderRadius: 8, padding: "2px 7px", whiteSpace: "nowrap" }}>{ci.icon}</span>
-                        <button type="button" onClick={() => setQView(q)} title="자세히 보기" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13 }}>🔍</button>
-                        <button type="button" onClick={() => setQEdit({ ...q, subs: (q.subs || []).map((x) => ({ ...x })) })} title="수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13 }}>✏️</button>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); setQEdit({ ...q, subs: (q.subs || []).map((x) => ({ ...x })) }); }} title="수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13 }}>✏️</button>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); if (window.confirm("정말로 삭제하시겠습니까?")) removeQuest(q.id); }} title="삭제" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: C.danger }}>🗑</button>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "7px 0", fontSize: 11, color: C.inkSoft, flexWrap: "wrap" }}>
                         <span style={{ color: "#e0a13d" }}>{"★".repeat(q.star)}{"☆".repeat(Math.max(0, 3 - q.star))}</span>
@@ -10742,6 +10742,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                           {dd && <span style={{ fontSize: 10, fontWeight: "bold", color: C.white, borderRadius: 8, padding: "1px 7px", background: dd.over ? C.danger : dd.today ? "#e0a13d" : dd.days <= 3 ? "#e0663d" : C.good }}>{dd.txt}</span>}
                         </div>
                       ); })()}
+                      <div onClick={(e) => e.stopPropagation()}>
                       {(q.subs || []).map((sb, i) => ({ sb, i })).sort((a, b) => (sbDone(a.sb) ? 1 : 0) - (sbDone(b.sb) ? 1 : 0)).map(({ sb, i }) => {
                         const isD = sbDone(sb);
                         return (
@@ -10756,6 +10757,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                           </div>
                         );
                       })}
+                      </div>
                       {/* 진행률 = 완료 미션 ÷ 전체 미션 · 크게 표시 */}
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.parchEdge}` }}>
                         <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
@@ -11090,8 +11092,8 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                   <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
                     {mpNeck.map((n, i) => (
                       <div key={i} style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
-                        <div style={{ flex: 1, minWidth: 0, maxHeight: 60, overflowY: "auto", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "7px 9px", fontSize: 12, lineHeight: 1.4, wordBreak: "break-word", textDecoration: n.done ? "line-through" : "none", color: n.done ? C.inkSoft : C.ink }}>{n.point || "(병목)"}</div>
-                        <div style={{ flex: 1, minWidth: 0, maxHeight: 60, overflowY: "auto", background: C.parch, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "7px 9px", fontSize: 12, lineHeight: 1.4, wordBreak: "break-word", color: C.inkSoft }}>{n.action || "-"}</div>
+                        <div style={{ flex: 1, minWidth: 0, maxHeight: 60, overflowY: "auto", background: n.done ? "#d7ecdc" : C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "7px 9px", fontSize: 12, lineHeight: 1.4, wordBreak: "break-word", textDecoration: n.done ? "line-through" : "none", color: n.done ? C.inkSoft : C.ink }}>{n.point || "(병목)"}</div>
+                        <div style={{ flex: 1, minWidth: 0, maxHeight: 60, overflowY: "auto", background: n.done ? "#d7ecdc" : C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "7px 9px", fontSize: 12, lineHeight: 1.4, wordBreak: "break-word", color: C.inkSoft }}>{n.action || "-"}</div>
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, flexShrink: 0 }}>
                           <span style={{ fontSize: 9.5, color: C.inkSoft }}>{n.at}</span>
                           <input type="checkbox" checked={!!n.done} onChange={() => setMpNeck((v) => v.map((x, j) => j === i ? { ...x, done: !x.done } : x))} />
