@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v115 · 2026-07-28";
+const APP_VERSION = "v116 · 2026-07-28";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2492,7 +2492,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2548,6 +2548,40 @@ async function dbSaveNspTut(key, slot) {
 }
 /* 📱 릴스방 영상 서버 저장 (notices 재사용: type="reeldata", 전체 맵을 최신 1행에) */
 /* 🔗 카페 외부(네이버 키워드) — 관리자 제품·키워드 설정 서버 저장 (notices type=nspkw) */
+/* ☕ 카페 최신글 — 관리자 제품·키워드 설정 (notices type=nspcafekw) */
+async function dbLoadCafeKw() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("body,created_at").eq("type", "nspcafekw").order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    if (!row) return null;
+    return JSON.parse(row.body || "null");
+  } catch (e) { return null; }
+}
+async function dbSaveCafeKw(products) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "nspcafekw", title: "nspcafekw", body: JSON.stringify(products || []) });
+    return !(r && r.error);
+  } catch (e) { return false; }
+}
+/* ☕ 카페 최신글 — 링크별 상태(가입대기/등업대기/여자만/작업글/완료) + 완료 이력 (notices type=nspcafe) */
+async function dbLoadCafeState() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("body,created_at").eq("type", "nspcafe").order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    if (!row) return null;
+    return JSON.parse(row.body || "null");
+  } catch (e) { return null; }
+}
+async function dbSaveCafeState(state) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "nspcafe", title: "nspcafe", body: JSON.stringify(state || {}) });
+    return !(r && r.error);
+  } catch (e) { return false; }
+}
 async function dbLoadNspKw() {
   try {
     const s = await getSupa();
@@ -8450,6 +8484,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260728n7", type: "업데이트", date: "2026-07-28", title: "☕ 카페 최신글 방 전면 개편",
+    body: "· 상단에 제품 버튼(좌측) · 💬 답변 · ⚙️ 설정(관리자, 비번) · 📅 캘린더(우측)를 넣었어요\n· ⚙️ 설정에서 제품을 추가하고, 제품마다 키워드를 한 줄에 하나씩 일괄 등록할 수 있어요\n· 제품 아래에 크롤링 링크 수·키워드 수와 1시간 목표 40개 타이머를 넣었어요\n· 키워드별 네모칸에 크롤링된 카페 최신글 링크가 뜨고, 각 링크 앞 드롭다운(완료·가입대기·등업대기·여자만·작업글)으로 상태를 정해요\n· 💬 답변에서 상태별로 넘어온 링크를 모아 보고, 완료 탭 외에는 드롭다운으로 상태를 바꿀 수 있어요\n· 📅 캘린더에 날짜별 완료 건수가 표시되고, 누르면 그날 완료한 링크가 보여요 (다른 상태→완료로 바꾸면 그날 날짜로 기록)\n· 제품·키워드·링크 상태·완료 이력은 모두 서버에 저장돼 함께 봐요\n· 크롤링 링크는 몰입의방 API가 연결되면 자동으로 채워져요" },
   { id: "u20260728n6", type: "업데이트", date: "2026-07-28", title: "🔗 카페 외부 방 — 상태 필터 · 중요 키워드 · 검색량 열",
     body: "· 제품 버튼에서 「전체」를 없앴어요 (제품을 하나 골라서 봐요, 처음엔 첫 제품이 자동 선택돼요)\n· 제품 버튼 아래에 상태 필터 줄을 넣었어요 : 전체 / ⭐중요 / 상위 / 하위 / 누락 — 누르면 그 상태의 키워드만 보여요\n· 관리자 페이지에서 키워드 앞의 별(☆)을 누르면 ⭐ 중요 키워드로 설정/해제할 수 있어요\n· 표에 검색량 열을 추가했어요 (매칭 URL 옆)\n· 표의 모든 칸을 가운데 정렬로 정리했어요" },
   { id: "u20260728n5", type: "업데이트", date: "2026-07-28", title: "🔗 카페 외부 방 — 제품 버튼 필터 · 키워드 일괄 등록 · 툴바 정리",
@@ -11670,6 +11706,298 @@ function CafeCalendar({ processed }) {
   );
 }
 // ---- 카페 최신글 워크플로우 (답변 요망 / 답변 완료 / 캘린더) ----------------
+/* ======================= ☕ 카페 최신글 방 ======================= */
+const CAFE_STATUSES = [
+  { id: 'wait_join', label: '가입대기', color: '#e0a13d' },
+  { id: 'wait_up',   label: '등업대기', color: '#5b8def' },
+  { id: 'female',    label: '여자만',   color: '#d76b96' },
+  { id: 'work',      label: '작업글',   color: '#8e5a9e' },
+  { id: 'done',      label: '완료',     color: '#3fa07a' },
+];
+const CAFE_ADMIN_PW = 'ckdals987?';
+function cafeStatusInfo(id) { return CAFE_STATUSES.find((s) => s.id === id) || null; }
+
+function CafeRoom({ crawledLinks = [], nickname = '' }) {
+  const [products, setProducts] = useState([]);      // [{id,name,keywords:[{id,word,important}]}]
+  const [state, setState] = useState({ links: {}, doneLog: [] }); // links:{url:{status,at,by,keyword}}, doneLog:[{url,keyword,at,by}]
+  const [prodFilter, setProdFilter] = useState('');
+  const [admin, setAdmin] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [pw, setPw] = useState(''); const [pwErr, setPwErr] = useState(false);
+  const [newProd, setNewProd] = useState('');
+  const [newKw, setNewKw] = useState({});
+  const [ansOpen, setAnsOpen] = useState(false);
+  const [ansTab, setAnsTab] = useState('wait_join');
+  const [calOpen, setCalOpen] = useState(false);
+  const [calDay, setCalDay] = useState(null);
+  const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
+  const [timer, setTimer] = useState({ phase: 'idle', start: 0, count: 0 }); // 1시간 목표 40개
+
+  const saveProducts = (list) => { setProducts(list); dbSaveCafeKw(list); };
+  const saveState = (st) => { setState(st); dbSaveCafeState(st); };
+
+  useEffect(() => {
+    dbLoadCafeKw().then((d) => { if (Array.isArray(d)) setProducts(d); });
+    dbLoadCafeState().then((d) => { if (d && typeof d === 'object') setState({ links: d.links || {}, doneLog: d.doneLog || [] }); });
+  }, []);
+  useEffect(() => { if (products.length && !products.some((p) => p.id === prodFilter)) setProdFilter(products[0].id); }, [products]); // eslint-disable-line
+
+  const today = () => new Date().toISOString().slice(0, 10);
+  const nowISO = () => new Date().toISOString();
+
+  // 링크 상태 변경 (알바/관리자)
+  const setLinkStatus = (url, keyword, status) => {
+    const links = { ...state.links, [url]: { status, at: nowISO(), by: nickname || '익명', keyword } };
+    let doneLog = state.doneLog.slice();
+    if (status === 'done') {
+      // 완료로 바뀌면 오늘 날짜로 완료 이력에 기록 (같은 url 있으면 갱신)
+      doneLog = doneLog.filter((x) => x.url !== url);
+      doneLog.unshift({ url, keyword, at: nowISO(), day: today(), by: nickname || '익명' });
+    } else {
+      // 완료가 아니면 완료 이력에서 제거
+      doneLog = doneLog.filter((x) => x.url !== url);
+    }
+    saveState({ links, doneLog: doneLog.slice(0, 2000) });
+  };
+
+  const curProduct = products.find((p) => p.id === prodFilter);
+  const curKeywords = curProduct ? (curProduct.keywords || []) : [];
+  // 크롤링된 링크를 키워드별로 묶기
+  const linksByKeyword = {};
+  curKeywords.forEach((kw) => { linksByKeyword[kw.word] = []; });
+  crawledLinks.forEach((lk) => {
+    const w = (lk.keyword || '').trim();
+    if (w in linksByKeyword) linksByKeyword[w].push(lk);
+  });
+  const totalLinks = crawledLinks.filter((lk) => curKeywords.some((k) => k.word === (lk.keyword || '').trim())).length;
+
+  // 1시간 목표 타이머
+  const GOAL = 40;
+  const elapsedMin = timer.phase === 'running' ? Math.floor((Date.now() - timer.start) / 60000) : 0;
+
+  return (
+    <>
+      {/* 상단 우측 액션 (방 목록으로 행에 넣기 위해 별도 렌더 — 여기선 방 안 상단바로 대체) */}
+      <div className="cafe-top">
+        <div className="cafe-prods">
+          {products.map((p) => (
+            <button key={p.id} className={`cafe-prodbtn ${prodFilter === p.id ? 'on' : ''}`} onClick={() => setProdFilter(p.id)}>📦 {p.name}</button>
+          ))}
+          {products.length === 0 && <span className="cafe-hint">⚙️ 설정에서 제품·키워드를 등록하세요</span>}
+        </div>
+        <div className="cafe-actions">
+          <button className="nsp-iconbtn" title="답변 (상태별 링크)" onClick={() => setAnsOpen(true)}>💬 답변</button>
+          <button className="nsp-iconbtn" title="설정 (관리자)" onClick={() => setAdminOpen(true)}>⚙️</button>
+          <button className="nsp-iconbtn" title="캘린더" onClick={() => setCalOpen(true)}>📅</button>
+        </div>
+      </div>
+
+      {/* 제품 아래: 카운트 + 목표 타이머 */}
+      {curProduct && (
+        <div className="cafe-meta">
+          <span className="cafe-count">🔗 크롤링 링크 {totalLinks}개 · 🏷 키워드 {curKeywords.length}개</span>
+          <span className="cafe-goal">
+            {timer.phase === 'running'
+              ? <><b>{timer.count}</b>/{GOAL}개 · {elapsedMin}분/60분 <button className="cafe-gbtn" onClick={() => setTimer({ phase: 'idle', start: 0, count: 0 })}>■</button></>
+              : <>1시간 목표 {GOAL}개 <button className="cafe-gbtn" onClick={() => setTimer({ phase: 'running', start: Date.now(), count: 0 })}>▶ 시작</button></>}
+          </span>
+        </div>
+      )}
+
+      {/* 키워드별 네모칸 */}
+      {curProduct && (
+        <div className="cafe-grid">
+          {curKeywords.length === 0 && <div className="nsp-empty">이 제품에 키워드가 없어요 · ⚙️ 설정에서 추가하세요</div>}
+          {curKeywords.map((kw) => (
+            <div key={kw.id} className="cafe-kwbox">
+              <div className="cafe-kwtitle">{kw.important && <span className="nsp-imp">★</span>}<b>{kw.word}</b><span className="cafe-kwn">{(linksByKeyword[kw.word] || []).length}</span></div>
+              <div className="cafe-links">
+                {(linksByKeyword[kw.word] || []).length === 0 && <div className="cafe-nolink">아직 크롤링된 링크가 없어요</div>}
+                {(linksByKeyword[kw.word] || []).map((lk, i) => {
+                  const cur = state.links[lk.url];
+                  return (
+                    <div key={i} className="cafe-linkrow">
+                      <select className="cafe-dd" value={cur ? cur.status : ''} onChange={(e) => setLinkStatus(lk.url, kw.word, e.target.value)}>
+                        <option value="">상태</option>
+                        {CAFE_STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                      </select>
+                      <a className="cafe-link" href={lk.url} target="_blank" rel="noreferrer">{lk.title || lk.url}</a>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ⚙️ 관리자 설정 */}
+      {adminOpen && (
+        <div className="nsp-modal-bg" onClick={() => setAdminOpen(false)}>
+          <div className="nsp-modal" onClick={(e) => e.stopPropagation()}>
+            {!admin ? (
+              <>
+                <div className="nsp-modal-h">🔑 관리자 설정</div>
+                <div className="nsp-modal-sub">비밀번호를 입력하세요</div>
+                <input className="nsp-modal-input" type="password" autoFocus value={pw}
+                  onChange={(e) => { setPw(e.target.value); setPwErr(false); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { if (pw === CAFE_ADMIN_PW) setAdmin(true); else setPwErr(true); } }} />
+                {pwErr && <div className="nsp-modal-err">비밀번호가 틀렸어요</div>}
+                <div className="nsp-modal-btns">
+                  <button className="nsp-btn ghost" onClick={() => setAdminOpen(false)}>취소</button>
+                  <button className="nsp-btn" onClick={() => { if (pw === CAFE_ADMIN_PW) setAdmin(true); else setPwErr(true); }}>확인</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="nsp-modal-h">⚙️ 제품 · 키워드 관리</div>
+                <div className="nsp-modal-sub">제품을 등록하고 키워드를 한 줄에 하나씩 일괄 등록하세요</div>
+                <div className="nsp-addrow">
+                  <input className="nsp-modal-input" placeholder="새 제품 이름" value={newProd}
+                    onChange={(e) => setNewProd(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && newProd.trim()) { saveProducts([...products, { id: 'p' + Date.now(), name: newProd.trim(), keywords: [] }]); setNewProd(''); } }} />
+                  <button className="nsp-btn" onClick={() => { if (newProd.trim()) { saveProducts([...products, { id: 'p' + Date.now(), name: newProd.trim(), keywords: [] }]); setNewProd(''); } }}>＋ 제품</button>
+                </div>
+                <div className="nsp-prodlist">
+                  {products.length === 0 && <div className="nsp-modal-empty">아직 제품이 없어요</div>}
+                  {products.map((p) => (
+                    <div key={p.id} className="nsp-prodcard">
+                      <div className="nsp-prodhead">
+                        <b>📦 {p.name}</b>
+                        <span className="nsp-prodcnt">{(p.keywords || []).length}개</span>
+                        <button className="nsp-x2" onClick={() => saveProducts(products.filter((x) => x.id !== p.id))}>삭제</button>
+                      </div>
+                      <div className="nsp-kwtags">
+                        {(p.keywords || []).map((kw) => (
+                          <span key={kw.id} className={`nsp-kwtag ${kw.important ? 'imp' : ''}`}>
+                            <button className="nsp-kwstar" onClick={() => saveProducts(products.map((x) => x.id === p.id ? { ...x, keywords: x.keywords.map((y) => y.id === kw.id ? { ...y, important: !y.important } : y) } : x))}>{kw.important ? '⭐' : '☆'}</button>
+                            {kw.word}
+                            <button className="nsp-kwdel" onClick={() => saveProducts(products.map((x) => x.id === p.id ? { ...x, keywords: x.keywords.filter((y) => y.id !== kw.id) } : x))}>✕</button>
+                          </span>
+                        ))}
+                      </div>
+                      <div className="nsp-kwadd">
+                        <textarea className="nsp-modal-ta sm" placeholder={"키워드를 한 줄에 하나씩\n예:\n그린레이 효과\n그린레이 후기"} value={newKw[p.id] || ''}
+                          onChange={(e) => setNewKw((v) => ({ ...v, [p.id]: e.target.value }))} />
+                        <button className="nsp-btn" onClick={() => {
+                          const words = (newKw[p.id] || '').split(/\n+/).map((x) => x.trim()).filter(Boolean);
+                          if (!words.length) return;
+                          const exist = new Set((p.keywords || []).map((k) => k.word));
+                          const add = words.filter((w) => !exist.has(w)).map((w, i) => ({ id: 'k' + Date.now() + '_' + i, word: w }));
+                          saveProducts(products.map((x) => x.id === p.id ? { ...x, keywords: [...(x.keywords || []), ...add] } : x));
+                          setNewKw((v) => ({ ...v, [p.id]: '' }));
+                        }}>＋ 일괄 등록</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="nsp-modal-btns">
+                  <button className="nsp-btn ghost" onClick={() => setAdmin(false)}>관리자 잠그기</button>
+                  <button className="nsp-btn" onClick={() => setAdminOpen(false)}>닫기</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 💬 답변 (상태별 링크) */}
+      {ansOpen && (() => {
+        const byStatus = {};
+        CAFE_STATUSES.forEach((s) => { byStatus[s.id] = []; });
+        Object.keys(state.links).forEach((url) => {
+          const it = state.links[url];
+          if (it && byStatus[it.status]) byStatus[it.status].push({ url, ...it });
+        });
+        const list = byStatus[ansTab] || [];
+        return (
+          <div className="nsp-modal-bg" onClick={() => setAnsOpen(false)}>
+            <div className="nsp-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="nsp-modal-h">💬 답변 — 상태별 링크</div>
+              <div className="cafe-anstabs">
+                {CAFE_STATUSES.map((s) => (
+                  <button key={s.id} className={`cafe-anstab ${ansTab === s.id ? 'on' : ''}`} style={ansTab === s.id ? { background: s.color, color: '#fff' } : {}} onClick={() => setAnsTab(s.id)}>{s.label} ({byStatus[s.id].length})</button>
+                ))}
+              </div>
+              <div className="cafe-anslist">
+                {list.length === 0 && <div className="nsp-modal-empty">이 상태의 링크가 없어요</div>}
+                {list.map((it, i) => (
+                  <div key={i} className="cafe-ansrow">
+                    {/* 완료 탭이 아니면 드롭다운 표시 (완료 탭은 드롭다운 없음) */}
+                    {ansTab !== 'done' && (
+                      <select className="cafe-dd" value={it.status} onChange={(e) => setLinkStatus(it.url, it.keyword, e.target.value)}>
+                        {CAFE_STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                      </select>
+                    )}
+                    <a className="cafe-link" href={it.url} target="_blank" rel="noreferrer">{it.keyword ? `[${it.keyword}] ` : ''}{it.url}</a>
+                    <span className="cafe-ansby">{it.by}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="nsp-modal-btns"><button className="nsp-btn" onClick={() => setAnsOpen(false)}>닫기</button></div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 📅 캘린더 */}
+      {calOpen && (() => {
+        const { y, m } = calMonth;
+        const first = new Date(y, m, 1);
+        const startDow = first.getDay();
+        const daysInMonth = new Date(y, m + 1, 0).getDate();
+        const doneByDay = {};
+        state.doneLog.forEach((d) => { const day = d.day || (d.at || '').slice(0, 10); if (!doneByDay[day]) doneByDay[day] = []; doneByDay[day].push(d); });
+        const cells = [];
+        for (let i = 0; i < startDow; i++) cells.push(null);
+        for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+        const dayStr = (d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const selList = calDay ? (doneByDay[calDay] || []) : [];
+        return (
+          <div className="nsp-modal-bg" onClick={() => { setCalOpen(false); setCalDay(null); }}>
+            <div className="nsp-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="cafe-calhead">
+                <button className="nsp-btn ghost" onClick={() => setCalMonth({ y: m === 0 ? y - 1 : y, m: m === 0 ? 11 : m - 1 })}>‹</button>
+                <b>{y}년 {m + 1}월</b>
+                <button className="nsp-btn ghost" onClick={() => setCalMonth({ y: m === 11 ? y + 1 : y, m: m === 11 ? 0 : m + 1 })}>›</button>
+              </div>
+              <div className="cafe-cal">
+                {['일','월','화','수','목','금','토'].map((d) => <div key={d} className="cafe-caldow">{d}</div>)}
+                {cells.map((d, i) => {
+                  if (!d) return <div key={i} className="cafe-calcell empty" />;
+                  const ds = dayStr(d);
+                  const cnt = (doneByDay[ds] || []).length;
+                  return (
+                    <button key={i} className={`cafe-calcell ${calDay === ds ? 'on' : ''}`} onClick={() => setCalDay(ds)}>
+                      <span className="cafe-calnum">{d}</span>
+                      {cnt > 0 && <span className="cafe-caldone">완료 {cnt}건</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              {calDay && (
+                <div className="cafe-calsel">
+                  <div className="cafe-calsel-h">📅 {calDay} · 완료 {selList.length}건</div>
+                  <div className="cafe-anslist">
+                    {selList.length === 0 && <div className="nsp-modal-empty">이 날 완료된 링크가 없어요</div>}
+                    {selList.map((it, i) => (
+                      <div key={i} className="cafe-ansrow">
+                        <a className="cafe-link" href={it.url} target="_blank" rel="noreferrer">{it.keyword ? `[${it.keyword}] ` : ''}{it.url}</a>
+                        <span className="cafe-ansby">{it.by}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="nsp-modal-btns"><button className="nsp-btn" onClick={() => { setCalOpen(false); setCalDay(null); }}>닫기</button></div>
+            </div>
+          </div>
+        );
+      })()}
+    </>
+  );
+}
+
 function CafeWorkflow({ nickname, setNickname, links }) {
   const GOAL = 30, LIMIT_MIN = 60;
   const COUNTED = ['answered', 'joinwait', 'levelup']; // 삭제는 카운트 제외
@@ -12422,7 +12750,7 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
 
           {/* ③ 카페 최신글 (답변 요망 / 답변 완료 / 캘린더 워크플로우) */}
           {tab === 'cafe' && (
-            <CafeWorkflow nickname={nickname} setNickname={setNickname} links={data.cafeLinks} />
+            <CafeRoom crawledLinks={data.cafe || []} nickname={nicknameProp || nickname} />
           )}
 
           {/* ④ 지식인 최신글 (답변 카운터 + 1시간 50개 타이머) */}
@@ -12580,6 +12908,41 @@ const CSS = `
 .nsp-kwtag.imp{background:#fff3d6;border-color:#e0a13d;}
 .nsp-kwstar{background:none;border:none;cursor:pointer;font-size:12px;padding:0;margin-right:2px;}
 .nsp-kwdel{background:none;border:none;cursor:pointer;color:#8a7a5a;font-size:11px;padding:0;margin-left:2px;}
+.cafe-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.cafe-prods{display:flex;flex-wrap:wrap;gap:6px;flex:1;}
+.cafe-prodbtn{background:#fff;border:2px solid #4a3a22;border-radius:16px;padding:6px 13px;cursor:pointer;font-family:'DotGothic16',monospace;font-size:12px;font-weight:bold;color:#4a3a22;}
+.cafe-prodbtn.on{background:#3fa07a;color:#fff;}
+.cafe-hint{font-size:11.5px;color:#8a7a5a;}
+.cafe-actions{display:flex;gap:6px;align-items:center;}
+.cafe-meta{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+.cafe-count{font-size:12px;color:#4a3a22;font-weight:bold;flex:1;}
+.cafe-goal{font-size:12px;color:#4a3a22;background:#f7efd8;border:2px solid #4a3a22;border-radius:8px;padding:5px 10px;}
+.cafe-gbtn{background:#3fa07a;color:#fff;border:2px solid #4a3a22;border-radius:6px;padding:2px 8px;cursor:pointer;font-family:'DotGothic16',monospace;font-size:11px;margin-left:4px;}
+.cafe-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}
+.cafe-kwbox{background:#fff;border:2px solid #4a3a22;border-radius:10px;padding:10px;}
+.cafe-kwtitle{display:flex;align-items:center;gap:5px;font-size:13.5px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #efe0bd;}
+.cafe-kwtitle b{flex:1;}
+.cafe-kwn{font-size:10.5px;color:#fff;background:#3fa07a;border-radius:10px;padding:1px 8px;}
+.cafe-links{display:flex;flex-direction:column;gap:5px;max-height:260px;overflow:auto;}
+.cafe-nolink{font-size:11px;color:#b5ad9c;text-align:center;padding:12px;}
+.cafe-linkrow{display:flex;align-items:center;gap:5px;}
+.cafe-dd{border:2px solid #4a3a22;border-radius:6px;padding:3px 4px;font-family:'DotGothic16',monospace;font-size:10.5px;background:#f7efd8;cursor:pointer;flex-shrink:0;}
+.cafe-link{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#2f7d5e;text-decoration:none;font-size:11.5px;}
+.cafe-anstabs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
+.cafe-anstab{background:#fff;border:2px solid #4a3a22;border-radius:14px;padding:5px 11px;cursor:pointer;font-family:'DotGothic16',monospace;font-size:11.5px;font-weight:bold;color:#4a3a22;}
+.cafe-anslist{display:flex;flex-direction:column;gap:5px;max-height:300px;overflow:auto;}
+.cafe-ansrow{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #d9c79b;border-radius:6px;padding:5px 8px;}
+.cafe-ansby{font-size:10px;color:#8a7a5a;white-space:nowrap;}
+.cafe-calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:15px;}
+.cafe-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cafe-caldow{text-align:center;font-size:11px;color:#8a7a5a;padding:4px 0;font-weight:bold;}
+.cafe-calcell{min-height:52px;background:#fff;border:2px solid #d9c79b;border-radius:6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;padding:3px;gap:2px;font-family:'DotGothic16',monospace;}
+.cafe-calcell.empty{background:transparent;border:none;cursor:default;}
+.cafe-calcell.on{border-color:#3fa07a;background:#f2f9f4;}
+.cafe-calnum{font-size:12px;color:#4a3a22;font-weight:bold;}
+.cafe-caldone{font-size:9px;color:#fff;background:#3fa07a;border-radius:6px;padding:1px 4px;}
+.cafe-calsel{margin-top:12px;border-top:2px solid #efe0bd;padding-top:10px;}
+.cafe-calsel-h{font-size:13px;font-weight:bold;color:#4a3a22;margin-bottom:8px;}
 .nsp-kwadd{display:flex;gap:6px;align-items:flex-start;margin-top:8px;}
 .nsp-kwadd .nsp-modal-ta.sm{height:66px;font-size:11.5px;flex:1;}
 .nsp-kwadd .nsp-btn{white-space:nowrap;}
