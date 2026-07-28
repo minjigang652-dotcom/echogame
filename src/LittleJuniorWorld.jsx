@@ -10724,9 +10724,12 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
           return (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-                <b style={{ fontSize: 14, marginRight: 4 }}>📋 퀘스트 게시판</b>
                 <button type="button" onClick={() => setQActiveOnly((v) => !v)} title="진행중(색 있는) 미션만 보기"
-                  style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: qActiveOnly ? "#4b8f5f" : C.white, color: qActiveOnly ? C.white : C.inkSoft }}>진행중만 {qActiveOnly ? "ON" : "OFF"}</button>
+                  style={{ cursor: "pointer", flexShrink: 0, width: 48, height: 48, borderRadius: "50%", border: `2px solid ${C.ink}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1, lineHeight: 1, fontFamily: "var(--game-font, 'DotGothic16', monospace)", background: qActiveOnly ? "#4b8f5f" : C.white, color: qActiveOnly ? C.white : C.inkSoft, boxShadow: `0 3px 0 ${C.parchEdge}` }}>
+                  <span style={{ fontSize: 8.5, fontWeight: "bold" }}>진행중</span>
+                  <span style={{ fontSize: 10, fontWeight: "bold" }}>{qActiveOnly ? "ON" : "OFF"}</span>
+                </button>
+                <b style={{ fontSize: 14, marginRight: 4 }}>📋 퀘스트 게시판</b>
                 {[["all", "전체"], ...HQ_CATS.map((c) => [c.id, `${c.icon} ${c.name}`])].map(([k, lb]) => (
                   <button key={k} type="button" onClick={() => setQcat(k)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: qcat === k ? C.ink : C.white, color: qcat === k ? C.white : C.ink }}>{lb}</button>
                 ))}
@@ -12027,8 +12030,8 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed,
 
 /* 🔤 게임 폰트 — 고른 것만 그때 불러와요 (지연 로딩) · 기본은 픽셀체 DotGothic16 */
 const GAME_FONTS = [
-  { id: "dot", label: "픽셀 (기본)", css: "'DotGothic16', monospace", g: "DotGothic16" },
-  { id: "nanumcoding", label: "나눔고딕코딩", css: "'Nanum Gothic Coding', monospace", g: "Nanum+Gothic+Coding" },
+  { id: "dot", label: "픽셀 (DotGothic16)", css: "'DotGothic16', monospace", g: "DotGothic16" },
+  { id: "nanumcoding", label: "나눔고딕코딩 (기본)", css: "'Nanum Gothic Coding', monospace", g: "Nanum+Gothic+Coding" },
   { id: "dongle", label: "동글", css: "'Dongle', sans-serif", g: "Dongle" },
   { id: "jua", label: "주아", css: "'Jua', sans-serif", g: "Jua" },
   { id: "himelody", label: "하이멜로디", css: "'Hi Melody', cursive", g: "Hi+Melody" },
@@ -13413,16 +13416,16 @@ function EchoTown() {
   useEffect(() => {
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap";
+    link.href = "https://fonts.googleapis.com/css2?family=DotGothic16&family=Nanum+Gothic+Coding&family=Press+Start+2P&display=swap";
     document.head.appendChild(link);
     return () => { document.head.removeChild(link); };
   }, []);
   /* 🔤 폰트 선택 (계정마다 저장 · 고른 것만 로딩) */
-  const [fontId, setFontId] = useState("dot");
+  const [fontId, setFontId] = useState("nanumcoding");
   const [fontOpen, setFontOpen] = useState(false);
   useEffect(() => {
     let id = "dot";
-    try { id = window.localStorage.getItem("echotown_font_" + (myName || "guest")) || "dot"; } catch (e) {}
+    try { id = window.localStorage.getItem("echotown_font_" + (myName || "guest")) || "nanumcoding"; } catch (e) {}
     setFontId(id); applyGameFont(id);
   }, [myName]);
   useEffect(() => { if (fontOpen) GAME_FONTS.forEach((f) => ensureGameFont(f.g)); }, [fontOpen]);   // 설정 열면 미리보기용으로 로딩
@@ -14770,7 +14773,7 @@ export default function App() {
 function StyleBlock() {
   return (
     <style>{`
-      :root { --game-font: 'DotGothic16', monospace; }
+      :root { --game-font: 'Nanum Gothic Coding', monospace; }
       * { -webkit-tap-highlight-color: transparent; }
       button { font-family: var(--game-font, 'DotGothic16', monospace); }
       input, textarea { color: ${C.ink}; }
