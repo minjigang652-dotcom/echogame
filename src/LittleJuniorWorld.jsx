@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v108 · 2026-07-24";
+const APP_VERSION = "v109 · 2026-07-24";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2492,7 +2492,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "reeldata").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "reeldata").neq("type", "nsptut").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2528,6 +2528,24 @@ async function dbNameMap() {
   } catch (e) { return { byName: {}, byId: {} }; }
 }
 /* 🙋 내 페이지 서버 저장 (notices 재사용: type="mypage", title=이름 · 본인만 불러옴) */
+/* 📗 네이버스쿨 튜토리얼 메모 서버 저장 (notices 재사용: type="nsptut", title=slot키) */
+async function dbLoadNspTut() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("title,body,created_at").eq("type", "nsptut").order("created_at", { ascending: false }).limit(60);
+    if (!r || !r.data) return {};
+    const out = {};
+    for (const row of r.data) { if (!(row.title in out)) { try { out[row.title] = JSON.parse(row.body || "{}"); } catch (e) {} } }
+    return out;   // { method:{text,fileName,date}, ... } 최신값만
+  } catch (e) { return {}; }
+}
+async function dbSaveNspTut(key, slot) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "nsptut", title: key, body: JSON.stringify(slot || {}) });
+    return !(r && r.error);
+  } catch (e) { return false; }
+}
 /* 📱 릴스방 영상 서버 저장 (notices 재사용: type="reeldata", 전체 맵을 최신 1행에) */
 async function dbLoadReels() {
   try {
@@ -8398,6 +8416,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260724n60", type: "업데이트", date: "2026-07-24", title: "📗 네이버스쿨 튜토리얼 — 메모 서버 저장 · 답변 사진 다운로드",
+    body: "· 📖 튜토리얼의 메모(작성 방법·프롬프트)가 이제 우리 서버에 저장돼요 — 모두가 함께 보고 새로고침해도 남아요\n· 예전엔 외부 서버 API가 없어 「저장 실패」가 뜨던 문제를 해결했어요 (Supabase에 저장)\n· 🖼 지식인 답변 사진에 다운로드 버튼(⬇)을 추가했어요 — 등록한 사진을 눌러 바로 받을 수 있어요\n· txt 파일 올리기·다운로드는 그대로예요" },
   { id: "u20260724n59", type: "업데이트", date: "2026-07-24", title: "📱 릴스방 서버 저장 · 가로 영상 화면 축소",
     body: "· 📺 릴스방에 올린 유튜브 영상(롱폼·쇼츠)이 이제 서버에 영구 저장돼요 — 언제 접속해도 모두가 볼 수 있어요\n· 예전엔 접속 중인 사람끼리만 보였는데, 이제 나중에 접속해도 그대로 남아있어요\n· 가로 롱폼 화면을 많이 작게 줄이고, 아래 썸네일 줄을 없애서 쇼츠 카테고리가 바로 아래 오게 했어요" },
   { id: "u20260724n58", type: "업데이트", date: "2026-07-24", title: "📱 릴스방 개편 · 🎶 앉기 표시 간소화",
@@ -11898,14 +11918,11 @@ function TutorialTab({ data, setData }) {
   };
   const save = async (key) => {
     setStatus((s) => ({ ...s, [key]: 'saving' }));
-    const slot = data[key];
+    const slot = data[key] || {};
     const date = slot.date || nowStr();
     try {
-      const res = await fetch(`${MOIP_API}/api/echo/tutorial`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key, text: slot.text, fileName: slot.fileName, date }),
-      });
-      if (!res.ok) throw new Error();
+      const ok = await dbSaveNspTut(key, { text: slot.text || '', fileName: slot.fileName || '', date });
+      if (!ok) throw new Error();
       setSlot(key, { date });
       setStatus((s) => ({ ...s, [key]: 'saved' }));
     } catch (e) { setStatus((s) => ({ ...s, [key]: 'error' })); }
@@ -11913,7 +11930,14 @@ function TutorialTab({ data, setData }) {
   const del = async (key) => {
     setSlot(key, { text: '', fileName: '', date: '' });
     setStatus((s) => ({ ...s, [key]: '' }));
-    try { await fetch(`${MOIP_API}/api/echo/tutorial?key=${encodeURIComponent(key)}`, { method: 'DELETE' }); } catch (e) { /* noop */ }
+    try { await dbSaveNspTut(key, { text: '', fileName: '', date: '' }); } catch (e) { /* noop */ }
+  };
+  const downloadImg = (im) => {
+    try {
+      const a = document.createElement('a');
+      a.href = im.url; a.download = im.name || 'image.png';
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch (e) { /* noop */ }
   };
   const DEF_NAME = { method: '작성방법.txt', promptGreen: '그린레이_프롬프트.txt', promptBoy: '보이실린_프롬프트.txt', promptHigh: '고음확장기_프롬프트.txt' };
   const download = (key) => {
@@ -11963,7 +11987,7 @@ function TutorialTab({ data, setData }) {
       {data[field].length > 0 && (
         <div className="nsp-ex-imgs">
           {data[field].map((im, i) => (
-            <div key={i} className="nsp-thumb"><img src={im.url} alt={im.name} /><button className="nsp-x" onClick={() => rmImg(field, i)}>✕</button></div>
+            <div key={i} className="nsp-thumb"><img src={im.url} alt={im.name} /><button className="nsp-dl" title="다운로드" onClick={() => downloadImg(im)}>⬇</button><button className="nsp-x" onClick={() => rmImg(field, i)}>✕</button></div>
           ))}
         </div>
       )}
@@ -12124,20 +12148,18 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
 
   useEffect(() => { if (open) load(); /* eslint-disable-next-line */ }, [open]);
 
-  // 튜토리얼 메모: 서버에 저장된 내용 불러오기 (서버 API 없으면 무시)
+  // 튜토리얼 메모: 우리 Supabase(nsptut)에서 불러오기 (모두 공유·영구)
   useEffect(() => {
     if (!open) return;
     (async () => {
-      try {
-        const r = await fetch(`${MOIP_API}/api/echo/tutorial`);
-        if (!r.ok) return;
-        const j = await r.json();
-        (j.items || []).forEach((it) => {
-          if (['method', 'promptGreen', 'promptBoy', 'promptHigh', 'manuscriptUrl', 'commentUrl'].includes(it.key)) {
-            setTutorial((prev) => ({ ...prev, [it.key]: { text: it.text || '', fileName: it.fileName || '', date: it.date || '' } }));
-          }
+      const all = await dbLoadNspTut();
+      if (all && typeof all === 'object') {
+        setTutorial((prev) => {
+          const next = { ...prev };
+          Object.keys(all).forEach((k) => { if (all[k] && typeof all[k] === 'object' && 'text' in all[k]) next[k] = { ...next[k], ...all[k] }; });
+          return next;
         });
-      } catch (e) { /* 서버 미설정 시 무시 */ }
+      }
     })();
   }, [open]);
   useEffect(() => {
@@ -12434,6 +12456,7 @@ const CSS = `
 .nsp-thumb{position:relative;width:84px;height:84px;border:2px solid #d9c79b;background:#fbf5e6;}
 .nsp-thumb img{width:100%;height:100%;object-fit:cover;}
 .nsp-thumb .nsp-x{position:absolute;top:-6px;right:-6px;}
+.nsp-thumb .nsp-dl{position:absolute;bottom:-6px;right:-6px;background:#2f7d5e;color:#fff;border:2px solid #1c1c1c;border-radius:6px;width:22px;height:22px;cursor:pointer;font-size:11px;padding:0;}
 `;
 
 
