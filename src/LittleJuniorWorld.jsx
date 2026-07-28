@@ -10365,7 +10365,7 @@ function HQQuestRail({ quests = [], onOpenHQ }) {
 }
 
 /* 🖥 HQ 예시 데이터 (보스맵과 별개) */
-const HQ_CATS = [
+const HQ_CATS_DEFAULT = [
   { id: "core", name: "코어 앱", icon: "🟦", color: "#3b82f6" },
   { id: "comm", name: "제품 (이커머스)", icon: "🟧", color: "#f97316" },
   { id: "game", name: "에코월드 게임", icon: "🟪", color: "#8b5cf6" },
@@ -10498,6 +10498,11 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   /* 미션 완료 여부 · 진행률 = 완료 미션 수 ÷ 전체 미션 수 (예: 5개 중 1개 = 20%) */
   const sbDone = (sb) => (sb && sb.done != null) ? !!sb.done : ((Number(sb && sb.pct) || 0) >= 100);
   const avgOf = (q) => { const s = q.subs || []; return s.length ? Math.round(s.filter(sbDone).length / s.length * 100) : 0; };
+  /* 🌍 월드(카테고리) — hqRoad.__cats 로 저장하면 로드맵처럼 모두에게 공유돼요 (없으면 기본값) */
+  const HQ_CATS = (hqRoad.__cats && Array.isArray(hqRoad.__cats) && hqRoad.__cats.length) ? hqRoad.__cats : HQ_CATS_DEFAULT;
+  const saveCats = (arr) => onRoadChange && onRoadChange({ ...hqRoad, __cats: arr });
+  const catMove = (i, d) => { const a = HQ_CATS.map((c) => ({ ...c })); const j = i + d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; saveCats(a); };
+  const catEdit = (i) => { const c = HQ_CATS[i]; const nm = (window.prompt("월드 이름", c.name) || "").trim(); if (!nm) return; const ic = (window.prompt("월드 아이콘 (이모지 1개)", c.icon || "") || "").trim() || c.icon; saveCats(HQ_CATS.map((x, j) => j === i ? { ...x, name: nm, icon: ic } : x)); };
   const cats = HQ_CATS.map((c) => {
     const qs = hqQuests.filter((q) => q.cat === c.id);
     const done = qs.filter((q) => avgOf(q) >= 100).length;
@@ -10894,6 +10899,21 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                       <button type="button" onClick={() => setQManage(false)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16 }}>✕</button>
                     </div>
                     <div style={{ fontSize: 10.5, color: C.inkSoft, marginBottom: 10 }}>이름 수정 · ▲▼ 순서 변경 · 삭제 (모두에게 저장·공유돼요)</div>
+
+                    {/* 🌍 월드(카테고리) 관리 — 순서변경 · 이름/아이콘 수정 */}
+                    <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>🌍 월드 (카테고리)</div>
+                    {HQ_CATS.map((c, i) => (
+                      <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 6, background: C.white, border: `2px solid ${c.color || C.parchEdge}`, borderRadius: 8, padding: "7px 10px", marginBottom: 6 }}>
+                        <span style={{ fontSize: 15, flexShrink: 0 }}>{c.icon}</span>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
+                        <button type="button" onClick={() => catMove(i, -1)} title="위로" disabled={i === 0} style={{ cursor: i === 0 ? "default" : "pointer", background: "none", border: "none", fontSize: 13, color: i === 0 ? "#ccc" : C.inkSoft }}>▲</button>
+                        <button type="button" onClick={() => catMove(i, 1)} title="아래로" disabled={i === HQ_CATS.length - 1} style={{ cursor: i === HQ_CATS.length - 1 ? "default" : "pointer", background: "none", border: "none", fontSize: 13, color: i === HQ_CATS.length - 1 ? "#ccc" : C.inkSoft }}>▼</button>
+                        <button type="button" onClick={() => catEdit(i)} title="이름·아이콘 수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13 }}>✏️</button>
+                      </div>
+                    ))}
+                    <div style={{ fontSize: 9.5, color: C.inkSoft, marginBottom: 12 }}>순서를 바꾸면 로드맵·퀘스트 탭의 월드 순서도 함께 바뀌어요 · 이름을 바꿔도 퀘스트 연결은 유지돼요</div>
+
+                    <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6, paddingTop: 10, borderTop: `2px solid ${C.parchEdge}` }}>📜 퀘스트</div>
                     {hqQuests.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 20 }}>퀘스트가 없어요.</div>}
                     {hqQuests.map((q, i) => {
                       const ci = catInfo(q.cat);
