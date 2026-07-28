@@ -10507,6 +10507,22 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const catMove = (i, d) => { const a = HQ_CATS.map((c) => ({ ...c })); const j = i + d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; saveCats(a); };
   const catEdit = (i) => setCatForm({ mode: "edit", i, name: HQ_CATS[i].name, icon: HQ_CATS[i].icon || "🌍" });
   const catAdd = () => setCatForm({ mode: "add", name: "", icon: "🌍" });
+  const catDelete = (i) => {
+    const c = HQ_CATS[i];
+    if (HQ_CATS.length <= 1) { window.alert("월드는 최소 1개는 있어야 해요."); return; }
+    const qn = hqQuests.filter((q) => q.cat === c.id).length;
+    const msg = qn > 0
+      ? `"${c.name}" 월드에 퀘스트 ${qn}개가 있어요.\n삭제하면 그 퀘스트들은 '전체'에서만 보이고 월드 표시가 사라져요.\n정말 삭제하시겠습니까?`
+      : `"${c.name}" 월드를 정말 삭제하시겠습니까?`;
+    if (!window.confirm(msg)) return;
+    const nextRoad = { ...hqRoad };
+    delete nextRoad[c.id]; delete nextRoad["__boss_" + c.id]; delete nextRoad["__plain_" + c.id];
+    nextRoad.__cats = HQ_CATS.filter((_, j) => j !== i);
+    onRoadChange && onRoadChange(nextRoad);
+    const rem = HQ_CATS.filter((_, j) => j !== i);
+    if (rcat === c.id) setRcat(rem[0] ? rem[0].id : "core");
+    if (qcat === c.id) setQcat("all");
+  };
   const catFormSave = () => {
     if (!catForm) return;
     const nm = (catForm.name || "").trim(); if (!nm) { window.alert("월드 이름을 입력해주세요."); return; }
@@ -10768,7 +10784,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                           {dd && <span style={{ fontSize: 10, fontWeight: "bold", color: C.white, borderRadius: 8, padding: "1px 7px", background: dd.over ? C.danger : dd.today ? "#e0a13d" : dd.days <= 3 ? "#e0663d" : C.good }}>{dd.txt}</span>}
                         </div>
                       ); })()}
-                      <div onClick={(e) => e.stopPropagation()} style={{ maxHeight: 152, overflowY: "auto" }}>
+                      <div onClick={(e) => e.stopPropagation()} style={{ maxHeight: 148, overflowY: "auto", ...((q.subs || []).length > 5 ? { border: `1px dashed ${C.parchEdge}`, borderRadius: 8, padding: "5px 7px" } : {}) }}>
                       {(() => {
                         const rows = (q.subs || []).map((sb, i) => ({ sb, i })).filter(({ sb }) => !qActiveOnly || sb.active).sort((a, b) => (sbDone(a.sb) ? 1 : 0) - (sbDone(b.sb) ? 1 : 0));
                         if (qActiveOnly && rows.length === 0) return <div style={{ fontSize: 10.5, color: C.inkSoft, padding: "2px 0" }}>진행중 미션 없음</div>;
@@ -10925,6 +10941,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                         <button type="button" onClick={() => catMove(i, -1)} title="위로" disabled={i === 0} style={{ cursor: i === 0 ? "default" : "pointer", background: "none", border: "none", fontSize: 13, color: i === 0 ? "#ccc" : C.inkSoft }}>▲</button>
                         <button type="button" onClick={() => catMove(i, 1)} title="아래로" disabled={i === HQ_CATS.length - 1} style={{ cursor: i === HQ_CATS.length - 1 ? "default" : "pointer", background: "none", border: "none", fontSize: 13, color: i === HQ_CATS.length - 1 ? "#ccc" : C.inkSoft }}>▼</button>
                         <button type="button" onClick={() => catEdit(i)} title="이름·아이콘 수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13 }}>✏️</button>
+                        <button type="button" onClick={() => catDelete(i)} title="월드 삭제" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: C.danger }}>🗑</button>
                       </div>
                     ))}
                     <button type="button" onClick={catAdd} style={{ width: "100%", cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "8px 0", marginBottom: 6 }}>＋ 월드 추가</button>
