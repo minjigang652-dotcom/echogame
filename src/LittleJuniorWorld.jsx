@@ -10401,6 +10401,9 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const [homeSub, setHomeSub] = useState("notice");   // 홈 상단: notice | cal
   const [calDay, setCalDay] = useState(null);   // 날짜 클릭 팝업 (YYYY-MM-DD | null)
   const [dragId, setDragId] = useState(null);   // 🗺 로드맵 챕터 드래그 중인 id
+  const [bossBubble, setBossBubble] = useState("");   // 보스 도발 말풍선
+  const [bossPop, setBossPop] = useState(null);       // "intro" | "dex" | null
+  const [bossEdit, setBossEdit] = useState(null);     // { cat, name, icon, desc } | null
   const [saveMsg, setSaveMsg] = useState("");   // HQ 자체 저장 상태 표시
   /* 📅 마감까지 남은 날 (due = "YYYY-MM-DD") */
   const dDay = (due) => {
@@ -10947,6 +10950,9 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
           // "지금 여기" = 미완 챕터가 있는 가장 아래 단계
           const curStage = stageVals.find((sv) => byStage(sv).some((c) => chapterPct(c.name) < 100));
           const rows = stageVals.slice().reverse();   // 위=높은 단계, 아래=0단계
+          const bossKey = "__boss_" + rcat;
+          const boss = (hqRoad[bossKey] && typeof hqRoad[bossKey] === "object") ? hqRoad[bossKey] : {};
+          const bossDefeated = rawCh.length > 0 && rawCh.every((c) => chapterPct(c.name) >= 100);
           return (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
@@ -10954,9 +10960,37 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 {HQ_CATS.map((c) => (
                   <button key={c.id} type="button" onClick={() => setRcat(c.id)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: rcat === c.id ? C.ink : C.white, color: rcat === c.id ? C.white : C.ink }}>{c.icon} {c.name}</button>
                 ))}
-                <PxButton tone="gold" onClick={add} style={{ fontSize: 11, padding: "7px 12px", marginLeft: "auto" }}>＋ 챕터 추가</PxButton>
+                <div style={{ display: "flex", gap: 6, marginLeft: "auto", flexWrap: "wrap" }}>
+                  <button type="button" onClick={() => setBossPop("intro")} title="보스몹 소개" style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", padding: "7px 11px", borderRadius: 8, border: `2px solid ${C.ink}`, background: "#6b4f8f", color: C.white }}>👹 보스몹 소개</button>
+                  <button type="button" onClick={() => setBossPop("dex")} title="보스 도감" style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", padding: "7px 11px", borderRadius: 8, border: `2px solid ${C.ink}`, background: "#3f2c5c", color: C.white }}>👾 보스 도감</button>
+                  <PxButton tone="gold" onClick={add} style={{ fontSize: 11, padding: "7px 12px" }}>＋ 챕터 추가</PxButton>
+                </div>
               </div>
               <div style={{ maxWidth: 560, margin: "0 auto" }}>
+                {/* 👹 최종 보스 (로드맵 맨 끝 = 최종 목표) */}
+                <div style={{ textAlign: "center", marginBottom: 6, position: "relative" }}>
+                  {bossBubble && (
+                    <div onClick={() => setBossBubble("")} style={{ display: "inline-block", cursor: "pointer", maxWidth: 260, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 12, padding: "8px 12px", fontSize: 12, fontWeight: "bold", marginBottom: 6, boxShadow: `0 3px 0 ${C.parchEdge}` }}>💬 {bossBubble}</div>
+                  )}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                    <button type="button" onClick={() => setBossBubble(bossTaunt())} title="보스를 클릭!"
+                      style={{ cursor: "pointer", width: 76, height: 76, borderRadius: "50%", border: `4px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 38, position: "relative",
+                        background: bossDefeated ? "radial-gradient(circle at 50% 35%, #7fd6a0, #3f8f60)" : boss.icon ? "radial-gradient(circle at 50% 35%, #6b4f8f, #2a1c40)" : "radial-gradient(circle at 50% 35%, #4a4356, #23202b)", color: C.white, boxShadow: `0 4px 0 ${C.parchEdge}` }}>
+                      {boss.icon ? <span style={{ filter: bossDefeated ? "none" : "none" }}>{boss.icon}</span> : <span style={{ fontSize: 34, color: "rgba(255,255,255,0.55)", textShadow: "0 0 8px rgba(0,0,0,0.6)" }}>?</span>}
+                      {bossDefeated && <span style={{ position: "absolute", right: -4, bottom: -4, fontSize: 22 }}>💥</span>}
+                    </button>
+                    <div style={{ fontSize: 13.5, fontWeight: "bold" }}>{boss.name || "??? (미공개 보스)"}
+                      <button type="button" onClick={() => setBossEdit({ cat: rcat, name: boss.name || "", icon: boss.icon || "", desc: boss.desc || "" })} title="보스 수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 12, marginLeft: 4 }}>✏️</button>
+                    </div>
+                    <div style={{ fontSize: 10, fontWeight: "bold", color: bossDefeated ? C.good : "#6b4f8f" }}>{bossDefeated ? "💥 격파! 최종 목표 달성" : "🏁 최종 목표 · 모든 챕터 완료 시 격파"}</div>
+                  </div>
+                  {rawCh.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 4 }}>
+                      <span style={{ fontSize: 15, color: ci.color, lineHeight: 1 }}>↑</span>
+                      <div style={{ width: 3, height: 14, background: ci.color, opacity: 0.5 }} />
+                    </div>
+                  )}
+                </div>
                 {rawCh.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 30 }}>챕터가 없어요 · ＋ 챕터 추가로 만들어보세요</div>}
                 {/* 맨 위: 새 단계 드롭존 */}
                 {rawCh.length > 0 && (
@@ -11017,6 +11051,74 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
               <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 16, lineHeight: 1.7 }}>
                 아래 → 위로 진행돼요 · 카드를 <b>드래그</b>해서 단계를 옮겨요 (같은 줄 = 동시 진행)<br />연결선을 누르면 <b>↑ 화살표 ↔ │ 일반선</b> 전환 · 챕터를 두 단계 사이로 끌면 새 단계가 생겨요<br />진행률은 <b>퀘스트의 📁 챕터</b> 평균으로 자동 계산돼요
               </div>
+
+              {/* 👹 보스 수정 */}
+              {bossEdit && (
+                <div onClick={() => setBossEdit(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 220, padding: 16 }}>
+                  <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18 }}>
+                    <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}><b style={{ flex: 1, fontSize: 15 }}>👹 보스 수정</b><button type="button" onClick={() => setBossEdit(null)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16 }}>✕</button></div>
+                    <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>이모지를 넣으면 그림자에서 보스가 나타나요. 나중에 언제든 바꿀 수 있어요.</div>
+                    <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                      <input value={bossEdit.icon} onChange={(e) => setBossEdit({ ...bossEdit, icon: e.target.value })} placeholder="🐉" maxLength={4} style={{ width: 90, textAlign: "center", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 18 }} />
+                      <input value={bossEdit.name} onChange={(e) => setBossEdit({ ...bossEdit, name: e.target.value })} placeholder="보스 이름" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }} />
+                    </div>
+                    <textarea value={bossEdit.desc} onChange={(e) => setBossEdit({ ...bossEdit, desc: e.target.value })} rows={3} placeholder="보스 소개 (이 프로젝트의 최종 목표를 재밌게 적어보세요)" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, resize: "vertical" }} />
+                    <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                      <PxButton tone="wood" onClick={() => { if (window.confirm("보스를 미공개(그림자)로 되돌릴까요?")) { onRoadChange && onRoadChange({ ...hqRoad, [("__boss_" + bossEdit.cat)]: {} }); setBossEdit(null); } }} style={{ fontSize: 11, padding: 10 }}>그림자로</PxButton>
+                      <PxButton tone="good" onClick={() => { onRoadChange && onRoadChange({ ...hqRoad, [("__boss_" + bossEdit.cat)]: { name: (bossEdit.name || "").trim(), icon: (bossEdit.icon || "").trim(), desc: (bossEdit.desc || "").trim() } }); setBossEdit(null); }} style={{ flex: 1, fontSize: 13, padding: 10 }}>저장</PxButton>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 👹 보스몹 소개 */}
+              {bossPop === "intro" && (
+                <div onClick={() => setBossPop(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 220, padding: 16 }}>
+                  <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, background: "#2a1c40", border: `4px solid ${C.ink}`, borderRadius: 14, padding: 20, color: "#f3ecff", textAlign: "center" }}>
+                    <div style={{ display: "flex", justifyContent: "flex-end" }}><button type="button" onClick={() => setBossPop(null)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16, color: "#f3ecff" }}>✕</button></div>
+                    <div style={{ width: 96, height: 96, margin: "0 auto 10px", borderRadius: "50%", border: `4px solid ${C.white}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, background: bossDefeated ? "radial-gradient(circle at 50% 35%, #7fd6a0, #3f8f60)" : "radial-gradient(circle at 50% 35%, #6b4f8f, #23162f)" }}>{boss.icon || <span style={{ color: "rgba(255,255,255,0.5)" }}>?</span>}</div>
+                    <div style={{ fontSize: 18, fontWeight: "bold" }}>{boss.name || "??? (미공개 보스)"}</div>
+                    <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>{(HQ_CATS.find((c) => c.id === rcat) || {}).name} 월드의 최종 보스</div>
+                    <div style={{ fontSize: 12.5, lineHeight: 1.6, margin: "12px 0", background: "rgba(255,255,255,0.08)", borderRadius: 10, padding: 12 }}>{boss.desc || "아직 베일에 싸여 있어요. ✏️로 이름과 모습을 정해주세요."}</div>
+                    <div style={{ fontSize: 11, opacity: 0.9, textAlign: "left", background: "rgba(0,0,0,0.25)", borderRadius: 10, padding: 12 }}>
+                      <div style={{ fontWeight: "bold", marginBottom: 5 }}>💬 이 보스가 하는 말</div>
+                      {[bossTaunt(), bossTaunt()].map((t, i) => (<div key={i} style={{ marginBottom: 3 }}>· “{t}”</div>))}
+                      <div style={{ marginTop: 8, fontWeight: "bold" }}>🏁 격파 조건</div>
+                      <div>이 월드의 <b>모든 챕터 100%</b> 완료 → {bossDefeated ? "이미 격파! 💥" : "아직 살아있어요."}</div>
+                    </div>
+                    <PxButton tone="gold" onClick={() => { setBossPop(null); setBossEdit({ cat: rcat, name: boss.name || "", icon: boss.icon || "", desc: boss.desc || "" }); }} style={{ width: "100%", fontSize: 12.5, padding: 10, marginTop: 12 }}>✏️ 보스 수정하기</PxButton>
+                  </div>
+                </div>
+              )}
+
+              {/* 👾 보스 도감 */}
+              {bossPop === "dex" && (
+                <div onClick={() => setBossPop(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 220, padding: 16 }}>
+                  <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420, maxHeight: "88%", overflow: "auto", background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18 }}>
+                    <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}><span style={{ fontSize: 20 }}>👾</span><b style={{ flex: 1, fontSize: 15, marginLeft: 6 }}>보스 도감</b><button type="button" onClick={() => setBossPop(null)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16 }}>✕</button></div>
+                    {HQ_CATS.map((c) => {
+                      const b = (hqRoad["__boss_" + c.id] && typeof hqRoad["__boss_" + c.id] === "object") ? hqRoad["__boss_" + c.id] : {};
+                      const chs = hqRoad[c.id] || [];
+                      const def = chs.length > 0 && chs.every((ch) => chapterPct(ch.name) >= 100);
+                      return (
+                        <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 12, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 10, padding: 10, marginBottom: 8 }}>
+                          <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: "50%", border: `3px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, color: C.white, position: "relative", background: def ? "radial-gradient(circle at 50% 35%, #7fd6a0, #3f8f60)" : b.icon ? "radial-gradient(circle at 50% 35%, #6b4f8f, #2a1c40)" : "radial-gradient(circle at 50% 35%, #4a4356, #23202b)" }}>
+                            {b.icon || <span style={{ color: "rgba(255,255,255,0.5)" }}>?</span>}
+                            {def && <span style={{ position: "absolute", right: -3, bottom: -3, fontSize: 16 }}>💥</span>}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 10.5, color: C.inkSoft }}>{c.icon} {c.name}</div>
+                            <div style={{ fontSize: 13, fontWeight: "bold" }}>{b.name || "??? (미공개)"}</div>
+                            <div style={{ fontSize: 10, fontWeight: "bold", color: def ? C.good : "#6b4f8f" }}>{def ? "💥 격파" : chs.length === 0 ? "챕터 없음" : "진행 중"}</div>
+                          </div>
+                          <button type="button" onClick={() => { setBossPop(null); setRcat(c.id); setBossEdit({ cat: c.id, name: b.name || "", icon: b.icon || "", desc: b.desc || "" }); }} title="수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14 }}>✏️</button>
+                        </div>
+                      );
+                    })}
+                    <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginTop: 6 }}>보스는 월드(카테고리)마다 하나 · 모두에게 공유돼요</div>
+                  </div>
+                </div>
+              )}
             </>
           );
         })()}
@@ -11893,6 +11995,15 @@ function applyGameFont(id) {
   try { document.documentElement.style.setProperty("--game-font", f.css); } catch (e) {}
   return f.id;
 }
+
+/* 👹 로드맵 최종 보스가 던지는 랜덤 도발 문구 */
+const BOSS_TAUNTS = [
+  "쉽지 않을걸?", "기다리고 있었다구ㅋㅋ", "여기까지 온 건 칭찬해주지…", "아직 한참 멀었어.",
+  "그 정도로 날 이길 수 있겠어?", "지금이라면 돌아가도 좋아.", "네 챕터들, 전부 무너뜨려주마.",
+  "흥, 제법인데?", "마지막 관문은 나다.", "포기하는 게 편할 텐데?", "덤벼봐, 뉴비.",
+  "이번엔 좀… 다른가?", "끝을 볼 자신 있어?", "천천히 와, 어차피 여기서 기다릴 테니까.",
+];
+const bossTaunt = () => BOSS_TAUNTS[Math.floor(Math.random() * BOSS_TAUNTS.length)];
 
 function EchoTown() {
   const [view, setView] = useState("world");
