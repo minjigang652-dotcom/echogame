@@ -10219,13 +10219,13 @@ const HQ_CATS = [
 ];
 const HQ_QUESTS_INIT = [
   { id: "hq1", cat: "core", title: "코어 앱 8월 정식 런칭", star: 3, gold: 500, gem: 30, chapter: "프리런칭 — Core Hunt", due: "2026-08-03",
-    subs: [{ who: "의준", t: "서버 안정화 & 배포 파이프라인", pct: 0 }, { who: "유리", t: "코어헌트 스테이지1 운영", pct: 75 }, { who: "유리", t: "런칭 프레스킷 제작", pct: 20 }], editedBy: "창민", editedAt: "07-25 09:26" },
+    subs: [{ who: "의준", t: "서버 안정화 & 배포 파이프라인", done: false }, { who: "유리", t: "코어헌트 스테이지1 운영", done: true }, { who: "유리", t: "런칭 프레스킷 제작", done: false }], editedBy: "창민", editedAt: "07-25 09:26" },
   { id: "hq2", cat: "comm", title: "향균 속옷 상세페이지 리뉴얼", star: 2, gold: 250, gem: 12, chapter: "상세페이지 리뉴얼", due: "2026-08-10",
-    subs: [{ who: "정인", t: "페르소나별 카피 라이팅", pct: 50 }, { who: "희정", t: "상세페이지 디자인 시안", pct: 40 }, { who: "도희", t: "리뷰 취합 & 베스트 선별", pct: 70 }], editedBy: "유리", editedAt: "07-27 12:22" },
+    subs: [{ who: "정인", t: "페르소나별 카피 라이팅", done: false }, { who: "희정", t: "상세페이지 디자인 시안", done: false }, { who: "도희", t: "리뷰 취합 & 베스트 선별", done: true }], editedBy: "유리", editedAt: "07-27 12:22" },
   { id: "hq3", cat: "comm", title: "꾀꼬리 캔디 신제품 출시 준비", star: 3, gold: 400, gem: 25, chapter: "신제품 출시", due: "2026-09-01",
-    subs: [{ who: "민지", t: "샘플 테스트 & 맛 확정", pct: 55 }, { who: "호종", t: "물류 · 재고 세팅", pct: 35 }, { who: "세연", t: "원가 정산 시트", pct: 80 }], editedBy: "민지", editedAt: "07-25 09:26" },
+    subs: [{ who: "민지", t: "샘플 테스트 & 맛 확정", done: false }, { who: "호종", t: "물류 · 재고 세팅", done: false }, { who: "세연", t: "원가 정산 시트", done: true }], editedBy: "민지", editedAt: "07-25 09:26" },
   { id: "hq4", cat: "guild", title: "길드 시스템 (HQ) 구축", star: 3, gold: 450, gem: 28, chapter: "HQ 시스템 구축", due: "2026-08-15",
-    subs: [{ who: "민지", t: "HQ 구조 기획 확정", pct: 65 }, { who: "창민", t: "골드/젬 보상 규칙 확정", pct: 30 }], editedBy: "상하", editedAt: "07-25 09:26" },
+    subs: [{ who: "민지", t: "HQ 구조 기획 확정", done: true }, { who: "창민", t: "골드/젬 보상 규칙 확정", done: false }], editedBy: "상하", editedAt: "07-25 09:26" },
 ];
 const HQ_ROADMAP = {
   core: [{ name: "프리런칭 — Core Hunt", pct: 32, cur: true }, { name: "정식 런칭 & 온보딩", pct: 0 }, { name: "개강 시즌 확장 (희기·희양)", pct: 0 }, { name: "새 챕터", pct: 0 }],
@@ -10269,15 +10269,20 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
     setQEdit(null);
   };
   const removeQuest = (id) => { onHQChange && onHQChange(hqQuests.filter((x) => x.id !== id)); setQEdit(null); };
-  const setSubPct = (qid, idx, pct) => {
-    onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: q.subs.map((sb, i) => i === idx ? { ...sb, pct: Math.max(0, Math.min(100, Number(pct) || 0)) } : sb), editedBy: myName || "익명", editedAt: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) } : q));
+  const editStamp = () => ({ editedBy: myName || "익명", editedAt: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) });
+  const toggleSubDone = (qid, idx) => {
+    onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: q.subs.map((sb, i) => i === idx ? { ...sb, done: !sbDone(sb) } : sb), ...editStamp() } : q));
+  };
+  const setSubWho = (qid, idx, who) => {
+    onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: q.subs.map((sb, i) => i === idx ? { ...sb, who } : sb), ...editStamp() } : q));
   };
 
   const avatarOf = (nm) => (nm || "?").trim().slice(0, 1);
   const colorOf = (nm) => { let h = 0; for (let i = 0; i < (nm || "").length; i++) h = (h * 31 + nm.charCodeAt(i)) % 360; return `hsl(${h},55%,62%)`; };
 
-  /* 카테고리별 진행도 (HQ 자체 데이터) */
-  const avgOf = (q) => Math.round((q.subs || []).reduce((n, x) => n + (x.pct || 0), 0) / Math.max(1, (q.subs || []).length));
+  /* 미션 완료 여부 · 진행률 = 완료 미션 수 ÷ 전체 미션 수 (예: 5개 중 1개 = 20%) */
+  const sbDone = (sb) => (sb && sb.done != null) ? !!sb.done : ((Number(sb && sb.pct) || 0) >= 100);
+  const avgOf = (q) => { const s = q.subs || []; return s.length ? Math.round(s.filter(sbDone).length / s.length * 100) : 0; };
   const cats = HQ_CATS.map((c) => {
     const qs = hqQuests.filter((q) => q.cat === c.id);
     const done = qs.filter((q) => avgOf(q) >= 100).length;
@@ -10398,7 +10403,8 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
         {tab === "quest" && (() => {
           const list = hqQuests.filter((q) => qcat === "all" || q.cat === qcat);
           const catInfo = (id) => HQ_CATS.find((c) => c.id === id) || { name: "", color: "#888", icon: "" };
-          const avgPct = (q) => Math.round(((q.subs || []).reduce((n, x) => n + (x.pct || 0), 0) / Math.max(1, (q.subs || []).length)));
+          const avgPct = avgOf;   // 완료 미션 비율 (avgOf 재사용)
+          const acctNames = Array.from(new Set([myName, ...(people || []).map((p) => p && p.name)].filter(Boolean)));
           return (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
@@ -10424,16 +10430,31 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                         {q.chapter && <span>📁 {q.chapter}</span>}
                       </div>
                       {q.due && <div style={{ fontSize: 10.5, color: C.inkSoft, marginBottom: 8 }}>📅 {q.due}</div>}
-                      {(q.subs || []).map((sb, i) => (
-                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
-                          <span style={{ width: 20, height: 20, borderRadius: "50%", background: colorOf(sb.who), color: C.white, fontSize: 10, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{avatarOf(sb.who)}</span>
-                          <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sb.t}</span>
-                          <input type="range" min={0} max={100} step={5} value={sb.pct} onChange={(e) => setSubPct(q.id, i, e.target.value)} style={{ width: 66, flexShrink: 0 }} />
-                          <span style={{ fontSize: 10, color: C.inkSoft, width: 30, textAlign: "right", flexShrink: 0 }}>{sb.pct}%</span>
+                      {(q.subs || []).map((sb, i) => {
+                        const isD = sbDone(sb);
+                        return (
+                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                            <span style={{ width: 20, height: 20, borderRadius: "50%", background: sb.who ? colorOf(sb.who) : "#c7bfae", color: C.white, fontSize: 10, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{sb.who ? avatarOf(sb.who) : "?"}</span>
+                            <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isD ? "line-through" : "none", color: isD ? C.inkSoft : C.ink }}>{sb.t}</span>
+                            <select value={sb.who || ""} onChange={(e) => setSubWho(q.id, i, e.target.value)} title="담당 계정 선택 (누가 진행중인지)"
+                              style={{ flexShrink: 0, maxWidth: 78, fontFamily: "'DotGothic16', monospace", fontSize: 10, padding: "2px 3px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white }}>
+                              <option value="">미지정</option>
+                              {(sb.who && !acctNames.includes(sb.who) ? [sb.who, ...acctNames] : acctNames).map((nm) => (<option key={nm} value={nm}>{nm}</option>))}
+                            </select>
+                            <input type="checkbox" checked={isD} onChange={() => toggleSubDone(q.id, i)} title="완료" style={{ flexShrink: 0, cursor: "pointer" }} />
+                          </div>
+                        );
+                      })}
+                      {/* 진행률 = 완료 미션 ÷ 전체 미션 · 크게 표시 */}
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.parchEdge}` }}>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                          <span style={{ fontSize: 26, fontWeight: "bold", color: avgPct(q) >= 100 ? C.good : ci.color, lineHeight: 1 }}>{avgPct(q)}%</span>
+                          <span style={{ fontSize: 10.5, color: C.inkSoft }}>{(q.subs || []).filter(sbDone).length}/{(q.subs || []).length} 미션 완료</span>
                         </div>
-                      ))}
-                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 9, paddingTop: 8, borderTop: `1px solid ${C.parchEdge}`, fontSize: 10, color: C.inkSoft }}>
-                        <span>진행 {avgPct(q)}%</span><span>{q.editedBy ? `수정 ${q.editedBy} · ${q.editedAt}` : ""}</span>
+                        <div style={{ height: 10, borderRadius: 6, background: "#eadfc6", overflow: "hidden", marginTop: 6 }}>
+                          <div style={{ width: avgPct(q) + "%", height: "100%", background: avgPct(q) >= 100 ? C.good : ci.color, transition: "width .2s" }} />
+                        </div>
+                        {q.editedBy && <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 5, textAlign: "right" }}>수정 {q.editedBy} · {q.editedAt}</div>}
                       </div>
                     </div>
                   );
@@ -10465,15 +10486,19 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                       <input value={qEdit.chapter} onChange={(e) => setQEdit({ ...qEdit, chapter: e.target.value })} placeholder="📁 챕터 (선택)" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
                       <input type="date" value={qEdit.due} onChange={(e) => setQEdit({ ...qEdit, due: e.target.value })} style={{ padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 11 }} />
                     </div>
-                    <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>담당 · 세부 작업</div>
+                    <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>세부 미션 (담당 계정 · 완료 체크는 카드에서)</div>
                     {(qEdit.subs || []).map((sb, i) => (
                       <div key={i} style={{ display: "flex", gap: 5, marginBottom: 5 }}>
-                        <input value={sb.who} onChange={(e) => setQEdit({ ...qEdit, subs: qEdit.subs.map((x, j) => j === i ? { ...x, who: e.target.value } : x) })} placeholder="이름" style={{ width: 60, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 11 }} />
-                        <input value={sb.t} onChange={(e) => setQEdit({ ...qEdit, subs: qEdit.subs.map((x, j) => j === i ? { ...x, t: e.target.value } : x) })} placeholder="작업 내용" style={{ flex: 1, minWidth: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 11 }} />
+                        <select value={sb.who || ""} onChange={(e) => setQEdit({ ...qEdit, subs: qEdit.subs.map((x, j) => j === i ? { ...x, who: e.target.value } : x) })}
+                          style={{ width: 84, flexShrink: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 10.5, background: C.white }}>
+                          <option value="">미지정</option>
+                          {(sb.who && !acctNames.includes(sb.who) ? [sb.who, ...acctNames] : acctNames).map((nm) => (<option key={nm} value={nm}>{nm}</option>))}
+                        </select>
+                        <input value={sb.t} onChange={(e) => setQEdit({ ...qEdit, subs: qEdit.subs.map((x, j) => j === i ? { ...x, t: e.target.value } : x) })} placeholder="미션 내용" style={{ flex: 1, minWidth: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 11 }} />
                         <button type="button" onClick={() => setQEdit({ ...qEdit, subs: qEdit.subs.filter((_, j) => j !== i) })} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 12, color: C.inkSoft }}>✕</button>
                       </div>
                     ))}
-                    <PxButton tone="wood" onClick={() => setQEdit({ ...qEdit, subs: [...(qEdit.subs || []), { who: "", t: "", pct: 0 }] })} style={{ fontSize: 11, padding: "6px 10px", marginBottom: 12 }}>＋ 작업 추가</PxButton>
+                    <PxButton tone="wood" onClick={() => setQEdit({ ...qEdit, subs: [...(qEdit.subs || []), { who: "", t: "", done: false }] })} style={{ fontSize: 11, padding: "6px 10px", marginBottom: 12 }}>＋ 미션 추가</PxButton>
                     <div style={{ display: "flex", gap: 8 }}>
                       {hqQuests.some((x) => x.id === qEdit.id) && <PxButton tone="danger" onClick={() => { if (window.confirm("이 퀘스트를 삭제할까요?")) removeQuest(qEdit.id); }} style={{ fontSize: 12, padding: 10 }}>🗑 삭제</PxButton>}
                       <PxButton tone="good" disabled={!qEdit.title.trim()} onClick={() => commitQuest(qEdit)} style={{ flex: 1, fontSize: 13, padding: 10 }}>저장</PxButton>
@@ -10489,7 +10514,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
         {tab === "road" && (() => {
           const chapters = hqRoad[rcat] || [];
           const ci = HQ_CATS.find((c) => c.id === rcat) || { color: "#888" };
-          const avgPct = (q) => Math.round(((q.subs || []).reduce((n, x) => n + (x.pct || 0), 0) / Math.max(1, (q.subs || []).length)));
+          const avgPct = avgOf;   // 완료 미션 비율 (avgOf 재사용)
           // 챕터 진행률 = 그 챕터 이름과 일치하는 퀘스트들의 평균 (자동)
           const chapterPct = (name) => {
             const qs = hqQuests.filter((q) => (q.chapter || "").trim() === (name || "").trim());
