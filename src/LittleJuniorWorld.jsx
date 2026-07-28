@@ -10757,18 +10757,18 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                         <button type="button" onClick={(e) => { e.stopPropagation(); setQEdit({ ...q, subs: (q.subs || []).map((x) => ({ ...x })) }); }} title="수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13 }}>✏️</button>
                         <button type="button" onClick={(e) => { e.stopPropagation(); if (window.confirm("정말로 삭제하시겠습니까?")) removeQuest(q.id); }} title="삭제" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: C.danger }}>🗑</button>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "7px 0", fontSize: 11, color: C.inkSoft, flexWrap: "wrap" }}>
-                        <span style={{ color: "#e0a13d" }}>{"★".repeat(q.star)}{"☆".repeat(Math.max(0, 3 - q.star))}</span>
-                        <span>🪙 {q.gold}</span><span>💎 {q.gem}</span>
-                        {q.chapter && <span>📁 {q.chapter}</span>}
-                      </div>
+                      {q.chapter && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "7px 0", fontSize: 11, color: C.inkSoft, flexWrap: "wrap" }}>
+                          <span>📁 {q.chapter}</span>
+                        </div>
+                      )}
                       {q.due && (() => { const dd = dDay(q.due); return (
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, fontSize: 10.5, color: C.inkSoft }}>
                           <span>📅 {q.due}</span>
                           {dd && <span style={{ fontSize: 10, fontWeight: "bold", color: C.white, borderRadius: 8, padding: "1px 7px", background: dd.over ? C.danger : dd.today ? "#e0a13d" : dd.days <= 3 ? "#e0663d" : C.good }}>{dd.txt}</span>}
                         </div>
                       ); })()}
-                      <div onClick={(e) => e.stopPropagation()}>
+                      <div onClick={(e) => e.stopPropagation()} style={{ maxHeight: 152, overflowY: "auto" }}>
                       {(() => {
                         const rows = (q.subs || []).map((sb, i) => ({ sb, i })).filter(({ sb }) => !qActiveOnly || sb.active).sort((a, b) => (sbDone(a.sb) ? 1 : 0) - (sbDone(b.sb) ? 1 : 0));
                         if (qActiveOnly && rows.length === 0) return <div style={{ fontSize: 10.5, color: C.inkSoft, padding: "2px 0" }}>진행중 미션 없음</div>;
@@ -10820,11 +10820,6 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                         <button key={c.id} type="button" onClick={() => setQEdit({ ...qEdit, cat: c.id })} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: qEdit.cat === c.id ? c.color : C.white, color: qEdit.cat === c.id ? C.white : C.ink }}>{c.icon} {c.name}</button>
                       ))}
                     </div>
-                    <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-                      <label style={{ fontSize: 11, color: C.inkSoft, display: "flex", alignItems: "center", gap: 4 }}>⭐<select value={qEdit.star} onChange={(e) => setQEdit({ ...qEdit, star: Number(e.target.value) })} style={{ fontFamily: "var(--game-font, 'DotGothic16', monospace)", padding: 4 }}>{[1,2,3].map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
-                      <label style={{ fontSize: 11, color: C.inkSoft, display: "flex", alignItems: "center", gap: 4 }}>🪙<input type="number" value={qEdit.gold} onChange={(e) => setQEdit({ ...qEdit, gold: e.target.value })} style={{ width: 60, padding: 5, border: `2px solid ${C.ink}`, borderRadius: 5, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }} /></label>
-                      <label style={{ fontSize: 11, color: C.inkSoft, display: "flex", alignItems: "center", gap: 4 }}>💎<input type="number" value={qEdit.gem} onChange={(e) => setQEdit({ ...qEdit, gem: e.target.value })} style={{ width: 60, padding: 5, border: `2px solid ${C.ink}`, borderRadius: 5, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }} /></label>
-                    </div>
                     <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
                       <select value={qEdit.chapter || ""} onChange={(e) => setQEdit({ ...qEdit, chapter: e.target.value })} title="로드맵 챕터" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, background: C.white }}>
                         <option value="">📁 챕터 없음</option>
@@ -10871,11 +10866,11 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                         <b style={{ flex: 1, fontSize: 16, wordBreak: "keep-all" }}>{qv.title}</b>
                         <button type="button" onClick={() => setQView(null)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16 }}>✕</button>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12, color: C.inkSoft, marginBottom: 10 }}>
-                        <span style={{ color: "#e0a13d" }}>{"★".repeat(qv.star)}{"☆".repeat(Math.max(0, 3 - qv.star))}</span>
-                        <span>🪙 {qv.gold}</span><span>💎 {qv.gem}</span>
-                        {qv.chapter && <span>📁 {qv.chapter}</span>}
-                      </div>
+                      {qv.chapter && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12, color: C.inkSoft, marginBottom: 10 }}>
+                          <span>📁 {qv.chapter}</span>
+                        </div>
+                      )}
                       {qv.due && (
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, fontSize: 12 }}>
                           <span style={{ color: C.inkSoft }}>📅 마감 {qv.due}</span>
