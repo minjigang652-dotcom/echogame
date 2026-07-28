@@ -11031,8 +11031,14 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
           const add = () => { const nv = (window.prompt("새 챕터 이름") || "").trim(); if (nv) { const maxS = stageVals.length ? Math.max(...stageVals) : -1; persist([...withS, { id: "r" + Date.now(), name: nv, stage: maxS + 1 }]); } };
           const dropToStage = (sv) => { if (dragId == null) return; persist(withS.map((c) => c.id === dragId ? { ...c, stage: sv } : c)); setDragId(null); };
           const dropAt = (sv) => { if (dragId == null) return; persist(withS.map((c) => c.id === dragId ? { ...c, stage: sv } : c)); setDragId(null); };
-          // "지금 여기" = 미완 챕터가 있는 가장 아래 단계
+          // "지금 여기" = 미완 챕터가 있는 가장 아래 단계 (자동) · 직접 지정하면 그게 우선
           const curStage = stageVals.find((sv) => byStage(sv).some((c) => chapterPct(c.name) < 100));
+          const hereKey = "__here_" + rcat;
+          const hereArr = Array.isArray(hqRoad[hereKey]) ? hqRoad[hereKey] : [];
+          const hereSet = new Set(hereArr);
+          const hasManualHere = hereSet.size > 0;
+          const toggleHere = (id) => { const next = hereArr.includes(id) ? hereArr.filter((x) => x !== id) : [...hereArr, id]; onRoadChange && onRoadChange({ ...hqRoad, [hereKey]: next }); };
+          const clearHere = () => { onRoadChange && onRoadChange({ ...hqRoad, [hereKey]: [] }); };
           const rows = stageVals.slice().reverse();   // 위=높은 단계, 아래=0단계
           const bossKey = "__boss_" + rcat;
           const boss = (hqRoad[bossKey] && typeof hqRoad[bossKey] === "object") ? hqRoad[bossKey] : {};
@@ -11117,12 +11123,12 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                         {chs.map((ch) => {
                           const pct = chapterPct(ch.name);
                           const done = pct >= 100;
-                          const isCur = isCurStage && pct < 100;
+                          const isCur = hasManualHere ? hereSet.has(ch.id) : (isCurStage && pct < 100);
                           return (
-                            <div key={ch.id} draggable onDragStart={() => setDragId(ch.id)} onDragEnd={() => setDragId(null)}
+                            <div key={ch.id} draggable onDragStart={() => setDragId(ch.id)} onDragEnd={() => setDragId(null)} onDoubleClick={() => toggleHere(ch.id)} title="더블클릭 = 📍 지금 여기 지정/해제"
                               style={{ cursor: "grab", width: 200, maxWidth: "100%", background: C.white, border: `3px solid ${isCur ? ci.color : C.ink}`, borderRadius: 12, padding: 10, opacity: dragId === ch.id ? 0.4 : 1, boxShadow: `0 3px 0 ${C.parchEdge}` }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                <div style={{ width: 38, height: 38, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, background: done ? "#bfe3cf" : isCur ? ci.color : "#d8d2c4", border: `3px solid ${C.ink}`, color: C.white }}>{done ? "✓" : isCur ? "📍" : "🔒"}</div>
+                                <div style={{ width: 38, height: 38, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, background: done && !isCur ? "#bfe3cf" : isCur ? ci.color : "#d8d2c4", border: `3px solid ${C.ink}`, color: C.white }}>{isCur ? "📍" : done ? "✓" : "🔒"}</div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
                                     <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: "bold", wordBreak: "break-word" }}>{ch.name}</span>
@@ -11154,7 +11160,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 })}
               </div>
               <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 16, lineHeight: 1.7 }}>
-                아래 → 위로 진행돼요 · 카드를 <b>드래그</b>해서 단계를 옮겨요 (같은 줄 = 동시 진행)<br />연결선을 누르면 <b>↑ 화살표 ↔ │ 일반선</b> 전환 · 챕터를 두 단계 사이로 끌면 새 단계가 생겨요<br />진행률은 <b>퀘스트의 📁 챕터</b> 평균으로 자동 계산돼요
+                챕터를 <b>더블클릭</b>하면 <b>📍 지금 여기</b>로 지정/해제돼요 (여러 개 가능){hasManualHere && <> · <button type="button" onClick={clearHere} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10, fontWeight: "bold", color: ci.color, background: "none", border: "none", textDecoration: "underline", padding: 0 }}>자동으로 되돌리기</button></>}<br />아래 → 위로 진행 · 카드 <b>드래그</b>로 단계 이동 (같은 줄 = 동시 진행) · 연결선 누르면 <b>↑ ↔ │</b> 전환<br />진행률은 <b>퀘스트의 📁 챕터</b> 평균으로 자동 계산돼요
               </div>
 
               {/* 👹 보스 수정 */}
