@@ -527,7 +527,7 @@ export function PxButton({ children, onClick, disabled, tone = "wood", style, ti
   }[tone];
   return (
     <button onClick={onClick} disabled={disabled} title={title} className="px-btn"
-      style={{ fontFamily: "'DotGothic16', monospace", color: tones.fg, background: disabled ? "#9a8f7d" : tones.bg,
+      style={{ fontFamily: "var(--game-font, 'DotGothic16', monospace)", color: tones.fg, background: disabled ? "#9a8f7d" : tones.bg,
         border: `3px solid ${C.ink}`, boxShadow: disabled ? "none" : `0 4px 0 ${tones.bgDk}`,
         cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.7 : 1, ...style }}>
       {children}
@@ -589,7 +589,7 @@ function RoomTips({ id }) {
     <>
       <button onClick={() => setOpen(true)} title="이 방에서 할 수 있는 것"
         style={{ width: 26, height: 26, borderRadius: "50%", border: `2px solid ${C.ink}`, background: C.gem, color: C.ink,
-          cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 14, fontWeight: "bold", lineHeight: 1, flexShrink: 0 }}>?</button>
+          cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, fontWeight: "bold", lineHeight: 1, flexShrink: 0 }}>?</button>
       {open && (
         <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 145, padding: 14 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 330 }}>
@@ -1196,7 +1196,7 @@ function Airport({ size = 96, tint = "#5b8def", tintDk = "#3a5fa8", label = "인
       {/* 이름표 */}
       <rect x="8" y="0" width="40" height="12" rx="3" fill={tint} stroke={C.ink} strokeWidth="1.3" />
       <text x="28" y="8.6" textAnchor="middle" fill={C.white} stroke="none"
-        style={{ fontFamily: "'DotGothic16', monospace", fontSize: "7.5px", fontWeight: "bold" }}>{label}</text>
+        style={{ fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: "7.5px", fontWeight: "bold" }}>{label}</text>
     </svg>
   );
 }
@@ -1311,7 +1311,7 @@ function Aquarium({ fishes = [], onClose, onFeed }) {
 
             {/* 물고기 */}
             {list.length === 0 && (
-              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.85)", fontSize: 13, fontFamily: "'DotGothic16', monospace", textAlign: "center", lineHeight: 1.9, zIndex: 3 }}>
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.85)", fontSize: 13, fontFamily: "var(--game-font, 'DotGothic16', monospace)", textAlign: "center", lineHeight: 1.9, zIndex: 3 }}>
                 수조가 비어 있어요 🫧<br />🐾 형욱이네에서 물고기를 데려와보세요
               </div>
             )}
@@ -1406,7 +1406,7 @@ function Yard({ pets = [], activePet = null, onClose, onCare }) {
             ))}
 
             {home.length === 0 && (
-              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#4a6b3a", fontSize: 13, fontFamily: "'DotGothic16', monospace", textAlign: "center", lineHeight: 1.9 }}>
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#4a6b3a", fontSize: 13, fontFamily: "var(--game-font, 'DotGothic16', monospace)", textAlign: "center", lineHeight: 1.9 }}>
                 마당이 텍 비었어요 🍃<br />🐾 형욱이네에서 반려동물을 입양해보세요
               </div>
             )}
@@ -1528,7 +1528,7 @@ function PetShop({ onBack, gold, pets = [], activePet = null, fishes = [], facil
                   return (
                     <div key={pt.id} style={{ background: act ? "#fff5d6" : own ? C.white : "#efe9dc", border: `3px solid ${act ? C.gem : own ? C.ink : "#b5ad9c"}`, borderRadius: 10, padding: 10, textAlign: "center" }}>
                       <button type="button" onClick={() => detailFor("pet", pt)} title="자세히 보기"
-                        style={{ cursor: "pointer", background: "none", border: "none", padding: 0, width: "100%", fontFamily: "'DotGothic16', monospace" }}>
+                        style={{ cursor: "pointer", background: "none", border: "none", padding: 0, width: "100%", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
                         <div style={{ fontSize: 34, filter: own ? "none" : "grayscale(0.85)", opacity: own ? 1 : 0.55 }}>{own ? pt.emoji : "❓"}</div>
                         <div style={{ fontSize: 13, fontWeight: "bold", marginTop: 3, color: own ? C.ink : C.inkSoft }}>{own ? pt.name : "???"}</div>
                         <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 2 }}>눌러서 자세히</div>
@@ -1575,7 +1575,7 @@ function PetShop({ onBack, gold, pets = [], activePet = null, fishes = [], facil
                   return (
                     <div key={f.id} style={{ background: own ? C.white : "#efe9dc", border: `3px solid ${own ? C.ink : "#b5ad9c"}`, borderRadius: 10, padding: 10, textAlign: "center" }}>
                       <button type="button" onClick={() => detailFor("fish", f)} title="자세히 보기"
-                        style={{ cursor: "pointer", background: "none", border: "none", padding: 0, width: "100%", fontFamily: "'DotGothic16', monospace" }}>
+                        style={{ cursor: "pointer", background: "none", border: "none", padding: 0, width: "100%", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
                         <div style={{ fontSize: 30, filter: own ? "none" : "grayscale(0.85)", opacity: own ? 1 : 0.55 }}>{own ? f.emoji : "❓"}</div>
                         <div style={{ fontSize: 12.5, fontWeight: "bold", marginTop: 3, color: own ? C.ink : C.inkSoft }}>{own ? f.name : "???"}</div>
                         <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 2 }}>눌러서 자세히</div>
@@ -2170,7 +2170,7 @@ function SeaView({ pos, setPos, onBack, onFish, onShop, onDex, look = null, carr
 
         <div style={{ position: "absolute", left: 10, top: 10, zIndex: 27 }}><RoomTips id="sea" /></div>
         {near && (
-          <div className="enter-prompt" style={{ position: "absolute", left: "50%", bottom: 18, transform: "translateX(-50%)", background: C.ink, color: C.gem, border: `2px solid ${C.gem}`, borderRadius: 20, padding: "7px 16px", fontSize: 12.5, fontFamily: "'DotGothic16', monospace" }}>
+          <div className="enter-prompt" style={{ position: "absolute", left: "50%", bottom: 18, transform: "translateX(-50%)", background: C.ink, color: C.gem, border: `2px solid ${C.gem}`, borderRadius: 20, padding: "7px 16px", fontSize: 12.5, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
             Space 또는 클릭 · {SPOTS.find((s) => s.id === near).label}
           </div>
         )}
@@ -2278,7 +2278,7 @@ function BigMap({ pos, onClose, onGo }) {
                 </div>
               ))}
               {WORLD_OBJS.filter((o) => o.r).map((o) => (
-                <button key={o.id} onClick={() => onGo && onGo(o.x, o.y + 70, o.label)} title={`${o.label}로 이동`} style={{ position: "absolute", left: pct(o.x, WORLD.w), top: pct(o.y, WORLD.h), transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", zIndex: 2, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "'DotGothic16', monospace" }}>
+                <button key={o.id} onClick={() => onGo && onGo(o.x, o.y + 70, o.label)} title={`${o.label}로 이동`} style={{ position: "absolute", left: pct(o.x, WORLD.w), top: pct(o.y, WORLD.h), transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", zIndex: 2, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: C.danger, border: "2px solid #fff", boxShadow: "0 1px 2px rgba(0,0,0,0.4)" }} />
                   <span style={{ fontSize: 12, whiteSpace: "nowrap", background: "rgba(255,255,255,0.95)", border: `1px solid ${C.ink}`, borderRadius: 6, padding: "1px 6px", marginTop: 2, fontWeight: "bold" }}>{o.label}</span>
                 </button>
@@ -2302,7 +2302,7 @@ function MiniMap({ pos, onGo }) {
         <div style={{ position: "absolute", left: RIVER_X * sx, top: 0, width: Math.max(2, RIVER_W * sx), height: "100%", background: "#3a6ea5" }} />
         {MAP_ZONES.map((z) => (
           <button key={z.label} onClick={(e) => { e.stopPropagation(); onGo && onGo((z.x1 + z.x2) / 2, (z.y1 + z.y2) / 2, z.label); }} title={`${z.label} 구역으로 이동`} style={{ position: "absolute", left: z.x1 * sx, top: z.y1 * sy, width: (z.x2 - z.x1) * sx, height: (z.y2 - z.y1) * sy, background: z.color + "cc", border: "1px solid rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
-            <span style={{ fontSize: 8, color: "#fff", fontWeight: "bold", textShadow: "0 1px 1px rgba(0,0,0,0.6)", whiteSpace: "nowrap", fontFamily: "'DotGothic16', monospace" }}>{z.label}</span>
+            <span style={{ fontSize: 8, color: "#fff", fontWeight: "bold", textShadow: "0 1px 1px rgba(0,0,0,0.6)", whiteSpace: "nowrap", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>{z.label}</span>
           </button>
         ))}
         <div style={{ position: "absolute", left: pos.x * sx - 3, top: pos.y * sy - 3, width: 6, height: 6, borderRadius: "50%", background: "#fff", border: `2px solid ${C.danger}`, boxShadow: "0 0 4px #fff", zIndex: 2 }} />
@@ -2356,7 +2356,7 @@ function GuardGate({ onPass, onClose, onCross, passed = false, side = "town" }) 
                 한 번만 맞히면 그 뒤로는 계속 왔다갔다 할 수 있어요.
               </div>
               <input value={code} onChange={(e) => { setCode(e.target.value); setErr(false); }} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} autoFocus
-                placeholder="비밀코드" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, background: C.white, textAlign: "center" }} />
+                placeholder="비밀코드" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 15, background: C.white, textAlign: "center" }} />
               {err && <div style={{ color: C.danger, fontSize: 12, marginTop: 6, textAlign: "center" }}>비밀코드가 달라요. 다시 시도해보세요!</div>}
               <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                 <PxButton tone="ink" onClick={onClose} style={{ flex: 1, padding: 9, fontSize: 13 }}>돌아가기</PxButton>
@@ -3344,10 +3344,10 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
         )}
         <div style={{ position: "absolute", left: 10, top: 10, zIndex: 27 }}><RoomTips id="world" /></div>
         {toast2 && (
-          <div style={{ position: "absolute", left: "50%", top: 56, transform: "translateX(-50%)", zIndex: 28, background: C.ink, color: C.gem, border: `2px solid ${C.gem}`, borderRadius: 20, padding: "7px 16px", fontSize: 12.5, fontFamily: "'DotGothic16', monospace" }}>{toast2}</div>
+          <div style={{ position: "absolute", left: "50%", top: 56, transform: "translateX(-50%)", zIndex: 28, background: C.ink, color: C.gem, border: `2px solid ${C.gem}`, borderRadius: 20, padding: "7px 16px", fontSize: 12.5, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>{toast2}</div>
         )}
         {followId && others[followId] && (
-          <div style={{ position: "absolute", left: "50%", top: 56, transform: "translateX(-50%)", zIndex: 26, background: C.ink, color: C.gem, border: `2px solid ${C.gem}`, borderRadius: 20, padding: "6px 14px", fontSize: 12, fontFamily: "'DotGothic16', monospace", display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ position: "absolute", left: "50%", top: 56, transform: "translateX(-50%)", zIndex: 26, background: C.ink, color: C.gem, border: `2px solid ${C.gem}`, borderRadius: 20, padding: "6px 14px", fontSize: 12, fontFamily: "var(--game-font, 'DotGothic16', monospace)", display: "flex", alignItems: "center", gap: 8 }}>
             🏃 {others[followId].name} 따라가는 중
             <button onClick={() => setFollowId(null)} style={{ background: C.danger, color: C.white, border: `2px solid ${C.gem}`, borderRadius: 10, cursor: "pointer", fontSize: 10.5, padding: "2px 8px", fontFamily: "inherit" }}>멈춤</button>
           </div>
@@ -3365,7 +3365,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
 
         {/* HUD 오버레이: 날짜 */}
         <div style={{ position: "absolute", right: 10, top: 10, display: "flex", gap: 8, alignItems: "center" }}>
-          <button onClick={() => setWhoOpen((v) => !v)} title="접속자 보기" style={{ position: "relative", cursor: "pointer", background: netStatus === "접속됨" ? "#2f9e6e" : C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}`, fontFamily: "'DotGothic16', monospace" }}>
+          <button onClick={() => setWhoOpen((v) => !v)} title="접속자 보기" style={{ position: "relative", cursor: "pointer", background: netStatus === "접속됨" ? "#2f9e6e" : C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
             👥 {Object.keys(others).length + 1}
             {whoOpen && (
               <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", right: 0, top: "120%", background: C.parch, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 8, minWidth: 130, zIndex: 40, textAlign: "left", boxShadow: `0 3px 0 ${C.parchEdge}` }}>
@@ -3464,7 +3464,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
               <Panel style={{ padding: 14 }}>
                 <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 10 }}>🎵 신청곡</div>
                 <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>🪙 5골드를 사용해 마을 배경음악을 바꿔요. (보유 {fmt(gems)}🪙)</div>
-                <input value={reqText} onChange={(e) => setReqText(e.target.value)} placeholder="예: NewJeans - Ditto" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: C.white }} />
+                <input value={reqText} onChange={(e) => setReqText(e.target.value)} placeholder="예: NewJeans - Ditto" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white }} />
                 <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                   <PxButton tone="ink" onClick={() => setReqOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>
                   <PxButton tone="gold" disabled={!reqText.trim() || gems < 5} onClick={() => { onRequestSong(reqText.trim()); setReqText(""); setReqOpen(false); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>
@@ -3519,7 +3519,7 @@ function ManagerChat({ name, onClose }) {
             ))}
           </div>
           <div style={{ display: "flex", gap: 6, padding: 8, borderTop: `3px solid ${C.ink}` }}>
-            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지 입력 후 Enter" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지 입력 후 Enter" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
             <PxButton tone="good" onClick={send} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
           </div>
         </Panel>
@@ -3552,7 +3552,7 @@ function AlbaView({ onBack }) {
             <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 13, marginBottom: 10 }}>🧑 {sel}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, background: C.white, border: `3px solid ${C.ink}`, padding: "8px 12px", flexWrap: "wrap" }}>
               <span style={{ fontSize: 13, fontWeight: "bold" }}>⏱ 오늘 총 업무 시간</span>
-              <input value={hours} onChange={(e) => setHours(e.target.value)} placeholder="예: 6시간 30분" style={{ flex: 1, minWidth: 120, padding: 7, border: `2px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.parch }} />
+              <input value={hours} onChange={(e) => setHours(e.target.value)} placeholder="예: 6시간 30분" style={{ flex: 1, minWidth: 120, padding: 7, border: `2px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.parch }} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {albaQuests(names.indexOf(sel)).map((q) => (
@@ -3733,7 +3733,7 @@ function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble
           </div>
           <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
             <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) { onSend(text.trim()); setText(""); } }}
-              placeholder="메시지 입력 후 Enter" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+              placeholder="메시지 입력 후 Enter" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
             <PxButton tone="good" onClick={() => { if (text.trim()) { onSend(text.trim()); setText(""); } }} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
           </div>
         </RoomModal>
@@ -3809,8 +3809,8 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
                 <PxButton tone="ink" onClick={() => setInvOpen(false)} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
               </div>
               <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                <input value={iDate} onChange={(e) => setIDate(e.target.value)} placeholder="7월 23일" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
-                <input value={iTime} onChange={(e) => setITime(e.target.value)} placeholder="오후 6시" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                <input value={iDate} onChange={(e) => setIDate(e.target.value)} placeholder="7월 23일" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }} />
+                <input value={iTime} onChange={(e) => setITime(e.target.value)} placeholder="오후 6시" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }} />
               </div>
               <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 5 }}>⏱ 예상 회의시간</div>
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 10 }}>
@@ -3821,7 +3821,7 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
               <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 5 }}>👥 초대원</div>
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap", maxHeight: 110, overflow: "auto", marginBottom: 10 }}>
                 {(people.length ? people : PROFILES).map((p) => (
-                  <button key={p.name} onClick={() => toggleWho(p.name)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: iWho.includes(p.name) ? C.gem : C.white }}>
+                  <button key={p.name} onClick={() => toggleWho(p.name)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: iWho.includes(p.name) ? C.gem : C.white }}>
                     {p.avatar} {p.name}
                   </button>
                 ))}
@@ -3883,7 +3883,7 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
           <div style={{ display: "flex", gap: 6, marginBottom: 9 }}>
             <input value={agTxt} onChange={(e) => setAgTxt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addAgenda(); }}
               placeholder="안건을 적고 Enter (예: 7월 리텐션 리뷰)"
-              style={{ flex: 1, minWidth: 0, padding: 9, border: `3px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+              style={{ flex: 1, minWidth: 0, padding: 9, border: `3px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
             <PxButton tone="gold" disabled={!agTxt.trim()} onClick={addAgenda} style={{ fontSize: 12, padding: "9px 13px", whiteSpace: "nowrap" }}>＋ 추가</PxButton>
           </div>
           {agenda.length === 0 ? (
@@ -3937,14 +3937,14 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
             <span style={{ fontSize: 10, color: C.inkSoft }}>디스코드 채널로 전송</span>
           </div>
           <input value={mrTitle} onChange={(e) => setMrTitle(e.target.value)} placeholder="회의 제목 (예: 8월 런칭 킥오프)"
-            style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white, marginBottom: 7 }} />
+            style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white, marginBottom: 7 }} />
           <textarea value={mrBody} onChange={(e) => setMrBody(e.target.value)} rows={4} placeholder="회의 내용 · 결정사항 · 할 일 (안건을 붙여넣어도 좋아요)"
-            style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, background: C.white, resize: "vertical", marginBottom: 8 }} />
+            style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, background: C.white, resize: "vertical", marginBottom: 8 }} />
           <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 5 }}>어느 채널로 보낼까요?</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 9 }}>
             {MEET_CATS.map((c) => (
               <button key={c.id} type="button" onClick={() => setMrCat(c.id)}
-                style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11.5, fontWeight: "bold", padding: "7px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: mrCat === c.id ? C.gem : C.white, color: C.ink }}>{c.label}</button>
+                style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, fontWeight: "bold", padding: "7px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: mrCat === c.id ? C.gem : C.white, color: C.ink }}>{c.label}</button>
             ))}
           </div>
           <PxButton tone="good" disabled={!mrTitle.trim() || !mrBody.trim()}
@@ -3977,8 +3977,8 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
             </div>
           ) : (
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", color: C.ink }}>
-              <input value={resName} onChange={(e) => setResName(e.target.value)} placeholder="예약자" style={{ padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, width: 110, background: C.white }} />
-              <input value={time} onChange={(e) => setTime(e.target.value)} placeholder="시간 (예: 14:00)" style={{ padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, width: 140, background: C.white }} />
+              <input value={resName} onChange={(e) => setResName(e.target.value)} placeholder="예약자" style={{ padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, width: 110, background: C.white }} />
+              <input value={time} onChange={(e) => setTime(e.target.value)} placeholder="시간 (예: 14:00)" style={{ padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, width: 140, background: C.white }} />
               <PxButton tone="good" disabled={!resName.trim() || !time.trim()} onClick={() => onUpdate(roomId, { reserved: true, by: resName.trim(), time: time.trim() })} style={{ fontSize: 12, padding: "8px 12px" }}>예약하기</PxButton>
             </div>
           )}
@@ -4003,7 +4003,7 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
             <input value={cText} onChange={(e) => setCText(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && cText.trim()) { onChat(cText.trim()); setCText(""); } }}
               placeholder="메시지 입력 후 Enter"
-              style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+              style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
             <PxButton tone="good" disabled={!cText.trim()} onClick={() => { onChat(cText.trim()); setCText(""); }} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
           </div>
         </div>
@@ -4111,7 +4111,7 @@ function HouseGate({ house, isMine, myName, hasPw, onSetPw, onGetPw, onEnter, on
           <div style={{ fontSize: 44 }}>🎉</div>
           <div style={{ fontSize: 16, fontWeight: "bold", margin: "10px 0 6px" }}>환영합니다 {myName}님!</div>
           <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 14 }}>우리 집 비밀번호를 설정해주세요.<br />다음부터는 이 창이 뜨지 않아요.</div>
-          <input value={pw2} onChange={(e) => setPw2(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && pw2.trim()) onSetPw(pw2.trim()); }} maxLength={12} autoFocus placeholder="비밀번호 (예: 1234)" style={{ width: "100%", maxWidth: 260, boxSizing: "border-box", padding: 11, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, textAlign: "center", background: C.white }} />
+          <input value={pw2} onChange={(e) => setPw2(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && pw2.trim()) onSetPw(pw2.trim()); }} maxLength={12} autoFocus placeholder="비밀번호 (예: 1234)" style={{ width: "100%", maxWidth: 260, boxSizing: "border-box", padding: 11, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 15, textAlign: "center", background: C.white }} />
           <PxButton tone="good" disabled={!pw2.trim()} onClick={() => onSetPw(pw2.trim())} style={{ display: "block", width: "100%", maxWidth: 260, margin: "12px auto 0", padding: 12, fontSize: 14 }}>설정하고 들어가기</PxButton>
         </div>
       </Panel>
@@ -4137,7 +4137,7 @@ function HouseGate({ house, isMine, myName, hasPw, onSetPw, onGetPw, onEnter, on
           ) : (
             <>
               <div style={{ display: "flex", gap: 6 }}>
-                <input value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") tryEnter(); }} maxLength={12} type="password" placeholder="비밀번호" style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, textAlign: "center" }} />
+                <input value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") tryEnter(); }} maxLength={12} type="password" placeholder="비밀번호" style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, textAlign: "center" }} />
                 <PxButton tone="good" disabled={waiting} onClick={tryEnter} style={{ padding: "10px 14px", fontSize: 13 }}>{waiting ? "확인 중…" : "입장"}</PxButton>
                 {isMine && <PxButton tone="wood" onClick={() => { setChgOpen(true); setChgOld(""); setChgNew(""); setChgMsg(null); }} style={{ padding: "10px 12px", fontSize: 12, whiteSpace: "nowrap" }}>변경</PxButton>}
               </div>
@@ -4146,10 +4146,10 @@ function HouseGate({ house, isMine, myName, hasPw, onSetPw, onGetPw, onEnter, on
                 <div style={{ background: "#fff5d6", border: `2px solid ${C.ink}`, borderRadius: 8, padding: 11, marginTop: 9 }}>
                   <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 7 }}>🔑 비밀번호 변경</div>
                   <input value={chgOld} onChange={(e) => { setChgOld(e.target.value); setChgMsg(null); }} maxLength={12} type="password" placeholder="기존 비밀번호"
-                    style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13.5, textAlign: "center", marginBottom: 6 }} />
+                    style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13.5, textAlign: "center", marginBottom: 6 }} />
                   <input value={chgNew} onChange={(e) => { setChgNew(e.target.value); setChgMsg(null); }} maxLength={12} placeholder="새 비밀번호"
                     onKeyDown={(e) => { if (e.key === "Enter") doChange(); }}
-                    style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13.5, textAlign: "center" }} />
+                    style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13.5, textAlign: "center" }} />
                   {chgMsg && <div style={{ fontSize: 11.5, color: chgMsg.ok ? C.good : C.danger, textAlign: "center", marginTop: 6, fontWeight: "bold" }}>{chgMsg.text}</div>}
                   <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                     <PxButton tone="ink" onClick={() => setChgOpen(false)} style={{ flex: 1, padding: 9, fontSize: 12 }}>취소</PxButton>
@@ -4164,11 +4164,11 @@ function HouseGate({ house, isMine, myName, hasPw, onSetPw, onGetPw, onEnter, on
         </div>
 
         <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={() => { playBell(); onBell(owner); say("딩동! 초인종을 눌렀어요 🔔"); }} style={{ flex: 1, cursor: "pointer", background: "linear-gradient(180deg,#ffe680,#d9a441)", border: `3px solid ${C.ink}`, borderRadius: 12, padding: "18px 8px", fontFamily: "'DotGothic16', monospace", boxShadow: `0 4px 0 ${C.ink}` }}>
+          <button onClick={() => { playBell(); onBell(owner); say("딩동! 초인종을 눌렀어요 🔔"); }} style={{ flex: 1, cursor: "pointer", background: "linear-gradient(180deg,#ffe680,#d9a441)", border: `3px solid ${C.ink}`, borderRadius: 12, padding: "18px 8px", fontFamily: "var(--game-font, 'DotGothic16', monospace)", boxShadow: `0 4px 0 ${C.ink}` }}>
             <div style={{ fontSize: 34 }}>🔔</div>
             <div style={{ fontSize: 13, fontWeight: "bold", marginTop: 4 }}>초인종</div>
           </button>
-          <button onClick={() => onMail(owner)} style={{ flex: 1, cursor: "pointer", background: "linear-gradient(180deg,#a8d5f2,#5b8def)", color: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: "18px 8px", fontFamily: "'DotGothic16', monospace", boxShadow: `0 4px 0 ${C.ink}` }}>
+          <button onClick={() => onMail(owner)} style={{ flex: 1, cursor: "pointer", background: "linear-gradient(180deg,#a8d5f2,#5b8def)", color: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: "18px 8px", fontFamily: "var(--game-font, 'DotGothic16', monospace)", boxShadow: `0 4px 0 ${C.ink}` }}>
             <div style={{ fontSize: 34 }}>📮</div>
             <div style={{ fontSize: 13, fontWeight: "bold", marginTop: 4 }}>우체통</div>
           </button>
@@ -4230,14 +4230,14 @@ function MailboxModal({ owner, isMine, myName, gems, inventory, mail, onSend, on
           ) : (
             <div>
               <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 6 }}>방명록·편지를 남기고, 선물도 같이 보낼 수 있어요</div>
-              <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="예: 집 예쁘다! 놀러왔어요 :)" style={{ width: "100%", boxSizing: "border-box", height: 80, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 8, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "none", background: C.white }} />
+              <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="예: 집 예쁘다! 놀러왔어요 :)" style={{ width: "100%", boxSizing: "border-box", height: 80, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 8, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, resize: "none", background: C.white }} />
               <div style={{ fontSize: 12, fontWeight: "bold", margin: "10px 0 6px" }}>🎁 함께 보낼 선물 (선택)</div>
               {inventory.length === 0 ? (
                 <div style={{ fontSize: 11, color: C.inkSoft }}>감사의 방에서 선물을 사면 여기에 나와요</div>
               ) : (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {inventory.map((it, i) => (
-                    <button key={i} onClick={() => setPick(pick && pick._i === i ? null : { ...it, _i: i })} style={{ cursor: "pointer", background: pick && pick._i === i ? C.gem : C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "6px 9px", fontFamily: "'DotGothic16', monospace", fontSize: 12 }}>
+                    <button key={i} onClick={() => setPick(pick && pick._i === i ? null : { ...it, _i: i })} style={{ cursor: "pointer", background: pick && pick._i === i ? C.gem : C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "6px 9px", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }}>
                       {it.emoji} {it.name}
                     </button>
                   ))}
@@ -4265,14 +4265,14 @@ function GiftModal({ target, inventory, myName, onSend, onClose }) {
         <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 16 }}>
           <div style={{ textAlign: "center", fontSize: 36 }}>🎁</div>
           <div style={{ textAlign: "center", fontSize: 15, fontWeight: "bold", margin: "6px 0 12px" }}>{target}님에게 선물하기</div>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="한마디 (선택)" style={{ width: "100%", boxSizing: "border-box", height: 60, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 8, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "none", background: C.white }} />
+          <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="한마디 (선택)" style={{ width: "100%", boxSizing: "border-box", height: 60, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 8, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, resize: "none", background: C.white }} />
           <div style={{ fontSize: 12, fontWeight: "bold", margin: "10px 0 6px" }}>보낼 선물</div>
           {inventory.length === 0 ? (
             <div style={{ fontSize: 11, color: C.inkSoft }}>감사의 방에서 선물을 사보세요 🎁</div>
           ) : (
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {inventory.map((it, i) => (
-                <button key={i} onClick={() => setPick(pick && pick._i === i ? null : { ...it, _i: i })} style={{ cursor: "pointer", background: pick && pick._i === i ? C.gem : C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "6px 9px", fontFamily: "'DotGothic16', monospace", fontSize: 12 }}>
+                <button key={i} onClick={() => setPick(pick && pick._i === i ? null : { ...it, _i: i })} style={{ cursor: "pointer", background: pick && pick._i === i ? C.gem : C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "6px 9px", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }}>
                   {it.emoji} {it.name}
                 </button>
               ))}
@@ -4423,15 +4423,15 @@ function HomeView({ house, notes = [], onSaveMemo, onDelMemo, onBack, bubble, sk
               <div style={{ display: "flex", gap: 9 }}>
                 <button type="button" onClick={() => wFileRef.current && wFileRef.current.click()} disabled={wBusy}
                   style={{ width: 74, height: 96, flexShrink: 0, cursor: "pointer", borderRadius: 8, overflow: "hidden",
-                    border: `2px dashed ${C.ink}`, background: C.white, fontFamily: "'DotGothic16', monospace", fontSize: 10, color: C.inkSoft, padding: 0 }}>
+                    border: `2px dashed ${C.ink}`, background: C.white, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10, color: C.inkSoft, padding: 0 }}>
                   {wImg ? <img src={wImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : (wBusy ? "…" : "🖼 포스터")}
                 </button>
                 <input ref={wFileRef} type="file" accept="image/*" onChange={(e) => pickPoster(e.target.files && e.target.files[0])} style={{ display: "none" }} />
                 <div style={{ flex: 1, minWidth: 0, display: "grid", gap: 6 }}>
                   <input value={wT} onChange={(e) => setWT(e.target.value)} placeholder="작품 제목"
-                    style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                    style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }} />
                   <textarea value={wC} onChange={(e) => setWC(e.target.value)} rows={2} placeholder="한 줄 감상 (선택)"
-                    style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, resize: "vertical" }} />
+                    style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, resize: "vertical" }} />
                   <div style={{ display: "flex", gap: 6 }}>
                     {wImg && <PxButton tone="ink" onClick={() => setWImg(null)} style={{ fontSize: 11, padding: 8 }}>사진 빼기</PxButton>}
                     <PxButton tone="gold" disabled={!wT.trim()} onClick={addWatch} style={{ flex: 1, fontSize: 12.5, padding: 9 }}>＋ 올리기</PxButton>
@@ -4477,7 +4477,7 @@ function HomeView({ house, notes = [], onSaveMemo, onDelMemo, onBack, bubble, sk
                     <input value={reply[w.id] || ""} onChange={(e) => setReply({ ...reply, [w.id]: e.target.value })}
                       onKeyDown={(e) => { if (e.key === "Enter" && (reply[w.id] || "").trim()) { onWatchReply && onWatchReply(w.id, reply[w.id].trim()); setReply({ ...reply, [w.id]: "" }); } }}
                       placeholder="💬 댓글 달기"
-                      style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
+                      style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
                     <PxButton tone="blue" disabled={!(reply[w.id] || "").trim()}
                       onClick={() => { onWatchReply && onWatchReply(w.id, (reply[w.id] || "").trim()); setReply({ ...reply, [w.id]: "" }); }}
                       style={{ fontSize: 11, padding: "7px 10px" }}>➤</PxButton>
@@ -4514,7 +4514,7 @@ function HomeView({ house, notes = [], onSaveMemo, onDelMemo, onBack, bubble, sk
             <div>
               <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>{house.name} 책상 · 나만 보는 메모</div>
               <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="오늘 할 일, 아이디어, 메모를 적어보세요…" rows={4}
-                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: "#fffdf5", resize: "vertical" }} />
+                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: "#fffdf5", resize: "vertical" }} />
               <PxButton tone="good" disabled={!text.trim()} onClick={() => { onSaveMemo(text.trim()); setText(""); }} style={{ width: "100%", marginTop: 8, padding: 11, fontSize: 13 }}>📌 칠판에 붙이기</PxButton>
 
               <div style={{ fontSize: 11.5, fontWeight: "bold", margin: "14px 0 7px" }}>📌 붙여둔 메모 {notes.length}장</div>
@@ -4523,7 +4523,7 @@ function HomeView({ house, notes = [], onSaveMemo, onDelMemo, onBack, bubble, sk
                 {notes.length === 0 && <span style={{ color: "#cfe4d6", fontSize: 12 }}>아직 붙여둔 메모가 없어요. 첫 메모를 남겨보세요!</span>}
                 {notes.map((n, ni) => (
                   <button key={n.id} type="button" onClick={() => setNoteView(n)}
-                    style={{ width: 118, minHeight: 92, cursor: "pointer", textAlign: "left", fontFamily: "'DotGothic16', monospace",
+                    style={{ width: 118, minHeight: 92, cursor: "pointer", textAlign: "left", fontFamily: "var(--game-font, 'DotGothic16', monospace)",
                       background: n.color || "#ffe680", border: `2px solid ${C.ink}`, padding: 8, fontSize: 11.5, lineHeight: 1.5,
                       transform: `rotate(${(ni % 5) - 2}deg)`, boxShadow: "2px 2px 0 rgba(0,0,0,0.25)" }}>
                     <div style={{ display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden", wordBreak: "break-word" }}>{n.text}</div>
@@ -4591,12 +4591,12 @@ function ThanksView({ gems, inventory, postits = [], onBuy, onPost, onDelPost, o
             <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 7 }}>
               {(people.length ? people : [{ name: myName || "나", avatar: "🧑" }]).map((pp) => (
                 <button key={pp.name} type="button" onClick={() => setTo(pp.name)}
-                  style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: to === pp.name ? C.gem : C.white, fontWeight: to === pp.name ? "bold" : "normal" }}>
+                  style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: to === pp.name ? C.gem : C.white, fontWeight: to === pp.name ? "bold" : "normal" }}>
                   {pp.avatar} {pp.name}
                 </button>
               ))}
               <input value={to} onChange={(e) => setTo(e.target.value)} placeholder="직접 입력"
-                style={{ width: 100, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 12, fontFamily: "'DotGothic16', monospace", fontSize: 12, textAlign: "center" }} />
+                style={{ width: 100, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 12, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, textAlign: "center" }} />
             </div>
 
             {/* 공개 범위 */}
@@ -4614,7 +4614,7 @@ function ThanksView({ gems, inventory, postits = [], onBuy, onPost, onDelPost, o
             </label>
 
             <textarea value={msg} onChange={(e) => setMsg(e.target.value)} rows={2} placeholder="감사 메시지를 적어주세요"
-              style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white, resize: "vertical" }} />
+              style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white, resize: "vertical" }} />
             <PxButton tone="good" disabled={!to.trim() || !msg.trim()}
               onClick={() => { onPost({ to: to.trim(), msg: msg.trim(), anon, priv }); setMsg(""); setPriv(false); }}
               style={{ width: "100%", marginTop: 8, padding: 11, fontSize: 13 }}>🖊️ 칠판에 붙이기</PxButton>
@@ -4623,7 +4623,7 @@ function ThanksView({ gems, inventory, postits = [], onBuy, onPost, onDelPost, o
           <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
             {[["all", `전체 ${visible.length}`], ["toMe", `💝 내가 받은 ${visible.filter((p) => p.to === myName).length}`], ["mine", `✍️ 내가 쓴 ${visible.filter((p) => p.uid === myUid).length}`]].map(([k, lb]) => (
               <button key={k} type="button" onClick={() => setBFilter(k)}
-                style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "5px 10px", borderRadius: 12, border: `2px solid ${C.ink}`, background: bFilter === k ? C.gem : C.white, fontWeight: "bold" }}>{lb}</button>
+                style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, padding: "5px 10px", borderRadius: 12, border: `2px solid ${C.ink}`, background: bFilter === k ? C.gem : C.white, fontWeight: "bold" }}>{lb}</button>
             ))}
           </div>
 
@@ -4674,7 +4674,7 @@ function HeartView({ gems, worries, onPost, onBack, bubble }) {
             ))}
           </div>
           <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={isConfess ? "고백할 것을 털어놓아 보세요…" : "서운했던 일을 남겨보세요…"}
-            style={{ width: "100%", boxSizing: "border-box", height: 100, padding: 10, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: "#fffdf5", resize: "none" }} />
+            style={{ width: "100%", boxSizing: "border-box", height: 100, padding: 10, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: "#fffdf5", resize: "none" }} />
           <PxButton tone="good" disabled={!text.trim() || gems < cost} onClick={() => { onPost(text.trim(), cost, open); setText(""); }} style={{ width: "100%", marginTop: 8, padding: 10, fontSize: 13 }}>
             {gems < cost ? "골드가 부족해요" : `🪙 ${cost} 내고 익명으로 넣기`}
           </PxButton>
@@ -4760,7 +4760,7 @@ function parseYouTubeId(url) {
 function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelSong, onPlayYt, onPlayBgm, onFollow, ytNow, myName = "", chat = [], onChat, roomBgm = null }) {
   const net = useContext(NetContext);
   const listeners = (net && net.others ? Object.values(net.others) : []).filter((o) => o.ny && o.ny.v);
-  const inp = { padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white, boxSizing: "border-box" };
+  const inp = { padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white, boxSizing: "border-box" };
   const [djOpen, setDjOpen] = useState(false);     // 🎧 디제이 부스 : 등록 · 신청만
   const [listOpen, setListOpen] = useState(false); // 🪑 관객석 : 선곡 리스트
   const [seat, setSeat] = useState(null);          // 앉아 있는 의자
@@ -4857,7 +4857,7 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
         <div style={{ fontSize: 10.5, color: "#b9a7d6", marginBottom: 5 }}>🎧 지금 듣는 사람 · 눌러서 같이 듣기</div>
         {roomBgm && (
           <button type="button" onClick={() => { onPlayYt(roomBgm.song); onFollow && onFollow(roomBgm.by, label(roomBgm.song)); }} title="방 배경음악 듣기"
-            style={{ width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "'DotGothic16', monospace", background: "#4a3570", color: "#ffe680", border: `2px solid ${C.gem}`, borderRadius: 6, padding: "5px 8px", marginBottom: 4, fontSize: 11 }}>
+            style={{ width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", background: "#4a3570", color: "#ffe680", border: `2px solid ${C.gem}`, borderRadius: 6, padding: "5px 8px", marginBottom: 4, fontSize: 11 }}>
             🎶 <b>배경음악</b> · {label(roomBgm.song)}<div style={{ fontSize: 9, color: "#c9bbe6" }}>{roomBgm.by}님 선곡 · 다같이</div>
           </button>
         )}
@@ -4865,7 +4865,7 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
         {listeners.map((o) => (
           <button key={o.id} type="button" onClick={() => { onPlayYt({ id: "j" + o.ny.i, artist: "", title: o.ny.t, videoId: o.ny.v, q: o.ny.t }); onFollow && onFollow(o.name, o.ny.t); }}
             title={`${o.name}님과 같이 듣기`}
-            style={{ width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "'DotGothic16', monospace", background: "#32254d", color: "#f3ecff", border: `2px solid ${C.ink}`, borderRadius: 6, padding: "5px 8px", marginBottom: 4, fontSize: 11 }}>
+            style={{ width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", background: "#32254d", color: "#f3ecff", border: `2px solid ${C.ink}`, borderRadius: 6, padding: "5px 8px", marginBottom: 4, fontSize: 11 }}>
             🎧 <b>{o.name}</b><div style={{ fontSize: 10, color: "#b9a7d6", wordBreak: "break-all" }}>{o.ny.t}</div>
           </button>
         ))}
@@ -4887,7 +4887,7 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
         <input value={cText} onChange={(e) => setCText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && cText.trim()) { onChat && onChat(cText.trim()); setCText(""); } }}
           placeholder="메시지 입력"
-          style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, background: C.white }} />
+          style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, background: C.white }} />
         <PxButton tone="gold" disabled={!cText.trim()} onClick={() => { onChat && onChat(cText.trim()); setCText(""); }} style={{ fontSize: 11, padding: "7px 9px" }}>➤</PxButton>
       </div>
     </div>
@@ -5092,12 +5092,12 @@ function ReelsView({ onBack, bubble, extraCats = {}, onAddCat, myName = "" }) {
           <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 10, marginBottom: 10 }}>
             <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>＋ 영상 추가</div>
             <input value={longUrl} onChange={(e) => setLongUrl(e.target.value)} placeholder="🔗 유튜브 링크 (youtu.be / watch?v=)"
-              style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, marginBottom: 6 }} />
+              style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, marginBottom: 6 }} />
             <input value={longTitle} onChange={(e) => setLongTitle(e.target.value)} placeholder="제목 (선택)"
-              style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, marginBottom: 6 }} />
+              style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, marginBottom: 6 }} />
             <div style={{ display: "flex", gap: 5, marginBottom: 8 }}>
               {LONG_TAGS.map((t) => (
-                <button key={t} type="button" onClick={() => setLongTag(t)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", padding: "5px 11px", borderRadius: 14, border: `2px solid ${C.ink}`, background: longTag === t ? "#5b8def" : C.white, color: longTag === t ? C.white : C.ink }}>{t}</button>
+                <button key={t} type="button" onClick={() => setLongTag(t)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", padding: "5px 11px", borderRadius: 14, border: `2px solid ${C.ink}`, background: longTag === t ? "#5b8def" : C.white, color: longTag === t ? C.white : C.ink }}>{t}</button>
               ))}
             </div>
             <PxButton tone="good" onClick={addLong} style={{ width: "100%", padding: 9, fontSize: 12.5 }}>＋ 추가하고 재생</PxButton>
@@ -5123,7 +5123,7 @@ function ReelsView({ onBack, bubble, extraCats = {}, onAddCat, myName = "" }) {
       {/* ＋ 카테고리 추가 */}
       {addOpen && (
         <RoomModal title="＋ 쇼츠 카테고리 추가" onClose={() => setAddOpen(false)} maxW={340}>
-          <input value={addText} onChange={(e) => setAddText(e.target.value)} placeholder="예: 요리, 여행, 운동…" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: C.white }} />
+          <input value={addText} onChange={(e) => setAddText(e.target.value)} placeholder="예: 요리, 여행, 운동…" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white }} />
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <PxButton tone="ink" onClick={() => setAddOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>
             <PxButton tone="good" disabled={!addText.trim()} onClick={addCategory} style={{ flex: 1, padding: 10, fontSize: 13 }}>추가</PxButton>
@@ -5139,7 +5139,7 @@ function ReelsView({ onBack, bubble, extraCats = {}, onAddCat, myName = "" }) {
             <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 8, marginBottom: 10 }}>
               <div style={{ display: "flex", gap: 5 }}>
                 <input value={shortCat === open ? shortUrl : ""} onFocus={() => setShortCat(open)} onChange={(e) => { setShortCat(open); setShortUrl(e.target.value); }}
-                  placeholder="🔗 유튜브 쇼츠 링크" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
+                  placeholder="🔗 유튜브 쇼츠 링크" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
                 <PxButton tone="good" onClick={addShort} style={{ fontSize: 11, padding: "6px 10px" }}>＋</PxButton>
               </div>
             </div>
@@ -5329,7 +5329,7 @@ function LiarGame({ onClose, onReward, myName = "", people = [], game, onAction 
             myTurn ? (
               <div style={{ display: "flex", gap: 6 }}>
                 <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) { send("hint", { text: text.trim() }); setText(""); } }}
-                  autoFocus placeholder="한 마디로 힌트를 주세요" style={{ flex: 1, minWidth: 0, padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+                  autoFocus placeholder="한 마디로 힌트를 주세요" style={{ flex: 1, minWidth: 0, padding: 9, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
                 <PxButton tone="good" disabled={!text.trim()} onClick={() => { send("hint", { text: text.trim() }); setText(""); }} style={{ fontSize: 12, padding: "9px 12px" }}>말하기</PxButton>
               </div>
             ) : (
@@ -5500,7 +5500,7 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
 
   return (
     <RoomView title="🍀 초심자의 행운" icon="🍀" sub="관리자가 업무를 배정하고 · 담당자가 완료 체크해요" bg="#e9f5ec" roomW={640} roomH={400} furniture={[]} onBack={onBack} paused headerBg="#3fa07a" bubble={bubble} side={
-      <div style={{ padding: 12, fontFamily: "'DotGothic16', monospace", height: "100%", overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ padding: 12, fontFamily: "var(--game-font, 'DotGothic16', monospace)", height: "100%", overflow: "auto", boxSizing: "border-box" }}>
         {/* 관리자 토글 */}
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
           <span style={{ flex: 1, fontSize: 10.5, color: admin ? C.good : C.inkSoft, fontWeight: "bold" }}>{admin ? "🔓 관리자 모드 — 업무 등록 가능" : "🔒 보기 · 체크 모드"}</span>
@@ -5513,11 +5513,11 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
 
         {/* 이름 검색 + 탭 */}
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 이름 검색"
-          style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, marginBottom: 8 }} />
+          style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, marginBottom: 8 }} />
         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
           {shown.map((n) => (
             <button key={n} type="button" onClick={() => setActive(n)}
-              style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11.5, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: active === n ? "#3fa07a" : C.white, color: active === n ? C.white : C.ink }}>
+              style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: active === n ? "#3fa07a" : C.white, color: active === n ? C.white : C.ink }}>
               {n === myName ? `⭐ ${n}` : n}
             </button>
           ))}
@@ -5525,7 +5525,7 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
         </div>
         <div style={{ display: "flex", gap: 5, marginBottom: 12 }}>
           <input value={newTab} onChange={(e) => setNewTab(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") pushTab(newTab); }} placeholder="＋ 이름 탭 추가"
-            style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
+            style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
           <PxButton tone="good" onClick={() => pushTab(newTab)} style={{ fontSize: 11, padding: "6px 10px" }}>추가</PxButton>
           {myName && !names.includes(myName) && <PxButton tone="gold" onClick={() => pushTab(myName)} style={{ fontSize: 11, padding: "6px 10px" }}>내 탭</PxButton>}
         </div>
@@ -5549,7 +5549,7 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
                   const isSel = ds === selDay;
                   return (
                     <button key={i} type="button" onClick={() => setSelDay(ds)}
-                      style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "5px 0", borderRadius: 6, position: "relative",
+                      style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, padding: "5px 0", borderRadius: 6, position: "relative",
                         border: isSel ? `2px solid #3fa07a` : "2px solid transparent", background: isSel ? "#e0f2e7" : "transparent", color: C.ink, fontWeight: isSel ? "bold" : "normal" }}>
                       {d}
                       {has > 0 && <span style={{ position: "absolute", right: 3, top: 2, width: 5, height: 5, borderRadius: "50%", background: "#3fa07a" }} />}
@@ -5564,12 +5564,12 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
               <div style={{ background: "#fff6e0", border: `2px solid ${C.ink}`, borderRadius: 8, padding: 10, marginBottom: 10 }}>
                 <div style={{ fontSize: 11.5, fontWeight: "bold", marginBottom: 7 }}>＋ 업무 등록 · 📅 {selDay}</div>
                 <input value={qTitle} onChange={(e) => setQTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addTask(); }} placeholder="퀘스트 내용"
-                  style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, marginBottom: 6 }} />
+                  style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, marginBottom: 6 }} />
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <label style={{ fontSize: 10.5, color: C.inkSoft }}>시작</label>
-                  <input type="time" value={qStart} onChange={(e) => setQStart(e.target.value)} style={{ padding: 5, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 11 }} />
+                  <input type="time" value={qStart} onChange={(e) => setQStart(e.target.value)} style={{ padding: 5, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11 }} />
                   <label style={{ fontSize: 10.5, color: C.inkSoft }}>소요</label>
-                  <input type="number" value={qDur} min={0} onChange={(e) => setQDur(e.target.value)} style={{ width: 54, padding: 5, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 11 }} />
+                  <input type="number" value={qDur} min={0} onChange={(e) => setQDur(e.target.value)} style={{ width: 54, padding: 5, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11 }} />
                   <span style={{ fontSize: 10.5, color: C.inkSoft }}>분</span>
                   <PxButton tone="good" onClick={addTask} style={{ flex: 1, fontSize: 11, padding: "6px 8px" }}>등록</PxButton>
                 </div>
@@ -5624,7 +5624,7 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
               <div style={{ textAlign: "center", fontSize: 14, fontWeight: "bold", margin: "8px 0 12px" }}>관리자 비밀번호</div>
               <input type="password" value={pw} autoFocus onChange={(e) => { setPw(e.target.value); setPwErr(false); }}
                 onKeyDown={(e) => { if (e.key === "Enter") { if (pw === LUCK_ADMIN_PW) { setAdmin(true); setPwOpen(false); } else setPwErr(true); } }}
-                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${pwErr ? C.danger : C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, textAlign: "center" }} />
+                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${pwErr ? C.danger : C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, textAlign: "center" }} />
               {pwErr && <div style={{ fontSize: 11, color: C.danger, textAlign: "center", marginTop: 6, fontWeight: "bold" }}>⚠️ 비밀번호가 틀렸어요</div>}
               <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
                 <PxButton tone="ink" onClick={() => setPwOpen(false)} style={{ flex: 1, padding: 10, fontSize: 12 }}>취소</PxButton>
@@ -5644,7 +5644,7 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
               <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
                 <span style={{ fontSize: 13 }}>+</span>
                 <input type="number" value={overMin} autoFocus min={0} onChange={(e) => setOverMin(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveOver(); }}
-                  style={{ width: 80, padding: 9, border: `3px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 15, textAlign: "center" }} />
+                  style={{ width: 80, padding: 9, border: `3px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 15, textAlign: "center" }} />
                 <span style={{ fontSize: 13 }}>분</span>
               </div>
               <PxButton tone="danger" onClick={saveOver} style={{ width: "100%", marginTop: 14, padding: 11, fontSize: 13 }}>기록하기</PxButton>
@@ -5787,7 +5787,7 @@ function ReactionGame({ onClose, onReward }) {
   return (
     <RoomModal title="⚡ 반응속도 테스트" onClose={onClose} maxW={360}>
       <button onClick={state === "idle" || state === "result" || state === "tooearly" ? begin : click}
-        style={{ width: "100%", height: 150, background: bg, color: C.white, border: `3px solid ${C.ink}`, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 15 }}>
+        style={{ width: "100%", height: 150, background: bg, color: C.white, border: `3px solid ${C.ink}`, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 15 }}>
         {state === "idle" && "클릭해서 시작"}
         {state === "wait" && "초록색이 되면 클릭!"}
         {state === "go" && "지금 클릭!!"}
@@ -5847,7 +5847,7 @@ function SequenceGame({ onClose, onReward }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
         {nums.map((n) => (
           <button key={n} onClick={() => tap(n)} disabled={n < next}
-            style={{ aspectRatio: "1/1", fontSize: 22, fontFamily: "'DotGothic16', monospace", background: n < next ? C.good : C.white, color: n < next ? C.white : C.ink, border: `3px solid ${C.ink}`, cursor: n < next ? "default" : "pointer" }}>{n}</button>
+            style={{ aspectRatio: "1/1", fontSize: 22, fontFamily: "var(--game-font, 'DotGothic16', monospace)", background: n < next ? C.good : C.white, color: n < next ? C.white : C.ink, border: `3px solid ${C.ink}`, cursor: n < next ? "default" : "pointer" }}>{n}</button>
         ))}
       </div>
       {done && <div style={{ textAlign: "center", marginTop: 10, color: C.good, fontWeight: "bold" }}>클리어! +3🪙</div>}
@@ -5938,7 +5938,7 @@ function SwimRace({ onClose, onReward, scores, onRecord, myName = "" }) {
                 <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 6 }}>{result.win ? "🥇 1등! +10🪙" : `${result.place}등 · 아쉽다!`} ({result.time}초)</div>
                 {result.win && !saved && (
                   <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 6 }}>
-                    <input value={nick} onChange={(e) => setNick(e.target.value)} placeholder="닉네임" maxLength={8} style={{ width: 100, padding: 6, border: `2px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", background: C.white }} />
+                    <input value={nick} onChange={(e) => setNick(e.target.value)} placeholder="닉네임" maxLength={8} style={{ width: 100, padding: 6, border: `2px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", background: C.white }} />
                     <PxButton tone="gold" onClick={saveRecord} style={{ fontSize: 12, padding: "6px 10px" }}>랭킹 등록</PxButton>
                   </div>
                 )}
@@ -6107,8 +6107,8 @@ function JjeopView({ onBack, bubble, onReward, myName = "", recList = [], onRec 
             ))}
           </div>
           <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-            <input value={recNick} onChange={(e) => setRecNick(e.target.value)} placeholder="닉네임" style={{ width: 90, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
-            <input value={recText} onChange={(e) => setRecText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") postRec(); }} placeholder="멘트 입력 후 Enter" style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+            <input value={recNick} onChange={(e) => setRecNick(e.target.value)} placeholder="닉네임" style={{ width: 90, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
+            <input value={recText} onChange={(e) => setRecText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") postRec(); }} placeholder="멘트 입력 후 Enter" style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
             <PxButton tone="good" onClick={postRec} style={{ fontSize: 12, padding: "8px 12px" }}>등록</PxButton>
           </div>
         </RoomModal>
@@ -6352,7 +6352,7 @@ function SandbagView({ onBack, scores, onEnd, myName = "" }) {
               <PxButton tone="wood" onClick={() => { setTarget(null); setSetupOpen(false); }} style={{ width: "100%", padding: 12, fontSize: 13, marginBottom: 8 }}>🥊 그냥 때리기</PxButton>
               <div style={{ background: C.white, border: `3px solid ${C.ink}`, padding: 10 }}>
                 <div style={{ fontSize: 12, marginBottom: 6 }}>🎯 누구 샌드백을 원하시나요?</div>
-                <input value={targetInput} onChange={(e) => setTargetInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && targetInput.trim()) { setTarget(targetInput.trim()); setSetupOpen(false); } }} maxLength={8} placeholder="이름 입력" style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.parch }} />
+                <input value={targetInput} onChange={(e) => setTargetInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && targetInput.trim()) { setTarget(targetInput.trim()); setSetupOpen(false); } }} maxLength={8} placeholder="이름 입력" style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.parch }} />
                 <PxButton tone="danger" disabled={!targetInput.trim()} onClick={() => { setTarget(targetInput.trim()); setSetupOpen(false); }} style={{ width: "100%", marginTop: 8, padding: 10, fontSize: 13 }}>이 사람 샌드백 만들기</PxButton>
               </div>
               <PxButton tone="ink" onClick={onBack} style={{ width: "100%", marginTop: 10, padding: 9, fontSize: 12 }}>나가기</PxButton>
@@ -6366,7 +6366,7 @@ function SandbagView({ onBack, scores, onEnd, myName = "" }) {
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 320, maxHeight: "calc(100vh - 28px)", overflowY: "auto" }}>
             <Panel style={{ padding: 16 }}>
               <div style={{ textAlign: "center", marginBottom: 10 }}>{target ? <span style={{ fontSize: 12, color: C.danger }}>🎯 {target} 샌드백<br /></span> : null}총 <b style={{ fontSize: 20, color: C.danger }}>{count}</b>번 쳤어요! 💥</div>
-              <input value={nick} onChange={(e) => setNick(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} maxLength={10} placeholder="닉네임 (랭킹 등록)" autoFocus style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 14, background: C.white }} />
+              <input value={nick} onChange={(e) => setNick(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} maxLength={10} placeholder="닉네임 (랭킹 등록)" autoFocus style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white }} />
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <PxButton tone="ink" onClick={() => setEnding(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>더 치기</PxButton>
                 <PxButton tone="gold" onClick={submit} style={{ flex: 1, padding: 10, fontSize: 13 }}>랭킹 등록</PxButton>
@@ -6966,7 +6966,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
         <div style={{ display: "flex", gap: 7, marginTop: 12 }}>
           {[["easy", "🌱 이지모드"], ["hard", "🔥 하드모드"]].map(([mo, label]) => (
             <button key={mo} onClick={() => { setMode(mo); const i = maps.findIndex((m) => (m.mode || "easy") === mo); if (i >= 0) switchMap(i); }}
-              style={{ flex: 1, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 13, padding: "10px 6px", borderRadius: 10, border: `2px solid ${C.ink}`,
+              style={{ flex: 1, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, padding: "10px 6px", borderRadius: 10, border: `2px solid ${C.ink}`,
                 background: mode === mo ? (mo === "easy" ? "linear-gradient(180deg,#3fa07a,#1d6b4a)" : "linear-gradient(180deg,#c0563a,#8c2f21)") : C.white,
                 color: mode === mo ? C.white : C.ink, fontWeight: "bold", boxShadow: mode === mo ? "0 3px 0 rgba(0,0,0,0.3)" : "0 2px 0 rgba(0,0,0,0.15)" }}>{label}</button>
           ))}
@@ -6975,7 +6975,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
           {maps.map((m, i) => ({ m, i })).filter(({ m }) => (m.mode || "easy") === mode).map(({ m, i }) => {
             const on = i === mapIdx;
             return (
-              <button key={m.id} onClick={() => switchMap(i)} style={{ flex: 1, minWidth: 100, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, padding: "9px 6px", borderRadius: 10,
+              <button key={m.id} onClick={() => switchMap(i)} style={{ flex: 1, minWidth: 100, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, padding: "9px 6px", borderRadius: 10,
                 border: `2px solid ${C.ink}`, background: on ? `linear-gradient(180deg,${m.color},${m.deep})` : C.white, color: on ? C.white : C.ink, boxShadow: on ? "0 3px 0 rgba(0,0,0,0.3)" : "0 2px 0 rgba(0,0,0,0.15)" }}>
                 {m.icon} {m.name}
               </button>
@@ -7012,7 +7012,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                           const by = typeof dn[q.id] === "string" ? dn[q.id] : null;
                           return (
                             <button key={q.id} type="button" onClick={() => setDexPick({ q, map: m, by, got })}
-                              style={{ position: "relative", background: got ? "#eef6ef" : C.white, border: `2px solid ${got ? C.good : C.ink}`, borderRadius: 8, padding: "12px 7px 9px", textAlign: "center", cursor: "pointer", fontFamily: "'DotGothic16', monospace" }}>
+                              style={{ position: "relative", background: got ? "#eef6ef" : C.white, border: `2px solid ${got ? C.good : C.ink}`, borderRadius: 8, padding: "12px 7px 9px", textAlign: "center", cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
                               <div style={{ fontSize: 30 }}>{q.icon}</div>
                               <div style={{ fontSize: 13, marginTop: 5, fontWeight: "bold", color: C.ink, lineHeight: 1.35, wordBreak: "keep-all" }}>{q.title}</div>
                               <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 4 }}>{q.owner ? `🧑 ${q.owner}` : "🏛 기본 퀘스트"}</div>
@@ -7027,7 +7027,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                           );
                         })}
                         <button type="button" onClick={() => setDexPick({ q: { ...m.boss, isBoss: true }, map: m, by: typeof dn[m.boss.id] === "string" ? dn[m.boss.id] : null, got: bossDone })}
-                          style={{ position: "relative", background: "#fff1d6", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "12px 7px 9px", textAlign: "center", cursor: "pointer", fontFamily: "'DotGothic16', monospace" }}>
+                          style={{ position: "relative", background: "#fff1d6", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "12px 7px 9px", textAlign: "center", cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
                           <div style={{ fontSize: 30 }}>{m.boss.icon}</div>
                           <div style={{ fontSize: 13, marginTop: 5, fontWeight: "bold", color: C.ink, lineHeight: 1.35, wordBreak: "keep-all" }}>{m.boss.title}</div>
                           <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 4 }}>👑 보스</div>
@@ -7173,7 +7173,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
               <div style={{ fontSize: 11.5, fontWeight: "bold", marginBottom: 5 }}>✍️ 어떻게 해결했는지 적어주세요</div>
               <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} rows={5} autoFocus
                 placeholder={"예: 훅 3가지 버전으로 만들어봤고 두 번째가 반응이 제일 좋았어요.\n결과물 링크: ..."}
-                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "vertical" }} />
+                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, resize: "vertical" }} />
               {submitFor.exp > 0 && (
                 <div style={{ fontSize: 11.5, fontWeight: "bold", color: C.danger, background: "#fff1d6", border: `2px solid ${C.ink}`, borderRadius: 6, padding: "6px 9px", marginTop: 8, textAlign: "center" }}>
                   ⭐ 등록하면 경험치 +{submitFor.exp} 가 바로 들어와요
@@ -7193,7 +7193,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                 ))}
                 {shots.length < 3 && (
                   <button type="button" disabled={imgBusy} onClick={() => shotInputRef.current && shotInputRef.current.click()}
-                    style={{ width: 78, height: 78, border: `2px dashed ${C.ink}`, borderRadius: 8, background: C.white, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, color: C.inkSoft, lineHeight: 1.5 }}>
+                    style={{ width: 78, height: 78, border: `2px dashed ${C.ink}`, borderRadius: 8, background: C.white, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, color: C.inkSoft, lineHeight: 1.5 }}>
                     {imgBusy ? "불러오는 중…" : "＋ 사진"}
                   </button>
                 )}
@@ -7252,7 +7252,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                     <span style={{ color: C.inkSoft }}>새 보스맵이 생기는 게 아니라, 이 보스맵 소속 퀘스트가 됩니다.</span>
                   </div>
                   {!isPlaza && (
-                    <select value={fQ.stage} onChange={(e) => setFQ({ ...fQ, stage: e.target.value })} style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }}>
+                    <select value={fQ.stage} onChange={(e) => setFQ({ ...fQ, stage: e.target.value })} style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }}>
                       {map.stages.map((st) => <option key={st.n} value={st.n}>{st.n} 스테이지 · {st.name}</option>)}
                     </select>
                   )}
@@ -7260,7 +7260,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                   <div style={{ fontSize: 11, fontWeight: "bold" }}>🎯 아이콘 · 퀘스트 이름</div>
                   <div style={{ display: "flex", gap: 6 }}>
                     <input value={fQ.icon} onChange={(e) => setFQ({ ...fQ, icon: e.target.value })} maxLength={2} placeholder="🎯" style={{ width: 52, textAlign: "center", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 16 }} />
-                    <input value={fQ.title} onChange={(e) => setFQ({ ...fQ, title: e.target.value })} placeholder="퀘스트 이름" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                    <input value={fQ.title} onChange={(e) => setFQ({ ...fQ, title: e.target.value })} placeholder="퀘스트 이름" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }} />
                   </div>
 
                   {/* 난이도 선택은 이지모드에만 있어요 (하드모드는 전부 숙련자) */}
@@ -7283,19 +7283,19 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
 
                   <div style={{ fontSize: 11, fontWeight: "bold" }}>📝 내용 설명</div>
                   <textarea value={fQ.desc} onChange={(e) => setFQ({ ...fQ, desc: e.target.value })} rows={3} placeholder="이 퀘스트가 무엇인지, 왜 필요한지 적어주세요"
-                    style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "vertical", boxSizing: "border-box" }} />
+                    style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, resize: "vertical", boxSizing: "border-box" }} />
 
                   <div style={{ fontSize: 11, fontWeight: "bold" }}>✅ 완료 조건</div>
-                  <input value={fQ.task} onChange={(e) => setFQ({ ...fQ, task: e.target.value })} placeholder="무엇을 하면 완료인가요?" style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                  <input value={fQ.task} onChange={(e) => setFQ({ ...fQ, task: e.target.value })} placeholder="무엇을 하면 완료인가요?" style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }} />
 
                   <div style={{ fontSize: 11, fontWeight: "bold" }}>⏳ 제한시간 (몇 시까지)</div>
-                  <input type="datetime-local" value={fQ.due || ""} onChange={(e) => setFQ({ ...fQ, due: e.target.value })} style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                  <input type="datetime-local" value={fQ.due || ""} onChange={(e) => setFQ({ ...fQ, due: e.target.value })} style={{ padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }} />
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                     {[["1시간", 1], ["3시간", 3], ["6시간", 6], ["내일 이맘때", 24], ["3일", 72]].map(([lb, h]) => (
                       <button key={lb} onClick={() => setFQ({ ...fQ, due: toLocalDT(Date.now() + h * 3600000) })}
-                        style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, padding: "5px 9px", borderRadius: 12, border: `2px solid ${C.ink}`, background: C.white, fontWeight: "bold" }}>+{lb}</button>
+                        style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5, padding: "5px 9px", borderRadius: 12, border: `2px solid ${C.ink}`, background: C.white, fontWeight: "bold" }}>+{lb}</button>
                     ))}
-                    {fQ.due && <button onClick={() => setFQ({ ...fQ, due: "" })} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, padding: "5px 9px", borderRadius: 12, border: `2px solid ${C.ink}`, background: "#f0d4cc", fontWeight: "bold" }}>✕ 해제</button>}
+                    {fQ.due && <button onClick={() => setFQ({ ...fQ, due: "" })} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5, padding: "5px 9px", borderRadius: 12, border: `2px solid ${C.ink}`, background: "#f0d4cc", fontWeight: "bold" }}>✕ 해제</button>}
                   </div>
                   {fQ.due && (() => {
                     const d = dueText(fQ.due);
@@ -7314,7 +7314,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                     <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 7 }}>
                       {[5, 10, 20, 30, 50, 100].map((v) => (
                         <button key={v} type="button" onClick={() => setFQ({ ...fQ, exp: v })}
-                          style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, padding: "5px 10px", borderRadius: 12,
+                          style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5, padding: "5px 10px", borderRadius: 12,
                             border: `2px solid ${C.ink}`, background: Number(fQ.exp) === v ? C.gem : C.white, fontWeight: "bold" }}>⭐{v}</button>
                       ))}
                     </div>
@@ -7325,7 +7325,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                   <div style={{ display: "flex", gap: 5 }}>
                     {[["each", "👥 인당 지급", "참여자 각각에게 전부"], ["split", "➗ N빵", "참여자 수로 나눠서"]].map(([v, lb, sub]) => (
                       <button key={v} type="button" onClick={() => setFQ({ ...fQ, split: v })}
-                        style={{ flex: 1, cursor: "pointer", fontFamily: "'DotGothic16', monospace", textAlign: "center", padding: "8px 6px", borderRadius: 8,
+                        style={{ flex: 1, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", textAlign: "center", padding: "8px 6px", borderRadius: 8,
                           border: `2px solid ${C.ink}`, background: (fQ.split || "each") === v ? C.gem : C.white }}>
                         <div style={{ fontSize: 11.5, fontWeight: "bold" }}>{lb}</div>
                         <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 2 }}>{sub}</div>
@@ -7366,7 +7366,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                             const f = src.find((x) => x.id === v);
                             setFQ({ ...fQ, rPick: v, rName: f ? f.name : "", rEmoji: f ? (f.emoji || f.icon) : (fQ.rKind === "skill" ? "🧠" : "🎁") });
                           }}
-                          style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, marginBottom: 6 }}>
+                          style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, marginBottom: 6 }}>
                           <option value="">✍️ 새로 입력하기</option>
                           {(fQ.rKind === "item" ? SPECIAL_ITEMS : SKILLS).map((x) => (
                             <option key={x.id} value={x.id}>{(x.emoji || x.icon)} {x.name}</option>
@@ -7377,7 +7377,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                             <input value={fQ.rEmoji} onChange={(e) => setFQ({ ...fQ, rEmoji: e.target.value })} maxLength={2}
                               style={{ width: 50, textAlign: "center", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 16 }} />
                             <input value={fQ.rName} onChange={(e) => setFQ({ ...fQ, rName: e.target.value })} placeholder={fQ.rKind === "skill" ? "스킬 이름" : "아이템 이름 (예: 커피 기프티콘)"}
-                              style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5 }} />
+                              style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5 }} />
                           </div>
                         )}
                       </>
@@ -7415,7 +7415,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                       <div style={{ display: "flex", gap: 5, flexWrap: "wrap", maxHeight: 110, overflow: "auto", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: 8 }}>
                         {(people.length ? people : [{ name: myName || "나", avatar: "🧑" }]).map((pp) => (
                           <button key={pp.name} type="button" onClick={() => setFQ({ ...fQ, regName: pp.name })}
-                            style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: fQ.regName === pp.name ? C.gem : C.white, fontWeight: fQ.regName === pp.name ? "bold" : "normal" }}>
+                            style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: fQ.regName === pp.name ? C.gem : C.white, fontWeight: fQ.regName === pp.name ? "bold" : "normal" }}>
                             {pp.avatar} {pp.name}{fQ.regName === pp.name ? " ✓" : ""}
                           </button>
                         ))}
@@ -7442,7 +7442,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                           return (
                             <button key={pp.name} type="button"
                               onClick={() => setFQ({ ...fQ, whoList: on ? fQ.whoList.filter((x) => x !== pp.name) : [...(fQ.whoList || []), pp.name] })}
-                              style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: on ? C.gem : C.white, fontWeight: on ? "bold" : "normal" }}>
+                              style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: on ? C.gem : C.white, fontWeight: on ? "bold" : "normal" }}>
                               {pp.avatar} {pp.name}{on ? " ✓" : ""}
                             </button>
                           );
@@ -7467,11 +7467,11 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
                     <input value={fM.icon} onChange={(e) => setFM({ ...fM, icon: e.target.value })} maxLength={2} placeholder="🗺" style={{ width: 52, textAlign: "center", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 16 }} />
-                    <input value={fM.name} onChange={(e) => setFM({ ...fM, name: e.target.value })} placeholder="맵 이름 (예: 신발)" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                    <input value={fM.name} onChange={(e) => setFM({ ...fM, name: e.target.value })} placeholder="맵 이름 (예: 신발)" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }} />
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
                     <input value={fM.bossIcon} onChange={(e) => setFM({ ...fM, bossIcon: e.target.value })} maxLength={2} placeholder="👹" style={{ width: 52, textAlign: "center", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 16 }} />
-                    <input value={fM.boss} onChange={(e) => setFM({ ...fM, boss: e.target.value })} placeholder="보스 이름" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                    <input value={fM.boss} onChange={(e) => setFM({ ...fM, boss: e.target.value })} placeholder="보스 이름" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }} />
                   </div>
                   <div style={{ fontSize: 10, color: C.inkSoft }}>만들면 1 스테이지가 생겨요. 그 뒤 퀘스트 추가로 채우면 됩니다.</div>
                   <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
@@ -7597,7 +7597,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                             <span style={{ flex: 1, fontSize: 10.5, color: C.inkSoft }}>👥 지금 참가 중 ({party.length}명)</span>
                             <button type="button" onClick={() => onSyncParty && onSyncParty()} title="명단 다시 불러오기"
-                              style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10, padding: "3px 8px", borderRadius: 10, border: `2px solid ${C.ink}`, background: C.white, fontWeight: "bold" }}>🔄 새로고침</button>
+                              style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10, padding: "3px 8px", borderRadius: 10, border: `2px solid ${C.ink}`, background: C.white, fontWeight: "bold" }}>🔄 새로고침</button>
                           </div>
                           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                             {party.length === 0 && <span style={{ fontSize: 11, color: C.inkSoft }}>아직 아무도 없어요 — 가장 먼저 수락해보세요!</span>}
@@ -7668,7 +7668,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                           ))}
                         </div>
                         <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
-                          <input value={tMsg} onChange={(e) => setTMsg(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} placeholder="메시지" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
+                          <input value={tMsg} onChange={(e) => setTMsg(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} placeholder="메시지" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
                           <PxButton tone="blue" onClick={() => { if (tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} style={{ fontSize: 11, padding: "7px 10px" }}>➤</PxButton>
                         </div>
                         {/* 📓 퀘스트 일지 — 등록하면 파티원 모두에게 보여요 · 여러 개 등록 가능 */}
@@ -7679,7 +7679,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                         </div>
                         <textarea value={logTxt} onChange={(e) => setLogTxt(e.target.value)} rows={3}
                           placeholder={"오늘 한 일 · 배운 점 · 결과물 링크를 남겨보세요\n예) 훅 3버전 만들어봤고 두 번째가 반응 제일 좋았어요"}
-                          style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, resize: "vertical", background: C.white }} />
+                          style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, resize: "vertical", background: C.white }} />
                         <PxButton tone="gold" disabled={!logTxt.trim()}
                           onClick={() => { onLogAdd && onLogAdd(sel.id, logTxt.trim()); setLogTxt(""); }}
                           style={{ width: "100%", padding: 10, fontSize: 12.5, marginTop: 6 }}>＋ 일지 등록하기</PxButton>
@@ -7736,11 +7736,11 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                   <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 7 }}>✏️ 퀘스트 수정</div>
                   <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
                     <input value={editing.icon} onChange={(e) => setEditing({ ...editing, icon: e.target.value })} maxLength={2} style={{ width: 46, textAlign: "center", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 15 }} />
-                    <input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} placeholder="이름" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                    <input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} placeholder="이름" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }} />
                     <input value={editing.gem} onChange={(e) => setEditing({ ...editing, gem: e.target.value })} type="number" style={{ width: 56, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 13 }} />
                   </div>
-                  <input value={editing.desc} onChange={(e) => setEditing({ ...editing, desc: e.target.value })} placeholder="한 줄 설명" style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, marginBottom: 6 }} />
-                  <input value={editing.task} onChange={(e) => setEditing({ ...editing, task: e.target.value })} placeholder="목표" style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                  <input value={editing.desc} onChange={(e) => setEditing({ ...editing, desc: e.target.value })} placeholder="한 줄 설명" style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, marginBottom: 6 }} />
+                  <input value={editing.task} onChange={(e) => setEditing({ ...editing, task: e.target.value })} placeholder="목표" style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }} />
                   <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6 }}>
                     <span style={{ fontSize: 11, fontWeight: "bold", color: C.danger }}>⭐ 경험치</span>
                     <input value={editing.exp} onChange={(e) => setEditing({ ...editing, exp: e.target.value })} type="number" min="1"
@@ -7752,7 +7752,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                     <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                       {[myName, ...people.filter((p) => p !== myName)].filter(Boolean).map((p) => (
                         <button key={p} type="button" onClick={() => setEditing({ ...editing, registrar: p })}
-                          style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "6px 11px", borderRadius: 14,
+                          style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, padding: "6px 11px", borderRadius: 14,
                             border: `2px solid ${C.ink}`, background: editing.registrar === p ? C.gem : C.white, fontWeight: "bold" }}>
                           {p === myName ? `🙋 ${p}` : `🧑 ${p}`}
                         </button>
@@ -7760,7 +7760,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                     </div>
                     <input value={editing.registrar || ""} onChange={(e) => setEditing({ ...editing, registrar: e.target.value })}
                       placeholder="이름 직접 입력 (예: 창민)"
-                      style={{ width: "100%", boxSizing: "border-box", marginTop: 6, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                      style={{ width: "100%", boxSizing: "border-box", marginTop: 6, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }} />
                     <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 4, lineHeight: 1.6 }}>
                       바꾸면 <b style={{ color: C.ink }}>{editing.registrar || "미지정"}</b> 님이 검토하고, 파편이 올라오면 그분 퀘스트함에 알림이 가요<br />
                       접속하지 않은 사람도 이름을 직접 적으면 지정할 수 있어요
@@ -7771,7 +7771,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                     <div style={{ display: "flex", gap: 5 }}>
                       {[["each", "👥 인당"], ["split", "➗ N빵"]].map(([v, lb]) => (
                         <button key={v} type="button" onClick={() => setEditing({ ...editing, split: v })}
-                          style={{ flex: 1, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11.5, padding: 8, borderRadius: 8,
+                          style={{ flex: 1, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, padding: 8, borderRadius: 8,
                             border: `2px solid ${C.ink}`, background: (editing.split || "each") === v ? C.gem : C.white, fontWeight: "bold" }}>{lb}</button>
                       ))}
                     </div>
@@ -8045,7 +8045,7 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
 
   const tabBtn = (k, label) => (
     <button key={k} type="button" onClick={() => setTab(k)}
-      style={{ flex: 1, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 13, padding: "10px 6px", borderRadius: 10, border: `2px solid ${C.ink}`,
+      style={{ flex: 1, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, padding: "10px 6px", borderRadius: 10, border: `2px solid ${C.ink}`,
         background: tab === k ? "linear-gradient(180deg,#b07a4e,#8a5a3b)" : C.white, color: tab === k ? C.white : C.ink, fontWeight: "bold",
         boxShadow: tab === k ? "0 3px 0 rgba(0,0,0,0.3)" : "0 2px 0 rgba(0,0,0,0.15)" }}>{label}</button>
   );
@@ -8067,13 +8067,13 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 단어 · 뜻 · 작성자 검색"
-                style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14 }} />
+                style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14 }} />
               <PxButton tone="gold" onClick={openNew} style={{ fontSize: 13, padding: "10px 14px", whiteSpace: "nowrap" }}>＋ 단어 등록</PxButton>
             </div>
             <div style={{ display: "flex", gap: 5, marginBottom: 9, flexWrap: "wrap" }}>
-              <button type="button" onClick={() => setCatFilter("all")} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11.5, fontWeight: "bold", padding: "6px 12px", borderRadius: 16, border: `2px solid ${C.ink}`, background: catFilter === "all" ? C.ink : C.white, color: catFilter === "all" ? C.white : C.ink }}>전체</button>
+              <button type="button" onClick={() => setCatFilter("all")} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, fontWeight: "bold", padding: "6px 12px", borderRadius: 16, border: `2px solid ${C.ink}`, background: catFilter === "all" ? C.ink : C.white, color: catFilter === "all" ? C.white : C.ink }}>전체</button>
               {DICT_CATS.map((c) => (
-                <button key={c.id} type="button" onClick={() => setCatFilter(c.id)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11.5, fontWeight: "bold", padding: "6px 12px", borderRadius: 16, border: `2px solid ${C.ink}`, background: catFilter === c.id ? c.color : C.white, color: catFilter === c.id ? C.white : C.ink }}>{c.label}</button>
+                <button key={c.id} type="button" onClick={() => setCatFilter(c.id)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, fontWeight: "bold", padding: "6px 12px", borderRadius: 16, border: `2px solid ${C.ink}`, background: catFilter === c.id ? c.color : C.white, color: catFilter === c.id ? C.white : C.ink }}>{c.label}</button>
               ))}
             </div>
             <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>
@@ -8103,7 +8103,7 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
                       <span style={{ fontSize: 10.5, color: C.inkSoft }}>🔗 관련:</span>
                       {rel.map((rw) => (
                         <button key={rw} type="button" onClick={() => { setQ(""); setCatFilter("all"); setJumpTo(rw); setTimeout(() => { const el = document.getElementById("dictword-" + rw); if (el) el.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => setJumpTo(null), 1500); }, 60); }}
-                          style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, fontWeight: "bold", padding: "3px 9px", borderRadius: 12, border: `2px solid ${C.ink}`, background: "#f0e7d5", color: C.ink }}>{rw}</button>
+                          style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5, fontWeight: "bold", padding: "3px 9px", borderRadius: 12, border: `2px solid ${C.ink}`, background: "#f0e7d5", color: C.ink }}>{rw}</button>
                       ))}
                     </div>
                   )}
@@ -8119,7 +8119,7 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
               <input value={gq} onChange={(e) => setGq(e.target.value)} placeholder="🔍 설명 · 올린 사람 검색"
-                style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14 }} />
+                style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14 }} />
               <input ref={fileRef} type="file" accept="image/*" multiple onChange={onPick} style={{ display: "none" }} />
               <PxButton tone="gold" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()} style={{ fontSize: 13, padding: "10px 14px", whiteSpace: "nowrap" }}>
                 {busy ? "올리는 중…" : "📷 사진 올리기"}
@@ -8141,7 +8141,7 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
                       <input defaultValue={ph.caption} onBlur={(e) => onCaption(ph.id, e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
                         placeholder="한 줄 설명"
-                        style={{ width: "100%", boxSizing: "border-box", padding: "6px 7px", border: `2px solid ${C.ink}`, borderRadius: 5, fontFamily: "'DotGothic16', monospace", fontSize: 12, background: "#fffdf6" }} />
+                        style={{ width: "100%", boxSizing: "border-box", padding: "6px 7px", border: `2px solid ${C.ink}`, borderRadius: 5, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, background: "#fffdf6" }} />
                       <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 5 }}>
                         <span style={{ flex: 1, fontSize: 9.5, color: C.inkSoft, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🧑 {ph.by} · {ph.at}</span>
                         <button type="button" onClick={() => { if (window.confirm("이 사진을 지울까요? 모두에게서 사라져요.")) onDelPhoto(ph.id); }} title="삭제" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: C.inkSoft }}>🗑</button>
@@ -8163,18 +8163,18 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
               </div>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.62)", lineHeight: 1.6, marginBottom: 8 }}>나눈 얘기를 핵심만 남겨 보관하는 방이에요. (내 기기에만 저장 · AI 자동 요약 자리)</div>
               <input value={sTitle} onChange={(e) => setSTitle(e.target.value)} placeholder="제목 (예: 7월 상품기획 회의)"
-                style={{ width: "100%", boxSizing: "border-box", padding: 9, border: "2px solid #7fe3ff", borderRadius: 7, background: "rgba(255,255,255,0.94)", fontFamily: "'DotGothic16', monospace", fontSize: 13.5, marginBottom: 6 }} />
+                style={{ width: "100%", boxSizing: "border-box", padding: 9, border: "2px solid #7fe3ff", borderRadius: 7, background: "rgba(255,255,255,0.94)", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13.5, marginBottom: 6 }} />
               <textarea value={sBody} onChange={(e) => setSBody(e.target.value)} rows={4} placeholder={"핵심 요약\n· 결론\n· 다음 할 일"}
-                style={{ width: "100%", boxSizing: "border-box", padding: 9, border: "2px solid rgba(127,227,255,0.4)", borderRadius: 7, background: "rgba(255,255,255,0.9)", fontFamily: "'DotGothic16', monospace", fontSize: 12.5, resize: "vertical", marginBottom: 6 }} />
+                style={{ width: "100%", boxSizing: "border-box", padding: 9, border: "2px solid rgba(127,227,255,0.4)", borderRadius: 7, background: "rgba(255,255,255,0.9)", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, resize: "vertical", marginBottom: 6 }} />
               <input value={sTag} onChange={(e) => setSTag(e.target.value)} placeholder="태그 (선택)"
-                style={{ width: "100%", boxSizing: "border-box", padding: 8, border: "2px solid rgba(127,227,255,0.4)", borderRadius: 7, background: "rgba(255,255,255,0.9)", fontFamily: "'DotGothic16', monospace", fontSize: 12.5 }} />
+                style={{ width: "100%", boxSizing: "border-box", padding: 8, border: "2px solid rgba(127,227,255,0.4)", borderRadius: 7, background: "rgba(255,255,255,0.9)", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5 }} />
               <div style={{ display: "flex", gap: 7, marginTop: 8 }}>
                 {sEdit && <PxButton tone="ink" onClick={() => { setSEdit(null); setSTitle(""); setSBody(""); setSTag(""); }} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>}
                 <PxButton tone="blue" disabled={!sTitle.trim() || !sBody.trim()} onClick={saveSecret} style={{ flex: 2, padding: 10, fontSize: 13 }}>{sEdit ? "수정 저장" : "🔒 저장"}</PxButton>
               </div>
             </div>
             <input value={sQ} onChange={(e) => setSQ(e.target.value)} placeholder="🔍 요약 검색"
-              style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, marginBottom: 8 }} />
+              style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, marginBottom: 8 }} />
             <div style={{ maxHeight: 320, overflow: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
               {shownSecrets.length === 0 ? (
                 <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 26, lineHeight: 1.8 }}>아직 저장된 요약이 없어요 🔒</div>
@@ -8206,15 +8206,15 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
                 <PxButton tone="ink" onClick={() => setFormOpen(false)} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
               </div>
               <input value={word} onChange={(e) => setWord(e.target.value)} autoFocus placeholder="단어 (예: 쩝쩝박사)"
-                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 15, marginBottom: 8 }} />
+                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 15, marginBottom: 8 }} />
               <div style={{ fontSize: 11.5, fontWeight: "bold", color: C.inkSoft, marginBottom: 5 }}>카테고리</div>
               <div style={{ display: "flex", gap: 5, marginBottom: 9, flexWrap: "wrap" }}>
                 {DICT_CATS.map((c) => (
-                  <button key={c.id} type="button" onClick={() => setCat(c.id)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, fontWeight: "bold", padding: "7px 13px", borderRadius: 14, border: `2px solid ${C.ink}`, background: cat === c.id ? c.color : C.white, color: cat === c.id ? C.white : C.ink }}>{c.label}</button>
+                  <button key={c.id} type="button" onClick={() => setCat(c.id)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, fontWeight: "bold", padding: "7px 13px", borderRadius: 14, border: `2px solid ${C.ink}`, background: cat === c.id ? c.color : C.white, color: cat === c.id ? C.white : C.ink }}>{c.label}</button>
                 ))}
               </div>
               <textarea value={mean} onChange={(e) => setMean(e.target.value)} rows={5} placeholder="뜻 · 설명을 자유롭게 적어주세요 · 뜻 안에 다른 등록 단어를 쓰면 자동으로 🔗 관련 개념으로 이어져요"
-                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13.5, resize: "vertical" }} />
+                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13.5, resize: "vertical" }} />
               <PxButton tone="gold" disabled={!word.trim() || !mean.trim()} onClick={submit} style={{ width: "100%", marginTop: 10, padding: 12, fontSize: 14 }}>
                 {editing ? "수정 저장" : "📖 사전에 등록"}
               </PxButton>
@@ -8227,7 +8227,7 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
       {zoom && (
         <div onClick={() => setZoom(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 130, padding: 18, cursor: "zoom-out" }}>
           <img src={zoom.src} alt={zoom.caption || "사진"} style={{ maxWidth: "100%", maxHeight: "78%", objectFit: "contain", border: `3px solid ${C.white}`, borderRadius: 6 }} />
-          <div style={{ color: C.white, fontSize: 14, marginTop: 12, textAlign: "center", fontFamily: "'DotGothic16', monospace" }}>{zoom.caption || "(설명 없음)"}</div>
+          <div style={{ color: C.white, fontSize: 14, marginTop: 12, textAlign: "center", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>{zoom.caption || "(설명 없음)"}</div>
           <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginTop: 4 }}>🧑 {zoom.by} · {zoom.at} · 화면을 누르면 닫혀요</div>
         </div>
       )}
@@ -8276,7 +8276,7 @@ function SmokeChat({ onClose, myName = "", msgs = [], onSend }) {
       </div>
       <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
         <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지 입력 후 Enter"
-          style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+          style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
         <PxButton tone="good" disabled={!text.trim()} onClick={send} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
       </div>
       <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginTop: 7 }}>흡연의 방에 있는 사람들과 실시간으로 대화해요</div>
@@ -8305,7 +8305,7 @@ function CigaretteModal({ onClose }) {
             <PxButton tone="good" onClick={() => setLen(100)} style={{ padding: "8px 16px", fontSize: 13 }}>새 담배</PxButton>
           </div>
         ) : (
-          <button onMouseDown={start} onMouseUp={stop} onMouseLeave={stop} onTouchStart={start} onTouchEnd={stop} className="px-btn" style={{ padding: "12px 24px", fontSize: 15, background: C.wood, color: C.white, border: `3px solid ${C.ink}`, cursor: "pointer", fontFamily: "'DotGothic16', monospace" }}>🤏 꾹 눌러서 피우기</button>
+          <button onMouseDown={start} onMouseUp={stop} onMouseLeave={stop} onTouchStart={start} onTouchEnd={stop} className="px-btn" style={{ padding: "12px 24px", fontSize: 15, background: C.wood, color: C.white, border: `3px solid ${C.ink}`, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>🤏 꾹 눌러서 피우기</button>
         )}
       </div>
     </RoomModal>
@@ -8329,7 +8329,7 @@ function VapeModal({ onClose }) {
           ))}
           <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: 22, height: 62, background: "#333", border: `2px solid ${C.ink}`, borderRadius: 4 }} />
         </div>
-        <button onMouseDown={start} onMouseUp={stop} onMouseLeave={stop} onTouchStart={start} onTouchEnd={stop} className="px-btn" style={{ padding: "12px 24px", fontSize: 15, background: C.wood, color: C.white, border: `3px solid ${C.ink}`, cursor: "pointer", fontFamily: "'DotGothic16', monospace" }}>🤏 꾹 눌러서 흡입</button>
+        <button onMouseDown={start} onMouseUp={stop} onMouseLeave={stop} onTouchStart={start} onTouchEnd={stop} className="px-btn" style={{ padding: "12px 24px", fontSize: 15, background: C.wood, color: C.white, border: `3px solid ${C.ink}`, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>🤏 꾹 눌러서 흡입</button>
       </div>
     </RoomModal>
   );
@@ -8670,9 +8670,9 @@ function BoardView({ onBack, myName = "", myUid = "" }) {
                 <PxButton tone="ink" onClick={() => setEdit(null)} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
               </div>
               <input value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} placeholder="제목"
-                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 14, marginBottom: 8 }} />
+                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, marginBottom: 8 }} />
               <textarea value={edit.body} onChange={(e) => setEdit({ ...edit, body: e.target.value })} rows={6} placeholder="내용"
-                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "vertical" }} />
+                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, resize: "vertical" }} />
               <PxButton tone="gold" disabled={!edit.title.trim()} onClick={() => dbEditNotice(edit.id, edit.title.trim(), edit.body.trim()).then(() => { setEdit(null); reload(); })}
                 style={{ width: "100%", marginTop: 10, padding: 12, fontSize: 14 }}>수정 저장</PxButton>
             </Panel>
@@ -8689,8 +8689,8 @@ function BoardView({ onBack, myName = "", myUid = "" }) {
                   <PxButton key={t} tone={wType === t ? "good" : "wood"} onClick={() => setWType(t)} style={{ flex: 1, fontSize: 11, padding: 8 }}>{t}</PxButton>
                 ))}
               </div>
-              <input value={wTitle} onChange={(e) => setWTitle(e.target.value)} placeholder="제목" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, marginBottom: 6 }} />
-              <textarea value={wBody} onChange={(e) => setWBody(e.target.value)} placeholder="내용" style={{ width: "100%", boxSizing: "border-box", height: 90, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "none" }} />
+              <input value={wTitle} onChange={(e) => setWTitle(e.target.value)} placeholder="제목" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, marginBottom: 6 }} />
+              <textarea value={wBody} onChange={(e) => setWBody(e.target.value)} placeholder="내용" style={{ width: "100%", boxSizing: "border-box", height: 90, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, resize: "none" }} />
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <PxButton tone="ink" onClick={() => setWOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>취소</PxButton>
                 <PxButton tone="gold" disabled={!wTitle.trim()} onClick={post} style={{ flex: 1, padding: 10, fontSize: 13 }}>등록</PxButton>
@@ -8760,7 +8760,7 @@ function BoardView({ onBack, myName = "", myUid = "" }) {
         {tab === "update" && [...UPDATE_NOTES, ...dbList.filter((n) => n.type === "업데이트")].filter((n) => seen[n.id]).length > 0 && (
           <div style={{ marginTop: 14, borderTop: `3px dashed ${C.parchEdge}`, paddingTop: 12 }}>
             <button type="button" onClick={() => setLogOpen((v) => !v)}
-              style={{ width: "100%", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontFamily: "'DotGothic16', monospace",
+              style={{ width: "100%", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--game-font, 'DotGothic16', monospace)",
                 background: C.white, border: `3px solid ${C.ink}`, borderRadius: 8, padding: "10px 12px", marginBottom: logOpen ? 8 : 0 }}>
               <span style={{ fontSize: 16 }}>📜</span>
               <span style={{ flex: 1, textAlign: "left", fontSize: 12.5, fontWeight: "bold" }}>확인한 업데이트 기록</span>
@@ -8783,7 +8783,7 @@ function BoardView({ onBack, myName = "", myUid = "" }) {
         {tab === "notice" && (
           <div style={{ display: "grid", gap: 8 }}>
             {[...dbList.filter((n) => n.type !== "모집" && n.type !== "업데이트" && !String(n.title || "").startsWith("[파티모집]")), ...ANNOUNCEMENTS].map((a) => (
-              <div key={a.id} style={{ background: C.white, border: `3px solid ${C.ink}`, padding: "10px 12px", fontFamily: "'DotGothic16', monospace" }}>
+              <div key={a.id} style={{ background: C.white, border: `3px solid ${C.ink}`, padding: "10px 12px", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
                 <button onClick={() => setOpenDoc(a)} style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
                   <div style={{ fontSize: 14, fontWeight: "bold", display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{ fontSize: 10, color: "#fff", background: a.type === "이벤트" ? "#d76b96" : "#5b8def", padding: "2px 6px", whiteSpace: "nowrap" }}>{a.type || "공지"}</span>
@@ -8811,7 +8811,7 @@ function BoardView({ onBack, myName = "", myUid = "" }) {
               ))}
               {cells.map((d, i) => (
                 <button key={i} disabled={!d} onClick={() => d && setDay(d)} className={d ? "px-btn" : ""}
-                  style={{ aspectRatio: "1/1", background: !d ? "transparent" : day === d ? C.gem : "#fffdf5", border: d ? `2px solid ${C.ink}` : "none", cursor: d ? "pointer" : "default", position: "relative", fontFamily: "'DotGothic16', monospace", fontSize: 13, color: C.ink }}>
+                  style={{ aspectRatio: "1/1", background: !d ? "transparent" : day === d ? C.gem : "#fffdf5", border: d ? `2px solid ${C.ink}` : "none", cursor: d ? "pointer" : "default", position: "relative", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, color: C.ink }}>
                   {d === 31 ? <span style={{ display: "inline-block", border: `3px solid ${C.danger}`, borderRadius: "50%", width: 24, height: 24, lineHeight: "20px" }}>{d}</span> : d}
                   {d && CAL_EVENTS[key(d)] && d !== 31 && <span style={{ position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)", width: 5, height: 5, background: C.bankRoof, borderRadius: "50%" }} />}
                 </button>
@@ -8963,7 +8963,7 @@ function BankView({ gems, lifetime, exchanged, history, onExchange, onBack }) {
               <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, marginBottom: 12 }}>💰 환전 신청</div>
               <label style={{ fontSize: 12, color: C.inkSoft }}>환전할 스타 젬 (보유 {fmt(gems)})</label>
               <input type="number" value={amount} min={1} max={gems} onChange={(e) => setAmount(Math.floor(Number(e.target.value) || 0))}
-                style={{ width: "100%", boxSizing: "border-box", marginTop: 6, padding: 10, fontFamily: "'DotGothic16', monospace", fontSize: 16, border: `3px solid ${C.ink}`, background: C.white }} />
+                style={{ width: "100%", boxSizing: "border-box", marginTop: 6, padding: 10, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 16, border: `3px solid ${C.ink}`, background: C.white }} />
               <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
                 {[10, 50, 100].map((v) => <PxButton key={v} tone="wood" disabled={v > gems} onClick={() => setAmount(v)} style={{ fontSize: 11, padding: "6px 10px" }}>{v}💎</PxButton>)}
                 <PxButton tone="wood" disabled={gems < 1} onClick={() => setAmount(Math.floor(gems))} style={{ fontSize: 11, padding: "6px 10px" }}>전액</PxButton>
@@ -9010,7 +9010,7 @@ function ChatDock({ messages, shout, onToggleShout, onSend, gems = 0 }) {
   }, [hasTemp]);
   const visible = messages.filter((m) => m.shout || now - (m.at || m.id || 0) < 5000);
   return (
-    <div className="chat-dock" style={{ position: "fixed", left: 12, bottom: 12, width: 250, zIndex: 60, fontFamily: "'DotGothic16', monospace" }}>
+    <div className="chat-dock" style={{ position: "fixed", left: 12, bottom: 12, width: 250, zIndex: 60, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
       {visible.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 6 }}>
           {visible.map((m) => (
@@ -9027,7 +9027,7 @@ function ChatDock({ messages, shout, onToggleShout, onSend, gems = 0 }) {
           📢<span style={{ position: "absolute", right: 1, bottom: 0, fontSize: 8, color: C.ink, background: "#ffe680", border: `1px solid ${C.ink}`, padding: "0 1px", lineHeight: 1.2 }}>{shout ? "ON" : "1"}</span>
         </button>
         <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }}
-          placeholder={shout ? "📢 확성기 ON · 크게 외치기" : gems < 1 ? "채팅 입력 (확성기는 🪙1 필요)" : "채팅 입력 후 Enter"} style={{ flex: 1, minWidth: 0, border: `2px solid ${C.ink}`, padding: "4px 6px", fontSize: 12, background: C.white, fontFamily: "'DotGothic16', monospace" }} />
+          placeholder={shout ? "📢 확성기 ON · 크게 외치기" : gems < 1 ? "채팅 입력 (확성기는 🪙1 필요)" : "채팅 입력 후 Enter"} style={{ flex: 1, minWidth: 0, border: `2px solid ${C.ink}`, padding: "4px 6px", fontSize: 12, background: C.white, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }} />
         <button onClick={send} style={{ background: C.good, color: C.white, border: `2px solid ${C.ink}`, cursor: "pointer", fontSize: 12, padding: "0 8px", flexShrink: 0 }}>▶</button>
       </div>
     </div>
@@ -9186,7 +9186,7 @@ function HelpBody({ onGo }) {
           </div>
           <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
             {HELP_CATS.map((c) => (
-              <button key={c} onClick={() => setCat(c)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "6px 9px", borderRadius: 16, border: `2px solid ${C.ink}`, background: cat === c ? "linear-gradient(180deg,#3fa07a,#1d6b4a)" : C.white, color: cat === c ? C.white : C.ink, fontWeight: "bold" }}>{c}</button>
+              <button key={c} onClick={() => setCat(c)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, padding: "6px 9px", borderRadius: 16, border: `2px solid ${C.ink}`, background: cat === c ? "linear-gradient(180deg,#3fa07a,#1d6b4a)" : C.white, color: cat === c ? C.white : C.ink, fontWeight: "bold" }}>{c}</button>
             ))}
           </div>
           <div style={{ maxHeight: 330, overflow: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
@@ -9286,7 +9286,7 @@ function InventoryBody({ gems, outfit, ownedClothes, ikeaOwned, houseSkin, vehic
                 {clothList.map((it) => {
                   const on = outfit[it.cat] && outfit[it.cat].id === it.id;
                   return (
-                    <button key={it.id} onClick={() => onEquipCloth(it.cat, it)} style={{ cursor: "pointer", background: on ? C.gem : C.white, border: `3px solid ${C.ink}`, padding: 7, textAlign: "center", fontFamily: "'DotGothic16', monospace" }}>
+                    <button key={it.id} onClick={() => onEquipCloth(it.cat, it)} style={{ cursor: "pointer", background: on ? C.gem : C.white, border: `3px solid ${C.ink}`, padding: 7, textAlign: "center", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
                       <div style={{ height: 34, background: it.color, border: `2px solid ${C.ink}` }} />
                       <div style={{ fontSize: 10, marginTop: 3 }}>{it.name}</div>
                       <div style={{ fontSize: 10, color: on ? C.ink : C.inkSoft, fontWeight: "bold" }}>{on ? "착용중 ✓" : "착용하기"}</div>
@@ -9301,7 +9301,7 @@ function InventoryBody({ gems, outfit, ownedClothes, ikeaOwned, houseSkin, vehic
                 {furniList.map((it) => {
                   const on = myFurni.includes(it.id);
                   return (
-                    <button key={it.id} onClick={() => onToggleIkea("furni", it)} style={{ cursor: "pointer", background: on ? C.gem : C.white, border: `3px solid ${C.ink}`, padding: 7, textAlign: "center", fontFamily: "'DotGothic16', monospace" }}>
+                    <button key={it.id} onClick={() => onToggleIkea("furni", it)} style={{ cursor: "pointer", background: on ? C.gem : C.white, border: `3px solid ${C.ink}`, padding: 7, textAlign: "center", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
                       <div style={{ fontSize: 26 }}>{it.emoji}</div>
                       <div style={{ fontSize: 10 }}>{it.name}</div>
                       <div style={{ fontSize: 10, color: on ? C.ink : C.inkSoft, fontWeight: "bold" }}>{on ? "배치됨 ✓" : "배치하기"}</div>
@@ -9331,7 +9331,7 @@ function InventoryBody({ gems, outfit, ownedClothes, ikeaOwned, houseSkin, vehic
                 {houseList.map((it) => {
                   const on = houseSkin && houseSkin.id === it.id;
                   return (
-                    <button key={it.id} onClick={() => onToggleIkea("house", it)} style={{ cursor: "pointer", background: on ? C.gem : C.white, border: `3px solid ${C.ink}`, padding: 7, textAlign: "center", fontFamily: "'DotGothic16', monospace" }}>
+                    <button key={it.id} onClick={() => onToggleIkea("house", it)} style={{ cursor: "pointer", background: on ? C.gem : C.white, border: `3px solid ${C.ink}`, padding: 7, textAlign: "center", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
                       <div style={{ height: 34, background: it.wall, border: `2px solid ${C.ink}`, position: "relative" }}>
                         <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: 12, background: it.roof }} />
                       </div>
@@ -9403,7 +9403,7 @@ function FeedbackBody({ onDone, myName = "", myUid = "", list = [], onSend, onDe
         <b>올린 글은 마을 주민 모두에게 보여요.</b>
       </div>
       <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="예: 회의실 초대장이 안 보여요" rows={3}
-        style={{ width: "100%", boxSizing: "border-box", border: `3px solid ${C.ink}`, padding: 9, fontSize: 13, background: C.white, fontFamily: "'DotGothic16', monospace", resize: "vertical" }} />
+        style={{ width: "100%", boxSizing: "border-box", border: `3px solid ${C.ink}`, padding: 9, fontSize: 13, background: C.white, fontFamily: "var(--game-font, 'DotGothic16', monospace)", resize: "vertical" }} />
 
       <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, cursor: "pointer", fontSize: 12.5, fontWeight: "bold" }}>
         <input type="checkbox" checked={anon} onChange={(e) => setAnon(e.target.checked)} style={{ width: 17, height: 17, cursor: "pointer" }} />
@@ -9423,7 +9423,7 @@ function FeedbackBody({ onDone, myName = "", myUid = "", list = [], onSend, onDe
         <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
           {[["all", "전체"], ["todo", "미확인"], ["done", "확인됨"]].map(([k, lb]) => (
             <button key={k} type="button" onClick={() => setFilter(k)}
-              style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, padding: "4px 9px", borderRadius: 12, border: `2px solid ${C.ink}`, background: filter === k ? C.gem : C.white, fontWeight: "bold" }}>{lb}</button>
+              style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5, padding: "4px 9px", borderRadius: 12, border: `2px solid ${C.ink}`, background: filter === k ? C.gem : C.white, fontWeight: "bold" }}>{lb}</button>
           ))}
         </div>
       </div>
@@ -9544,7 +9544,7 @@ function DMChatModal({ person, onClose, thread = [], onSend, online = false, myN
             ))}
           </div>
           <div style={{ display: "flex", gap: 6, padding: 8, borderTop: `3px solid ${C.ink}` }}>
-            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지 입력 후 Enter" style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white }} />
+            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지 입력 후 Enter" style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
             <PxButton tone="good" onClick={send} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
           </div>
         </Panel>
@@ -9591,7 +9591,7 @@ function VillagersBody({ people = [], onDm, onCall }) {
   return (
     <div>
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 주민 이름 검색"
-        style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, background: C.white, marginBottom: 8 }} />
+        style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white, marginBottom: 8 }} />
       <div style={{ display: "grid", gap: 8, maxHeight: 330, overflow: "auto" }}>
         {list.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 20 }}>주민을 찾지 못했어요 🤔</div>}
         {list.map((p) => (
@@ -9622,7 +9622,7 @@ function Sheet({ icon, title, onClose, tabs, tab, setTab, maxW = 470, children, 
       {tabs && (
         <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
           {tabs.map((t) => (
-            <button key={t.k} onClick={() => setTab(t.k)} style={{ position: "relative", cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "7px 10px", borderRadius: 16, border: `2px solid ${C.ink}`, background: tab === t.k ? "linear-gradient(180deg,#3fa07a,#1d6b4a)" : C.white, color: tab === t.k ? C.white : C.ink, fontWeight: "bold" }}>
+            <button key={t.k} onClick={() => setTab(t.k)} style={{ position: "relative", cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, padding: "7px 10px", borderRadius: 16, border: `2px solid ${C.ink}`, background: tab === t.k ? "linear-gradient(180deg,#3fa07a,#1d6b4a)" : C.white, color: tab === t.k ? C.white : C.ink, fontWeight: "bold" }}>
               {t.label}
               {t.n > 0 && <span style={{ marginLeft: 4, background: C.danger, color: C.white, border: `1px solid ${C.ink}`, borderRadius: 8, fontSize: 9, padding: "0 4px" }}>{t.n}</span>}
             </button>
@@ -9704,7 +9704,7 @@ function MyPanel({ onClose, myName, gems, gold = 0, lifetime, hp, mp, level = 1,
                 <div>
                   <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 4 }}>💼 직업 (자유롭게)</div>
                   <input value={prof.job} onChange={(e) => onProfile({ job: e.target.value })} maxLength={20} placeholder="예: 콘텐츠 기획자"
-                    style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+                    style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }} />
                 </div>
 
                 <div>
@@ -9941,7 +9941,7 @@ function DockBtn({ icon, label, onClick, bg, badge, pixel, big, alert }) {
   const S = big ? 70 : 52;
   return (
     <button onClick={onClick} title={label} className={"dock-btn" + (alert ? " dock-glow" : "")}
-      style={{ position: "relative", width: S, height: S, background: bg, border: `3px solid ${C.ink}`, borderRadius: big ? 13 : 10, boxShadow: `0 3px 0 ${C.ink}`, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: big ? 3 : 1, color: C.white, fontFamily: "'DotGothic16', monospace", padding: 0 }}>
+      style={{ position: "relative", width: S, height: S, background: bg, border: `3px solid ${C.ink}`, borderRadius: big ? 13 : 10, boxShadow: `0 3px 0 ${C.ink}`, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: big ? 3 : 1, color: C.white, fontFamily: "var(--game-font, 'DotGothic16', monospace)", padding: 0 }}>
       {pixel ? (
         <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>{[0, 1, 2].map((i) => <span key={i} style={{ width: 20, height: 3, background: C.ink, display: "block" }} />)}</span>
       ) : <span className={alert ? "dock-alert" : ""} style={{ fontSize: big ? 30 : 20, lineHeight: 1 }}>{icon}</span>}
@@ -9978,7 +9978,7 @@ function InventorySheet({ onClose, gold, outfit, ownedClothes, ikeaOwned, houseS
               const have = owns(it.id);
               return (
                 <button key={it.id} type="button" onClick={() => setPick(it)}
-                  style={{ cursor: "pointer", textAlign: "center", fontFamily: "'DotGothic16', monospace",
+                  style={{ cursor: "pointer", textAlign: "center", fontFamily: "var(--game-font, 'DotGothic16', monospace)",
                     background: have ? "#fff8e1" : "#e7e2d6", border: `3px solid ${have ? it.color : "#b5ad9c"}`, borderRadius: 10, padding: 11 }}>
                   <div style={{ fontSize: 38, filter: have ? "none" : "grayscale(1)", opacity: have ? 1 : 0.5 }}>{have ? it.emoji : "❓"}</div>
                   <div style={{ fontSize: 12.5, fontWeight: "bold", marginTop: 4, color: have ? C.ink : C.inkSoft, lineHeight: 1.35, wordBreak: "keep-all" }}>{have ? it.name : "???"}</div>
@@ -10025,7 +10025,7 @@ function InventorySheet({ onClose, gold, outfit, ownedClothes, ikeaOwned, houseS
               const have = (skills || []).includes(sk.id);
               return (
                 <button key={sk.id} type="button" onClick={() => setSkPick({ ...sk, have })}
-                  style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", background: have ? "#f2ecff" : "#e7e2d6", border: `2px solid ${have ? C.ink : "#b5ad9c"}`, borderRadius: 8, padding: "9px 5px", textAlign: "center" }}>
+                  style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", background: have ? "#f2ecff" : "#e7e2d6", border: `2px solid ${have ? C.ink : "#b5ad9c"}`, borderRadius: 8, padding: "9px 5px", textAlign: "center" }}>
                   <div style={{ fontSize: 24, filter: have ? "none" : "grayscale(1)", opacity: have ? 1 : 0.4 }}>{have ? sk.icon : "❓"}</div>
                   <div style={{ fontSize: 11.5, fontWeight: "bold", marginTop: 3, color: have ? C.ink : C.inkSoft }}>{have ? sk.name : "???"}</div>
                 </button>
@@ -10071,7 +10071,7 @@ function DrawerBoard({ notes = [], onAdd, onDelete, big = false }) {
     <>
       {/* 서랍 손잡이 모양 버튼 */}
       <button type="button" onClick={() => setOpen(true)} title="내 서랍 열기"
-        style={{ width: "100%", cursor: "pointer", fontFamily: "'DotGothic16', monospace", background: "linear-gradient(180deg,#b07a4e,#8a5a3b)", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 9, padding: `${fs.pad}px 12px`, boxShadow: `inset 0 -3px 0 rgba(0,0,0,0.25)`, display: "flex", alignItems: "center", gap: 8 }}>
+        style={{ width: "100%", cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", background: "linear-gradient(180deg,#b07a4e,#8a5a3b)", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 9, padding: `${fs.pad}px 12px`, boxShadow: `inset 0 -3px 0 rgba(0,0,0,0.25)`, display: "flex", alignItems: "center", gap: 8 }}>
         <span style={{ fontSize: 18 }}>🗄️</span>
         <b style={{ flex: 1, textAlign: "left", fontSize: fs.label }}>내 서랍</b>
         <span style={{ width: 26, height: 5, borderRadius: 3, background: "rgba(255,255,255,0.55)" }} />
@@ -10086,7 +10086,7 @@ function DrawerBoard({ notes = [], onAdd, onDelete, big = false }) {
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
               <span style={{ fontSize: 18 }}>🗄️</span>
               <b style={{ flex: 1, fontSize: 15, color: "#fdf6e3" }}>내 서랍</b>
-              <button type="button" onClick={add} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, fontWeight: "bold", background: "#e0a13d", color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "5px 10px" }}>＋ 메모</button>
+              <button type="button" onClick={add} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, fontWeight: "bold", background: "#e0a13d", color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "5px 10px" }}>＋ 메모</button>
               <button type="button" onClick={() => setOpen(false)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16, color: "#fdf6e3" }}>✕</button>
             </div>
             {notes.length === 0 ? (
@@ -10095,7 +10095,7 @@ function DrawerBoard({ notes = [], onAdd, onDelete, big = false }) {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 12, padding: "4px 2px 10px" }}>
                 {notes.map((n, i) => (
                   <button key={i} type="button" onClick={() => setView({ ...n, i })} title="눌러서 전체 보기"
-                    style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", textAlign: "left", background: COLORS[i % COLORS.length], border: "1px solid rgba(0,0,0,0.25)", borderRadius: 3, padding: "9px 8px 10px", minHeight: 84, transform: `rotate(${rot(i)}deg)`, boxShadow: "0 3px 6px rgba(0,0,0,0.35)", position: "relative" }}>
+                    style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", textAlign: "left", background: COLORS[i % COLORS.length], border: "1px solid rgba(0,0,0,0.25)", borderRadius: 3, padding: "9px 8px 10px", minHeight: 84, transform: `rotate(${rot(i)}deg)`, boxShadow: "0 3px 6px rgba(0,0,0,0.35)", position: "relative" }}>
                     <span style={{ position: "absolute", top: -6, left: "50%", transform: "translateX(-50%)", fontSize: 12 }}>📌</span>
                     <div style={{ fontSize: fs.note, color: "#2a1e14", lineHeight: 1.4, wordBreak: "break-word", display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{n.t}</div>
                     <div style={{ fontSize: 8.5, color: "#6a5a3a", marginTop: 5 }}>{n.at}</div>
@@ -10193,7 +10193,7 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
   if (!open) {
     return (
       <button type="button" onClick={() => setOpen(true)} title="내 페이지 열기"
-        style={{ position: "fixed", left: 10, top: "50%", transform: "translateY(-50%)", zIndex: 60, cursor: "pointer", fontFamily: "'DotGothic16', monospace",
+        style={{ position: "fixed", left: 10, top: "50%", transform: "translateY(-50%)", zIndex: 60, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)",
           background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 10, padding: "12px 7px", writingMode: "vertical-rl", fontSize: 12, fontWeight: "bold", boxShadow: `0 4px 0 ${C.parchEdge}` }}>🙋 내 페이지</button>
     );
   }
@@ -10203,14 +10203,14 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
       <span style={{ fontSize: 14 }}>{ic}</span><b style={{ flex: 1, fontSize: 11.5 }}>{t}</b>{right}
     </div>
   );
-  const addBtn = (fn) => <button type="button" onClick={fn} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "4px 8px" }}>＋</button>;
+  const addBtn = (fn) => <button type="button" onClick={fn} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "4px 8px" }}>＋</button>;
 
   return (
     <div style={{ position: "fixed", left: 10, top: 8, zIndex: 60, width: panelW, height: panelH, maxWidth: "94vw", maxHeight: "94vh", display: "flex", flexDirection: "column", overflow: "hidden",
-      background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 12, boxShadow: `0 5px 0 ${C.parchEdge}, 0 10px 22px rgba(0,0,0,0.25)`, fontFamily: "'DotGothic16', monospace" }}>
+      background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 12, boxShadow: `0 5px 0 ${C.parchEdge}, 0 10px 22px rgba(0,0,0,0.25)`, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 11px", borderBottom: `2px solid ${C.ink}`, background: C.parch, flexShrink: 0 }}>
         <b style={{ flex: 1, fontSize: 12.5 }}>🙋 내 페이지</b>
-        <button type="button" onClick={onOpenHQ} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10, background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "4px 7px" }}>🖥 HQ</button>
+        <button type="button" onClick={onOpenHQ} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10, background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "4px 7px" }}>🖥 HQ</button>
         <button type="button" onClick={() => setOpen(false)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: C.inkSoft }}>◀</button>
       </div>
       <div style={{ padding: 11, flex: 1, overflowY: "auto", minHeight: 0 }}>
@@ -10218,7 +10218,7 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
         <div style={{ textAlign: "center", marginBottom: 10, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 9, padding: 11 }}>
           <div style={{ width: 50, height: 50, borderRadius: "50%", background: pColor, color: C.white, fontSize: 22, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", border: `3px solid ${C.ink}` }}>{pAv}</div>
           <select value={pView} onChange={(e) => setPView(e.target.value)} title="다른 사람 페이지 보기"
-            style={{ marginTop: 7, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, fontWeight: "bold", padding: "2px 5px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white, maxWidth: "100%" }}>
+            style={{ marginTop: 7, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, fontWeight: "bold", padding: "2px 5px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white, maxWidth: "100%" }}>
             {pAccts.map((nm) => (<option key={nm} value={nm}>{nm === myName ? `${nm} (나)` : nm}</option>))}
           </select>
           <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 8, fontSize: 10.5 }}>
@@ -10234,7 +10234,7 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
               {(pTags || []).map((t) => (
                 <span key={t} style={{ fontSize: 9.5, fontWeight: "bold", color: "#4b3fb0", background: "#ece9fb", border: "1px solid #cfc7f2", borderRadius: 12, padding: "2px 7px" }}>#{t}</span>
               ))}
-              <button type="button" onClick={() => onOpenHQ && onOpenHQ()} title="HQ 내페이지에서 해시태그 추가" style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 9.5, fontWeight: "bold", background: "#b07a4e", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 12, padding: "2px 8px" }}>＋</button>
+              <button type="button" onClick={() => onOpenHQ && onOpenHQ()} title="HQ 내페이지에서 해시태그 추가" style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 9.5, fontWeight: "bold", background: "#b07a4e", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 12, padding: "2px 8px" }}>＋</button>
             </div>
           </div>
           )}
@@ -10258,13 +10258,13 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
             <b style={{ flex: 1, fontSize: 11.5 }}>{pSelf ? "내 할 일" : `${pView}님의 할 일`}</b>
             {pSelf && (
               <button type="button" onClick={() => setBeta((b) => !b)} title="게임/현실 분리 (베타)"
-                style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 8.5, fontWeight: "bold", padding: "2px 7px", borderRadius: 10, border: `2px solid ${C.ink}`, background: beta ? "#4b3fb0" : C.white, color: beta ? C.white : C.inkSoft }}>베타 {beta ? "ON" : "OFF"}</button>
+                style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 8.5, fontWeight: "bold", padding: "2px 7px", borderRadius: 10, border: `2px solid ${C.ink}`, background: beta ? "#4b3fb0" : C.white, color: beta ? C.white : C.inkSoft }}>베타 {beta ? "ON" : "OFF"}</button>
             )}
           </div>
           {pSelf && beta && (
             <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
-              <button type="button" onClick={() => setTodoCat("game")} style={{ flex: 1, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10, fontWeight: "bold", padding: "4px 0", borderRadius: 6, border: `2px solid ${C.ink}`, background: todoCat === "game" ? C.ink : C.white, color: todoCat === "game" ? C.white : C.ink }}>🎮 게임</button>
-              <button type="button" onClick={() => setTodoCat("life")} style={{ flex: 1, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10, fontWeight: "bold", padding: "4px 0", borderRadius: 6, border: `2px solid ${C.ink}`, background: todoCat === "life" ? C.ink : C.white, color: todoCat === "life" ? C.white : C.ink }}>🔒 현실</button>
+              <button type="button" onClick={() => setTodoCat("game")} style={{ flex: 1, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10, fontWeight: "bold", padding: "4px 0", borderRadius: 6, border: `2px solid ${C.ink}`, background: todoCat === "game" ? C.ink : C.white, color: todoCat === "game" ? C.white : C.ink }}>🎮 게임</button>
+              <button type="button" onClick={() => setTodoCat("life")} style={{ flex: 1, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10, fontWeight: "bold", padding: "4px 0", borderRadius: 6, border: `2px solid ${C.ink}`, background: todoCat === "life" ? C.ink : C.white, color: todoCat === "life" ? C.white : C.ink }}>🔒 현실</button>
             </div>
           )}
           {(() => {
@@ -10286,7 +10286,7 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
           {pSelf && (
           <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
             <input value={ti} onChange={(e) => setTi(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && ti.trim()) { setTodos((v) => [...v, { t: ti.trim(), done: false, cat: beta ? todoCat : "game" }]); setTi(""); } }}
-              placeholder={beta ? (todoCat === "life" ? "현실 할 일 입력" : "게임 할 일 입력") : "개인 할 일 입력 후 Enter"} style={{ flex: 1, minWidth: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 10.5 }} />
+              placeholder={beta ? (todoCat === "life" ? "현실 할 일 입력" : "게임 할 일 입력") : "개인 할 일 입력 후 Enter"} style={{ flex: 1, minWidth: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5 }} />
             {addBtn(() => { if (ti.trim()) { setTodos((v) => [...v, { t: ti.trim(), done: false, cat: beta ? todoCat : "game" }]); setTi(""); } })}
           </div>
           )}
@@ -10302,9 +10302,9 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
         <div style={cardBox}>
           {cardH("🚧", "병목지점 일기")}
           <input value={nkPoint} onChange={(e) => setNkPoint(e.target.value)} placeholder="병목지점 (어디서 막혔나요?)"
-            style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 10.5, marginBottom: 5 }} />
+            style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5, marginBottom: 5 }} />
           <input value={nkAction} onChange={(e) => setNkAction(e.target.value)} placeholder="액션 (어떻게 뚫을까요?)"
-            style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 10.5 }} />
+            style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5 }} />
           <PxButton tone="ink" onClick={() => { if (nkPoint.trim() || nkAction.trim()) { setNeck((v) => [{ point: nkPoint.trim(), action: nkAction.trim(), done: false, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v]); setNkPoint(""); setNkAction(""); } }} style={{ width: "100%", fontSize: 10.5, padding: 7, marginTop: 6 }}>＋ 추가</PxButton>
           {neck.length > 0 && (
             <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -10357,7 +10357,7 @@ function HQQuestRail({ quests = [], onOpenHQ }) {
     <div style={{ position: "fixed", right: 12, top: "50%", transform: "translateY(-50%)", zIndex: 60, display: "flex", flexDirection: "column", gap: 10 }}>
       {items.map((q) => (
         <button key={q.id} type="button" onClick={onOpenHQ} title={q.title}
-          style={{ width: 52, height: 52, borderRadius: 14, cursor: "pointer", fontFamily: "'DotGothic16', monospace",
+          style={{ width: 52, height: 52, borderRadius: 14, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)",
             background: C.parch, border: `3px solid ${C.ink}`, boxShadow: `0 3px 0 ${C.parchEdge}`, fontSize: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>{q.ic}</button>
       ))}
     </div>
@@ -10529,7 +10529,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const h = { display: "flex", alignItems: "center", gap: 8, marginBottom: 11 };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#f0eee9", zIndex: 130, display: "flex", flexDirection: "column", fontFamily: "'DotGothic16', monospace" }}>
+    <div style={{ position: "fixed", inset: 0, background: "#f0eee9", zIndex: 130, display: "flex", flexDirection: "column", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
       {/* 상단 바 */}
       <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", background: C.white, borderBottom: `3px solid ${C.ink}`, flexWrap: "wrap" }}>
         <div style={{ width: 30, height: 30, borderRadius: 8, background: "linear-gradient(135deg,#5fc99a,#4b6cf0)", flexShrink: 0 }} />
@@ -10541,7 +10541,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
         <div className="hq-tabs" style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
           {TAB.map(([k, lb]) => (
             <button key={k} type="button" onClick={() => setTab(k)}
-              style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, fontWeight: "bold", padding: "7px 11px", borderRadius: 8, border: "none",
+              style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, fontWeight: "bold", padding: "7px 11px", borderRadius: 8, border: "none",
                 background: tab === k ? C.ink : "transparent", color: tab === k ? C.white : C.ink }}>{lb}</button>
           ))}
         </div>
@@ -10549,12 +10549,12 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
           {saveMsg && <span style={{ fontSize: 10.5, fontWeight: "bold", color: saveMsg.startsWith("⚠️") ? C.danger : C.good, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "4px 8px" }}>{saveMsg}</span>}
           <span style={{ fontSize: 11, color: C.inkSoft, display: "flex", alignItems: "center", gap: 4 }}>나:
             <select value={mpView} onChange={(e) => { setMpView(e.target.value); setTab("me"); }} title="계정 선택 · 다른 사람 내페이지 보기"
-              style={{ fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", color: C.ink, padding: "2px 5px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white }}>
+              style={{ fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", color: C.ink, padding: "2px 5px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white }}>
               {mpAccts.map((nm) => (<option key={nm} value={nm}>{nm === myName ? `${nm} (나)` : nm}</option>))}
             </select>
           </span>
           <button type="button" onClick={onClose} title="마을로 돌아가기"
-            style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 13, padding: "6px 10px", borderRadius: 8, border: `2px solid ${C.ink}`, background: C.parch }}>🏘 마을</button>
+            style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, padding: "6px 10px", borderRadius: 8, border: `2px solid ${C.ink}`, background: C.parch }}>🏘 마을</button>
         </div>
       </div>
 
@@ -10570,16 +10570,16 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
             {/* 📢 공지사항 / 📅 캘린더 — 버튼으로 전환 (게시판과 같은 글 연동) */}
             <div style={{ ...card, background: "#fff8e8", borderColor: "#e0a13d" }}>
               <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-                <button type="button" onClick={() => setHomeSub("notice")} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12.5, fontWeight: "bold", padding: "7px 12px", borderRadius: 8, border: `2px solid ${C.ink}`, background: homeSub === "notice" ? "#e0a13d" : C.white, color: homeSub === "notice" ? C.white : C.ink }}>📢 공지사항</button>
-                <button type="button" onClick={() => setHomeSub("cal")} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12.5, fontWeight: "bold", padding: "7px 12px", borderRadius: 8, border: `2px solid ${C.ink}`, background: homeSub === "cal" ? "#e0a13d" : C.white, color: homeSub === "cal" ? C.white : C.ink }}>📅 캘린더</button>
-                <button type="button" onClick={() => onGoBoard && onGoBoard()} style={{ marginLeft: "auto", cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, fontWeight: "bold", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "4px 9px" }}>📋 게시판 →</button>
+                <button type="button" onClick={() => setHomeSub("notice")} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, fontWeight: "bold", padding: "7px 12px", borderRadius: 8, border: `2px solid ${C.ink}`, background: homeSub === "notice" ? "#e0a13d" : C.white, color: homeSub === "notice" ? C.white : C.ink }}>📢 공지사항</button>
+                <button type="button" onClick={() => setHomeSub("cal")} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, fontWeight: "bold", padding: "7px 12px", borderRadius: 8, border: `2px solid ${C.ink}`, background: homeSub === "cal" ? "#e0a13d" : C.white, color: homeSub === "cal" ? C.white : C.ink }}>📅 캘린더</button>
+                <button type="button" onClick={() => onGoBoard && onGoBoard()} style={{ marginLeft: "auto", cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5, fontWeight: "bold", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "4px 9px" }}>📋 게시판 →</button>
               </div>
 
               {homeSub === "notice" ? (
                 <>
                   {notices.filter((n) => n.type === "공지" || n.type === "모집").slice(0, 3).map((n) => (
                     <button key={n.id} type="button" onClick={() => onGoBoard && onGoBoard()} title="게시판에서 보기"
-                      style={{ display: "block", width: "100%", textAlign: "left", cursor: "pointer", background: "none", border: "none", padding: 0, marginBottom: 8, fontFamily: "'DotGothic16', monospace" }}>
+                      style={{ display: "block", width: "100%", textAlign: "left", cursor: "pointer", background: "none", border: "none", padding: 0, marginBottom: 8, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
                       <div style={{ fontSize: 13, fontWeight: "bold", color: C.ink }}>📢 {n.title}</div>
                       {n.body && <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{String(n.body).split("\n")[0]}</div>}
                       <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 2 }}>{n.date}</div>
@@ -10588,7 +10588,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                   {notices.filter((n) => n.type === "공지" || n.type === "모집").length === 0 && <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>공지가 없어요. 게시판에서 올려보세요.</div>}
                   <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                     <input value={notice} onChange={(e) => setNotice(e.target.value)}
-                      placeholder="공지 입력 후 등록" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, background: C.white }} />
+                      placeholder="공지 입력 후 등록" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, background: C.white }} />
                     <PxButton tone="gold" disabled={!notice.trim()} onClick={() => { onPostNotice && onPostNotice(notice.trim()); setNotice(""); }} style={{ fontSize: 12, padding: "9px 13px" }}>등록</PxButton>
                   </div>
                 </>
@@ -10610,7 +10610,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                       <b style={{ flex: 1, fontSize: 14 }}>{y}년 {mo + 1}월</b>
                       <button type="button" onClick={() => setCalOff((v) => v - 1)} style={{ cursor: "pointer", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, fontSize: 13, color: C.inkSoft, padding: "1px 8px" }}>‹</button>
-                      <button type="button" onClick={() => setCalOff(0)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10, color: C.inkSoft, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "2px 7px" }}>오늘</button>
+                      <button type="button" onClick={() => setCalOff(0)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10, color: C.inkSoft, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "2px 7px" }}>오늘</button>
                       <button type="button" onClick={() => setCalOff((v) => v + 1)} style={{ cursor: "pointer", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, fontSize: 13, color: C.inkSoft, padding: "1px 8px" }}>›</button>
                     </div>
                     <div style={{ maxHeight: 250, overflowY: "auto", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: 8 }}>
@@ -10623,7 +10623,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                           const td = isToday(d);
                           return (
                             <button key={"d" + d} type="button" onClick={() => setCalDay(ymd(d))} title="눌러서 크게 보기"
-                              style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", aspectRatio: "1 / 1", minHeight: 30, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1,
+                              style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", aspectRatio: "1 / 1", minHeight: 30, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1,
                                 background: td ? "#e0a13d" : C.white, color: td ? C.white : C.ink, border: `2px solid ${td ? C.ink : C.parchEdge}`, borderRadius: 6, fontSize: 11 }}>
                               <span style={{ fontWeight: td ? "bold" : "normal" }}>{d}</span>
                               <span style={{ display: "flex", gap: 1, height: 5 }}>
@@ -10678,7 +10678,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginBottom: 16 }}>
               {cats.map((c) => (
-                <button key={c.id} type="button" onClick={() => { setQcat(c.id); setTab("quest"); }} style={{ cursor: "pointer", textAlign: "left", fontFamily: "'DotGothic16', monospace", background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 13 }}>
+                <button key={c.id} type="button" onClick={() => { setQcat(c.id); setTab("quest"); }} style={{ cursor: "pointer", textAlign: "left", fontFamily: "var(--game-font, 'DotGothic16', monospace)", background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 13 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                     <span style={{ width: 9, height: 9, borderRadius: "50%", background: c.color }} />
                     <b style={{ fontSize: 13 }}>{c.icon} {c.name}</b>
@@ -10716,7 +10716,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
                 <b style={{ fontSize: 14, marginRight: 4 }}>📋 퀘스트 게시판</b>
                 {[["all", "전체"], ...HQ_CATS.map((c) => [c.id, `${c.icon} ${c.name}`])].map(([k, lb]) => (
-                  <button key={k} type="button" onClick={() => setQcat(k)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: qcat === k ? C.ink : C.white, color: qcat === k ? C.white : C.ink }}>{lb}</button>
+                  <button key={k} type="button" onClick={() => setQcat(k)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: qcat === k ? C.ink : C.white, color: qcat === k ? C.white : C.ink }}>{lb}</button>
                 ))}
                 <PxButton tone="wood" onClick={() => setQManage(true)} style={{ fontSize: 11, padding: "7px 11px", marginLeft: "auto" }}>⚙️ 설정</PxButton>
                 <PxButton tone="gold" onClick={() => setQEdit(blankQuest())} style={{ fontSize: 11, padding: "7px 12px" }}>＋ 새 퀘스트</PxButton>
@@ -10750,7 +10750,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                           <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                             <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isD ? "line-through" : "none", color: isD ? C.inkSoft : C.ink }}>{sb.t}</span>
                             <select value={sb.who || ""} onChange={(e) => setSubWho(q.id, i, e.target.value)} onDoubleClick={() => toggleSubActive(q.id, i)} title="담당 계정 선택 · 더블클릭 = 진행중 표시"
-                              style={{ flexShrink: 0, maxWidth: 90, fontFamily: "'DotGothic16', monospace", fontSize: 10, fontWeight: sb.active ? "bold" : "normal", padding: "2px 3px", border: `2px solid ${sb.active ? (sb.who ? colorOf(sb.who) : "#4b8f5f") : C.ink}`, borderRadius: 6, background: sb.active ? (sb.who ? colorOf(sb.who) : "#cfe7d6") : C.white, color: sb.active && sb.who ? C.white : C.ink }}>
+                              style={{ flexShrink: 0, maxWidth: 90, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10, fontWeight: sb.active ? "bold" : "normal", padding: "2px 3px", border: `2px solid ${sb.active ? (sb.who ? colorOf(sb.who) : "#4b8f5f") : C.ink}`, borderRadius: 6, background: sb.active ? (sb.who ? colorOf(sb.who) : "#cfe7d6") : C.white, color: sb.active && sb.who ? C.white : C.ink }}>
                               <option value="">미지정</option>
                               {(sb.who && !acctNames.includes(sb.who) ? [sb.who, ...acctNames] : acctNames).map((nm) => (<option key={nm} value={nm}>{nm}</option>))}
                             </select>
@@ -10785,35 +10785,35 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                       <button type="button" onClick={() => setQEdit(null)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16 }}>✕</button>
                     </div>
                     <input value={qEdit.title} onChange={(e) => setQEdit({ ...qEdit, title: e.target.value })} placeholder="퀘스트 제목"
-                      style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, marginBottom: 8 }} />
+                      style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, marginBottom: 8 }} />
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
                       {HQ_CATS.map((c) => (
-                        <button key={c.id} type="button" onClick={() => setQEdit({ ...qEdit, cat: c.id })} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: qEdit.cat === c.id ? c.color : C.white, color: qEdit.cat === c.id ? C.white : C.ink }}>{c.icon} {c.name}</button>
+                        <button key={c.id} type="button" onClick={() => setQEdit({ ...qEdit, cat: c.id })} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: qEdit.cat === c.id ? c.color : C.white, color: qEdit.cat === c.id ? C.white : C.ink }}>{c.icon} {c.name}</button>
                       ))}
                     </div>
                     <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-                      <label style={{ fontSize: 11, color: C.inkSoft, display: "flex", alignItems: "center", gap: 4 }}>⭐<select value={qEdit.star} onChange={(e) => setQEdit({ ...qEdit, star: Number(e.target.value) })} style={{ fontFamily: "'DotGothic16', monospace", padding: 4 }}>{[1,2,3].map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
-                      <label style={{ fontSize: 11, color: C.inkSoft, display: "flex", alignItems: "center", gap: 4 }}>🪙<input type="number" value={qEdit.gold} onChange={(e) => setQEdit({ ...qEdit, gold: e.target.value })} style={{ width: 60, padding: 5, border: `2px solid ${C.ink}`, borderRadius: 5, fontFamily: "'DotGothic16', monospace" }} /></label>
-                      <label style={{ fontSize: 11, color: C.inkSoft, display: "flex", alignItems: "center", gap: 4 }}>💎<input type="number" value={qEdit.gem} onChange={(e) => setQEdit({ ...qEdit, gem: e.target.value })} style={{ width: 60, padding: 5, border: `2px solid ${C.ink}`, borderRadius: 5, fontFamily: "'DotGothic16', monospace" }} /></label>
+                      <label style={{ fontSize: 11, color: C.inkSoft, display: "flex", alignItems: "center", gap: 4 }}>⭐<select value={qEdit.star} onChange={(e) => setQEdit({ ...qEdit, star: Number(e.target.value) })} style={{ fontFamily: "var(--game-font, 'DotGothic16', monospace)", padding: 4 }}>{[1,2,3].map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
+                      <label style={{ fontSize: 11, color: C.inkSoft, display: "flex", alignItems: "center", gap: 4 }}>🪙<input type="number" value={qEdit.gold} onChange={(e) => setQEdit({ ...qEdit, gold: e.target.value })} style={{ width: 60, padding: 5, border: `2px solid ${C.ink}`, borderRadius: 5, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }} /></label>
+                      <label style={{ fontSize: 11, color: C.inkSoft, display: "flex", alignItems: "center", gap: 4 }}>💎<input type="number" value={qEdit.gem} onChange={(e) => setQEdit({ ...qEdit, gem: e.target.value })} style={{ width: 60, padding: 5, border: `2px solid ${C.ink}`, borderRadius: 5, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }} /></label>
                     </div>
                     <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                      <select value={qEdit.chapter || ""} onChange={(e) => setQEdit({ ...qEdit, chapter: e.target.value })} title="로드맵 챕터" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, background: C.white }}>
+                      <select value={qEdit.chapter || ""} onChange={(e) => setQEdit({ ...qEdit, chapter: e.target.value })} title="로드맵 챕터" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, background: C.white }}>
                         <option value="">📁 챕터 없음</option>
                         {(hqRoad[qEdit.cat] || []).map((ch) => (<option key={ch.id} value={ch.name}>{ch.name}</option>))}
                         {qEdit.chapter && !(hqRoad[qEdit.cat] || []).some((ch) => ch.name === qEdit.chapter) && <option value={qEdit.chapter}>{qEdit.chapter} (로드맵에 없음)</option>}
                       </select>
-                      <button type="button" onClick={() => window.alert("로드맵 탭에서 새 챕터를 추가해주세요.\n(🗺 로드맵 → ＋ 챕터 추가)")} title="새 챕터 추가" style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 13, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "0 11px" }}>＋</button>
-                      <input type="date" value={qEdit.due} onChange={(e) => setQEdit({ ...qEdit, due: e.target.value })} style={{ padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 11 }} />
+                      <button type="button" onClick={() => window.alert("로드맵 탭에서 새 챕터를 추가해주세요.\n(🗺 로드맵 → ＋ 챕터 추가)")} title="새 챕터 추가" style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "0 11px" }}>＋</button>
+                      <input type="date" value={qEdit.due} onChange={(e) => setQEdit({ ...qEdit, due: e.target.value })} style={{ padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11 }} />
                     </div>
                     <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>세부 미션 (담당 계정 · 완료 체크는 카드에서)</div>
                     {(qEdit.subs || []).map((sb, i) => (
                       <div key={i} style={{ display: "flex", gap: 5, marginBottom: 5 }}>
                         <select value={sb.who || ""} onChange={(e) => setQEdit({ ...qEdit, subs: qEdit.subs.map((x, j) => j === i ? { ...x, who: e.target.value } : x) })}
-                          style={{ width: 84, flexShrink: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 10.5, background: C.white }}>
+                          style={{ width: 84, flexShrink: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5, background: C.white }}>
                           <option value="">미지정</option>
                           {(sb.who && !acctNames.includes(sb.who) ? [sb.who, ...acctNames] : acctNames).map((nm) => (<option key={nm} value={nm}>{nm}</option>))}
                         </select>
-                        <input value={sb.t} onChange={(e) => setQEdit({ ...qEdit, subs: qEdit.subs.map((x, j) => j === i ? { ...x, t: e.target.value } : x) })} placeholder="미션 내용" style={{ flex: 1, minWidth: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 11 }} />
+                        <input value={sb.t} onChange={(e) => setQEdit({ ...qEdit, subs: qEdit.subs.map((x, j) => j === i ? { ...x, t: e.target.value } : x) })} placeholder="미션 내용" style={{ flex: 1, minWidth: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11 }} />
                         <button type="button" onClick={() => setQEdit({ ...qEdit, subs: qEdit.subs.filter((_, j) => j !== i) })} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 12, color: C.inkSoft }}>✕</button>
                       </div>
                     ))}
@@ -10952,7 +10952,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
                 <b style={{ fontSize: 14, marginRight: 4 }}>🗺 로드맵</b>
                 {HQ_CATS.map((c) => (
-                  <button key={c.id} type="button" onClick={() => setRcat(c.id)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: rcat === c.id ? C.ink : C.white, color: rcat === c.id ? C.white : C.ink }}>{c.icon} {c.name}</button>
+                  <button key={c.id} type="button" onClick={() => setRcat(c.id)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: rcat === c.id ? C.ink : C.white, color: rcat === c.id ? C.white : C.ink }}>{c.icon} {c.name}</button>
                 ))}
                 <PxButton tone="gold" onClick={add} style={{ fontSize: 11, padding: "7px 12px", marginLeft: "auto" }}>＋ 챕터 추가</PxButton>
               </div>
@@ -11025,7 +11025,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
           const viewDoneN = Object.values(viewDone).filter(Boolean).length;
           const card = { background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 15, marginBottom: 14 };
           const hd = (ic, t, right) => (<div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 11 }}><span style={{ fontSize: 18 }}>{ic}</span><b style={{ flex: 1, fontSize: 14 }}>{t}</b>{right}</div>);
-          const addBtn = (fn) => <button type="button" onClick={fn} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "5px 10px" }}>＋</button>;
+          const addBtn = (fn) => <button type="button" onClick={fn} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "5px 10px" }}>＋</button>;
           return (
             <div style={{ maxWidth: 620, margin: "0 auto" }}>
               {/* 프로필 + 계정 드롭다운 + 해시태그 */}
@@ -11054,7 +11054,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                   <div style={{ display: "flex", gap: 6 }}>
                     <input value={mpTagIn} onChange={(e) => setMpTagIn(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") mpAddTag(); }}
                       placeholder={mpSelf ? "내 프로필에 해시태그 추가" : `${mpView}님에게 해시태그 달기`} maxLength={20}
-                      style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
+                      style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
                     <PxButton tone="wood" disabled={!mpTagIn.trim()} onClick={mpAddTag} style={{ fontSize: 11, padding: "8px 12px" }}>＋ 태그</PxButton>
                   </div>
                 </div>
@@ -11078,13 +11078,13 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                   <b style={{ flex: 1, fontSize: 14 }}>{mpSelf ? "내 할 일" : `${mpView}님의 할 일`}</b>
                   {mpSelf && (
                     <button type="button" onClick={() => setMpBeta((b) => !b)} title="게임/현실 분리 (베타)"
-                      style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10, fontWeight: "bold", padding: "3px 9px", borderRadius: 12, border: `2px solid ${C.ink}`, background: mpBeta ? "#4b3fb0" : C.white, color: mpBeta ? C.white : C.inkSoft }}>베타 {mpBeta ? "ON" : "OFF"}</button>
+                      style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10, fontWeight: "bold", padding: "3px 9px", borderRadius: 12, border: `2px solid ${C.ink}`, background: mpBeta ? "#4b3fb0" : C.white, color: mpBeta ? C.white : C.inkSoft }}>베타 {mpBeta ? "ON" : "OFF"}</button>
                   )}
                 </div>
                 {mpSelf && mpBeta && (
                   <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                    <button type="button" onClick={() => setMpTodoCat("game")} style={{ flex: 1, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, fontWeight: "bold", padding: "6px 0", borderRadius: 8, border: `2px solid ${C.ink}`, background: mpTodoCat === "game" ? C.ink : C.white, color: mpTodoCat === "game" ? C.white : C.ink }}>🎮 게임</button>
-                    <button type="button" onClick={() => setMpTodoCat("life")} style={{ flex: 1, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, fontWeight: "bold", padding: "6px 0", borderRadius: 8, border: `2px solid ${C.ink}`, background: mpTodoCat === "life" ? C.ink : C.white, color: mpTodoCat === "life" ? C.white : C.ink }}>🔒 현실</button>
+                    <button type="button" onClick={() => setMpTodoCat("game")} style={{ flex: 1, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, fontWeight: "bold", padding: "6px 0", borderRadius: 8, border: `2px solid ${C.ink}`, background: mpTodoCat === "game" ? C.ink : C.white, color: mpTodoCat === "game" ? C.white : C.ink }}>🎮 게임</button>
+                    <button type="button" onClick={() => setMpTodoCat("life")} style={{ flex: 1, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, fontWeight: "bold", padding: "6px 0", borderRadius: 8, border: `2px solid ${C.ink}`, background: mpTodoCat === "life" ? C.ink : C.white, color: mpTodoCat === "life" ? C.white : C.ink }}>🔒 현실</button>
                   </div>
                 )}
                 {(() => {
@@ -11106,7 +11106,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 {mpSelf && (
                   <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                     <input value={mpTi} onChange={(e) => setMpTi(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && mpTi.trim()) { setMpTodos((v) => [...v, { t: mpTi.trim(), done: false, cat: mpBeta ? mpTodoCat : "game" }]); setMpTi(""); } }}
-                      placeholder={mpBeta ? (mpTodoCat === "life" ? "현실 할 일 입력" : "게임 할 일 입력") : "개인 할 일 입력 후 Enter"} style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5 }} />
+                      placeholder={mpBeta ? (mpTodoCat === "life" ? "현실 할 일 입력" : "게임 할 일 입력") : "개인 할 일 입력 후 Enter"} style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5 }} />
                     {addBtn(() => { if (mpTi.trim()) { setMpTodos((v) => [...v, { t: mpTi.trim(), done: false, cat: mpBeta ? mpTodoCat : "game" }]); setMpTi(""); } })}
                   </div>
                 )}
@@ -11122,9 +11122,9 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
               <div style={card}>
                 {hd("🚧", "병목지점 일기")}
                 <input value={mpNkPoint} onChange={(e) => setMpNkPoint(e.target.value)} placeholder="병목지점 (어디서 막혔나요?)"
-                  style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, marginBottom: 6 }} />
+                  style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, marginBottom: 6 }} />
                 <input value={mpNkAction} onChange={(e) => setMpNkAction(e.target.value)} placeholder="액션 (어떻게 뚫을까요?)"
-                  style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5 }} />
+                  style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5 }} />
                 <PxButton tone="ink" onClick={() => { if (mpNkPoint.trim() || mpNkAction.trim()) { setMpNeck((v) => [{ point: mpNkPoint.trim(), action: mpNkAction.trim(), done: false, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v]); setMpNkPoint(""); setMpNkAction(""); } }} style={{ width: "100%", fontSize: 12.5, padding: 9, marginTop: 8 }}>＋ 추가</PxButton>
                 {mpNeck.length > 0 && (
                   <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
@@ -11225,7 +11225,7 @@ function QuestBoxSheet({ onClose, rows = [], onRead, onClear, onDoneRow, onClaim
     const party = a.party || [];
     return (
       <button type="button" onClick={() => onGo && onGo(q)}
-        style={{ width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "'DotGothic16', monospace", display: "flex", alignItems: "center", gap: 9,
+        style={{ width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", display: "flex", alignItems: "center", gap: 9,
           background: tone === "on" ? "#eef6ef" : tone === "done" ? "#f0ece2" : tone === "mine" ? "#fdf3e0" : C.white,
         border: `2px solid ${tone === "on" ? C.good : tone === "mine" ? "#c9a25f" : C.ink}`, borderRadius: 9, padding: "9px 11px" }}>
         <span style={{ fontSize: 24 }}>{q.icon || "🎯"}</span>
@@ -11333,7 +11333,7 @@ function QuestBoxSheet({ onClose, rows = [], onRead, onClear, onDoneRow, onClaim
                 <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 9,
                   background: r.read ? C.white : "#fff6e0", border: `2px solid ${r.read ? C.parchEdge : C.ink}`, borderRadius: 9, padding: "9px 11px" }}>
                   <button type="button" onClick={() => onGo && onGo({ id: r.qid, mapId: r.mapId, goto: r.goto })}
-                    style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 9, textAlign: "left", cursor: "pointer", background: "none", border: "none", padding: 0, fontFamily: "'DotGothic16', monospace" }}>
+                    style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 9, textAlign: "left", cursor: "pointer", background: "none", border: "none", padding: 0, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
                     <span style={{ fontSize: 21 }}>{QBOX_ICON[r.kind] || "🔔"}</span>
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: "block", fontSize: 12.5, fontWeight: "bold", wordBreak: "keep-all" }}>{r.title || "퀘스트"}</span>
@@ -11443,7 +11443,7 @@ function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSe
       )}
       <div style={{ display: "flex", gap: 7, alignItems: "center", marginBottom: 9 }}>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 건물 이름 검색"
-          style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13 }} />
+          style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }} />
         {changed > 0 && <PxButton tone="danger" onClick={onClearAll} style={{ fontSize: 10.5, padding: "6px 9px" }}>전체 되돌리기 ({changed})</PxButton>}
       </div>
 
@@ -11495,7 +11495,7 @@ function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSe
                   <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
                     {[["작게", 0.7], ["기본", 1], ["크게", 1.4], ["아주 크게", 2]].map(([lb, v]) => (
                       <button key={lb} type="button" onClick={() => onSetScale(s.id, v)}
-                        style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10, padding: "4px 9px", borderRadius: 10,
+                        style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10, padding: "4px 9px", borderRadius: 10,
                           border: `2px solid ${C.ink}`, background: Math.abs(sc - v) < 0.001 ? C.gem : C.white, fontWeight: "bold" }}>{lb}</button>
                     ))}
                   </div>
@@ -11520,7 +11520,7 @@ function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSe
                     <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
                       {[["약하게", 18], ["보통", 32], ["세게", 55], ["아주 세게", 80]].map(([lb, v]) => (
                         <button key={lb} type="button" onClick={() => onSetCut(s.id, { cut: true, tol: v })}
-                          style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10, padding: "4px 9px", borderRadius: 10,
+                          style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10, padding: "4px 9px", borderRadius: 10,
                             border: `2px solid ${C.ink}`, background: tol === v ? C.gem : C.white, fontWeight: "bold" }}>{lb}</button>
                       ))}
                     </div>
@@ -11533,7 +11533,7 @@ function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSe
                 <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                   <input value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") applyUrl(); }}
                     placeholder="https://... 이미지 주소"
-                    style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
+                    style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
                   <PxButton tone="gold" disabled={!url.trim()} onClick={applyUrl} style={{ fontSize: 11, padding: "6px 10px" }}>적용</PxButton>
                 </div>
               )}
@@ -11663,9 +11663,9 @@ function QuestFragmentInput({ tone, icon, title, hint, placeholder, value, onCha
       </div>
       <div style={{ fontSize: 11, color: "rgba(255,255,255,0.62)", lineHeight: 1.6, marginBottom: 8 }}>{hint}</div>
       <input value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") onAdd(); }} placeholder={placeholder}
-        style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${line}`, borderRadius: 7, background: "rgba(255,255,255,0.94)", fontFamily: "'DotGothic16', monospace", fontSize: 13.5 }} />
+        style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${line}`, borderRadius: 7, background: "rgba(255,255,255,0.94)", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13.5 }} />
       <textarea value={detail} onChange={(e) => onDetail(e.target.value)} rows={2} placeholder="세부 내용 · 결과물 링크 · 메모 (선택)"
-        style={{ width: "100%", boxSizing: "border-box", marginTop: 7, padding: 9, border: `2px solid ${line}66`, borderRadius: 7, background: "rgba(255,255,255,0.9)", fontFamily: "'DotGothic16', monospace", fontSize: 12.5, resize: "vertical" }} />
+        style={{ width: "100%", boxSizing: "border-box", marginTop: 7, padding: 9, border: `2px solid ${line}66`, borderRadius: 7, background: "rgba(255,255,255,0.9)", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, resize: "vertical" }} />
       {onImgs && (
         <>
           <input ref={fileRef} type="file" accept="image/*" multiple onChange={(e) => pick(e.target.files)} style={{ display: "none" }} />
@@ -11679,7 +11679,7 @@ function QuestFragmentInput({ tone, icon, title, hint, placeholder, value, onCha
             ))}
             {(imgs || []).length < 3 && (
               <button type="button" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()}
-                style={{ width: 58, height: 58, borderRadius: 6, border: `2px dashed ${line}88`, background: "rgba(255,255,255,0.08)", color: line, cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5 }}>
+                style={{ width: 58, height: 58, borderRadius: 6, border: `2px dashed ${line}88`, background: "rgba(255,255,255,0.08)", color: line, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5 }}>
                 {busy ? "…" : "📷 첨부"}
               </button>
             )}
@@ -11696,7 +11696,7 @@ function QuestFragmentInput({ tone, icon, title, hint, placeholder, value, onCha
 function ShrineChip({ k, label, on, onPick }) {
   return (
     <button type="button" onClick={() => onPick(k)}
-      style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, padding: "6px 11px", borderRadius: 16,
+      style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, padding: "6px 11px", borderRadius: 16,
         border: `2px solid ${C.ink}`, background: on ? "linear-gradient(180deg,#9a86d8,#4b3c85)" : C.white, color: on ? C.white : C.ink, fontWeight: "bold" }}>
       {label}
     </button>
@@ -11797,7 +11797,7 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed,
           ))}
           <span style={{ fontSize: 11, color: "#b9a7d6", fontWeight: "bold" }}>{shown.length}건</span>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 검색"
-            style={{ flex: "1 1 110px", minWidth: 90, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12, background: C.white }} />
+            style={{ flex: "1 1 110px", minWidth: 90, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, background: C.white }} />
         </div>
 
         {/* 파편 목록 */}
@@ -11834,11 +11834,11 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed,
                   <button onClick={() => remove(it.id)} title="삭제" style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 15 }}>🗑</button>
                 </div>
                 <div style={{ display: "flex", gap: 7, marginTop: 10, flexWrap: "wrap" }}>
-                  <button onClick={() => toggle(it.id, "gm")} style={{ flex: "1 1 140px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, padding: "9px 11px", borderRadius: 8, border: `2px solid ${it.gm ? "#5fd39a" : "rgba(255,255,255,0.3)"}`, background: it.gm ? "rgba(95,211,154,0.2)" : "rgba(255,255,255,0.05)", color: it.gm ? "#a8f0cd" : "rgba(255,255,255,0.7)", fontWeight: "bold" }}>
+                  <button onClick={() => toggle(it.id, "gm")} style={{ flex: "1 1 140px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, padding: "9px 11px", borderRadius: 8, border: `2px solid ${it.gm ? "#5fd39a" : "rgba(255,255,255,0.3)"}`, background: it.gm ? "rgba(95,211,154,0.2)" : "rgba(255,255,255,0.05)", color: it.gm ? "#a8f0cd" : "rgba(255,255,255,0.7)", fontWeight: "bold" }}>
                     <span style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${it.gm ? "#5fd39a" : "rgba(255,255,255,0.4)"}`, background: it.gm ? "#5fd39a" : "transparent", color: "#10261c", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>{it.gm ? "✔" : ""}</span>
                     🛡 {it.reviewer ? `${it.reviewer} 검토 완료` : "등록자 검토 완료"}
                   </button>
-                  <button onClick={() => toggle(it.id, "reward")} style={{ flex: "1 1 140px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, padding: "9px 11px", borderRadius: 8, border: `2px solid ${it.reward ? "#ffd75e" : "rgba(255,255,255,0.3)"}`, background: it.reward ? "rgba(255,215,94,0.2)" : "rgba(255,255,255,0.05)", color: it.reward ? "#ffeaa8" : "rgba(255,255,255,0.7)", fontWeight: "bold" }}>
+                  <button onClick={() => toggle(it.id, "reward")} style={{ flex: "1 1 140px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, padding: "9px 11px", borderRadius: 8, border: `2px solid ${it.reward ? "#ffd75e" : "rgba(255,255,255,0.3)"}`, background: it.reward ? "rgba(255,215,94,0.2)" : "rgba(255,255,255,0.05)", color: it.reward ? "#ffeaa8" : "rgba(255,255,255,0.7)", fontWeight: "bold" }}>
                     <span style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${it.reward ? "#ffd75e" : "rgba(255,255,255,0.4)"}`, background: it.reward ? "#ffd75e" : "transparent", color: "#2e1d06", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>{it.reward ? "✔" : ""}</span>
                     💎 보상 완료
                   </button>
@@ -11860,13 +11860,39 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed,
           </div>
         )}
         {toast && (
-          <div style={{ position: "fixed", left: "50%", bottom: 90, transform: "translateX(-50%)", zIndex: 120, background: "#2e2455", color: "#ffd75e", border: "3px solid #ffd75e", borderRadius: 10, padding: "10px 18px", fontSize: 13, fontFamily: "'DotGothic16', monospace", boxShadow: "0 6px 18px rgba(0,0,0,0.5)" }}>{toast}</div>
+          <div style={{ position: "fixed", left: "50%", bottom: 90, transform: "translateX(-50%)", zIndex: 120, background: "#2e2455", color: "#ffd75e", border: "3px solid #ffd75e", borderRadius: 10, padding: "10px 18px", fontSize: 13, fontFamily: "var(--game-font, 'DotGothic16', monospace)", boxShadow: "0 6px 18px rgba(0,0,0,0.5)" }}>{toast}</div>
         )}
       </div>
     </Panel>
   );
 }
 
+
+/* 🔤 게임 폰트 — 고른 것만 그때 불러와요 (지연 로딩) · 기본은 픽셀체 DotGothic16 */
+const GAME_FONTS = [
+  { id: "dot", label: "픽셀 (기본)", css: "'DotGothic16', monospace", g: "DotGothic16" },
+  { id: "nanumcoding", label: "나눔고딕코딩", css: "'Nanum Gothic Coding', monospace", g: "Nanum+Gothic+Coding" },
+  { id: "dongle", label: "동글", css: "'Dongle', sans-serif", g: "Dongle" },
+  { id: "jua", label: "주아", css: "'Jua', sans-serif", g: "Jua" },
+  { id: "himelody", label: "하이멜로디", css: "'Hi Melody', cursive", g: "Hi+Melody" },
+];
+const _FONT_LOADED = {};
+function ensureGameFont(g) {
+  if (!g || _FONT_LOADED[g]) return;
+  _FONT_LOADED[g] = true;
+  try {
+    const l = document.createElement("link");
+    l.rel = "stylesheet";
+    l.href = "https://fonts.googleapis.com/css2?family=" + g + "&display=swap";
+    document.head.appendChild(l);
+  } catch (e) {}
+}
+function applyGameFont(id) {
+  const f = GAME_FONTS.find((x) => x.id === id) || GAME_FONTS[0];
+  ensureGameFont(f.g);
+  try { document.documentElement.style.setProperty("--game-font", f.css); } catch (e) {}
+  return f.id;
+}
 
 function EchoTown() {
   const [view, setView] = useState("world");
@@ -13225,6 +13251,19 @@ function EchoTown() {
     document.head.appendChild(link);
     return () => { document.head.removeChild(link); };
   }, []);
+  /* 🔤 폰트 선택 (계정마다 저장 · 고른 것만 로딩) */
+  const [fontId, setFontId] = useState("dot");
+  const [fontOpen, setFontOpen] = useState(false);
+  useEffect(() => {
+    let id = "dot";
+    try { id = window.localStorage.getItem("echotown_font_" + (myName || "guest")) || "dot"; } catch (e) {}
+    setFontId(id); applyGameFont(id);
+  }, [myName]);
+  useEffect(() => { if (fontOpen) GAME_FONTS.forEach((f) => ensureGameFont(f.g)); }, [fontOpen]);   // 설정 열면 미리보기용으로 로딩
+  const pickFont = (id) => {
+    setFontId(applyGameFont(id));
+    try { window.localStorage.setItem("echotown_font_" + (myName || "guest"), id); } catch (e) {}
+  };
 
   const expInfo = useMemo(() => {
     let lv = 1, rem = Math.max(0, Math.round(exp)), need = 100;
@@ -13710,7 +13749,7 @@ function EchoTown() {
 
   return (
     <NetContext.Provider value={{ others: netOthers, view, room: netRoomIdRef.current, roomPosRef: netRoomPosRef, me: { outfit, look: myLook, carry: carrying, pet: petEmoji } }}>
-    <div style={{ fontFamily: "'DotGothic16', monospace", minHeight: "100vh", background: `repeating-linear-gradient(45deg, ${C.grass} 0 24px, ${C.grassDark} 24px 48px)`, color: C.ink, padding: 14, boxSizing: "border-box" }}>
+    <div style={{ fontFamily: "var(--game-font, 'DotGothic16', monospace)", minHeight: "100vh", background: `repeating-linear-gradient(45deg, ${C.grass} 0 24px, ${C.grassDark} 24px 48px)`, color: C.ink, padding: 14, boxSizing: "border-box" }}>
       <StyleBlock />
       <audio ref={audioRef} src={import.meta.env.BASE_URL + encodeURIComponent(worldBgm.file)} preload="auto" loop={worldBgm.file === "ocean.mp3"} onEnded={() => { if (worldBgm.file !== "ocean.mp3") stepTrack(1); }} />
       <div style={{ maxWidth: 960, margin: "0 auto 12px" }}>
@@ -14008,7 +14047,7 @@ function EchoTown() {
                   <div style={{ fontSize: 13, textAlign: "center", marginBottom: 12, lineHeight: 1.7 }}>디스코드로 로그인해서 시작해요</div>
                   <button type="button" disabled={discordBusy}
                     onClick={() => { setDiscordBusy(true); discordLogin(); }}
-                    style={{ width: "100%", cursor: "pointer", fontFamily: "'DotGothic16', monospace", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    style={{ width: "100%", cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                       background: "#5865F2", color: "#fff", border: `3px solid ${C.ink}`, borderRadius: 8, padding: "13px 10px", fontSize: 14, fontWeight: "bold", boxShadow: `0 3px 0 ${C.ink}` }}>
                     <span style={{ fontSize: 18 }}>🎮</span> {discordBusy ? "디스코드로 이동 중…" : "디스코드로 로그인"}
                   </button>
@@ -14025,11 +14064,11 @@ function EchoTown() {
                       <div style={{ fontSize: 12.5, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{discord.name || "이름 없음"}</div>
                     </div>
                     <button type="button" onClick={async () => { await discordLogout(); setDiscord(null); setNameErr(""); try { window.localStorage.removeItem("echotown_discord_id"); } catch (e) {} }}
-                      style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, padding: "5px 8px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white }}>로그아웃</button>
+                      style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5, padding: "5px 8px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white }}>로그아웃</button>
                   </div>
 
                   <div style={{ fontSize: 13, textAlign: "center", marginBottom: 8 }}>마을에서 사용할 이름을 정해주세요!</div>
-                  <input value={nameInput} onChange={(e) => { setNameInput(e.target.value); setNameErr(""); }} onKeyDown={(e) => { if (e.key === "Enter") confirmName(nameInput); }} maxLength={8} autoFocus placeholder="예: 정인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${nameErr ? C.danger : C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 15, background: C.white, textAlign: "center" }} />
+                  <input value={nameInput} onChange={(e) => { setNameInput(e.target.value); setNameErr(""); }} onKeyDown={(e) => { if (e.key === "Enter") confirmName(nameInput); }} maxLength={8} autoFocus placeholder="예: 정인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${nameErr ? C.danger : C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 15, background: C.white, textAlign: "center" }} />
                   {nameErr && <div style={{ fontSize: 11, color: C.danger, marginTop: 6, textAlign: "center", fontWeight: "bold" }}>⚠️ {nameErr}</div>}
                   <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center", lineHeight: 1.6 }}>기존에 쓰던 이름이 있다면 <b>그 이름 그대로</b> 넣어주세요 (데이터가 이어져요)<br />한 번 정하면 <b>바꿀 수 없어요</b></div>
                   <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -14089,7 +14128,7 @@ function EchoTown() {
                     <div style={{ fontSize: 12, fontWeight: "bold" }}>✍️ 불참 사유 (초대한 분께 회신돼요)</div>
                     <textarea value={declineWhy} onChange={(e) => setDeclineWhy(e.target.value)} rows={3} autoFocus
                       placeholder="예: 그 시간에 다른 일정이 있어요. 4시 이후면 가능합니다!"
-                      style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "vertical" }} />
+                      style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, resize: "vertical" }} />
                     <div style={{ display: "flex", gap: 8 }}>
                       <PxButton tone="ink" onClick={() => setDeclineOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>뒤로</PxButton>
                       <PxButton tone="danger" disabled={!declineWhy.trim()} onClick={() => {
@@ -14196,7 +14235,7 @@ function EchoTown() {
       )}
       {/* 🎬 유튜브 미니 플레이어 — 리스닝 방을 나가도 계속 재생돼요 */}
       {ytNow && ytNow.videoId && (
-        <div style={{ position: "fixed", left: 12, bottom: 96, zIndex: 61, width: ytOpen ? 250 : 250, background: "#241a33", border: `3px solid ${C.ink}`, borderRadius: 10, boxShadow: `0 4px 0 ${C.ink}, 0 8px 18px rgba(0,0,0,0.35)`, overflow: "hidden", fontFamily: "'DotGothic16', monospace" }}>
+        <div style={{ position: "fixed", left: 12, bottom: 96, zIndex: 61, width: ytOpen ? 250 : 250, background: "#241a33", border: `3px solid ${C.ink}`, borderRadius: 10, boxShadow: `0 4px 0 ${C.ink}, 0 8px 18px rgba(0,0,0,0.35)`, overflow: "hidden", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", color: "#ffe680" }}>
             <span className="gem-spin" style={{ fontSize: 13 }}>♬</span>
             <b style={{ flex: 1, fontSize: 11.5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -14213,10 +14252,42 @@ function EchoTown() {
         </div>
       )}
       {notice && (
-        <div style={{ position: "fixed", left: "50%", top: 16, transform: "translateX(-50%)", zIndex: 150, background: C.ink, color: C.white, border: `3px solid ${C.gem}`, borderRadius: 10, padding: "10px 18px", fontSize: 13, fontFamily: "'DotGothic16', monospace", boxShadow: "0 6px 16px rgba(0,0,0,0.4)" }}>{notice}</div>
+        <div style={{ position: "fixed", left: "50%", top: 16, transform: "translateX(-50%)", zIndex: 150, background: C.ink, color: C.white, border: `3px solid ${C.gem}`, borderRadius: 10, padding: "10px 18px", fontSize: 13, fontFamily: "var(--game-font, 'DotGothic16', monospace)", boxShadow: "0 6px 16px rgba(0,0,0,0.4)" }}>{notice}</div>
       )}
       {!hqOpen && myName && (
         <HQSidePanel key={"mp" + mpVersion} myName={myName} people={people} questBox={questBox} onOpenHQ={() => { setHqOpen(true); }} />
+      )}
+      {/* ⚙️ 설정 (우측 상단 · 아이콘만) */}
+      {myName && (
+        <button type="button" onClick={() => setFontOpen(true)} title="설정" aria-label="설정"
+          style={{ position: "fixed", right: 12, top: 10, zIndex: 90, cursor: "pointer", background: "none", border: "none", padding: 4, fontSize: 24, lineHeight: 1, filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.4))" }}>⚙️</button>
+      )}
+      {fontOpen && (
+        <div onClick={() => setFontOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 360, maxHeight: "88%", overflow: "auto", background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
+            <div style={{ display: "flex", alignItems: "center", marginBottom: 14 }}>
+              <b style={{ flex: 1, fontSize: 16 }}>⚙️ 설정</b>
+              <button type="button" onClick={() => setFontOpen(false)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16 }}>✕</button>
+            </div>
+            <div style={{ fontSize: 12.5, fontWeight: "bold", marginBottom: 8 }}>🔤 폰트</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {GAME_FONTS.map((f) => {
+                const on = fontId === f.id;
+                return (
+                  <button key={f.id} type="button" onClick={() => pickFont(f.id)}
+                    style={{ cursor: "pointer", textAlign: "left", background: on ? "#fff8e8" : C.white, border: `2px solid ${on ? "#e0a13d" : C.ink}`, borderRadius: 10, padding: "10px 12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <b style={{ flex: 1, fontSize: 13, fontFamily: f.css }}>{f.label}</b>
+                      {on && <span style={{ fontSize: 12, color: "#e0a13d", fontWeight: "bold" }}>✓ 사용 중</span>}
+                    </div>
+                    <div style={{ fontSize: 15, marginTop: 4, fontFamily: f.css, color: C.ink }}>가나다 에코월드 ABC 123 😊</div>
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 12, lineHeight: 1.6 }}>고른 폰트만 그때 불러와요 (지연 로딩) · 계정마다 저장돼요<br />구글폰트 · 인터넷 연결이 필요해요</div>
+          </div>
+        </div>
       )}
       {!hqOpen && myName && (
         <HQQuestRail quests={hqQuests} onOpenHQ={() => { setHqOpen(true); }} />
@@ -14347,7 +14418,7 @@ function EchoTown() {
                   {feed.length === 0 ? <div style={{ fontSize: 11.5, color: C.inkSoft, textAlign: "center", padding: 16 }}>아직 새 소식이 없어요</div> : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                       {feed.map((f, i) => (
-                        <button key={i} type="button" onClick={() => setHubTab(f.tab)} style={{ cursor: "pointer", textAlign: "left", fontFamily: "'DotGothic16', monospace", display: "flex", alignItems: "center", gap: 8, background: C.parch, border: `2px solid ${C.parchEdge}`, borderRadius: 7, padding: "7px 9px" }}>
+                        <button key={i} type="button" onClick={() => setHubTab(f.tab)} style={{ cursor: "pointer", textAlign: "left", fontFamily: "var(--game-font, 'DotGothic16', monospace)", display: "flex", alignItems: "center", gap: 8, background: C.parch, border: `2px solid ${C.parchEdge}`, borderRadius: 7, padding: "7px 9px" }}>
                           <span style={{ fontSize: 15 }}>{f.ic}</span>
                           <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.who ? `${f.who} · ` : ""}{f.txt}</span>
                         </button>
@@ -14404,7 +14475,7 @@ function EchoTown() {
                     <div style={{ fontSize: 12, fontWeight: "bold" }}>✍️ 거절 사유 (부른 분께 회신돼요)</div>
                     <textarea value={qcDeclineWhy} onChange={(e) => setQcDeclineWhy(e.target.value)} rows={3} autoFocus
                       placeholder="예: 지금 다른 일 하는 중이에요. 30분 뒤에 갈게요!"
-                      style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 13, resize: "vertical" }} />
+                      style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, resize: "vertical" }} />
                     <div style={{ display: "flex", gap: 8 }}>
                       <PxButton tone="ink" onClick={() => setQcDeclineOpen(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>뒤로</PxButton>
                       <PxButton tone="danger" onClick={() => {
@@ -14483,7 +14554,7 @@ class ErrorBoundary extends React.Component {
     const box = { background: "#fffdf6", border: "3px solid #2a1e14", borderRadius: 10, padding: 12, marginTop: 10,
       fontFamily: "monospace", fontSize: 12, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: 260, overflow: "auto" };
     return (
-      <div style={{ minHeight: "100vh", background: "#e9e3d6", padding: 20, boxSizing: "border-box", fontFamily: "'DotGothic16', monospace", color: "#2a1e14" }}>
+      <div style={{ minHeight: "100vh", background: "#e9e3d6", padding: 20, boxSizing: "border-box", fontFamily: "var(--game-font, 'DotGothic16', monospace)", color: "#2a1e14" }}>
         <div style={{ maxWidth: 720, margin: "0 auto", background: "#f0e4cf", border: "4px solid #2a1e14", borderRadius: 14, padding: 20 }}>
           <div style={{ fontSize: 40, textAlign: "center" }}>🚧</div>
           <h2 style={{ textAlign: "center", fontSize: 18, margin: "10px 0 4px" }}>에코타운에 문제가 생겼어요</h2>
@@ -14531,8 +14602,9 @@ export default function App() {
 function StyleBlock() {
   return (
     <style>{`
+      :root { --game-font: 'DotGothic16', monospace; }
       * { -webkit-tap-highlight-color: transparent; }
-      button { font-family: 'DotGothic16', monospace; }
+      button { font-family: var(--game-font, 'DotGothic16', monospace); }
       input, textarea { color: ${C.ink}; }
       .px-btn { transition: transform .05s ease, box-shadow .05s ease; }
       .px-btn:not(:disabled):active { transform: translateY(3px); box-shadow: none !important; }
