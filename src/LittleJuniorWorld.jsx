@@ -10398,6 +10398,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const [qView, setQView] = useState(null);   // 🔍 자세히 보기 팝업 (null=닫힘)
   const [qManage, setQManage] = useState(false);   // ⚙️ 퀘스트 관리(삭제·이름·순서)
   const [qActiveOnly, setQActiveOnly] = useState(false);   // ON = 진행중(색 있는) 미션만 표시
+  const [catForm, setCatForm] = useState(null);   // 🌍 월드 추가/수정 폼 { mode, i, name, icon } | null
   const [calOff, setCalOff] = useState(0);     // 📅 캘린더 월 이동 (0=이번 달)
   const [homeSub, setHomeSub] = useState("notice");   // 홈 상단: notice | cal
   const [calDay, setCalDay] = useState(null);   // 날짜 클릭 팝업 (YYYY-MM-DD | null)
@@ -10504,8 +10505,16 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const HQ_CATS = (hqRoad.__cats && Array.isArray(hqRoad.__cats) && hqRoad.__cats.length) ? hqRoad.__cats : HQ_CATS_DEFAULT;
   const saveCats = (arr) => onRoadChange && onRoadChange({ ...hqRoad, __cats: arr });
   const catMove = (i, d) => { const a = HQ_CATS.map((c) => ({ ...c })); const j = i + d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; saveCats(a); };
-  const catEdit = (i) => { const c = HQ_CATS[i]; const nm = (window.prompt("월드 이름", c.name) || "").trim(); if (!nm) return; const ic = (window.prompt("월드 아이콘 (이모지 1개)", c.icon || "") || "").trim() || c.icon; saveCats(HQ_CATS.map((x, j) => j === i ? { ...x, name: nm, icon: ic } : x)); };
-  const catAdd = () => { const nm = (window.prompt("새 월드 이름") || "").trim(); if (!nm) return; const ic = (window.prompt("월드 아이콘 (이모지 1개)", "🌍") || "").trim() || "🌍"; const palette = ["#3b82f6", "#f97316", "#8b5cf6", "#eab308", "#10b981", "#ec4899", "#06b6d4", "#ef4444"]; const color = palette[HQ_CATS.length % palette.length]; const id = "w" + Date.now().toString(36); saveCats([...HQ_CATS.map((c) => ({ ...c })), { id, name: nm, icon: ic, color }]); };
+  const catEdit = (i) => setCatForm({ mode: "edit", i, name: HQ_CATS[i].name, icon: HQ_CATS[i].icon || "🌍" });
+  const catAdd = () => setCatForm({ mode: "add", name: "", icon: "🌍" });
+  const catFormSave = () => {
+    if (!catForm) return;
+    const nm = (catForm.name || "").trim(); if (!nm) { window.alert("월드 이름을 입력해주세요."); return; }
+    const ic = catForm.icon || "🌍";
+    if (catForm.mode === "edit") { saveCats(HQ_CATS.map((x, j) => j === catForm.i ? { ...x, name: nm, icon: ic } : x)); }
+    else { const palette = ["#3b82f6", "#f97316", "#8b5cf6", "#eab308", "#10b981", "#ec4899", "#06b6d4", "#ef4444"]; const color = palette[HQ_CATS.length % palette.length]; const id = "w" + Date.now().toString(36); saveCats([...HQ_CATS.map((c) => ({ ...c })), { id, name: nm, icon: ic, color }]); }
+    setCatForm(null);
+  };
   const cats = HQ_CATS.map((c) => {
     const qs = hqQuests.filter((q) => q.cat === c.id);
     const done = qs.filter((q) => avgOf(q) >= 100).length;
@@ -10741,10 +10750,10 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 {list.map((q) => {
                   const ci = catInfo(q.cat);
                   return (
-                    <div key={q.id} onClick={() => setQView(q)} style={{ cursor: "pointer", background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 14 }}>
+                    <div key={q.id} onClick={() => setQView(q)} style={{ cursor: "pointer", position: "relative", background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 14 }}>
+                      {ci.icon && <span style={{ position: "absolute", top: -15, left: -9, fontSize: 30, lineHeight: 1, zIndex: 2, filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.3))", pointerEvents: "none" }}>{ci.icon}</span>}
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
-                        <b style={{ flex: 1, fontSize: 14, wordBreak: "keep-all" }}>{q.title}</b>
-                        <span style={{ fontSize: 10, color: C.white, background: ci.color, borderRadius: 8, padding: "2px 7px", whiteSpace: "nowrap" }}>{ci.icon}</span>
+                        <b style={{ flex: 1, fontSize: 14, wordBreak: "keep-all", marginLeft: ci.icon ? 18 : 0 }}>{q.title}</b>
                         <button type="button" onClick={(e) => { e.stopPropagation(); setQEdit({ ...q, subs: (q.subs || []).map((x) => ({ ...x })) }); }} title="수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13 }}>✏️</button>
                         <button type="button" onClick={(e) => { e.stopPropagation(); if (window.confirm("정말로 삭제하시겠습니까?")) removeQuest(q.id); }} title="삭제" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: C.danger }}>🗑</button>
                       </div>
@@ -10943,6 +10952,30 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              )}
+
+              {/* 🌍 월드 추가/수정 (이모지 선택) */}
+              {catForm && (
+                <div onClick={() => setCatForm(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 240, padding: 16 }}>
+                  <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, maxHeight: "88%", overflow: "auto", background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18 }}>
+                    <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
+                      <b style={{ flex: 1, fontSize: 15 }}>{catForm.mode === "add" ? "🌍 새 월드 추가" : "🌍 월드 수정"}</b>
+                      <button type="button" onClick={() => setCatForm(null)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16 }}>✕</button>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                      <span style={{ fontSize: 30, width: 44, textAlign: "center", flexShrink: 0 }}>{catForm.icon}</span>
+                      <input value={catForm.name} onChange={(e) => setCatForm({ ...catForm, name: e.target.value })} placeholder="월드 이름" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }} />
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: "bold", color: C.inkSoft, marginBottom: 6 }}>이모지 선택</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 4, marginBottom: 12 }}>
+                      {WORLD_EMOJIS.map((em) => (
+                        <button key={em} type="button" onClick={() => setCatForm({ ...catForm, icon: em })}
+                          style={{ cursor: "pointer", aspectRatio: "1 / 1", fontSize: 19, borderRadius: 8, border: `2px solid ${catForm.icon === em ? "#e0a13d" : C.parchEdge}`, background: catForm.icon === em ? "#fff8e8" : C.white, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>{em}</button>
+                      ))}
+                    </div>
+                    <PxButton tone="good" onClick={catFormSave} style={{ width: "100%", fontSize: 13, padding: 11 }}>{catForm.mode === "add" ? "＋ 추가" : "저장"}</PxButton>
                   </div>
                 </div>
               )}
@@ -12064,6 +12097,9 @@ const BOSS_TAUNTS = [
   "이번엔 좀… 다른가?", "끝을 볼 자신 있어?", "천천히 와, 어차피 여기서 기다릴 테니까.",
 ];
 const bossTaunt = () => BOSS_TAUNTS[Math.floor(Math.random() * BOSS_TAUNTS.length)];
+
+/* 🌍 월드 이모지 선택지 (기본 이모지 — 기기 기본 이모지로 표시돼요) */
+const WORLD_EMOJIS = ["🌍","🟦","🟧","🟪","🟨","🟩","🟥","📱","💻","🛒","🎮","🏰","🏢","🚀","⭐","🔥","💡","🎯","📦","🧩","🛠️","📚","💬","🎨","🏆","🔔","🍀","🐉","👾","🤖","🧠","💎","🪙","📈","🗂️","🔑","🌱","🌸","⚡","🎁","📮","🧭"];
 
 function EchoTown() {
   const [view, setView] = useState("world");
