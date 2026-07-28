@@ -2496,7 +2496,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "notorder").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2785,10 +2785,16 @@ async function dbAddMeetLog(payload) {
   } catch (e) { return false; }
 }
 async function dbAddNotice(type, title, body, uid) {
-  try { const s = await getSupa(); await s.from("notices").insert({ type, title, body: body || null }); } catch (e) {}
+  try { const s = await getSupa(); const r = await s.from("notices").insert({ type, title, body: body || null }).select("id,type,title,body,created_at").maybeSingle(); return (r && r.data) ? r.data : null; } catch (e) { return null; }
 }
 async function dbEditNotice(id, title, body) {
   try { const s = await getSupa(); await s.from("notices").update({ title, body: body || null }).eq("id", id); return true; } catch (e) { return false; }
+}
+async function dbLoadNoticeOrder() {
+  try { const s = await getSupa(); const r = await s.from("notices").select("body,created_at").eq("type", "notorder").order("created_at", { ascending: false }).limit(1).maybeSingle(); return (r && r.data && r.data.body) ? (JSON.parse(r.data.body) || []) : []; } catch (e) { return []; }
+}
+async function dbSaveNoticeOrder(ids) {
+  try { const s = await getSupa(); await s.from("notices").delete().eq("type", "notorder"); await s.from("notices").insert({ type: "notorder", title: "notorder", body: JSON.stringify(ids || []) }); return true; } catch (e) { return false; }
 }
 async function dbDelNotice(id) {
   try { const s = await getSupa(); await s.from("notices").delete().eq("id", id); return true; } catch (e) { return false; }
@@ -8649,9 +8655,21 @@ function BoardView({ onBack, myName = "", myUid = "" }) {
   const [logOpen, setLogOpen] = useState(false);   // 📜 확인한 기록 접기/펼치기
   const reload = () => dbNotices().then((r) => setDbList(r || []));
   useEffect(() => { reload(); }, []);
+  const [nOrder, setNOrder] = useState([]);   // 공지 순서 (rawId 배열, 서버 공유)
+  const [nManage, setNManage] = useState(false);   // ⚙️ 공지 관리(삭제·순서)
+  useEffect(() => { dbLoadNoticeOrder().then((o) => setNOrder(Array.isArray(o) ? o : [])); }, []);
+  const saveNOrder = (arr) => { setNOrder(arr); dbSaveNoticeOrder(arr); };
   const post = () => {
     if (!wTitle.trim()) return;
-    dbAddNotice(wType, wTitle.trim(), wBody.trim(), myUid).then(() => { setWTitle(""); setWBody(""); setWOpen(false); reload(); });
+    dbAddNotice(wType, wTitle.trim(), wBody.trim(), myUid).then((row) => {
+      setWTitle(""); setWBody(""); setWOpen(false);
+      if (row && row.id != null) {
+        setDbList((v) => [{ id: "db" + row.id, rawId: row.id, uid: null, type: row.type, title: row.title, body: row.body || "", date: new Date(row.created_at || Date.now()).toISOString().slice(0, 10) }, ...v.filter((x) => x.rawId !== row.id)]);
+      } else {
+        window.alert("⚠️ 서버에 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
+      }
+      reload();
+    });
   };
   const [tab, setTab] = useState("notice");
   const [openDoc, setOpenDoc] = useState(null);
@@ -8786,9 +8804,18 @@ function BoardView({ onBack, myName = "", myUid = "" }) {
           </div>
         )}
 
-        {tab === "notice" && (
-          <div style={{ display: "grid", gap: 8 }}>
-            {[...dbList.filter((n) => n.type !== "모집" && n.type !== "업데이트" && !String(n.title || "").startsWith("[파티모집]")), ...ANNOUNCEMENTS].map((a) => (
+        {tab === "notice" && (() => {
+          const srv = dbList.filter((n) => n.type !== "모집" && n.type !== "업데이트" && !String(n.title || "").startsWith("[파티모집]"));
+          const ordered = [...srv].sort((a, b) => { const ia = nOrder.indexOf(a.rawId), ib = nOrder.indexOf(b.rawId); if (ia === -1 && ib === -1) return 0; if (ia === -1) return 1; if (ib === -1) return -1; return ia - ib; });
+          const shown = [...ordered, ...ANNOUNCEMENTS];
+          const moveNotice = (i, d) => { const arr = ordered.map((n) => n.rawId); const j = i + d; if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; saveNOrder(arr); };
+          return (
+          <>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+              <PxButton tone="wood" onClick={() => setNManage(true)} style={{ fontSize: 11, padding: "6px 11px" }}>⚙️ 공지 설정</PxButton>
+            </div>
+            <div style={{ display: "grid", gap: 8, maxHeight: 208, overflowY: "auto" }}>
+            {shown.map((a) => (
               <div key={a.id} style={{ background: C.white, border: `3px solid ${C.ink}`, padding: "10px 12px", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
                 <button onClick={() => setOpenDoc(a)} style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
                   <div style={{ fontSize: 14, fontWeight: "bold", display: "flex", alignItems: "center", gap: 6 }}>
@@ -8801,13 +8828,34 @@ function BoardView({ onBack, myName = "", myUid = "" }) {
                   <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                     <span style={{ flex: 1, fontSize: 10, color: C.good, alignSelf: "center", fontWeight: "bold" }}>✍️ 내가 쓴 글</span>
                     <PxButton tone="wood" onClick={() => setEdit({ id: a.rawId, title: a.title, body: a.body || "" })} style={{ fontSize: 10, padding: "4px 8px" }}>✏️ 수정</PxButton>
-                    <PxButton tone="danger" onClick={() => { if (window.confirm("이 글을 삭제할까요?")) dbDelNotice(a.rawId).then(reload); }} style={{ fontSize: 10, padding: "4px 8px" }}>🗑</PxButton>
+                    <PxButton tone="danger" onClick={() => { if (window.confirm("정말로 삭제하시겠습니까?")) dbDelNotice(a.rawId).then(reload); }} style={{ fontSize: 10, padding: "4px 8px" }}>🗑</PxButton>
                   </div>
                 )}
               </div>
             ))}
-          </div>
-        )}
+            </div>
+
+            {nManage && (
+              <div onClick={() => setNManage(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 240, padding: 16 }}>
+                <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420, maxHeight: "88%", overflow: "auto", background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
+                  <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}><b style={{ flex: 1, fontSize: 15 }}>⚙️ 공지 설정</b><button type="button" onClick={() => setNManage(false)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16 }}>✕</button></div>
+                  <div style={{ fontSize: 10.5, color: C.inkSoft, marginBottom: 10 }}>▲▼ 순서 변경 · 🗑 삭제 (모두에게 저장·공유돼요)</div>
+                  {ordered.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 20 }}>등록된 공지가 없어요.</div>}
+                  {ordered.map((a, i) => (
+                    <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 6, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
+                      <span style={{ fontSize: 9, color: "#fff", background: a.type === "이벤트" ? "#d76b96" : "#5b8def", borderRadius: 6, padding: "2px 6px", flexShrink: 0 }}>{a.type || "공지"}</span>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</span>
+                      <button type="button" onClick={() => moveNotice(i, -1)} title="위로" disabled={i === 0} style={{ cursor: i === 0 ? "default" : "pointer", background: "none", border: "none", fontSize: 13, color: i === 0 ? "#ccc" : C.inkSoft }}>▲</button>
+                      <button type="button" onClick={() => moveNotice(i, 1)} title="아래로" disabled={i === ordered.length - 1} style={{ cursor: i === ordered.length - 1 ? "default" : "pointer", background: "none", border: "none", fontSize: 13, color: i === ordered.length - 1 ? "#ccc" : C.inkSoft }}>▼</button>
+                      <button type="button" onClick={() => { if (window.confirm("정말로 삭제하시겠습니까?")) dbDelNotice(a.rawId).then(reload); }} title="삭제" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: C.danger }}>🗑</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+          );
+        })()}
 
         {tab === "cal" && (
           <div>
@@ -10618,8 +10666,8 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
               </div>
 
               {homeSub === "notice" ? (
-                <>
-                  {notices.filter((n) => n.type === "공지" || n.type === "모집").slice(0, 3).map((n) => (
+                <div style={{ maxHeight: 178, overflowY: "auto" }}>
+                  {notices.filter((n) => n.type === "공지" || n.type === "모집").map((n) => (
                     <button key={n.id} type="button" onClick={() => onGoBoard && onGoBoard()} title="게시판에서 보기"
                       style={{ display: "block", width: "100%", textAlign: "left", cursor: "pointer", background: "none", border: "none", padding: 0, marginBottom: 8, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
                       <div style={{ fontSize: 13, fontWeight: "bold", color: C.ink }}>📢 {n.title}</div>
@@ -10628,12 +10676,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                     </button>
                   ))}
                   {notices.filter((n) => n.type === "공지" || n.type === "모집").length === 0 && <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>공지가 없어요. 게시판에서 올려보세요.</div>}
-                  <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                    <input value={notice} onChange={(e) => setNotice(e.target.value)}
-                      placeholder="공지 입력 후 등록" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, background: C.white }} />
-                    <PxButton tone="gold" disabled={!notice.trim()} onClick={() => { onPostNotice && onPostNotice(notice.trim()); setNotice(""); }} style={{ fontSize: 12, padding: "9px 13px" }}>등록</PxButton>
-                  </div>
-                </>
+                </div>
               ) : (() => {
                 const base = new Date(); base.setDate(1); base.setMonth(base.getMonth() + calOff);
                 const y = base.getFullYear(), mo = base.getMonth();
