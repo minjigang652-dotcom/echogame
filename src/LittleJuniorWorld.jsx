@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v112 · 2026-07-28";
+const APP_VERSION = "v113 · 2026-07-28";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2492,7 +2492,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "reeldata").neq("type", "nsptut").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2547,6 +2547,40 @@ async function dbSaveNspTut(key, slot) {
   } catch (e) { return false; }
 }
 /* 📱 릴스방 영상 서버 저장 (notices 재사용: type="reeldata", 전체 맵을 최신 1행에) */
+/* 🔗 카페 외부(네이버 키워드) — 관리자 제품·키워드 설정 서버 저장 (notices type=nspkw) */
+async function dbLoadNspKw() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("body,created_at").eq("type", "nspkw").order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    if (!row) return null;
+    return JSON.parse(row.body || "null");
+  } catch (e) { return null; }
+}
+async function dbSaveNspKw(products) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "nspkw", title: "nspkw", body: JSON.stringify(products || []) });
+    return !(r && r.error);
+  } catch (e) { return false; }
+}
+/* 🔗 카페 외부 — 알바가 등록한 발행 URL 목록 (notices type=nspurl) */
+async function dbLoadNspUrls() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("body,created_at").eq("type", "nspurl").order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    if (!row) return null;
+    return JSON.parse(row.body || "null");
+  } catch (e) { return null; }
+}
+async function dbSaveNspUrls(urls) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "nspurl", title: "nspurl", body: JSON.stringify(urls || []) });
+    return !(r && r.error);
+  } catch (e) { return false; }
+}
 async function dbLoadReels() {
   try {
     const s = await getSupa();
@@ -8416,6 +8450,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260728n4", type: "업데이트", date: "2026-07-28", title: "🔗 카페 외부 방 개편 — 관리자 설정 · URL 등록 · 새 표",
+    body: "· 우측 상단에 ⚙️ 환경설정(관리자 전용, 비밀번호 필요)을 넣었어요 — 제품을 등록/삭제하고 제품마다 키워드를 등록/삭제할 수 있어요\n· ⚙️ 왼쪽에 🔄 새로고침 버튼 — 누르면 바로 크롤링을 시작해요\n· 🔄 왼쪽에 🔗 URL 등록 버튼 — 알바가 발행한 카페 링크를 여러 개 한 번에 등록할 수 있고, 아래에 등록 개수와 목록이 보여요\n· 표 항목을 키워드 / 카페순위 / 전체순위 / 상태 / 매칭 URL 로 바꿨어요\n· 제품별·노출별 필터는 없앴어요\n· 제품·키워드·URL은 모두 서버에 저장돼 함께 봐요" },
   { id: "u20260728n3", type: "업데이트", date: "2026-07-28", title: "📖 네이버스쿨 첫 화면에 튜토리얼 방 추가",
     body: "· 네이버스쿨 방 목록 맨 앞에 📖 튜토리얼 방을 넣었어요\n· 튜토리얼 방에서 작성 방법·프롬프트 메모, 지식인 답변 사진, 댓글 사진(그린레이·보이실린)을 관리할 수 있어요\n· 방 = 튜토리얼 · 카페 최신글 · 카페 외부 · 지식인 상위(준비중) · 지식인 최신글 · 유튜브 최신글(준비중)" },
   { id: "u20260728n2", type: "업데이트", date: "2026-07-28", title: "🏫 네이버스쿨 개편 — 방(카테고리) 구조로",
@@ -12134,6 +12170,24 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
     imgCommentGreen: [], imgCommentBoy: [],
   });
   const [data, setData] = useState({ keywords: [], urls: [], cafe: [], kin: [], cafeLinks: [] });
+  /* 🔗 카페 외부: 관리자 제품·키워드 설정 (서버 저장) */
+  const [kwProducts, setKwProducts] = useState([]);   // [{ id, name, keywords:[{id,word}] }]
+  const [kwAdmin, setKwAdmin] = useState(false);
+  const [kwAdminOpen, setKwAdminOpen] = useState(false);
+  const [kwPw, setKwPw] = useState(''); const [kwPwErr, setKwPwErr] = useState(false);
+  const [newProduct, setNewProduct] = useState('');
+  const [newKw, setNewKw] = useState({});   // { productId: '입력값' }
+  /* 🔗 카페 외부: 발행 URL 등록 (알바) */
+  const [urlOpen, setUrlOpen] = useState(false);
+  const [urlText, setUrlText] = useState('');
+  const [nspUrls, setNspUrls] = useState([]);   // [{ url, by, at }]
+  const KW_ADMIN_PW = 'ckdals987?';
+  const saveKwProducts = (list) => { setKwProducts(list); dbSaveNspKw(list); };
+  const saveNspUrls = (list) => { setNspUrls(list); dbSaveNspUrls(list); };
+  useEffect(() => { if (!open) return;
+    dbLoadNspKw().then((d) => { if (Array.isArray(d)) setKwProducts(d); });
+    dbLoadNspUrls().then((d) => { if (Array.isArray(d)) setNspUrls(d); });
+  }, [open]);
   const [loading, setLoading] = useState(false);
   const [usingMock, setUsingMock] = useState(false);
   const [updatedAt, setUpdatedAt] = useState('');
@@ -12276,64 +12330,63 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
           {tab === 'yt' && (
             <div className="nsp-soon"><div className="nsp-soon-ic">▶️</div><div className="nsp-soon-t">유튜브 최신글</div><div className="nsp-soon-d">아직 준비 중이에요 · 곧 채워질 예정입니다</div></div>
           )}
-          {/* ① 네이버키워드 */}
-          {tab === 'kw' && (
+          {/* ① 카페 외부 (네이버 키워드) */}
+          {tab === 'kw' && (() => {
+            // 관리자가 등록한 제품·키워드를, 크롤링 결과(data.keywords)와 매칭해 표를 만들어요
+            const kwByWord = {};
+            (data.keywords || []).forEach((k) => { kwByWord[(k.keyword || '').trim()] = k; });
+            const urlByWord = {};
+            (data.urls || []).forEach((u) => { if (u.keyword) urlByWord[(u.keyword || '').trim()] = u.url; });
+            const rows = [];
+            kwProducts.forEach((p) => (p.keywords || []).forEach((kw) => {
+              const w = (kw.word || '').trim();
+              const src = kwByWord[w] || {};
+              rows.push({
+                product: p.name, keyword: w,
+                cafeRank: src.cafeRank ?? src.ourRank ?? null,   // 카페순위(없으면 우리순위)
+                totalRank: src.totalRank ?? src.rank ?? null,     // 전체순위
+                status: src.status, url: src.url || urlByWord[w] || '',
+              });
+            }));
+            return (
             <>
-              {/* 제품별 */}
-              <div className="nsp-filter">
-                <span className="nsp-flabel">제품별</span>
-                {products.map((p) => (
-                  <button key={p} className={`nsp-pill ${product === p ? 'on' : ''}`} onClick={() => setProduct(p)}>{p}</button>
-                ))}
-              </div>
-              {/* 노출별 + 우리순위 정렬 */}
-              <div className="nsp-filter">
-                <span className="nsp-flabel">노출별</span>
-                <button className={`nsp-pill ${statusFilter === 'all' ? 'on' : ''}`} onClick={() => setStatusFilter('all')}>전체</button>
-                <button className={`nsp-pill ${statusFilter === 'important' ? 'on' : ''}`} onClick={() => setStatusFilter('important')}>중요만</button>
-                <button className={`nsp-pill ${statusFilter === 'high' ? 'on' : ''}`} onClick={() => setStatusFilter('high')}>상위노출 ({counts.high})</button>
-                <button className={`nsp-pill ${statusFilter === 'low' ? 'on' : ''}`} onClick={() => setStatusFilter('low')}>하위노출 ({counts.low})</button>
-                <button className={`nsp-pill ${statusFilter === 'miss' ? 'on' : ''}`} onClick={() => setStatusFilter('miss')}>누락 ({counts.miss})</button>
-                <span className="nsp-sort">
-                  <span className="nsp-flabel">우리순위</span>
-                  <button className={`nsp-pill ${sortDir === 'asc' ? 'on' : ''}`} onClick={() => setSortDir('asc')}>↑ 높은순</button>
-                  <button className={`nsp-pill ${sortDir === 'desc' ? 'on' : ''}`} onClick={() => setSortDir('desc')}>↓ 낮은순</button>
-                </span>
-              </div>
-
-              <div className="nsp-toolbar">
-                <button className="nsp-btn" onClick={load} disabled={loading}>
-                  {loading ? '크롤링 중…' : '🔄 전체 재크롤링'}
-                </button>
-                <span className="nsp-status">{updatedAt ? `마지막 확인: ${updatedAt}` : '자동 2시간 주기'}{mockTag}</span>
+              {/* 툴바 : URL 등록 · 새로고침 · 환경설정 (오른쪽 정렬) */}
+              <div className="nsp-toolbar2">
+                <span className="nsp-status" style={{ flex: 1 }}>{updatedAt ? `마지막 확인: ${updatedAt}` : '자동 2시간 주기'}{mockTag}</span>
+                <button className="nsp-iconbtn" title="URL 등록" onClick={() => { setUrlOpen(true); setUrlText(''); }}>🔗 URL 등록</button>
+                <button className="nsp-iconbtn" title="새로고침 (크롤링)" onClick={() => load && load()} disabled={loading}>{loading ? '⏳' : '🔄'}</button>
+                <button className="nsp-iconbtn" title="환경설정 (관리자)" onClick={() => { if (kwAdmin) setKwAdminOpen(true); else { setKwPw(''); setKwPwErr(false); setKwAdminOpen(true); } }}>⚙️</button>
               </div>
 
               <table className="nsp-table">
                 <thead><tr>
                   <th>키워드</th>
-                  <th style={{ textAlign: 'center' }}>우리순위</th>
+                  <th style={{ textAlign: 'center' }}>카페순위</th>
+                  <th style={{ textAlign: 'center' }}>전체순위</th>
                   <th>상태</th>
-                  <th style={{ textAlign: 'right' }}>검색량</th>
+                  <th>매칭 URL</th>
                 </tr></thead>
                 <tbody>
-                  {kwRows.map((k, i) => {
-                    const s = ST[normStatus(k.status)] || ST.miss;
+                  {rows.map((k, i) => {
+                    const st = ST[normStatus(k.status)] || ST.miss;
                     return (
                       <tr key={i}>
-                        <td className="nsp-kw">{k.important && <span className="nsp-imp">★</span>}{k.keyword}</td>
-                        <td className="nsp-rank">{k.ourRank ?? '–'}</td>
-                        <td><span className={`nsp-st ${s.cls}`}>{s.label}</span></td>
-                        <td className="nsp-vol">{num(k.volume)}</td>
+                        <td className="nsp-kw">{k.keyword}</td>
+                        <td className="nsp-rank">{k.cafeRank ?? '–'}</td>
+                        <td className="nsp-rank">{k.totalRank ?? '–'}</td>
+                        <td><span className={`nsp-st ${st.cls}`}>{st.label}</span></td>
+                        <td className="nsp-urlcell">{k.url ? <a href={k.url} target="_blank" rel="noreferrer">열기 ↗</a> : <span className="nsp-nourl">–</span>}</td>
                       </tr>
                     );
                   })}
-                  {kwRows.length === 0 && (
-                    <tr><td colSpan={4} className="nsp-empty">해당하는 키워드가 없어요</td></tr>
+                  {rows.length === 0 && (
+                    <tr><td colSpan={5} className="nsp-empty">등록된 키워드가 없어요 · ⚙️ 환경설정에서 제품·키워드를 등록하세요</td></tr>
                   )}
                 </tbody>
               </table>
             </>
-          )}
+            );
+          })()}
 
           {/* ③ 카페 최신글 (답변 요망 / 답변 완료 / 캘린더 워크플로우) */}
           {tab === 'cafe' && (
@@ -12342,6 +12395,102 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
 
           {/* ④ 지식인 최신글 (답변 카운터 + 1시간 50개 타이머) */}
           {tab === 'kin' && <KinWorkflow posts={data.kin} />}
+
+          {/* ⚙️ 관리자 환경설정 (제품·키워드 등록) */}
+          {kwAdminOpen && (
+            <div className="nsp-modal-bg" onClick={() => setKwAdminOpen(false)}>
+              <div className="nsp-modal" onClick={(e) => e.stopPropagation()}>
+                {!kwAdmin ? (
+                  <>
+                    <div className="nsp-modal-h">🔑 관리자 환경설정</div>
+                    <div className="nsp-modal-sub">비밀번호를 입력하세요</div>
+                    <input className="nsp-modal-input" type="password" autoFocus value={kwPw}
+                      onChange={(e) => { setKwPw(e.target.value); setKwPwErr(false); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { if (kwPw === KW_ADMIN_PW) { setKwAdmin(true); setKwPwErr(false); } else setKwPwErr(true); } }} />
+                    {kwPwErr && <div className="nsp-modal-err">비밀번호가 틀렸어요</div>}
+                    <div className="nsp-modal-btns">
+                      <button className="nsp-btn ghost" onClick={() => setKwAdminOpen(false)}>취소</button>
+                      <button className="nsp-btn" onClick={() => { if (kwPw === KW_ADMIN_PW) { setKwAdmin(true); setKwPwErr(false); } else setKwPwErr(true); }}>확인</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="nsp-modal-h">⚙️ 제품 · 키워드 관리</div>
+                    <div className="nsp-modal-sub">제품을 등록하고, 제품마다 키워드를 넣으세요 (모두 서버에 저장돼요)</div>
+                    {/* 제품 추가 */}
+                    <div className="nsp-addrow">
+                      <input className="nsp-modal-input" placeholder="새 제품 이름 (예: 그린레이)" value={newProduct}
+                        onChange={(e) => setNewProduct(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && newProduct.trim()) { saveKwProducts([...kwProducts, { id: 'p' + Date.now(), name: newProduct.trim(), keywords: [] }]); setNewProduct(''); } }} />
+                      <button className="nsp-btn" onClick={() => { if (newProduct.trim()) { saveKwProducts([...kwProducts, { id: 'p' + Date.now(), name: newProduct.trim(), keywords: [] }]); setNewProduct(''); } }}>＋ 제품</button>
+                    </div>
+                    {/* 제품 목록 */}
+                    <div className="nsp-prodlist">
+                      {kwProducts.length === 0 && <div className="nsp-modal-empty">아직 제품이 없어요</div>}
+                      {kwProducts.map((p) => (
+                        <div key={p.id} className="nsp-prodcard">
+                          <div className="nsp-prodhead">
+                            <b>📦 {p.name}</b>
+                            <span className="nsp-prodcnt">{(p.keywords || []).length}개 키워드</span>
+                            <button className="nsp-x2" title="제품 삭제" onClick={() => saveKwProducts(kwProducts.filter((x) => x.id !== p.id))}>삭제</button>
+                          </div>
+                          <div className="nsp-kwtags">
+                            {(p.keywords || []).map((kw) => (
+                              <span key={kw.id} className="nsp-kwtag">{kw.word}<button onClick={() => saveKwProducts(kwProducts.map((x) => x.id === p.id ? { ...x, keywords: x.keywords.filter((y) => y.id !== kw.id) } : x))}>✕</button></span>
+                            ))}
+                          </div>
+                          <div className="nsp-addrow">
+                            <input className="nsp-modal-input sm" placeholder="키워드 추가 후 Enter" value={newKw[p.id] || ''}
+                              onChange={(e) => setNewKw((v) => ({ ...v, [p.id]: e.target.value }))}
+                              onKeyDown={(e) => { const val = (newKw[p.id] || '').trim(); if (e.key === 'Enter' && val) { saveKwProducts(kwProducts.map((x) => x.id === p.id ? { ...x, keywords: [...(x.keywords || []), { id: 'k' + Date.now(), word: val }] } : x)); setNewKw((v) => ({ ...v, [p.id]: '' })); } }} />
+                            <button className="nsp-btn ghost" onClick={() => { const val = (newKw[p.id] || '').trim(); if (val) { saveKwProducts(kwProducts.map((x) => x.id === p.id ? { ...x, keywords: [...(x.keywords || []), { id: 'k' + Date.now(), word: val }] } : x)); setNewKw((v) => ({ ...v, [p.id]: '' })); } }}>＋</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="nsp-modal-btns">
+                      <button className="nsp-btn ghost" onClick={() => setKwAdmin(false)}>관리자 잠그기</button>
+                      <button className="nsp-btn" onClick={() => setKwAdminOpen(false)}>닫기</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 🔗 URL 등록 (알바) */}
+          {urlOpen && (
+            <div className="nsp-modal-bg" onClick={() => setUrlOpen(false)}>
+              <div className="nsp-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="nsp-modal-h">🔗 발행 URL 등록</div>
+                <div className="nsp-modal-sub">내가 발행한 카페 링크를 넣어주세요 · 여러 개는 줄바꿈으로 한 번에 등록돼요</div>
+                <textarea className="nsp-modal-ta" placeholder={"https://cafe.naver.com/...\nhttps://cafe.naver.com/...\n(한 줄에 하나씩)"} value={urlText} onChange={(e) => setUrlText(e.target.value)} />
+                <div className="nsp-modal-btns">
+                  <button className="nsp-btn ghost" onClick={() => setUrlOpen(false)}>취소</button>
+                  <button className="nsp-btn" onClick={() => {
+                    const lines = urlText.split(/\n+/).map((x) => x.trim()).filter((x) => /^https?:\/\//.test(x));
+                    if (!lines.length) return;
+                    const add = lines.map((u) => ({ url: u, by: nicknameProp || '익명', at: new Date().toISOString().slice(0, 10) }));
+                    const existing = new Set(nspUrls.map((x) => x.url));
+                    const merged = [...add.filter((x) => !existing.has(x.url)), ...nspUrls].slice(0, 500);
+                    saveNspUrls(merged); setUrlText(''); setUrlOpen(false);
+                  }}>＋ 일괄 등록</button>
+                </div>
+                <div className="nsp-urlcount">등록된 링크 {nspUrls.length}개</div>
+                <div className="nsp-urllist">
+                  {nspUrls.length === 0 && <div className="nsp-modal-empty">아직 등록된 링크가 없어요</div>}
+                  {nspUrls.map((u, i) => (
+                    <div key={i} className="nsp-urlrow">
+                      <a href={u.url} target="_blank" rel="noreferrer">{u.url}</a>
+                      <span className="nsp-urlby">{u.by} · {u.at}</span>
+                      <button className="nsp-x2" onClick={() => saveNspUrls(nspUrls.filter((_, x) => x !== i))}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
 
         </div>
         )}
@@ -12377,6 +12526,36 @@ const CSS = `
 .nsp-soon-ic{font-size:54px;}
 .nsp-soon-t{font-size:18px;font-weight:bold;color:#4a3a22;}
 .nsp-soon-d{font-size:12.5px;color:#8a7a5a;}
+.nsp-toolbar2{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.nsp-iconbtn{background:#efe0bd;border:2px solid #4a3a22;border-radius:8px;padding:7px 11px;cursor:pointer;font-family:'DotGothic16',monospace;font-size:13px;font-weight:bold;color:#4a3a22;}
+.nsp-iconbtn:hover{background:#e5d3a5;}
+.nsp-urlcell a{color:#2f7d5e;font-weight:bold;text-decoration:none;}
+.nsp-nourl{color:#b5ad9c;}
+.nsp-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px;}
+.nsp-modal{width:100%;max-width:460px;max-height:88vh;overflow:auto;background:#f7efd8;border:4px solid #4a3a22;border-radius:14px;padding:18px;font-family:'DotGothic16',monospace;}
+.nsp-modal-h{font-size:16px;font-weight:bold;color:#4a3a22;margin-bottom:4px;}
+.nsp-modal-sub{font-size:11.5px;color:#8a7a5a;margin-bottom:12px;line-height:1.5;}
+.nsp-modal-input{width:100%;box-sizing:border-box;padding:9px;border:2px solid #4a3a22;border-radius:6px;font-family:'DotGothic16',monospace;font-size:13px;background:#fff;}
+.nsp-modal-input.sm{font-size:12px;padding:7px;}
+.nsp-modal-ta{width:100%;box-sizing:border-box;height:120px;padding:9px;border:2px solid #4a3a22;border-radius:6px;font-family:'DotGothic16',monospace;font-size:12px;background:#fff;resize:vertical;}
+.nsp-modal-err{color:#c0392b;font-size:11.5px;margin-top:6px;font-weight:bold;}
+.nsp-modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;}
+.nsp-modal-empty{font-size:12px;color:#8a7a5a;text-align:center;padding:16px;}
+.nsp-addrow{display:flex;gap:6px;margin-top:8px;}
+.nsp-prodlist{margin-top:12px;display:flex;flex-direction:column;gap:10px;}
+.nsp-prodcard{background:#fff;border:2px solid #4a3a22;border-radius:10px;padding:10px;}
+.nsp-prodhead{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.nsp-prodhead b{flex:1;font-size:13.5px;}
+.nsp-prodcnt{font-size:10.5px;color:#8a7a5a;}
+.nsp-x2{background:#e7cfc9;border:2px solid #4a3a22;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:10.5px;font-family:'DotGothic16',monospace;}
+.nsp-kwtags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;}
+.nsp-kwtag{display:inline-flex;align-items:center;gap:4px;background:#eef4ff;border:2px solid #4a3a22;border-radius:14px;padding:3px 9px;font-size:11.5px;}
+.nsp-kwtag button{background:none;border:none;cursor:pointer;color:#8a7a5a;font-size:11px;padding:0;}
+.nsp-urlcount{font-size:12px;font-weight:bold;color:#4a3a22;margin:12px 0 6px;}
+.nsp-urllist{display:flex;flex-direction:column;gap:5px;max-height:180px;overflow:auto;}
+.nsp-urlrow{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #d9c79b;border-radius:6px;padding:5px 8px;font-size:11px;}
+.nsp-urlrow a{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#2f7d5e;text-decoration:none;}
+.nsp-urlby{color:#8a7a5a;font-size:10px;white-space:nowrap;}
 .nsp-tab{font-family:inherit;font-size:13px;cursor:pointer;color:#6b5836;background:#f6eccf;
   border:3px solid #4a3a22;border-bottom:none;padding:8px 14px;position:relative;top:4px;}
 .nsp-tab.on{background:#fff;color:#3a2d18;font-weight:bold;top:2px;padding-bottom:12px;}
