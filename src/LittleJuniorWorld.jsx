@@ -2388,7 +2388,7 @@ const placeLabel = (v) => PLACE_NAME[v || "world"] || "🏢 건물 안";
 
 /* ======================= DB (Supabase 저장) ======================= */
 let _supa = null;
-export async function getSupa() {
+async function getSupa() {
   if (_supa) return _supa;
   const mod = await import(/* @vite-ignore */ "https://esm.sh/@supabase/supabase-js@2");
   _supa = mod.createClient(SUPA_URL, SUPA_KEY);
@@ -10057,10 +10057,14 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
   const [notes, setNotes] = useState(() => load("notes", []));
   const [diary, setDiary] = useState("");
   const [ti, setTi] = useState("");
+  /* 🚧 병목지점 일기 (병목 + 액션, 해결여부 체크) — 계정마다 저장 */
+  const [neck, setNeck] = useState(() => load("neck", []));
+  const [nkPoint, setNkPoint] = useState("");
+  const [nkAction, setNkAction] = useState("");
   /* 🪟 패널 창 크기 (계정마다 저장 · 모서리를 끌어서 조절) */
   const [panelW, setPanelW] = useState(() => Math.max(210, Math.min(380, Number(load("panelW", 258)) || 258)));
   const [panelH, setPanelH] = useState(() => Math.max(240, Math.min(1200, Number(load("panelH", 440)) || 440)));
-  useEffect(() => { saveAll({ mission: done, todos, huddles, notes, panelW, panelH }); }, [done, todos, huddles, notes, panelW, panelH]);
+  useEffect(() => { saveAll({ mission: done, todos, huddles, notes, neck, panelW, panelH }); }, [done, todos, huddles, notes, neck, panelW, panelH]);
   const resizeRef = useRef(null);
   const doneN = Object.values(done).filter(Boolean).length;
 
@@ -10095,7 +10099,6 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
           <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 8, fontSize: 10.5 }}>
             <span><b style={{ fontSize: 14 }}>{todos.filter((t) => !t.done).length}</b><br /><span style={{ color: C.inkSoft }}>할 일</span></span>
             <span><b style={{ fontSize: 14 }}>{doneN}</b><br /><span style={{ color: C.inkSoft }}>미션</span></span>
-            <span><b style={{ fontSize: 14 }}>{huddles.length}</b><br /><span style={{ color: C.inkSoft }}>허들</span></span>
           </div>
         </div>
 
@@ -10128,14 +10131,6 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
           </div>
         </div>
 
-        {/* 오늘의 허들 */}
-        <div style={cardBox}>
-          {cardH("🎧", "오늘의 허들", addBtn(() => { const t = (window.prompt("허들 기록 (회의/AI노트/투두)") || "").trim(); if (t) setHuddles((v) => [{ t, at: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }) }, ...v]); }))}
-          {huddles.length === 0 ? <div style={{ fontSize: 10, color: C.inkSoft }}>오늘 기록된 허들이 없어요.</div> : huddles.map((h, i) => (
-            <div key={i} style={{ fontSize: 10.5, marginBottom: 4, lineHeight: 1.5 }}>· {h.t} <span style={{ color: C.inkSoft }}>{h.at}</span></div>
-          ))}
-        </div>
-
         {/* 내 서랍 (개인 노트) */}
         <div style={cardBox}>
           {cardH("📒", "내 서랍", addBtn(() => { const t = (window.prompt("개인 노트 (나에게만 보여요)") || "").trim(); if (t) setNotes((v) => [{ t, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v]); }))}
@@ -10147,12 +10142,32 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
           ))}
         </div>
 
-        {/* 마감 일지 */}
+        {/* 🚧 병목지점 일기 */}
         <div style={cardBox}>
-          {cardH("✍️", "마감 일지")}
-          <textarea value={diary} onChange={(e) => setDiary(e.target.value)} rows={3} placeholder="오늘 한 일 / 막힌 부분 / 내일 계획"
-            style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 10.5, resize: "vertical" }} />
-          <PxButton tone="ink" onClick={() => { if (diary.trim()) { setNotes((v) => [{ t: "📝 " + diary.trim(), at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v]); setDiary(""); } }} style={{ width: "100%", fontSize: 10.5, padding: 7, marginTop: 6 }}>일지 남기기</PxButton>
+          {cardH("🚧", "병목지점 일기")}
+          <input value={nkPoint} onChange={(e) => setNkPoint(e.target.value)} placeholder="병목지점 (어디서 막혔나요?)"
+            style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 10.5, marginBottom: 5 }} />
+          <input value={nkAction} onChange={(e) => setNkAction(e.target.value)} placeholder="액션 (어떻게 뚫을까요?)"
+            style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 10.5 }} />
+          <PxButton tone="ink" onClick={() => { if (nkPoint.trim() || nkAction.trim()) { setNeck((v) => [...v, { point: nkPoint.trim(), action: nkAction.trim(), done: false, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }]); setNkPoint(""); setNkAction(""); } }} style={{ width: "100%", fontSize: 10.5, padding: 7, marginTop: 6 }}>＋ 추가</PxButton>
+          {neck.length > 0 && (
+            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+              {neck.map((n, i) => (
+                <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start", background: C.parch, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "6px 7px" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 10.5, fontWeight: "bold", wordBreak: "break-word", textDecoration: n.done ? "line-through" : "none", color: n.done ? C.inkSoft : C.ink }}>🚧 {n.point || "(병목 미기재)"}</div>
+                    {n.action && <div style={{ fontSize: 10, color: C.inkSoft, wordBreak: "break-word", marginTop: 2 }}>▶ {n.action}</div>}
+                    <div style={{ fontSize: 9, color: C.inkSoft, marginTop: 2 }}>{n.at}</div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, flexShrink: 0 }}>
+                    <span style={{ fontSize: 8.5, color: C.inkSoft }}>해결여부</span>
+                    <input type="checkbox" checked={!!n.done} onChange={() => setNeck((v) => v.map((x, j) => j === i ? { ...x, done: !x.done } : x))} />
+                  </div>
+                  <button type="button" onClick={() => setNeck((v) => v.filter((_, j) => j !== i))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 10, color: C.inkSoft, flexShrink: 0 }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
       {/* 🪟 크기 조절 바 — 끌어서 창 크기를 바꿔요 (계정마다 저장돼요) */}
@@ -10238,7 +10253,10 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const [mpNotes, setMpNotes] = useState(() => mpLoad("notes", []));
   const [mpDiary, setMpDiary] = useState("");
   const [mpTi, setMpTi] = useState("");
-  useEffect(() => { mpSaveAll({ mission: mpDone, todos: mpTodos, huddles: mpHuddles, notes: mpNotes }); }, [mpDone, mpTodos, mpHuddles, mpNotes]);
+  const [mpNeck, setMpNeck] = useState(() => mpLoad("neck", []));
+  const [mpNkPoint, setMpNkPoint] = useState("");
+  const [mpNkAction, setMpNkAction] = useState("");
+  useEffect(() => { mpSaveAll({ mission: mpDone, todos: mpTodos, huddles: mpHuddles, notes: mpNotes, neck: mpNeck }); }, [mpDone, mpTodos, mpHuddles, mpNotes, mpNeck]);
   const blankQuest = () => ({ id: "q" + Date.now(), cat: "core", title: "", star: 2, gold: 0, gem: 0, chapter: "", due: "", subs: [] });
   const commitQuest = (q) => {
     const clean = { ...q, star: Number(q.star) || 1, gold: Number(q.gold) || 0, gem: Number(q.gem) || 0, editedBy: myName || "익명", editedAt: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
@@ -10337,8 +10355,8 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 </div>
               ))}
               <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                <input value={notice} onChange={(e) => setNotice(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && notice.trim()) { onPostNotice && onPostNotice(notice.trim()); setNotice(""); } }}
-                  placeholder="공지 입력 후 Enter" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, background: C.white }} />
+                <input value={notice} onChange={(e) => setNotice(e.target.value)}
+                  placeholder="공지 입력 후 등록" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, background: C.white }} />
                 <PxButton tone="gold" disabled={!notice.trim()} onClick={() => { onPostNotice && onPostNotice(notice.trim()); setNotice(""); }} style={{ fontSize: 12, padding: "9px 13px" }}>등록</PxButton>
               </div>
             </div>
@@ -10349,7 +10367,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginBottom: 16 }}>
               {cats.map((c) => (
-                <button key={c.id} type="button" onClick={() => onGo && onGo(c.id)} style={{ cursor: "pointer", textAlign: "left", fontFamily: "'DotGothic16', monospace", background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 13 }}>
+                <button key={c.id} type="button" onClick={() => { setQcat(c.id); setTab("quest"); }} style={{ cursor: "pointer", textAlign: "left", fontFamily: "'DotGothic16', monospace", background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 13 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                     <span style={{ width: 9, height: 9, borderRadius: "50%", background: c.color }} />
                     <b style={{ fontSize: 13 }}>{c.icon} {c.name}</b>
@@ -10374,24 +10392,6 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* 최근 소식 */}
-            <div style={card}>
-              <div style={h}><span style={{ fontSize: 18 }}>📰</span><b style={{ flex: 1, fontSize: 14 }}>최근 소식</b></div>
-              {feed.length === 0 ? <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 20 }}>아직 소식이 없어요</div> : (
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  {feed.map((f, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 2px", borderBottom: i < feed.length - 1 ? `1px solid ${C.parchEdge}` : "none" }}>
-                      <span style={{ width: 24, height: 24, borderRadius: "50%", background: colorOf(f.who), color: C.white, fontSize: 11, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{avatarOf(f.who)}</span>
-                      <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        <b>{f.who || "누군가"}</b> <span style={{ color: C.inkSoft }}>{f.ic} {f.txt}</span>
-                      </span>
-                      <span style={{ fontSize: 10, color: C.inkSoft, flexShrink: 0 }}>{f.at}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </>
         )}
@@ -10568,7 +10568,6 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 <div style={{ display: "flex", gap: 16, textAlign: "center", fontSize: 11 }}>
                   <div><div style={{ fontSize: 19, fontWeight: "bold" }}>{mpTodos.filter((t) => !t.done).length}</div><div style={{ color: C.inkSoft }}>할 일</div></div>
                   <div><div style={{ fontSize: 19, fontWeight: "bold" }}>{mpDoneN}</div><div style={{ color: C.inkSoft }}>미션</div></div>
-                  <div><div style={{ fontSize: 19, fontWeight: "bold" }}>{mpHuddles.length}</div><div style={{ color: C.inkSoft }}>허들</div></div>
                 </div>
               </div>
 
@@ -10601,14 +10600,6 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 </div>
               </div>
 
-              {/* 오늘의 허들 */}
-              <div style={card}>
-                {hd("🎧", "오늘의 허들", addBtn(() => { const t = (window.prompt("허들 기록 (회의/AI노트/투두)") || "").trim(); if (t) setMpHuddles((v) => [{ t, at: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }) }, ...v]); }))}
-                {mpHuddles.length === 0 ? <div style={{ fontSize: 12, color: C.inkSoft }}>오늘 기록된 허들이 없어요.</div> : mpHuddles.map((h, i) => (
-                  <div key={i} style={{ fontSize: 12.5, marginBottom: 5, lineHeight: 1.5 }}>· {h.t} <span style={{ color: C.inkSoft }}>{h.at}</span></div>
-                ))}
-              </div>
-
               {/* 내 서랍 */}
               <div style={card}>
                 {hd("📒", "내 서랍", addBtn(() => { const t = (window.prompt("개인 노트 (나에게만 보여요)") || "").trim(); if (t) setMpNotes((v) => [{ t, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v]); }))}
@@ -10621,12 +10612,32 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 ))}
               </div>
 
-              {/* 마감 일지 */}
+              {/* 🚧 병목지점 일기 */}
               <div style={card}>
-                {hd("✍️", "마감 일지")}
-                <textarea value={mpDiary} onChange={(e) => setMpDiary(e.target.value)} rows={3} placeholder="오늘 한 일 / 막힌 부분 / 내일 계획"
-                  style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, resize: "vertical" }} />
-                <PxButton tone="ink" onClick={() => { if (mpDiary.trim()) { setMpNotes((v) => [{ t: "📝 " + mpDiary.trim(), at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v]); setMpDiary(""); } }} style={{ width: "100%", fontSize: 12.5, padding: 9, marginTop: 8 }}>일지 남기기</PxButton>
+                {hd("🚧", "병목지점 일기")}
+                <input value={mpNkPoint} onChange={(e) => setMpNkPoint(e.target.value)} placeholder="병목지점 (어디서 막혔나요?)"
+                  style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, marginBottom: 6 }} />
+                <input value={mpNkAction} onChange={(e) => setMpNkAction(e.target.value)} placeholder="액션 (어떻게 뚫을까요?)"
+                  style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5 }} />
+                <PxButton tone="ink" onClick={() => { if (mpNkPoint.trim() || mpNkAction.trim()) { setMpNeck((v) => [...v, { point: mpNkPoint.trim(), action: mpNkAction.trim(), done: false, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }]); setMpNkPoint(""); setMpNkAction(""); } }} style={{ width: "100%", fontSize: 12.5, padding: 9, marginTop: 8 }}>＋ 추가</PxButton>
+                {mpNeck.length > 0 && (
+                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                    {mpNeck.map((n, i) => (
+                      <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", background: C.parch, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "9px 10px" }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: "bold", wordBreak: "break-word", textDecoration: n.done ? "line-through" : "none", color: n.done ? C.inkSoft : C.ink }}>🚧 {n.point || "(병목 미기재)"}</div>
+                          {n.action && <div style={{ fontSize: 12, color: C.inkSoft, wordBreak: "break-word", marginTop: 3 }}>▶ {n.action}</div>}
+                          <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 3 }}>{n.at}</div>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flexShrink: 0 }}>
+                          <span style={{ fontSize: 9.5, color: C.inkSoft }}>해결여부</span>
+                          <input type="checkbox" checked={!!n.done} onChange={() => setMpNeck((v) => v.map((x, j) => j === i ? { ...x, done: !x.done } : x))} />
+                        </div>
+                        <button type="button" onClick={() => setMpNeck((v) => v.filter((_, j) => j !== i))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 12, color: C.inkSoft, flexShrink: 0 }}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           );
