@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v110 · 2026-07-28";
+const APP_VERSION = "v112 · 2026-07-28";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -8416,6 +8416,10 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260728n3", type: "업데이트", date: "2026-07-28", title: "📖 네이버스쿨 첫 화면에 튜토리얼 방 추가",
+    body: "· 네이버스쿨 방 목록 맨 앞에 📖 튜토리얼 방을 넣었어요\n· 튜토리얼 방에서 작성 방법·프롬프트 메모, 지식인 답변 사진, 댓글 사진(그린레이·보이실린)을 관리할 수 있어요\n· 방 = 튜토리얼 · 카페 최신글 · 카페 외부 · 지식인 상위(준비중) · 지식인 최신글 · 유튜브 최신글(준비중)" },
+  { id: "u20260728n2", type: "업데이트", date: "2026-07-28", title: "🏫 네이버스쿨 개편 — 방(카테고리) 구조로",
+    body: "· 네이버스쿨에 들어가면 방 5개가 보이고, 방을 골라 들어가는 구조로 바꿨어요\n· ☕ 카페 최신글 → 기존 카페 최신글 탭\n· 🔗 카페 외부 → 기존 네이버 키워드 탭\n· 📊 지식인 상위 → 준비 중 (빈 방)\n· 💬 지식인 최신글 → 기존 지식인 최신글 탭\n· ▶️ 유튜브 최신글 → 준비 중 (빈 방)\n· 카페 발행·URL·튜토리얼 탭은 이 화면에서 내렸어요 (기능 자체는 코드에 남아 있어 언제든 다시 넣을 수 있어요)\n· 방 안에서 「← 방 목록으로」로 돌아갈 수 있어요" },
   { id: "u20260728n1", type: "업데이트", date: "2026-07-28", title: "📗 네이버스쿨 튜토리얼 — 댓글 사진 추가 · 사진 서버 저장",
     body: "· 📖 튜토리얼에 「4. 댓글 사진」 섹션을 새로 넣었어요 — 🟢 그린레이 댓글 사진 · 🔵 보이실린 댓글 사진\n· 사진을 올리고 각 사진의 ⬇ 버튼으로 다운로드할 수 있어요\n· 이제 답변 사진·댓글 사진이 서버에 저장돼요 — 새로고침해도 남고 모두가 함께 봐요 (예전엔 새로고침하면 사라졌어요)\n· 사진은 자동으로 압축해서 저장 용량을 줄여요" },
   { id: "u20260724n60", type: "업데이트", date: "2026-07-24", title: "📗 네이버스쿨 튜토리얼 — 메모 서버 저장 · 답변 사진 다운로드",
@@ -11497,13 +11501,13 @@ const MOCK = {
     { id: 'c5', keyword: '고음확장기 사용법', title: '고음확장기 사용법 알려주실 분ㅠ',       url: 'https://cafe.naver.com/sample/5' },
   ],
 };
-const NSP_TABS = [
-  { id: 'kw',      label: '📊 네이버키워드' },
-  { id: 'cafepub', label: '📢 카페 발행' },
-  { id: 'url',     label: '🔗 URL' },
-  { id: 'cafe',    label: '☕ 카페 최신글' },
-  { id: 'kin',     label: '💬 지식인 최신글' },
-  { id: 'tutorial', label: '📖 튜토리얼' },
+const NSP_ROOMS = [
+  { id: 'tutorial', icon: '📖', label: '튜토리얼', desc: '작성 방법·프롬프트·답변/댓글 사진', color: '#c0563a' },
+  { id: 'cafe', icon: '☕', label: '카페 최신글', desc: '답변 요망·완료·캘린더 워크플로우', color: '#3fa07a' },
+  { id: 'kw',   icon: '🔗', label: '카페 외부',   desc: '네이버 키워드 순위 추적', color: '#5b8def' },
+  { id: 'kinTop', icon: '📊', label: '지식인 상위', desc: '준비 중이에요', color: '#e0a13d', soon: true },
+  { id: 'kin',  icon: '💬', label: '지식인 최신글', desc: '답변 카운터·타이머 워크플로우', color: '#b76bd7' },
+  { id: 'yt',   icon: '▶️', label: '유튜브 최신글', desc: '준비 중이에요', color: '#d94f70', soon: true },
 ];
 // ---- 답변 예시 등록 (링크 + 이미지) : 카페/지식인 탭에서 재사용 -------------
 // 지금은 화면(메모리)에만 저장돼요. 서버에 영구 저장하려면 addLink/onImages 에서
@@ -12117,7 +12121,7 @@ function CafePublishTab() {
 }
 
 function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
-  const [tab, setTab] = useState('kw');
+  const [tab, setTab] = useState(null);
   const [nickname, setNickname] = useState(nicknameProp || ''); // 접속된 닉네임(작업자)
   const [tutorial, setTutorial] = useState({
     method:        { text: '', fileName: '', date: '' },
@@ -12239,19 +12243,39 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
         <div className="nsp-hd">
           <span className="nsp-badge">🏫</span>
           <h1>네이버 스쿨</h1>
-          <span className="nsp-sub">· 키워드 · URL · 최신글</span>
+          <span className="nsp-sub">· 방을 골라 들어가세요</span>
           <button className="nsp-exit" onClick={onClose}>← 나가기</button>
         </div>
 
-        <div className="nsp-tabs">
-          {NSP_TABS.map((t) => (
-            <button key={t.id} className={`nsp-tab ${tab === t.id ? 'on' : ''}`} onClick={() => setTab(t.id)}>
-              {t.label}
-            </button>
-          ))}
-        </div>
+        {/* 방 목록 (탭이 null 일 때) */}
+        {!tab && (
+          <div className="nsp-bd">
+            <div className="nsp-roomgrid">
+              {NSP_ROOMS.map((r) => (
+                <button key={r.id} className="nsp-roomcard" style={{ borderColor: r.color }} onClick={() => setTab(r.id)}>
+                  <span className="nsp-roomicon" style={{ background: r.color }}>{r.icon}</span>
+                  <span className="nsp-roomname">{r.label}</span>
+                  <span className="nsp-roomdesc">{r.desc}</span>
+                  {r.soon && <span className="nsp-roomsoon">준비 중</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
+        {tab && (
         <div className="nsp-bd">
+          <button className="nsp-roomback" onClick={() => setTab(null)}>← 방 목록으로</button>
+          {/* 튜토리얼 방 */}
+          {tab === 'tutorial' && <TutorialTab data={tutorial} setData={setTutorial} />}
+          {/* 빈 방: 지식인 상위 */}
+          {tab === 'kinTop' && (
+            <div className="nsp-soon"><div className="nsp-soon-ic">📊</div><div className="nsp-soon-t">지식인 상위</div><div className="nsp-soon-d">아직 준비 중이에요 · 곧 채워질 예정입니다</div></div>
+          )}
+          {/* 빈 방: 유튜브 최신글 */}
+          {tab === 'yt' && (
+            <div className="nsp-soon"><div className="nsp-soon-ic">▶️</div><div className="nsp-soon-t">유튜브 최신글</div><div className="nsp-soon-d">아직 준비 중이에요 · 곧 채워질 예정입니다</div></div>
+          )}
           {/* ① 네이버키워드 */}
           {tab === 'kw' && (
             <>
@@ -12311,22 +12335,6 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
             </>
           )}
 
-          {/* ② URL 풀 */}
-          {tab === 'url' && (
-            <>
-              <div className="nsp-toolbar"><span className="nsp-status">등록된 발행 URL 풀{mockTag}</span></div>
-              {data.urls.map((u, i) => {
-                const s = SRC[u.source] || SRC.cafe;
-                return (
-                  <a key={i} className="nsp-post" href={u.url || '#'} target="_blank" rel="noreferrer">
-                    <span className={`nsp-tag ${s.cls}`}>{s.label}</span>
-                    <span className="nsp-title">{u.title || u.url}</span>
-                  </a>
-                );
-              })}
-            </>
-          )}
-
           {/* ③ 카페 최신글 (답변 요망 / 답변 완료 / 캘린더 워크플로우) */}
           {tab === 'cafe' && (
             <CafeWorkflow nickname={nickname} setNickname={setNickname} links={data.cafeLinks} />
@@ -12335,12 +12343,8 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
           {/* ④ 지식인 최신글 (답변 카운터 + 1시간 50개 타이머) */}
           {tab === 'kin' && <KinWorkflow posts={data.kin} />}
 
-          {/* 카페 발행 (개수 + 1시간 타이머 + 시트 링크) */}
-          {tab === 'cafepub' && <CafePublishTab />}
-
-          {/* ⑤ 튜토리얼 (메모 + 사진 업로드) */}
-          {tab === 'tutorial' && <TutorialTab data={tutorial} setData={setTutorial} />}
         </div>
+        )}
       </div>
     </div>
   );
@@ -12361,6 +12365,18 @@ const CSS = `
   font-family:inherit;font-size:13px;cursor:pointer;text-shadow:1px 1px 0 #000;}
 .nsp-exit:active{transform:translate(2px,2px);}
 .nsp-tabs{display:flex;gap:6px;padding:10px 12px 0;background:#efe0bd;border-bottom:4px solid #4a3a22;flex-wrap:wrap;}
+.nsp-roomgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;padding:6px;}
+.nsp-roomcard{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;background:#fff;border:3px solid #4a3a22;border-radius:14px;padding:20px 12px;cursor:pointer;font-family:'DotGothic16',monospace;transition:transform .1s;}
+.nsp-roomcard:hover{transform:translateY(-3px);}
+.nsp-roomicon{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;border:3px solid #4a3a22;}
+.nsp-roomname{font-size:15px;font-weight:bold;color:#4a3a22;}
+.nsp-roomdesc{font-size:11px;color:#8a7a5a;text-align:center;line-height:1.4;}
+.nsp-roomsoon{position:absolute;top:8px;right:8px;font-size:9px;background:#b5ad9c;color:#fff;border-radius:8px;padding:2px 7px;}
+.nsp-roomback{margin-bottom:12px;background:#efe0bd;border:2px solid #4a3a22;border-radius:8px;padding:7px 13px;cursor:pointer;font-family:'DotGothic16',monospace;font-size:12.5px;font-weight:bold;color:#4a3a22;}
+.nsp-soon{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:60px 20px;text-align:center;}
+.nsp-soon-ic{font-size:54px;}
+.nsp-soon-t{font-size:18px;font-weight:bold;color:#4a3a22;}
+.nsp-soon-d{font-size:12.5px;color:#8a7a5a;}
 .nsp-tab{font-family:inherit;font-size:13px;cursor:pointer;color:#6b5836;background:#f6eccf;
   border:3px solid #4a3a22;border-bottom:none;padding:8px 14px;position:relative;top:4px;}
 .nsp-tab.on{background:#fff;color:#3a2d18;font-weight:bold;top:2px;padding-bottom:12px;}
