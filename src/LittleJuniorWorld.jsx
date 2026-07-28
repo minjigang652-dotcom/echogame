@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v113 · 2026-07-28";
+const APP_VERSION = "v114 · 2026-07-28";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -8450,6 +8450,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260728n5", type: "업데이트", date: "2026-07-28", title: "🔗 카페 외부 방 — 제품 버튼 필터 · 키워드 일괄 등록 · 툴바 정리",
+    body: "· 「방 목록으로」 와 같은 행 오른쪽에 🔗 URL 등록 · 🔄 새로고침 · ⚙️ 환경설정 아이콘을 나란히 놨어요\n· 그 아래에 관리자가 등록한 제품 버튼이 생겨요 — 누르면 그 제품의 키워드만 표에 보여요 (전체 버튼으로 모두 보기)\n· 관리자 페이지에서 키워드를 한 줄에 하나씩 여러 개 일괄 등록할 수 있어요\n· 「자동 2시간 주기」 안내는 아주 작게 우측 최상단으로 옮겼어요" },
   { id: "u20260728n4", type: "업데이트", date: "2026-07-28", title: "🔗 카페 외부 방 개편 — 관리자 설정 · URL 등록 · 새 표",
     body: "· 우측 상단에 ⚙️ 환경설정(관리자 전용, 비밀번호 필요)을 넣었어요 — 제품을 등록/삭제하고 제품마다 키워드를 등록/삭제할 수 있어요\n· ⚙️ 왼쪽에 🔄 새로고침 버튼 — 누르면 바로 크롤링을 시작해요\n· 🔄 왼쪽에 🔗 URL 등록 버튼 — 알바가 발행한 카페 링크를 여러 개 한 번에 등록할 수 있고, 아래에 등록 개수와 목록이 보여요\n· 표 항목을 키워드 / 카페순위 / 전체순위 / 상태 / 매칭 URL 로 바꿨어요\n· 제품별·노출별 필터는 없앴어요\n· 제품·키워드·URL은 모두 서버에 저장돼 함께 봐요" },
   { id: "u20260728n3", type: "업데이트", date: "2026-07-28", title: "📖 네이버스쿨 첫 화면에 튜토리얼 방 추가",
@@ -12176,7 +12178,8 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
   const [kwAdminOpen, setKwAdminOpen] = useState(false);
   const [kwPw, setKwPw] = useState(''); const [kwPwErr, setKwPwErr] = useState(false);
   const [newProduct, setNewProduct] = useState('');
-  const [newKw, setNewKw] = useState({});   // { productId: '입력값' }
+  const [newKw, setNewKw] = useState({});   // { productId: '일괄입력값' }
+  const [kwProductFilter, setKwProductFilter] = useState('all');   // 'all' | 제품id
   /* 🔗 카페 외부: 발행 URL 등록 (알바) */
   const [urlOpen, setUrlOpen] = useState(false);
   const [urlText, setUrlText] = useState('');
@@ -12319,7 +12322,25 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
 
         {tab && (
         <div className="nsp-bd">
-          <button className="nsp-roomback" onClick={() => setTab(null)}>← 방 목록으로</button>
+          {tab === 'kw' && <div className="nsp-tinytop">{updatedAt ? `마지막 확인: ${updatedAt}` : '자동 2시간 주기'}{mockTag}</div>}
+          <div className="nsp-roomrow">
+            <button className="nsp-roomback" onClick={() => setTab(null)}>← 방 목록으로</button>
+            {tab === 'kw' && (
+              <div className="nsp-roomrow-actions">
+                <button className="nsp-iconbtn" title="URL 등록" onClick={() => { setUrlOpen(true); setUrlText(''); }}>🔗 URL 등록</button>
+                <button className="nsp-iconbtn" title="새로고침 (크롤링)" onClick={() => load && load()} disabled={loading}>{loading ? '⏳' : '🔄'}</button>
+                <button className="nsp-iconbtn" title="환경설정 (관리자)" onClick={() => { if (kwAdmin) setKwAdminOpen(true); else { setKwPw(''); setKwPwErr(false); setKwAdminOpen(true); } }}>⚙️</button>
+              </div>
+            )}
+          </div>
+          {tab === 'kw' && kwProducts.length > 0 && (
+            <div className="nsp-prodfilter">
+              <button className={`nsp-prodbtn ${kwProductFilter === 'all' ? 'on' : ''}`} onClick={() => setKwProductFilter('all')}>전체</button>
+              {kwProducts.map((p) => (
+                <button key={p.id} className={`nsp-prodbtn ${kwProductFilter === p.id ? 'on' : ''}`} onClick={() => setKwProductFilter(p.id)}>📦 {p.name}</button>
+              ))}
+            </div>
+          )}
           {/* 튜토리얼 방 */}
           {tab === 'tutorial' && <TutorialTab data={tutorial} setData={setTutorial} />}
           {/* 빈 방: 지식인 상위 */}
@@ -12338,26 +12359,18 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
             const urlByWord = {};
             (data.urls || []).forEach((u) => { if (u.keyword) urlByWord[(u.keyword || '').trim()] = u.url; });
             const rows = [];
-            kwProducts.forEach((p) => (p.keywords || []).forEach((kw) => {
+            kwProducts.filter((p) => kwProductFilter === 'all' || p.id === kwProductFilter).forEach((p) => (p.keywords || []).forEach((kw) => {
               const w = (kw.word || '').trim();
               const src = kwByWord[w] || {};
               rows.push({
                 product: p.name, keyword: w,
-                cafeRank: src.cafeRank ?? src.ourRank ?? null,   // 카페순위(없으면 우리순위)
-                totalRank: src.totalRank ?? src.rank ?? null,     // 전체순위
+                cafeRank: src.cafeRank ?? src.ourRank ?? null,
+                totalRank: src.totalRank ?? src.rank ?? null,
                 status: src.status, url: src.url || urlByWord[w] || '',
               });
             }));
             return (
             <>
-              {/* 툴바 : URL 등록 · 새로고침 · 환경설정 (오른쪽 정렬) */}
-              <div className="nsp-toolbar2">
-                <span className="nsp-status" style={{ flex: 1 }}>{updatedAt ? `마지막 확인: ${updatedAt}` : '자동 2시간 주기'}{mockTag}</span>
-                <button className="nsp-iconbtn" title="URL 등록" onClick={() => { setUrlOpen(true); setUrlText(''); }}>🔗 URL 등록</button>
-                <button className="nsp-iconbtn" title="새로고침 (크롤링)" onClick={() => load && load()} disabled={loading}>{loading ? '⏳' : '🔄'}</button>
-                <button className="nsp-iconbtn" title="환경설정 (관리자)" onClick={() => { if (kwAdmin) setKwAdminOpen(true); else { setKwPw(''); setKwPwErr(false); setKwAdminOpen(true); } }}>⚙️</button>
-              </div>
-
               <table className="nsp-table">
                 <thead><tr>
                   <th>키워드</th>
@@ -12439,11 +12452,17 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
                               <span key={kw.id} className="nsp-kwtag">{kw.word}<button onClick={() => saveKwProducts(kwProducts.map((x) => x.id === p.id ? { ...x, keywords: x.keywords.filter((y) => y.id !== kw.id) } : x))}>✕</button></span>
                             ))}
                           </div>
-                          <div className="nsp-addrow">
-                            <input className="nsp-modal-input sm" placeholder="키워드 추가 후 Enter" value={newKw[p.id] || ''}
-                              onChange={(e) => setNewKw((v) => ({ ...v, [p.id]: e.target.value }))}
-                              onKeyDown={(e) => { const val = (newKw[p.id] || '').trim(); if (e.key === 'Enter' && val) { saveKwProducts(kwProducts.map((x) => x.id === p.id ? { ...x, keywords: [...(x.keywords || []), { id: 'k' + Date.now(), word: val }] } : x)); setNewKw((v) => ({ ...v, [p.id]: '' })); } }} />
-                            <button className="nsp-btn ghost" onClick={() => { const val = (newKw[p.id] || '').trim(); if (val) { saveKwProducts(kwProducts.map((x) => x.id === p.id ? { ...x, keywords: [...(x.keywords || []), { id: 'k' + Date.now(), word: val }] } : x)); setNewKw((v) => ({ ...v, [p.id]: '' })); } }}>＋</button>
+                          <div className="nsp-kwadd">
+                            <textarea className="nsp-modal-ta sm" placeholder={"키워드를 한 줄에 하나씩 넣으세요\n예:\n그린레이 효과\n그린레이 후기\n그린레이 가격"} value={newKw[p.id] || ''}
+                              onChange={(e) => setNewKw((v) => ({ ...v, [p.id]: e.target.value }))} />
+                            <button className="nsp-btn" onClick={() => {
+                              const words = (newKw[p.id] || '').split(/\n+/).map((x) => x.trim()).filter(Boolean);
+                              if (!words.length) return;
+                              const exist = new Set((p.keywords || []).map((k) => k.word));
+                              const add = words.filter((w) => !exist.has(w)).map((w, i) => ({ id: 'k' + Date.now() + '_' + i, word: w }));
+                              saveKwProducts(kwProducts.map((x) => x.id === p.id ? { ...x, keywords: [...(x.keywords || []), ...add] } : x));
+                              setNewKw((v) => ({ ...v, [p.id]: '' }));
+                            }}>＋ 일괄 등록</button>
                           </div>
                         </div>
                       ))}
@@ -12521,7 +12540,17 @@ const CSS = `
 .nsp-roomname{font-size:15px;font-weight:bold;color:#4a3a22;}
 .nsp-roomdesc{font-size:11px;color:#8a7a5a;text-align:center;line-height:1.4;}
 .nsp-roomsoon{position:absolute;top:8px;right:8px;font-size:9px;background:#b5ad9c;color:#fff;border-radius:8px;padding:2px 7px;}
-.nsp-roomback{margin-bottom:12px;background:#efe0bd;border:2px solid #4a3a22;border-radius:8px;padding:7px 13px;cursor:pointer;font-family:'DotGothic16',monospace;font-size:12.5px;font-weight:bold;color:#4a3a22;}
+.nsp-roomback{background:#efe0bd;border:2px solid #4a3a22;border-radius:8px;padding:7px 13px;cursor:pointer;font-family:'DotGothic16',monospace;font-size:12.5px;font-weight:bold;color:#4a3a22;}
+.nsp-tinytop{position:absolute;top:8px;right:14px;font-size:9.5px;color:#a89a78;z-index:5;}
+.nsp-roomrow{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.nsp-roomrow-actions{display:flex;align-items:center;gap:8px;margin-left:auto;}
+.nsp-roomrow-actions .nsp-iconbtn{padding:7px 11px;font-size:12.5px;line-height:1;}
+.nsp-prodfilter{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.nsp-prodbtn{background:#fff;border:2px solid #4a3a22;border-radius:16px;padding:6px 13px;cursor:pointer;font-family:'DotGothic16',monospace;font-size:12px;font-weight:bold;color:#4a3a22;}
+.nsp-prodbtn.on{background:#5b8def;color:#fff;}
+.nsp-kwadd{display:flex;gap:6px;align-items:flex-start;margin-top:8px;}
+.nsp-kwadd .nsp-modal-ta.sm{height:66px;font-size:11.5px;flex:1;}
+.nsp-kwadd .nsp-btn{white-space:nowrap;}
 .nsp-soon{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:60px 20px;text-align:center;}
 .nsp-soon-ic{font-size:54px;}
 .nsp-soon-t{font-size:18px;font-weight:bold;color:#4a3a22;}
