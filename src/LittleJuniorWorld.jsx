@@ -571,7 +571,7 @@ const ROOM_TIPS = {
   musinsa: ["상의·하의·신발을 입어보고 살 수 있어요", "입은 옷은 마을과 건물 안 모두에서 보여요"],
   ikea: ["집 외관·가구·탈것을 살 수 있어요", "가구를 사면 내 집에 배치돼요", "탈것은 빠를수록 비싸지만 입장 조준도 쉬워져요"],
   project: ["이지모드는 순서대로, 하드모드는 광장에서 자유롭게", "＋ 버튼으로 퀘스트를 추가할 때 ⭐ 경험치를 꼭 정해야 해요", "보상은 💎 젬·🪙 골드·🏆 아이템·🧠 스킬 여러 개를 걸 수 있어요", "다 했으면 📮 제출 → 답변과 📷 인증 사진(최대 3장)을 올려요", "수락해야 💬 대화창이 열려요 · 수락 후엔 모집 화면과 자유롭게 오갈 수 있어요", "대화방의 📣 모두 부르기를 누르면 파티원 화면에 팝업이 떠요 (바로 이동·거절 선택)", "대화 내역은 새로고침해도 그대로 남아요", "📓 퀘스트 일지를 등록하면 파티원 모두가 볼 수 있어요 (여러 개 가능)", "하드모드 퀘스트를 깨면 🧠 사고 스킬을 배워요", "상단 🧠 도감을 누르고, 항목을 다시 누르면 완료한 사람이 보여요"],
-  questdone: ["퀴스트 신청·수락 파편을 봉헌해요", "등록자가 🛡 검토하고 ⭐ 보상을 체크하면 지급돼요", "「🙋 내 관련」 필터로 내가 처리할 것만 볼 수 있어요"],
+  questdone: ["🔷 의뢰 파편·🔶 참가 파편을 봉헌해요 (파편 = 보스맵 밖에서 하는 일반 퀘스트예요)", "등록자가 🛡 검토하고 ⭐ 보상을 체크하면 지급돼요", "「🙋 내 관련」 필터로 내가 처리할 것만 볼 수 있어요"],
   lotto: ["🎟 한 장 50골드예요 · 판매대 앞에서 눌러 사요", "긁으면 바로 당첨 결과가 나와요", "꽝일 수도, 대박(10000골드)일 수도 있어요 — 진짜 랜덤!", "골드가 남을 때 재미로 즐겨보세요"],
   coredict: ["우리만의 단어를 등록하고 가나다 순으로 찾아봐요", "🏷 필수개념·R·C·S 카테고리로 단어를 분류하고 걸러 볼 수 있어요", "🔗 뜻 안에 다른 등록 단어를 쓰면 자동으로 관련 개념으로 이어져요", "🖼 갤러리에 사진을, 🔒 비밀사전에 나만의 요약을 남길 수 있어요", "오른쪽 아래 📚 아이콘으로 어디서든 사전을 열 수 있어요"],
   meeting: ["📋 회의 안건을 추가하면 같은 회의실 사람 모두에게 보여요", "채팅으로 같은 회의실 사람들과 대화해요", "📨 초대장을 보내면 상대 메세지함으로 가요", "예약해두면 주민센터에 표시돼요"],
@@ -2388,7 +2388,7 @@ const placeLabel = (v) => PLACE_NAME[v || "world"] || "🏢 건물 안";
 
 /* ======================= DB (Supabase 저장) ======================= */
 let _supa = null;
-async function getSupa() {
+export async function getSupa() {
   if (_supa) return _supa;
   const mod = await import(/* @vite-ignore */ "https://esm.sh/@supabase/supabase-js@2");
   _supa = mod.createClient(SUPA_URL, SUPA_KEY);
@@ -2533,7 +2533,7 @@ async function dbNameMap() {
 }
 /* 🙋 내 페이지 서버 저장 (notices 재사용: type="mypage", title=이름 · 본인만 불러옴) */
 /* 📗 네이버스쿨 튜토리얼 메모 서버 저장 (notices 재사용: type="nsptut", title=slot키) */
-async function dbLoadNspTut() {
+export async function dbLoadNspTut() {
   try {
     const s = await getSupa();
     const r = await s.from("notices").select("title,body,created_at").eq("type", "nsptut").order("created_at", { ascending: false }).limit(60);
@@ -2543,7 +2543,7 @@ async function dbLoadNspTut() {
     return out;   // { method:{text,fileName,date}, ... } 최신값만
   } catch (e) { return {}; }
 }
-async function dbSaveNspTut(key, slot) {
+export async function dbSaveNspTut(key, slot) {
   try {
     const s = await getSupa();
     const r = await s.from("notices").insert({ type: "nsptut", title: key, body: JSON.stringify(slot || {}) });
@@ -2553,35 +2553,35 @@ async function dbSaveNspTut(key, slot) {
 /* 📱 릴스방 영상 서버 저장 (notices 재사용: type="reeldata", 전체 맵을 최신 1행에) */
 /* 🔗 카페 외부(네이버 키워드) — 관리자 제품·키워드 설정 서버 저장 (notices type=nspkw) */
 /* 💬 지식인 최신글 — 제품·키워드(nspkinkw) · 링크상태(nspkin) · 예시게시판(nspkinex) */
-async function dbLoadKinKw() {
+export async function dbLoadKinKw() {
   try { const s = await getSupa();
     const r = await s.from("notices").select("body").eq("type", "nspkinkw").order("created_at", { ascending: false }).limit(1);
     const row = r && r.data && r.data[0]; return row ? JSON.parse(row.body || "null") : null;
   } catch (e) { return null; }
 }
-async function dbSaveKinKw(products) {
+export async function dbSaveKinKw(products) {
   try { const s = await getSupa(); const r = await s.from("notices").insert({ type: "nspkinkw", title: "nspkinkw", body: JSON.stringify(products || []) }); return !(r && r.error); } catch (e) { return false; }
 }
-async function dbLoadKinState() {
+export async function dbLoadKinState() {
   try { const s = await getSupa();
     const r = await s.from("notices").select("body").eq("type", "nspkin").order("created_at", { ascending: false }).limit(1);
     const row = r && r.data && r.data[0]; return row ? JSON.parse(row.body || "null") : null;
   } catch (e) { return null; }
 }
-async function dbSaveKinState(state) {
+export async function dbSaveKinState(state) {
   try { const s = await getSupa(); const r = await s.from("notices").insert({ type: "nspkin", title: "nspkin", body: JSON.stringify(state || {}) }); return !(r && r.error); } catch (e) { return false; }
 }
-async function dbLoadKinEx() {
+export async function dbLoadKinEx() {
   try { const s = await getSupa();
     const r = await s.from("notices").select("body").eq("type", "nspkinex").order("created_at", { ascending: false }).limit(1);
     const row = r && r.data && r.data[0]; return row ? JSON.parse(row.body || "null") : null;
   } catch (e) { return null; }
 }
-async function dbSaveKinEx(posts) {
+export async function dbSaveKinEx(posts) {
   try { const s = await getSupa(); const r = await s.from("notices").insert({ type: "nspkinex", title: "nspkinex", body: JSON.stringify(posts || []) }); return !(r && r.error); } catch (e) { return false; }
 }
 /* ☕ 카페 최신글 — 관리자 제품·키워드 설정 (notices type=nspcafekw) */
-async function dbLoadCafeKw() {
+export async function dbLoadCafeKw() {
   try {
     const s = await getSupa();
     const r = await s.from("notices").select("body,created_at").eq("type", "nspcafekw").order("created_at", { ascending: false }).limit(1);
@@ -2590,7 +2590,7 @@ async function dbLoadCafeKw() {
     return JSON.parse(row.body || "null");
   } catch (e) { return null; }
 }
-async function dbSaveCafeKw(products) {
+export async function dbSaveCafeKw(products) {
   try {
     const s = await getSupa();
     const r = await s.from("notices").insert({ type: "nspcafekw", title: "nspcafekw", body: JSON.stringify(products || []) });
@@ -2598,7 +2598,7 @@ async function dbSaveCafeKw(products) {
   } catch (e) { return false; }
 }
 /* ☕ 카페 최신글 — 링크별 상태(가입대기/등업대기/여자만/작업글/완료) + 완료 이력 (notices type=nspcafe) */
-async function dbLoadCafeState() {
+export async function dbLoadCafeState() {
   try {
     const s = await getSupa();
     const r = await s.from("notices").select("body,created_at").eq("type", "nspcafe").order("created_at", { ascending: false }).limit(1);
@@ -2607,14 +2607,14 @@ async function dbLoadCafeState() {
     return JSON.parse(row.body || "null");
   } catch (e) { return null; }
 }
-async function dbSaveCafeState(state) {
+export async function dbSaveCafeState(state) {
   try {
     const s = await getSupa();
     const r = await s.from("notices").insert({ type: "nspcafe", title: "nspcafe", body: JSON.stringify(state || {}) });
     return !(r && r.error);
   } catch (e) { return false; }
 }
-async function dbLoadNspKw() {
+export async function dbLoadNspKw() {
   try {
     const s = await getSupa();
     const r = await s.from("notices").select("body,created_at").eq("type", "nspkw").order("created_at", { ascending: false }).limit(1);
@@ -2623,7 +2623,7 @@ async function dbLoadNspKw() {
     return JSON.parse(row.body || "null");
   } catch (e) { return null; }
 }
-async function dbSaveNspKw(products) {
+export async function dbSaveNspKw(products) {
   try {
     const s = await getSupa();
     const r = await s.from("notices").insert({ type: "nspkw", title: "nspkw", body: JSON.stringify(products || []) });
@@ -2631,7 +2631,7 @@ async function dbSaveNspKw(products) {
   } catch (e) { return false; }
 }
 /* 🔗 카페 외부 — 알바가 등록한 발행 URL 목록 (notices type=nspurl) */
-async function dbLoadNspUrls() {
+export async function dbLoadNspUrls() {
   try {
     const s = await getSupa();
     const r = await s.from("notices").select("body,created_at").eq("type", "nspurl").order("created_at", { ascending: false }).limit(1);
@@ -2640,7 +2640,7 @@ async function dbLoadNspUrls() {
     return JSON.parse(row.body || "null");
   } catch (e) { return null; }
 }
-async function dbSaveNspUrls(urls) {
+export async function dbSaveNspUrls(urls) {
   try {
     const s = await getSupa();
     const r = await s.from("notices").insert({ type: "nspurl", title: "nspurl", body: JSON.stringify(urls || []) });
@@ -6463,6 +6463,26 @@ const BOSS_MAPS_INIT = [
       ] },
     ],
   },
+  {
+    id: "bmneck", mode: "easy", name: "병목 뚫기", icon: "🚧", color: "#c9822f", soft: "#f7ecd8", deep: "#8a5416",
+    boss: { id: "bneck", title: "병목의 왕", icon: "🧱", gem: 30, desc: "일이 막히는 모든 지점 위에 군림하는 거대한 벽. 뉴비를 가로막는 최종 관문이에요.", task: "그동안 찾은 병목 20개를 모두 정리하고, 각각 어떻게 뚫었는지 회고를 남기기" },
+    stages: [
+      { n: 1, name: "온보딩의 길", deco: "🌱", quests: [
+        { id: "nk11", title: "환경 세팅", icon: "🛠", gem: 3, desc: "일 시작 전 가장 먼저 막히는 벽 — 도구부터 깐다.", task: "필요한 툴·계정·권한을 세팅하고 실행되는지 확인하기" },
+        { id: "nk12", title: "채널 익히기", icon: "💬", gem: 2, desc: "어디에 뭘 올리는지 몰라 막히는 병목.", task: "디스코드·채널 구조를 파악하고 자기소개 남기기" },
+        { id: "nk13", title: "첫 코난놀이", icon: "🕵️", gem: 3, desc: "10분 안에 상황을 정리하는 습관 만들기.", task: "코난놀이 1건 작성하기 (10분 이내!)", need: "nk12" },
+      ] },
+      { n: 2, name: "병목 발견의 언덕", deco: "🔎", quests: [
+        { id: "nk21", title: "내 병목 20개 찾기", icon: "📝", gem: 6, desc: "이 패키지의 핵심 — 내가 자주 막히는 지점을 눈에 보이게 만든다.", task: "내 업무에서 반복해서 막히는 병목 20개를 노트에 적기" },
+        { id: "nk22", title: "병목 1건 뚫기", icon: "⛏", gem: 4, desc: "찾았으면 하나라도 실제로 뚫어본다.", task: "찾은 병목 중 1개를 골라 해결하고 방법을 기록하기", need: "nk21" },
+        { id: "nk23", title: "[B] 채널 공유", icon: "📣", gem: 3, desc: "혼자 뚫지 말고 남기면 팀 전체가 빨라진다.", task: "오늘 뚫은 병목을 어떤 사고로 뚫었는지 [B] 채널에 공유하기", need: "nk22" },
+      ] },
+      { n: 3, name: "루틴의 고원", deco: "⛰", quests: [
+        { id: "nk31", title: "AI노트 + 투두", icon: "🧠", gem: 4, desc: "허들 뒤 정리 루틴을 몸에 붙인다.", task: "허들 내용을 AI 노트로 정리하고 투두로 쪼개기" },
+        { id: "nk32", title: "허들 시간 공지", icon: "⏰", gem: 2, desc: "언제 모이는지 알려 협업 병목을 없앤다.", task: "오늘 허들 활동 시간을 채널에 공지하기" },
+      ] },
+    ],
+  },
 ];
 
 /* 🤝 퀘스트 참가 정보 합치기 — 서로 다른 기기에 흩어진 파티 명단을 하나로 모아요.
@@ -7170,7 +7190,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                 onSubmitAnswer && onSubmitAnswer(q, answer.trim(), imgs);
                 setShrineFor(q);
               }} style={{ width: "100%", marginTop: 10, padding: 12, fontSize: 14 }}>🏆 답변 등록하기</PxButton>
-              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 7 }}>등록하면 퀘스트 완료의 제단 「수락 파편」에 자동으로 올라가요</div>
+              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 7 }}>등록하면 퀘스트 완료의 제단 「참가 파편」에 자동으로 올라가요</div>
             </Panel>
           </div>
         </div>
@@ -8491,7 +8511,7 @@ const UPDATE_NOTES = [
   { id: "u20260724dd", type: "업데이트", date: "2026-07-24", title: "🐾 형욱이네 · 📜 팝업 스크롤 · 📋 게시판 정리",
     body: "· 🐾 펫샵 이름을 「형욱이네」로 바꿨어요\n· 📮 피드백이 게시판과 메세지함에서 완전히 빠졌어요 (이전에 올라간 것도 안 보여요)\n· 팝업창 내용이 길어지면 스크롤할 수 있어요 — 퀘스트 추가 · 도감 · 프로필 등 모든 창에 적용했어요\n· 화면이 작아도 아래쪽 버튼이 잘리지 않아요" },
   { id: "u20260724cc", type: "업데이트", date: "2026-07-24", title: "📋 퀘스트 등록자 · 📮 답변 제출",
-    body: "· 퀘스트를 만들 때 📋 등록자를 「나」 또는 「타인」 중에 고를 수 있어요 (타인은 주민 목록에서 선택)\n· 작성자와 등록자만 그 퀘스트를 수정·삭제할 수 있어요\n· ✅ 완료 → 📮 제출 로 바뀌었어요\n· 제출을 누르면 답변 작성창이 뜨고, 어떻게 해결했는지 적어서 등록합니다\n· 등록하면 🏆 완료의 제단 「수락 파편」에 자동으로 올라가요 (제목·완료조건·답변·보상이 함께 기록)\n· 「완료의 제단에 등록되었습니다!」 안내와 함께 제단으로 이동하는 버튼이 나와요\n· 제단의 검수가 GM 검수 → 📋 등록자 검토 로 바뀌었어요" },
+    body: "· 퀘스트를 만들 때 📋 등록자를 「나」 또는 「타인」 중에 고를 수 있어요 (타인은 주민 목록에서 선택)\n· 작성자와 등록자만 그 퀘스트를 수정·삭제할 수 있어요\n· ✅ 완료 → 📮 제출 로 바뀌었어요\n· 제출을 누르면 답변 작성창이 뜨고, 어떻게 해결했는지 적어서 등록합니다\n· 등록하면 🏆 완료의 제단 「참가 파편」에 자동으로 올라가요 (제목·완료조건·답변·보상이 함께 기록)\n· 「완료의 제단에 등록되었습니다!」 안내와 함께 제단으로 이동하는 버튼이 나와요\n· 제단의 검수가 GM 검수 → 📋 등록자 검토 로 바뀌었어요" },
   { id: "u20260724bb", type: "업데이트", date: "2026-07-24", title: "🐟 수족관 시각화 · 🏗 시설 선행 구입",
     body: "· 🏗 시설 탭이 생겼어요 — 🐟 수족관(🪙120) · 🌳 마당(🪙100)\n· 🌳 마당을 사야 반려동물을 입양할 수 있어요\n· 🐟 수족관을 사야 물고기를 데려올 수 있어요\n· 물고기가 「어항」이 아니라 내가 산 수족관에 들어가요\n· 집에서 수족관을 누르면 진짜 수조처럼 보여요 — 물빛, 공기방울, 흔들리는 수초, 모래 바닥\n· 물고기마다 깊이·크기·속도가 달라 자유롭게 헤엄치고, 벽에 닿으면 방향을 바꿔요\n· 🌳 마당에는 데리고 나가지 않은 반려동물이 놀고 있어요" },
   { id: "u20260724aa", type: "업데이트", date: "2026-07-24", title: "🧠 사고 스킬 · 🔒 비밀번호 잠금 · 🐾 펫샵 이전",
@@ -11197,7 +11217,7 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed,
     const detail = (kind === "req" ? reqD : accD).trim();
     onAdd && onAdd({ kind, text, detail, imgs: kind === "req" ? reqI : accI });
     if (kind === "req") { setReqT(""); setReqD(""); setReqI([]); } else { setAccT(""); setAccD(""); setAccI([]); }
-    ping(kind === "req" ? "✦ 신청 파편이 제단에 봉헌됐어요" : "✦ 수락 파편이 제단에 봉헌됐어요");
+    ping(kind === "req" ? "✦ 의뢰 파편이 제단에 봉헌됐어요" : "✦ 참가 파편이 제단에 봉헌됐어요");
   };
   const toggle = (id, key) => {
     const it = items.find((x) => x.id === id);
@@ -11223,7 +11243,7 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed,
 
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar tipId="questdone" icon="🏆" title="퀘스트 완료의 제단" sub="신청 파편과 수락 파편을 봉헌하고, GM 검수·보상을 확인하는 곳" onBack={onBack} bg="#2e2455" fg="#ffd75e" />
+      <TitleBar tipId="questdone" icon="🏆" title="퀘스트 완료의 제단" sub="🔷 의뢰 파편·🔶 참가 파편을 봉헌하고 검토·보상을 확인하는 곳 · 파편 = 보스맵 밖 일반 퀘스트" onBack={onBack} bg="#2e2455" fg="#ffd75e" />
       <div style={{ padding: 16, background: "radial-gradient(circle at 50% 0%, #3a2e6b 0%, #1a1436 60%, #120e28 100%)" }}>
 
         {/* 제단 헤더 */}
@@ -11249,15 +11269,15 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed,
 
         {/* 두 개의 파편 입력창 */}
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
-          <QuestFragmentInput tone="req" icon="🔷" title="퀘스트 신청 파편" hint="내가 올린 퀘스트 · 요청한 작업을 적어주세요."
+          <QuestFragmentInput tone="req" icon="🔷" title="퀘스트 의뢰 파편" hint="내가 올린 퀘스트 · 요청한 작업을 적어주세요."
             placeholder="예: 릴스 썸네일 10종 제작 신청" value={reqT} onChange={setReqT} detail={reqD} onDetail={setReqD} onAdd={() => add("req")} imgs={reqI} onImgs={setReqI} />
-          <QuestFragmentInput tone="acc" icon="🔶" title="퀘스트 수락 파편" hint="내가 수락해서 끝낸 퀘스트를 적어주세요."
+          <QuestFragmentInput tone="acc" icon="🔶" title="퀘스트 참가 파편" hint="내가 수락해서 끝낸 퀘스트를 적어주세요."
             placeholder="예: 항균양말 상세페이지 수락 · 완료" value={accT} onChange={setAccT} detail={accD} onDetail={setAccD} onAdd={() => add("acc")} imgs={accI} onImgs={setAccI} />
         </div>
 
         {/* 필터 */}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
-          {[["all", "전체"], ["mine", "🙋 내 관련"], ["req", "🔷 신청"], ["acc", "🔶 수락"], ["wait", "⏳ 미완"], ["done", "✅ 완료"]].map(([k, label]) => (
+          {[["all", "전체"], ["mine", "🙋 내 관련"], ["req", "🔷 의뢰"], ["acc", "🔶 참가"], ["wait", "⏳ 미완"], ["done", "✅ 완료"]].map(([k, label]) => (
             <ShrineChip key={k} k={k} label={label} on={filter === k} onPick={setFilter} />
           ))}
           <span style={{ fontSize: 11, color: "#b9a7d6", fontWeight: "bold" }}>{shown.length}건</span>
@@ -11281,7 +11301,7 @@ function QuestDoneView({ myName = "", onBack, bubble, draft = null, onDraftUsed,
                   <span style={{ fontSize: 20 }}>{it.kind === "req" ? "🔷" : "🔶"}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 9.5, background: line, color: "#14102b", borderRadius: 10, padding: "1px 7px", fontWeight: "bold" }}>{it.kind === "req" ? "신청 파편" : "수락 파편"}</span>
+                      <span style={{ fontSize: 9.5, background: line, color: "#14102b", borderRadius: 10, padding: "1px 7px", fontWeight: "bold" }}>{it.kind === "req" ? "의뢰 파편" : "참가 파편"}</span>
                       {all && <span style={{ fontSize: 9.5, background: "#5fd39a", color: "#0f2119", borderRadius: 10, padding: "1px 7px", fontWeight: "bold" }}>✦ 봉인 완료</span>}
                     </div>
                     <div style={{ fontSize: 14, fontWeight: "bold", color: C.white, marginTop: 4, wordBreak: "break-word" }}>{it.text}</div>
