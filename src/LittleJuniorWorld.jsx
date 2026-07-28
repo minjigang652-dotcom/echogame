@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v109 · 2026-07-24";
+const APP_VERSION = "v110 · 2026-07-28";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -8416,6 +8416,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260728n1", type: "업데이트", date: "2026-07-28", title: "📗 네이버스쿨 튜토리얼 — 댓글 사진 추가 · 사진 서버 저장",
+    body: "· 📖 튜토리얼에 「4. 댓글 사진」 섹션을 새로 넣었어요 — 🟢 그린레이 댓글 사진 · 🔵 보이실린 댓글 사진\n· 사진을 올리고 각 사진의 ⬇ 버튼으로 다운로드할 수 있어요\n· 이제 답변 사진·댓글 사진이 서버에 저장돼요 — 새로고침해도 남고 모두가 함께 봐요 (예전엔 새로고침하면 사라졌어요)\n· 사진은 자동으로 압축해서 저장 용량을 줄여요" },
   { id: "u20260724n60", type: "업데이트", date: "2026-07-24", title: "📗 네이버스쿨 튜토리얼 — 메모 서버 저장 · 답변 사진 다운로드",
     body: "· 📖 튜토리얼의 메모(작성 방법·프롬프트)가 이제 우리 서버에 저장돼요 — 모두가 함께 보고 새로고침해도 남아요\n· 예전엔 외부 서버 API가 없어 「저장 실패」가 뜨던 문제를 해결했어요 (Supabase에 저장)\n· 🖼 지식인 답변 사진에 다운로드 버튼(⬇)을 추가했어요 — 등록한 사진을 눌러 바로 받을 수 있어요\n· txt 파일 올리기·다운로드는 그대로예요" },
   { id: "u20260724n59", type: "업데이트", date: "2026-07-24", title: "📱 릴스방 서버 저장 · 가로 영상 화면 축소",
@@ -11950,8 +11952,17 @@ function TutorialTab({ data, setData }) {
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
   };
-  const addImgs = (k, files) => { Array.from(files || []).forEach((f) => { const r = new FileReader(); r.onload = () => setData((t) => ({ ...t, [k]: [...t[k], { url: r.result, name: f.name }] })); r.readAsDataURL(f); }); };
-  const rmImg = (k, i) => setData((t) => ({ ...t, [k]: t[k].filter((_, x) => x !== i) }));
+  const saveImgs = (k, arr) => { try { dbSaveNspTut(k, { images: arr }); } catch (e) {} };
+  const addImgs = async (k, files) => {
+    const list = Array.from(files || []);
+    for (const f of list) {
+      try {
+        const url = await compressImage(f, 1000, 0.75, 'image/jpeg');
+        setData((t) => { const next = [...(t[k] || []), { url, name: f.name }].slice(0, 12); saveImgs(k, next); return { ...t, [k]: next }; });
+      } catch (e) { /* skip */ }
+    }
+  };
+  const rmImg = (k, i) => setData((t) => { const next = (t[k] || []).filter((_, x) => x !== i); saveImgs(k, next); return { ...t, [k]: next }; });
 
   // 인라인 호출(컴포넌트 아님) → textarea 포커스 유지
   const Memo = (label, key, ph) => {
@@ -12026,7 +12037,11 @@ function TutorialTab({ data, setData }) {
       {Imgs('🟢 그린레이', 'imgGreen')}
       {Imgs('🔵 보이실린', 'imgBoy')}
 
-      <div className="nsp-tut-h">4. 수정발행 원고 &amp; 댓글</div>
+      <div className="nsp-tut-h">4. 댓글 사진</div>
+      {Imgs('🟢 그린레이 댓글 사진', 'imgCommentGreen')}
+      {Imgs('🔵 보이실린 댓글 사진', 'imgCommentBoy')}
+
+      <div className="nsp-tut-h">5. 수정발행 원고 &amp; 댓글</div>
       {LinkRow('📄 원고 시트 링크', 'manuscriptUrl', '원고 구글시트 주소 붙여넣기…')}
       {LinkRow('💬 댓글 시트 링크', 'commentUrl', '댓글 구글시트 주소 붙여넣기…')}
     </div>
@@ -12112,6 +12127,7 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
     manuscriptUrl: { text: '', fileName: '', date: '' },
     commentUrl:    { text: '', fileName: '', date: '' },
     imgGreen: [], imgBoy: [],
+    imgCommentGreen: [], imgCommentBoy: [],
   });
   const [data, setData] = useState({ keywords: [], urls: [], cafe: [], kin: [], cafeLinks: [] });
   const [loading, setLoading] = useState(false);
@@ -12156,7 +12172,12 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
       if (all && typeof all === 'object') {
         setTutorial((prev) => {
           const next = { ...prev };
-          Object.keys(all).forEach((k) => { if (all[k] && typeof all[k] === 'object' && 'text' in all[k]) next[k] = { ...next[k], ...all[k] }; });
+          Object.keys(all).forEach((k) => {
+            const v = all[k];
+            if (!v || typeof v !== 'object') return;
+            if ('images' in v && Array.isArray(v.images)) next[k] = v.images;   // 사진 슬롯 복원
+            else if ('text' in v) next[k] = { ...next[k], ...v };                // 메모/링크 슬롯 복원
+          });
           return next;
         });
       }
