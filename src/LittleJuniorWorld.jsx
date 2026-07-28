@@ -10277,17 +10277,14 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
           {neck.length > 0 && (
             <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
               {neck.map((n, i) => (
-                <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start", background: C.parch, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "6px 7px" }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 10.5, fontWeight: "bold", wordBreak: "break-word", textDecoration: n.done ? "line-through" : "none", color: n.done ? C.inkSoft : C.ink }}>🚧 {n.point || "(병목 미기재)"}</div>
-                    {n.action && <div style={{ fontSize: 10, color: C.inkSoft, wordBreak: "break-word", marginTop: 2 }}>▶ {n.action}</div>}
-                    <div style={{ fontSize: 9, color: C.inkSoft, marginTop: 2 }}>{n.at}</div>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, flexShrink: 0 }}>
-                    <span style={{ fontSize: 8.5, color: C.inkSoft }}>해결여부</span>
+                <div key={i} style={{ display: "flex", gap: 4, alignItems: "stretch" }}>
+                  <div style={{ flex: 1, minWidth: 0, maxHeight: 46, overflowY: "auto", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "4px 5px", fontSize: 9.5, lineHeight: 1.35, wordBreak: "break-word", textDecoration: n.done ? "line-through" : "none", color: n.done ? C.inkSoft : C.ink }}>{n.point || "(병목)"}</div>
+                  <div style={{ flex: 1, minWidth: 0, maxHeight: 46, overflowY: "auto", background: C.parch, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "4px 5px", fontSize: 9.5, lineHeight: 1.35, wordBreak: "break-word", color: C.inkSoft }}>{n.action || "-"}</div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, flexShrink: 0 }}>
+                    <span style={{ fontSize: 8, color: C.inkSoft }}>{n.at}</span>
                     <input type="checkbox" checked={!!n.done} onChange={() => setNeck((v) => v.map((x, j) => j === i ? { ...x, done: !x.done } : x))} />
+                    <button type="button" onClick={() => setNeck((v) => v.filter((_, j) => j !== i))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 9, color: C.inkSoft, padding: 0 }}>✕</button>
                   </div>
-                  <button type="button" onClick={() => setNeck((v) => v.filter((_, j) => j !== i))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 10, color: C.inkSoft, flexShrink: 0 }}>✕</button>
                 </div>
               ))}
             </div>
@@ -10367,7 +10364,10 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const [rcat, setRcat] = useState("core");
   const [qEdit, setQEdit] = useState(null);   // 편집/등록 중인 퀘스트 (null=닫힘)
   const [qView, setQView] = useState(null);   // 🔍 자세히 보기 팝업 (null=닫힘)
+  const [qManage, setQManage] = useState(false);   // ⚙️ 퀘스트 관리(삭제·이름·순서)
   const [calOff, setCalOff] = useState(0);     // 📅 캘린더 월 이동 (0=이번 달)
+  const [homeSub, setHomeSub] = useState("notice");   // 홈 상단: notice | cal
+  const [calDay, setCalDay] = useState(null);   // 날짜 클릭 팝업 (YYYY-MM-DD | null)
   const [saveMsg, setSaveMsg] = useState("");   // HQ 자체 저장 상태 표시
   /* 📅 마감까지 남은 날 (due = "YYYY-MM-DD") */
   const dDay = (due) => {
@@ -10512,73 +10512,106 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
       <div style={{ flex: 1, overflow: "auto", padding: "16px", maxWidth: 940, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
         {tab === "home" && (
           <>
-            {/* 공지사항 (게시판과 같은 글 · 누르면 게시판으로) */}
+            {/* 📢 공지사항 / 📅 캘린더 — 버튼으로 전환 (게시판과 같은 글 연동) */}
             <div style={{ ...card, background: "#fff8e8", borderColor: "#e0a13d" }}>
-              <div style={h}><span style={{ fontSize: 18 }}>📢</span><b style={{ flex: 1, fontSize: 14 }}>공지사항</b>
-                <button type="button" onClick={() => onGoBoard && onGoBoard()} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, fontWeight: "bold", background: "#e0a13d", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "4px 9px" }}>📋 게시판 →</button>
+              <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                <button type="button" onClick={() => setHomeSub("notice")} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12.5, fontWeight: "bold", padding: "7px 12px", borderRadius: 8, border: `2px solid ${C.ink}`, background: homeSub === "notice" ? "#e0a13d" : C.white, color: homeSub === "notice" ? C.white : C.ink }}>📢 공지사항</button>
+                <button type="button" onClick={() => setHomeSub("cal")} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12.5, fontWeight: "bold", padding: "7px 12px", borderRadius: 8, border: `2px solid ${C.ink}`, background: homeSub === "cal" ? "#e0a13d" : C.white, color: homeSub === "cal" ? C.white : C.ink }}>📅 캘린더</button>
+                <button type="button" onClick={() => onGoBoard && onGoBoard()} style={{ marginLeft: "auto", cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, fontWeight: "bold", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "4px 9px" }}>📋 게시판 →</button>
               </div>
-              {notices.filter((n) => n.type === "공지" || n.type === "모집").slice(0, 3).map((n) => (
-                <button key={n.id} type="button" onClick={() => onGoBoard && onGoBoard()} title="게시판에서 보기"
-                  style={{ display: "block", width: "100%", textAlign: "left", cursor: "pointer", background: "none", border: "none", padding: 0, marginBottom: 8, fontFamily: "'DotGothic16', monospace" }}>
-                  <div style={{ fontSize: 13, fontWeight: "bold", color: C.ink }}>📢 {n.title}</div>
-                  {n.body && <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{String(n.body).split("\n")[0]}</div>}
-                  <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 2 }}>{n.date}</div>
-                </button>
-              ))}
-              {notices.filter((n) => n.type === "공지" || n.type === "모집").length === 0 && <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>공지가 없어요. 게시판에서 올려보세요.</div>}
-              <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                <input value={notice} onChange={(e) => setNotice(e.target.value)}
-                  placeholder="공지 입력 후 등록" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, background: C.white }} />
-                <PxButton tone="gold" disabled={!notice.trim()} onClick={() => { onPostNotice && onPostNotice(notice.trim()); setNotice(""); }} style={{ fontSize: 12, padding: "9px 13px" }}>등록</PxButton>
-              </div>
+
+              {homeSub === "notice" ? (
+                <>
+                  {notices.filter((n) => n.type === "공지" || n.type === "모집").slice(0, 3).map((n) => (
+                    <button key={n.id} type="button" onClick={() => onGoBoard && onGoBoard()} title="게시판에서 보기"
+                      style={{ display: "block", width: "100%", textAlign: "left", cursor: "pointer", background: "none", border: "none", padding: 0, marginBottom: 8, fontFamily: "'DotGothic16', monospace" }}>
+                      <div style={{ fontSize: 13, fontWeight: "bold", color: C.ink }}>📢 {n.title}</div>
+                      {n.body && <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{String(n.body).split("\n")[0]}</div>}
+                      <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 2 }}>{n.date}</div>
+                    </button>
+                  ))}
+                  {notices.filter((n) => n.type === "공지" || n.type === "모집").length === 0 && <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>공지가 없어요. 게시판에서 올려보세요.</div>}
+                  <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                    <input value={notice} onChange={(e) => setNotice(e.target.value)}
+                      placeholder="공지 입력 후 등록" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, background: C.white }} />
+                    <PxButton tone="gold" disabled={!notice.trim()} onClick={() => { onPostNotice && onPostNotice(notice.trim()); setNotice(""); }} style={{ fontSize: 12, padding: "9px 13px" }}>등록</PxButton>
+                  </div>
+                </>
+              ) : (() => {
+                const base = new Date(); base.setDate(1); base.setMonth(base.getMonth() + calOff);
+                const y = base.getFullYear(), mo = base.getMonth();
+                const first = new Date(y, mo, 1).getDay();
+                const dim = new Date(y, mo + 1, 0).getDate();
+                const today = new Date(); const isToday = (d) => today.getFullYear() === y && today.getMonth() === mo && today.getDate() === d;
+                const ymd = (d) => `${y}-${String(mo + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+                const noticeDays = new Set((notices || []).filter((n) => n.type === "공지" || n.type === "모집").map((n) => n.date));
+                const dueDays = new Set((hqQuests || []).filter((q) => q.due).map((q) => q.due));
+                const cells = [];
+                for (let i = 0; i < first; i++) cells.push(null);
+                for (let d = 1; d <= dim; d++) cells.push(d);
+                const WK = ["일", "월", "화", "수", "목", "금", "토"];
+                return (
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                      <b style={{ flex: 1, fontSize: 14 }}>{y}년 {mo + 1}월</b>
+                      <button type="button" onClick={() => setCalOff((v) => v - 1)} style={{ cursor: "pointer", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, fontSize: 13, color: C.inkSoft, padding: "1px 8px" }}>‹</button>
+                      <button type="button" onClick={() => setCalOff(0)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10, color: C.inkSoft, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "2px 7px" }}>오늘</button>
+                      <button type="button" onClick={() => setCalOff((v) => v + 1)} style={{ cursor: "pointer", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, fontSize: 13, color: C.inkSoft, padding: "1px 8px" }}>›</button>
+                    </div>
+                    <div style={{ maxHeight: 250, overflowY: "auto", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: 8 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 3 }}>
+                        {WK.map((w, i) => (<div key={"w" + i} style={{ textAlign: "center", fontSize: 10, fontWeight: "bold", color: i === 0 ? C.danger : i === 6 ? "#5b8def" : C.inkSoft, padding: "2px 0" }}>{w}</div>))}
+                        {cells.map((d, i) => {
+                          if (d == null) return <div key={"e" + i} />;
+                          const hasNotice = noticeDays.has(ymd(d));
+                          const hasDue = dueDays.has(ymd(d));
+                          const td = isToday(d);
+                          return (
+                            <button key={"d" + d} type="button" onClick={() => setCalDay(ymd(d))} title="눌러서 크게 보기"
+                              style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", aspectRatio: "1 / 1", minHeight: 30, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1,
+                                background: td ? "#e0a13d" : C.white, color: td ? C.white : C.ink, border: `2px solid ${td ? C.ink : C.parchEdge}`, borderRadius: 6, fontSize: 11 }}>
+                              <span style={{ fontWeight: td ? "bold" : "normal" }}>{d}</span>
+                              <span style={{ display: "flex", gap: 1, height: 5 }}>
+                                {hasNotice && <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#e0a13d", border: td ? "1px solid #fff" : "none" }} />}
+                                {hasDue && <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.danger, border: td ? "1px solid #fff" : "none" }} />}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 8, fontSize: 10, color: C.inkSoft }}>
+                      <span><span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "#e0a13d", marginRight: 4 }} />공지</span>
+                      <span><span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: C.danger, marginRight: 4 }} />퀘스트 마감</span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
-            {/* 📅 캘린더 (공지 · 퀘스트 마감 표시 · 누르면 게시판으로) */}
-            {(() => {
-              const base = new Date(); base.setDate(1); base.setMonth(base.getMonth() + calOff);
-              const y = base.getFullYear(), mo = base.getMonth();
-              const first = new Date(y, mo, 1).getDay();
-              const dim = new Date(y, mo + 1, 0).getDate();
-              const today = new Date(); const isToday = (d) => today.getFullYear() === y && today.getMonth() === mo && today.getDate() === d;
-              const ymd = (d) => `${y}-${String(mo + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-              const noticeDays = new Set((notices || []).filter((n) => n.type === "공지" || n.type === "모집").map((n) => n.date));
-              const dueDays = new Set((hqQuests || []).filter((q) => q.due).map((q) => q.due));
-              const cells = [];
-              for (let i = 0; i < first; i++) cells.push(null);
-              for (let d = 1; d <= dim; d++) cells.push(d);
-              const WK = ["일", "월", "화", "수", "목", "금", "토"];
+            {/* 📅 날짜 클릭 팝업 — 그 날의 공지·마감 + 게시판 캘린더 이동 */}
+            {calDay && (() => {
+              const dayNotices = (notices || []).filter((n) => (n.type === "공지" || n.type === "모집") && n.date === calDay);
+              const dayDues = (hqQuests || []).filter((q) => q.due === calDay);
               return (
-                <div style={{ ...card }}>
-                  <div style={h}>
-                    <span style={{ fontSize: 18 }}>📅</span>
-                    <button type="button" onClick={() => onGoBoard && onGoBoard()} style={{ flex: 1, textAlign: "left", cursor: "pointer", background: "none", border: "none", fontFamily: "'DotGothic16', monospace", fontSize: 14, fontWeight: "bold", color: C.ink }}>{y}년 {mo + 1}월</button>
-                    <button type="button" onClick={() => setCalOff((v) => v - 1)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14, color: C.inkSoft }}>‹</button>
-                    <button type="button" onClick={() => setCalOff(0)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10, color: C.inkSoft, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "2px 6px" }}>오늘</button>
-                    <button type="button" onClick={() => setCalOff((v) => v + 1)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14, color: C.inkSoft }}>›</button>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 3 }}>
-                    {WK.map((w, i) => (<div key={"w" + i} style={{ textAlign: "center", fontSize: 10, fontWeight: "bold", color: i === 0 ? C.danger : i === 6 ? "#5b8def" : C.inkSoft, padding: "2px 0" }}>{w}</div>))}
-                    {cells.map((d, i) => {
-                      if (d == null) return <div key={"e" + i} />;
-                      const hasNotice = noticeDays.has(ymd(d));
-                      const hasDue = dueDays.has(ymd(d));
-                      const td = isToday(d);
-                      return (
-                        <button key={"d" + d} type="button" onClick={() => onGoBoard && onGoBoard()} title={hasNotice || hasDue ? "게시판에서 보기" : ""}
-                          style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", aspectRatio: "1 / 1", minHeight: 30, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1,
-                            background: td ? "#e0a13d" : C.white, color: td ? C.white : C.ink, border: `2px solid ${td ? C.ink : C.parchEdge}`, borderRadius: 6, fontSize: 11 }}>
-                          <span style={{ fontWeight: td ? "bold" : "normal" }}>{d}</span>
-                          <span style={{ display: "flex", gap: 1, height: 5 }}>
-                            {hasNotice && <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#e0a13d", border: td ? "1px solid #fff" : "none" }} />}
-                            {hasDue && <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.danger, border: td ? "1px solid #fff" : "none" }} />}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 8, fontSize: 10, color: C.inkSoft }}>
-                    <span><span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "#e0a13d", marginRight: 4 }} />공지</span>
-                    <span><span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: C.danger, marginRight: 4 }} />퀘스트 마감</span>
+                <div onClick={() => setCalDay(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 205, padding: 16 }}>
+                  <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, maxHeight: "80%", overflow: "auto", background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18 }}>
+                    <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
+                      <b style={{ flex: 1, fontSize: 16 }}>📅 {calDay}</b>
+                      <button type="button" onClick={() => setCalDay(null)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16 }}>✕</button>
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: "bold", color: "#e0a13d", marginBottom: 6 }}>📢 공지</div>
+                    {dayNotices.length === 0 ? <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 10 }}>이 날 공지는 없어요.</div> : dayNotices.map((n) => (
+                      <div key={n.id} style={{ background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: "bold" }}>{n.title}</div>
+                        {n.body && <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 3, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{String(n.body).slice(0, 200)}</div>}
+                      </div>
+                    ))}
+                    <div style={{ fontSize: 12, fontWeight: "bold", color: C.danger, margin: "10px 0 6px" }}>🎯 퀘스트 마감</div>
+                    {dayDues.length === 0 ? <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 10 }}>이 날 마감 퀘스트는 없어요.</div> : dayDues.map((q) => (
+                      <div key={q.id} style={{ background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px", marginBottom: 6, fontSize: 12.5, fontWeight: "bold" }}>{q.title}</div>
+                    ))}
+                    <PxButton tone="gold" onClick={() => { setCalDay(null); onGoBoard && onGoBoard(); }} style={{ width: "100%", fontSize: 12.5, padding: 11, marginTop: 12 }}>📋 게시판 캘린더로 이동 →</PxButton>
                   </div>
                 </div>
               );
@@ -10630,7 +10663,8 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 {[["all", "전체"], ...HQ_CATS.map((c) => [c.id, `${c.icon} ${c.name}`])].map(([k, lb]) => (
                   <button key={k} type="button" onClick={() => setQcat(k)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: qcat === k ? C.ink : C.white, color: qcat === k ? C.white : C.ink }}>{lb}</button>
                 ))}
-                <PxButton tone="gold" onClick={() => setQEdit(blankQuest())} style={{ fontSize: 11, padding: "7px 12px", marginLeft: "auto" }}>＋ 새 퀘스트</PxButton>
+                <PxButton tone="wood" onClick={() => setQManage(true)} style={{ fontSize: 11, padding: "7px 11px", marginLeft: "auto" }}>⚙️ 설정</PxButton>
+                <PxButton tone="gold" onClick={() => setQEdit(blankQuest())} style={{ fontSize: 11, padding: "7px 12px" }}>＋ 새 퀘스트</PxButton>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
                 {list.map((q) => {
@@ -10654,14 +10688,13 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                           {dd && <span style={{ fontSize: 10, fontWeight: "bold", color: C.white, borderRadius: 8, padding: "1px 7px", background: dd.over ? C.danger : dd.today ? "#e0a13d" : dd.days <= 3 ? "#e0663d" : C.good }}>{dd.txt}</span>}
                         </div>
                       ); })()}
-                      {(q.subs || []).map((sb, i) => {
+                      {(q.subs || []).map((sb, i) => ({ sb, i })).sort((a, b) => (sbDone(a.sb) ? 1 : 0) - (sbDone(b.sb) ? 1 : 0)).map(({ sb, i }) => {
                         const isD = sbDone(sb);
                         return (
                           <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                            <span style={{ width: 20, height: 20, borderRadius: "50%", background: sb.who ? colorOf(sb.who) : "#c7bfae", color: C.white, fontSize: 10, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{sb.who ? avatarOf(sb.who) : "?"}</span>
                             <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isD ? "line-through" : "none", color: isD ? C.inkSoft : C.ink }}>{sb.t}</span>
                             <select value={sb.who || ""} onChange={(e) => setSubWho(q.id, i, e.target.value)} title="담당 계정 선택 (누가 진행중인지)"
-                              style={{ flexShrink: 0, maxWidth: 78, fontFamily: "'DotGothic16', monospace", fontSize: 10, padding: "2px 3px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white }}>
+                              style={{ flexShrink: 0, maxWidth: 84, fontFamily: "'DotGothic16', monospace", fontSize: 10, padding: "2px 3px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white }}>
                               <option value="">미지정</option>
                               {(sb.who && !acctNames.includes(sb.who) ? [sb.who, ...acctNames] : acctNames).map((nm) => (<option key={nm} value={nm}>{nm}</option>))}
                             </select>
@@ -10787,6 +10820,35 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 );
               })()}
 
+              {/* ⚙️ 퀘스트 관리 (이름 수정 · 순서 변경 · 삭제) */}
+              {qManage && (
+                <div onClick={() => setQManage(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 205, padding: 16 }}>
+                  <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, maxHeight: "88%", overflow: "auto", background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18 }}>
+                    <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
+                      <b style={{ flex: 1, fontSize: 15 }}>⚙️ 퀘스트 관리</b>
+                      <button type="button" onClick={() => setQManage(false)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16 }}>✕</button>
+                    </div>
+                    <div style={{ fontSize: 10.5, color: C.inkSoft, marginBottom: 10 }}>이름 수정 · ▲▼ 순서 변경 · 삭제 (모두에게 저장·공유돼요)</div>
+                    {hqQuests.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 20 }}>퀘스트가 없어요.</div>}
+                    {hqQuests.map((q, i) => {
+                      const ci = catInfo(q.cat);
+                      const move = (d) => { const a = [...hqQuests]; const j = i + d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; onHQChange && onHQChange(a); };
+                      const rename = () => { const nv = (window.prompt("퀘스트 이름", q.title) || "").trim(); if (nv) onHQChange && onHQChange(hqQuests.map((x) => x.id === q.id ? { ...x, title: nv, editedBy: myName || "익명", editedAt: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) } : x)); };
+                      return (
+                        <div key={q.id} style={{ display: "flex", alignItems: "center", gap: 6, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
+                          <span style={{ fontSize: 10, color: C.white, background: ci.color, borderRadius: 6, padding: "2px 6px", flexShrink: 0 }}>{ci.icon}</span>
+                          <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.title}</span>
+                          <button type="button" onClick={() => move(-1)} title="위로" disabled={i === 0} style={{ cursor: i === 0 ? "default" : "pointer", background: "none", border: "none", fontSize: 13, color: i === 0 ? "#ccc" : C.inkSoft }}>▲</button>
+                          <button type="button" onClick={() => move(1)} title="아래로" disabled={i === hqQuests.length - 1} style={{ cursor: i === hqQuests.length - 1 ? "default" : "pointer", background: "none", border: "none", fontSize: 13, color: i === hqQuests.length - 1 ? "#ccc" : C.inkSoft }}>▼</button>
+                          <button type="button" onClick={rename} title="이름 수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13 }}>✏️</button>
+                          <button type="button" onClick={() => { if (window.confirm(`「${q.title}」 퀘스트를 삭제할까요?`)) removeQuest(q.id); }} title="삭제" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: C.danger }}>🗑</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 14 }}>퀘스트를 누르면 자세히 볼 수 있어요 · 미션 체크·담당 선택은 바로 저장·공유돼요</div>
             </>
           );
@@ -10820,23 +10882,27 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
               </div>
               <div style={{ maxWidth: 500, margin: "0 auto" }}>
                 {chapters.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 30 }}>챕터가 없어요 · ＋ 챕터 추가로 만들어보세요</div>}
-                {chapters.map((ch, i) => {
+                {chapters.map((ch, i) => ({ ch, i })).reverse().map(({ ch, i }, di, arr) => {
                   const pct = chapterPct(ch.name);
                   const qn = chapterQn(ch.name);
                   const isCur = i === curIdx;
                   const done = pct >= 100;
+                  const atTop = i === chapters.length - 1;   // 배열 끝 = 화면 맨 위
                   return (
                     <div key={ch.id}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <div style={{ width: 54, height: 54, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22,
-                          background: done ? "#bfe3cf" : isCur ? ci.color : "#d8d2c4", border: `3px solid ${C.ink}`, color: C.white }}>
-                          {done ? "✓" : isCur ? "📍" : "🔒"}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        {/* ⬆ 위로 이동 + 동그라미 */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                          <button type="button" onClick={() => move(i, 1)} disabled={atTop} title="위로 이동"
+                            style={{ cursor: atTop ? "default" : "pointer", background: "none", border: "none", fontSize: 16, color: atTop ? "#d8d2c4" : ci.color, padding: 0, lineHeight: 1 }}>⬆</button>
+                          <div style={{ width: 52, height: 52, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22,
+                            background: done ? "#bfe3cf" : isCur ? ci.color : "#d8d2c4", border: `3px solid ${C.ink}`, color: C.white }}>
+                            {done ? "✓" : isCur ? "📍" : "🔒"}
+                          </div>
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                             <span style={{ flex: 1, fontSize: 13.5, fontWeight: "bold" }}>{ch.name}{isCur ? <span style={{ fontSize: 10, color: ci.color, marginLeft: 6 }}>지금 여기</span> : null}</span>
-                            <button type="button" onClick={() => move(i, -1)} title="위로" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.inkSoft }}>▲</button>
-                            <button type="button" onClick={() => move(i, 1)} title="아래로" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.inkSoft }}>▼</button>
                             <button type="button" onClick={() => rename(i)} title="이름 수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 12 }}>✏️</button>
                             <button type="button" onClick={() => del(i)} title="삭제" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.inkSoft }}>✕</button>
                           </div>
@@ -10844,13 +10910,18 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                           <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 3 }}>{pct}% · 연결된 퀘스트 {qn}개</div>
                         </div>
                       </div>
-                      {i < chapters.length - 1 && <div style={{ width: 3, height: 26, background: C.parchEdge, margin: "4px 0 4px 26px" }} />}
+                      {di < arr.length - 1 && (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 52, margin: "2px 0" }}>
+                          <span style={{ fontSize: 12, color: ci.color, lineHeight: 1 }}>↑</span>
+                          <div style={{ width: 3, height: 16, background: C.parchEdge }} />
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
               <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 16, lineHeight: 1.6 }}>
-                진행률은 <b>퀘스트의 📁 챕터</b>가 이 챕터 이름과 같은 것들의 평균으로 자동 계산돼요<br />퀘스트 진행바를 움직이면 여기 로드맵도 자동으로 채워져요
+                아래 → 위로 진행돼요 · ⬆로 챕터 순서를 바꿀 수 있어요<br />진행률은 <b>퀘스트의 📁 챕터</b>가 이 챕터 이름과 같은 것들의 평균으로 자동 계산돼요 (미션을 체크하면 채워져요)
               </div>
             </>
           );
@@ -10948,17 +11019,14 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 {mpNeck.length > 0 && (
                   <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
                     {mpNeck.map((n, i) => (
-                      <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", background: C.parch, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "9px 10px" }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: "bold", wordBreak: "break-word", textDecoration: n.done ? "line-through" : "none", color: n.done ? C.inkSoft : C.ink }}>🚧 {n.point || "(병목 미기재)"}</div>
-                          {n.action && <div style={{ fontSize: 12, color: C.inkSoft, wordBreak: "break-word", marginTop: 3 }}>▶ {n.action}</div>}
-                          <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 3 }}>{n.at}</div>
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flexShrink: 0 }}>
-                          <span style={{ fontSize: 9.5, color: C.inkSoft }}>해결여부</span>
+                      <div key={i} style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
+                        <div style={{ flex: 1, minWidth: 0, maxHeight: 60, overflowY: "auto", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "7px 9px", fontSize: 12, lineHeight: 1.4, wordBreak: "break-word", textDecoration: n.done ? "line-through" : "none", color: n.done ? C.inkSoft : C.ink }}>{n.point || "(병목)"}</div>
+                        <div style={{ flex: 1, minWidth: 0, maxHeight: 60, overflowY: "auto", background: C.parch, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "7px 9px", fontSize: 12, lineHeight: 1.4, wordBreak: "break-word", color: C.inkSoft }}>{n.action || "-"}</div>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, flexShrink: 0 }}>
+                          <span style={{ fontSize: 9.5, color: C.inkSoft }}>{n.at}</span>
                           <input type="checkbox" checked={!!n.done} onChange={() => setMpNeck((v) => v.map((x, j) => j === i ? { ...x, done: !x.done } : x))} />
+                          <button type="button" onClick={() => setMpNeck((v) => v.filter((_, j) => j !== i))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.inkSoft, padding: 0 }}>✕</button>
                         </div>
-                        <button type="button" onClick={() => setMpNeck((v) => v.filter((_, j) => j !== i))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 12, color: C.inkSoft, flexShrink: 0 }}>✕</button>
                       </div>
                     ))}
                   </div>
