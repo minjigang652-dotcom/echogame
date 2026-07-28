@@ -10241,7 +10241,18 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const [qcat, setQcat] = useState("all");
   const [rcat, setRcat] = useState("core");
   const [qEdit, setQEdit] = useState(null);   // 편집/등록 중인 퀘스트 (null=닫힘)
+  const [qView, setQView] = useState(null);   // 🔍 자세히 보기 팝업 (null=닫힘)
   const [saveMsg, setSaveMsg] = useState("");   // HQ 자체 저장 상태 표시
+  /* 📅 마감까지 남은 날 (due = "YYYY-MM-DD") */
+  const dDay = (due) => {
+    if (!due) return null;
+    const d = new Date(due + "T23:59:59"); if (isNaN(d)) return null;
+    const now = new Date(); const ms = d - now;
+    const days = Math.ceil(ms / 86400000);
+    if (days < 0) return { txt: `D+${-days}`, over: true, days };
+    if (days === 0) return { txt: "D-DAY", today: true, days };
+    return { txt: `D-${days}`, days };
+  };
   /* 🙋 내 페이지 탭 (왼쪽 상시 패널과 같은 데이터 · 나만 편집) */
   const MP_KEY = "echotown_mypage_" + (myName || "guest");
   const mpLoad = (k, d) => { try { const v = JSON.parse(window.localStorage.getItem(MP_KEY) || "{}"); return v[k] !== undefined ? v[k] : d; } catch (e) { return d; } };
@@ -10420,8 +10431,9 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                   return (
                     <div key={q.id} style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 14 }}>
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
-                        <b style={{ flex: 1, fontSize: 14, wordBreak: "keep-all" }}>{q.title}</b>
+                        <b onClick={() => setQView(q)} title="자세히 보기" style={{ flex: 1, fontSize: 14, wordBreak: "keep-all", cursor: "pointer" }}>{q.title}</b>
                         <span style={{ fontSize: 10, color: C.white, background: ci.color, borderRadius: 8, padding: "2px 7px", whiteSpace: "nowrap" }}>{ci.icon}</span>
+                        <button type="button" onClick={() => setQView(q)} title="자세히 보기" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13 }}>🔍</button>
                         <button type="button" onClick={() => setQEdit({ ...q, subs: (q.subs || []).map((x) => ({ ...x })) })} title="수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13 }}>✏️</button>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "7px 0", fontSize: 11, color: C.inkSoft, flexWrap: "wrap" }}>
@@ -10429,7 +10441,12 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                         <span>🪙 {q.gold}</span><span>💎 {q.gem}</span>
                         {q.chapter && <span>📁 {q.chapter}</span>}
                       </div>
-                      {q.due && <div style={{ fontSize: 10.5, color: C.inkSoft, marginBottom: 8 }}>📅 {q.due}</div>}
+                      {q.due && (() => { const dd = dDay(q.due); return (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, fontSize: 10.5, color: C.inkSoft }}>
+                          <span>📅 {q.due}</span>
+                          {dd && <span style={{ fontSize: 10, fontWeight: "bold", color: C.white, borderRadius: 8, padding: "1px 7px", background: dd.over ? C.danger : dd.today ? "#e0a13d" : dd.days <= 3 ? "#e0663d" : C.good }}>{dd.txt}</span>}
+                        </div>
+                      ); })()}
                       {(q.subs || []).map((sb, i) => {
                         const isD = sbDone(sb);
                         return (
@@ -10507,7 +10524,63 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 </div>
               )}
 
-              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 14 }}>모든 데이터는 함께 보고 수정돼요 · 진행바를 드래그하면 바로 저장·공유돼요</div>
+              {/* 🔍 퀘스트 자세히 보기 */}
+              {qView && (() => {
+                const qv = hqQuests.find((x) => x.id === qView.id) || qView;
+                const ci = catInfo(qv.cat);
+                const dd = dDay(qv.due);
+                const subs = qv.subs || [];
+                const doneN = subs.filter(sbDone).length;
+                const pct = avgOf(qv);
+                return (
+                  <div onClick={() => setQView(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 }}>
+                    <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, maxHeight: "90%", overflow: "auto", background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18 }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10 }}>
+                        <span style={{ fontSize: 11, color: C.white, background: ci.color, borderRadius: 8, padding: "3px 8px", whiteSpace: "nowrap", flexShrink: 0 }}>{ci.icon} {ci.name}</span>
+                        <b style={{ flex: 1, fontSize: 16, wordBreak: "keep-all" }}>{qv.title}</b>
+                        <button type="button" onClick={() => setQView(null)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16 }}>✕</button>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12, color: C.inkSoft, marginBottom: 10 }}>
+                        <span style={{ color: "#e0a13d" }}>{"★".repeat(qv.star)}{"☆".repeat(Math.max(0, 3 - qv.star))}</span>
+                        <span>🪙 {qv.gold}</span><span>💎 {qv.gem}</span>
+                        {qv.chapter && <span>📁 {qv.chapter}</span>}
+                      </div>
+                      {qv.due && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, fontSize: 12 }}>
+                          <span style={{ color: C.inkSoft }}>📅 마감 {qv.due}</span>
+                          {dd && <span style={{ fontSize: 11, fontWeight: "bold", color: C.white, borderRadius: 8, padding: "2px 9px", background: dd.over ? C.danger : dd.today ? "#e0a13d" : dd.days <= 3 ? "#e0663d" : C.good }}>{dd.txt}</span>}
+                        </div>
+                      )}
+                      {/* 진행률 크게 */}
+                      <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                          <span style={{ fontSize: 34, fontWeight: "bold", color: pct >= 100 ? C.good : ci.color, lineHeight: 1 }}>{pct}%</span>
+                          <span style={{ fontSize: 12, color: C.inkSoft }}>{doneN}/{subs.length} 미션 완료</span>
+                        </div>
+                        <div style={{ height: 12, borderRadius: 7, background: "#eadfc6", overflow: "hidden", marginTop: 8 }}>
+                          <div style={{ width: pct + "%", height: "100%", background: pct >= 100 ? C.good : ci.color }} />
+                        </div>
+                      </div>
+                      {/* 미션 목록 */}
+                      <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>세부 미션</div>
+                      {subs.length === 0 ? <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 10 }}>등록된 미션이 없어요.</div> : subs.map((sb, i) => {
+                        const isD = sbDone(sb);
+                        return (
+                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
+                            <span style={{ fontSize: 14 }}>{isD ? "✅" : "⬜"}</span>
+                            <span style={{ flex: 1, minWidth: 0, fontSize: 12, wordBreak: "break-word", textDecoration: isD ? "line-through" : "none", color: isD ? C.inkSoft : C.ink }}>{sb.t || "(내용 없음)"}</span>
+                            <span style={{ fontSize: 10.5, color: C.inkSoft, flexShrink: 0 }}>{sb.who ? `🧑 ${sb.who}` : "미지정"}</span>
+                          </div>
+                        );
+                      })}
+                      {qv.editedBy && <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6 }}>마지막 수정 · {qv.editedBy} · {qv.editedAt}</div>}
+                      <PxButton tone="wood" onClick={() => { setQView(null); setQEdit({ ...qv, subs: subs.map((x) => ({ ...x })) }); }} style={{ width: "100%", fontSize: 12.5, padding: 10, marginTop: 12 }}>✏️ 수정하기</PxButton>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 14 }}>퀘스트를 누르면 자세히 볼 수 있어요 · 미션 체크·담당 선택은 바로 저장·공유돼요</div>
             </>
           );
         })()}
