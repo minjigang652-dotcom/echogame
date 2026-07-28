@@ -10040,6 +10040,73 @@ function InventorySheet({ onClose, gold, outfit, ownedClothes, ikeaOwned, houseS
   );
 }
 
+/* 🗄️ 내 서랍 — 서랍 버튼을 누르면 칠판에 메모(포스트잇)가 붙어 있는 모습으로 열려요.
+   메모를 누르면 전체를 볼 수 있고, 데이터는 「내 페이지」와 같은 계정별 저장(notes)을 씁니다. */
+function DrawerBoard({ notes = [], onAdd, onDelete, big = false }) {
+  const [open, setOpen] = useState(false);
+  const [view, setView] = useState(null); // { t, at, i }
+  const COLORS = ["#fff3a0", "#c6f0bd", "#bfe0ff", "#ffd0d8", "#e7d0ff", "#ffe0ad"];
+  const rot = (i) => ((i * 37) % 7) - 3;   // -3~3도 살짝 기울임
+  const add = () => { const t = (window.prompt("메모 (나에게만 보여요)") || "").trim(); if (t && onAdd) onAdd(t); };
+  const fs = big ? { label: 12, count: 10.5, note: 11, pad: 12 } : { label: 11.5, count: 10, note: 10, pad: 10 };
+  return (
+    <>
+      {/* 서랍 손잡이 모양 버튼 */}
+      <button type="button" onClick={() => setOpen(true)} title="내 서랍 열기"
+        style={{ width: "100%", cursor: "pointer", fontFamily: "'DotGothic16', monospace", background: "linear-gradient(180deg,#b07a4e,#8a5a3b)", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 9, padding: `${fs.pad}px 12px`, boxShadow: `inset 0 -3px 0 rgba(0,0,0,0.25)`, display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 18 }}>🗄️</span>
+        <b style={{ flex: 1, textAlign: "left", fontSize: fs.label }}>내 서랍</b>
+        <span style={{ width: 26, height: 5, borderRadius: 3, background: "rgba(255,255,255,0.55)" }} />
+        <span style={{ fontSize: fs.count, opacity: 0.9 }}>메모 {notes.length}</span>
+      </button>
+
+      {/* 칠판 */}
+      {open && (
+        <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 210, padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, maxHeight: "88%", overflow: "auto",
+            background: "#33472f", border: `10px solid #6b4a2b`, borderRadius: 12, boxShadow: "inset 0 0 40px rgba(0,0,0,0.5), 0 10px 30px rgba(0,0,0,0.4)", padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 18 }}>🗄️</span>
+              <b style={{ flex: 1, fontSize: 15, color: "#fdf6e3" }}>내 서랍</b>
+              <button type="button" onClick={add} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 12, fontWeight: "bold", background: "#e0a13d", color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "5px 10px" }}>＋ 메모</button>
+              <button type="button" onClick={() => setOpen(false)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16, color: "#fdf6e3" }}>✕</button>
+            </div>
+            {notes.length === 0 ? (
+              <div style={{ textAlign: "center", color: "#cdd8c6", fontSize: 12, padding: "30px 0" }}>서랍이 비었어요.<br />＋ 메모로 붙여보세요.</div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 12, padding: "4px 2px 10px" }}>
+                {notes.map((n, i) => (
+                  <button key={i} type="button" onClick={() => setView({ ...n, i })} title="눌러서 전체 보기"
+                    style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", textAlign: "left", background: COLORS[i % COLORS.length], border: "1px solid rgba(0,0,0,0.25)", borderRadius: 3, padding: "9px 8px 10px", minHeight: 84, transform: `rotate(${rot(i)}deg)`, boxShadow: "0 3px 6px rgba(0,0,0,0.35)", position: "relative" }}>
+                    <span style={{ position: "absolute", top: -6, left: "50%", transform: "translateX(-50%)", fontSize: 12 }}>📌</span>
+                    <div style={{ fontSize: fs.note, color: "#2a1e14", lineHeight: 1.4, wordBreak: "break-word", display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{n.t}</div>
+                    <div style={{ fontSize: 8.5, color: "#6a5a3a", marginTop: 5 }}>{n.at}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 메모 전체 보기 */}
+      {view && (
+        <div onClick={() => setView(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 220, padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 360, background: COLORS[view.i % COLORS.length], border: `3px solid ${C.ink}`, borderRadius: 6, padding: 18, boxShadow: "0 10px 30px rgba(0,0,0,0.4)" }}>
+            <div style={{ textAlign: "center", fontSize: 16, marginBottom: 8 }}>📌</div>
+            <div style={{ fontSize: 13.5, color: "#2a1e14", lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: "50vh", overflow: "auto" }}>{view.t}</div>
+            <div style={{ fontSize: 10, color: "#6a5a3a", marginTop: 10 }}>{view.at}</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+              <PxButton tone="danger" onClick={() => { if (window.confirm("이 메모를 버릴까요?")) { onDelete && onDelete(view.i); setView(null); } }} style={{ fontSize: 12, padding: 9 }}>🗑 버리기</PxButton>
+              <PxButton tone="ink" onClick={() => setView(null)} style={{ flex: 1, fontSize: 12.5, padding: 9 }}>닫기</PxButton>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 /* 🙋 왼쪽 상시 「내 페이지」 패널 */
 function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
   const [open, setOpen] = useState(true);
@@ -10131,15 +10198,9 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
           </div>
         </div>
 
-        {/* 내 서랍 (개인 노트) */}
-        <div style={cardBox}>
-          {cardH("📒", "내 서랍", addBtn(() => { const t = (window.prompt("개인 노트 (나에게만 보여요)") || "").trim(); if (t) setNotes((v) => [{ t, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v]); }))}
-          {notes.length === 0 ? <div style={{ fontSize: 10, color: C.inkSoft }}>노트가 없어요.</div> : notes.map((n, i) => (
-            <div key={i} style={{ display: "flex", gap: 5, fontSize: 10.5, marginBottom: 4, lineHeight: 1.5 }}>
-              <span style={{ flex: 1, wordBreak: "break-word" }}>· {n.t}</span>
-              <button type="button" onClick={() => setNotes((v) => v.filter((_, j) => j !== i))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 10, color: C.inkSoft }}>✕</button>
-            </div>
-          ))}
+        {/* 🗄️ 내 서랍 (칠판 메모) */}
+        <div style={{ marginBottom: 9 }}>
+          <DrawerBoard notes={notes} onAdd={(t) => setNotes((v) => [{ t, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v])} onDelete={(i) => setNotes((v) => v.filter((_, j) => j !== i))} />
         </div>
 
         {/* 🚧 병목지점 일기 */}
@@ -10235,13 +10296,14 @@ const HQ_ROADMAP = {
 };
 
 /* ======================= 🖥 에코월드 HQ (대시보드) ======================= */
-function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo, hqQuests = [], onHQChange, hqRoad = {}, onRoadChange }) {
+function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo, onGoBoard, hqQuests = [], onHQChange, hqRoad = {}, onRoadChange }) {
   const [tab, setTab] = useState("home");
   const [notice, setNotice] = useState("");
   const [qcat, setQcat] = useState("all");
   const [rcat, setRcat] = useState("core");
   const [qEdit, setQEdit] = useState(null);   // 편집/등록 중인 퀘스트 (null=닫힘)
   const [qView, setQView] = useState(null);   // 🔍 자세히 보기 팝업 (null=닫힘)
+  const [calOff, setCalOff] = useState(0);     // 📅 캘린더 월 이동 (0=이번 달)
   const [saveMsg, setSaveMsg] = useState("");   // HQ 자체 저장 상태 표시
   /* 📅 마감까지 남은 날 (due = "YYYY-MM-DD") */
   const dDay = (due) => {
@@ -10361,21 +10423,77 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
       <div style={{ flex: 1, overflow: "auto", padding: "16px", maxWidth: 940, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
         {tab === "home" && (
           <>
-            {/* 공지사항 */}
+            {/* 공지사항 (게시판과 같은 글 · 누르면 게시판으로) */}
             <div style={{ ...card, background: "#fff8e8", borderColor: "#e0a13d" }}>
-              <div style={h}><span style={{ fontSize: 18 }}>📢</span><b style={{ flex: 1, fontSize: 14 }}>공지사항</b></div>
+              <div style={h}><span style={{ fontSize: 18 }}>📢</span><b style={{ flex: 1, fontSize: 14 }}>공지사항</b>
+                <button type="button" onClick={() => onGoBoard && onGoBoard()} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10.5, fontWeight: "bold", background: "#e0a13d", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "4px 9px" }}>📋 게시판 →</button>
+              </div>
               {notices.filter((n) => n.type === "공지" || n.type === "모집").slice(0, 3).map((n) => (
-                <div key={n.id} style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: "bold" }}>📢 {n.title}</div>
+                <button key={n.id} type="button" onClick={() => onGoBoard && onGoBoard()} title="게시판에서 보기"
+                  style={{ display: "block", width: "100%", textAlign: "left", cursor: "pointer", background: "none", border: "none", padding: 0, marginBottom: 8, fontFamily: "'DotGothic16', monospace" }}>
+                  <div style={{ fontSize: 13, fontWeight: "bold", color: C.ink }}>📢 {n.title}</div>
+                  {n.body && <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{String(n.body).split("\n")[0]}</div>}
                   <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 2 }}>{n.date}</div>
-                </div>
+                </button>
               ))}
+              {notices.filter((n) => n.type === "공지" || n.type === "모집").length === 0 && <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>공지가 없어요. 게시판에서 올려보세요.</div>}
               <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                 <input value={notice} onChange={(e) => setNotice(e.target.value)}
                   placeholder="공지 입력 후 등록" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, background: C.white }} />
                 <PxButton tone="gold" disabled={!notice.trim()} onClick={() => { onPostNotice && onPostNotice(notice.trim()); setNotice(""); }} style={{ fontSize: 12, padding: "9px 13px" }}>등록</PxButton>
               </div>
             </div>
+
+            {/* 📅 캘린더 (공지 · 퀘스트 마감 표시 · 누르면 게시판으로) */}
+            {(() => {
+              const base = new Date(); base.setDate(1); base.setMonth(base.getMonth() + calOff);
+              const y = base.getFullYear(), mo = base.getMonth();
+              const first = new Date(y, mo, 1).getDay();
+              const dim = new Date(y, mo + 1, 0).getDate();
+              const today = new Date(); const isToday = (d) => today.getFullYear() === y && today.getMonth() === mo && today.getDate() === d;
+              const ymd = (d) => `${y}-${String(mo + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+              const noticeDays = new Set((notices || []).filter((n) => n.type === "공지" || n.type === "모집").map((n) => n.date));
+              const dueDays = new Set((hqQuests || []).filter((q) => q.due).map((q) => q.due));
+              const cells = [];
+              for (let i = 0; i < first; i++) cells.push(null);
+              for (let d = 1; d <= dim; d++) cells.push(d);
+              const WK = ["일", "월", "화", "수", "목", "금", "토"];
+              return (
+                <div style={{ ...card }}>
+                  <div style={h}>
+                    <span style={{ fontSize: 18 }}>📅</span>
+                    <button type="button" onClick={() => onGoBoard && onGoBoard()} style={{ flex: 1, textAlign: "left", cursor: "pointer", background: "none", border: "none", fontFamily: "'DotGothic16', monospace", fontSize: 14, fontWeight: "bold", color: C.ink }}>{y}년 {mo + 1}월</button>
+                    <button type="button" onClick={() => setCalOff((v) => v - 1)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14, color: C.inkSoft }}>‹</button>
+                    <button type="button" onClick={() => setCalOff(0)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10, color: C.inkSoft, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "2px 6px" }}>오늘</button>
+                    <button type="button" onClick={() => setCalOff((v) => v + 1)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14, color: C.inkSoft }}>›</button>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 3 }}>
+                    {WK.map((w, i) => (<div key={"w" + i} style={{ textAlign: "center", fontSize: 10, fontWeight: "bold", color: i === 0 ? C.danger : i === 6 ? "#5b8def" : C.inkSoft, padding: "2px 0" }}>{w}</div>))}
+                    {cells.map((d, i) => {
+                      if (d == null) return <div key={"e" + i} />;
+                      const hasNotice = noticeDays.has(ymd(d));
+                      const hasDue = dueDays.has(ymd(d));
+                      const td = isToday(d);
+                      return (
+                        <button key={"d" + d} type="button" onClick={() => onGoBoard && onGoBoard()} title={hasNotice || hasDue ? "게시판에서 보기" : ""}
+                          style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", aspectRatio: "1 / 1", minHeight: 30, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1,
+                            background: td ? "#e0a13d" : C.white, color: td ? C.white : C.ink, border: `2px solid ${td ? C.ink : C.parchEdge}`, borderRadius: 6, fontSize: 11 }}>
+                          <span style={{ fontWeight: td ? "bold" : "normal" }}>{d}</span>
+                          <span style={{ display: "flex", gap: 1, height: 5 }}>
+                            {hasNotice && <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#e0a13d", border: td ? "1px solid #fff" : "none" }} />}
+                            {hasDue && <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.danger, border: td ? "1px solid #fff" : "none" }} />}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 8, fontSize: 10, color: C.inkSoft }}>
+                    <span><span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "#e0a13d", marginRight: 4 }} />공지</span>
+                    <span><span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: C.danger, marginRight: 4 }} />퀘스트 마감</span>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* 월드맵 진행도 */}
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "0 2px 8px" }}>
@@ -10698,16 +10816,9 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 </div>
               </div>
 
-              {/* 내 서랍 */}
-              <div style={card}>
-                {hd("📒", "내 서랍", addBtn(() => { const t = (window.prompt("개인 노트 (나에게만 보여요)") || "").trim(); if (t) setMpNotes((v) => [{ t, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v]); }))}
-                {mpNotes.length === 0 ? <div style={{ fontSize: 12, color: C.inkSoft }}>노트가 없어요.</div> : mpNotes.map((n, i) => (
-                  <div key={i} style={{ display: "flex", gap: 6, fontSize: 12.5, marginBottom: 5, lineHeight: 1.5 }}>
-                    <span style={{ flex: 1, wordBreak: "break-word" }}>· {n.t}</span>
-                    <span style={{ fontSize: 10, color: C.inkSoft, flexShrink: 0 }}>{n.at}</span>
-                    <button type="button" onClick={() => setMpNotes((v) => v.filter((_, j) => j !== i))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.inkSoft }}>✕</button>
-                  </div>
-                ))}
+              {/* 🗄️ 내 서랍 (칠판 메모) */}
+              <div style={{ marginBottom: 12 }}>
+                <DrawerBoard big notes={mpNotes} onAdd={(t) => setMpNotes((v) => [{ t, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v])} onDelete={(i) => setMpNotes((v) => v.filter((_, j) => j !== i))} />
               </div>
 
               {/* 🚧 병목지점 일기 */}
@@ -13831,7 +13942,8 @@ function EchoTown() {
           notices={allNotices} bossMaps={bossMaps} bossCleared={bossCleared} qAccept={qAccept} questBox={questBox} unreadMsgCount={unreadMsgCount}
           hqQuests={hqQuests} onHQChange={saveHQ} hqRoad={hqRoad} onRoadChange={saveRoad}
           onPostNotice={(t) => { dbAddNotice("공지", t, `${myName || "익명"}님의 공지`, myUid); showNotice("📢 공지를 등록했어요"); }}
-          onGo={(mapId) => { setHqOpen(false); setQuestJump({ mapId, qid: null }); setView("project"); }} />
+          onGo={(mapId) => { setHqOpen(false); setQuestJump({ mapId, qid: null }); setView("project"); }}
+          onGoBoard={() => { setHqOpen(false); setView("board"); }} />
       )}
 
       {startPop && (
