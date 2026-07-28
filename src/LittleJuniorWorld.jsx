@@ -3023,13 +3023,13 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
   vehicleRef.current = vehicle;
   const scalesRef = useRef(scales);
   scalesRef.current = scales;
-  const posRef = useRef(positions);
-  posRef.current = positions;
+  const bposRef = useRef(positions);
+  bposRef.current = positions;
   const worldRef = useRef(null);
   const [editMap, setEditMap] = useState(false);
   const [drag, setDrag] = useState(null);   // { id, x, y }
-  const objX = (o) => (posRef.current[o.id] && posRef.current[o.id][0] != null) ? posRef.current[o.id][0] : o.x;
-  const objY = (o) => (posRef.current[o.id] && posRef.current[o.id][1] != null) ? posRef.current[o.id][1] : o.y;
+  const objX = (o) => (bposRef.current[o.id] && bposRef.current[o.id][0] != null) ? bposRef.current[o.id][0] : o.x;
+  const objY = (o) => (bposRef.current[o.id] && bposRef.current[o.id][1] != null) ? bposRef.current[o.id][1] : o.y;
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
@@ -3164,8 +3164,8 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
       let found = null, best = Infinity;
       for (const o of WORLD_OBJS) {
         if (!o.r) continue;
-        const bx = (posRef.current[o.id] && posRef.current[o.id][0] != null) ? posRef.current[o.id][0] : o.x;
-        const by = (posRef.current[o.id] && posRef.current[o.id][1] != null) ? posRef.current[o.id][1] : o.y;
+        const bx = (bposRef.current[o.id] && bposRef.current[o.id][0] != null) ? bposRef.current[o.id][0] : o.x;
+        const by = (bposRef.current[o.id] && bposRef.current[o.id][1] != null) ? bposRef.current[o.id][1] : o.y;
         const d = Math.hypot(x - bx, y - (by + 20));
         const sc = Number((scalesRef.current || {})[o.id]) || 1;
       const reach = o.r * (vehicleRef.current ? 1.55 : 1) * Math.max(0.7, Math.min(2, sc));   // 탈것을 타면 조준이 쉽도록 넉넉하게 · 큰 건물은 범위도 넓게
