@@ -1,4 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
+// 📡 네이버스쿨용 서버 DB 함수는 메인 파일(LittleJuniorWorld.jsx)에 정의돼 있어요.
+//    분리 후 이 함수들이 "not defined" 로 뜨던 문제 → 여기서 import 해서 연결합니다.
+import {
+  dbLoadNspKw, dbSaveNspKw, dbLoadNspUrls, dbSaveNspUrls,
+  dbLoadNspTut, dbSaveNspTut,
+  dbLoadKinKw, dbSaveKinKw, dbLoadKinState, dbSaveKinState, dbLoadKinEx, dbSaveKinEx,
+  dbLoadCafeKw, dbSaveCafeKw, dbLoadCafeState, dbSaveCafeState,
+} from "./LittleJuniorWorld.jsx";
 
 // ============================================================================
 //  NaverSchoolPanel.jsx  —  에코월드 "네이버 스쿨" 패널
