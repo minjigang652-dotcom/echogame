@@ -10397,6 +10397,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const [qEdit, setQEdit] = useState(null);   // 편집/등록 중인 퀘스트 (null=닫힘)
   const [qView, setQView] = useState(null);   // 🔍 자세히 보기 팝업 (null=닫힘)
   const [qManage, setQManage] = useState(false);   // ⚙️ 퀘스트 관리(삭제·이름·순서)
+  const [qActiveOnly, setQActiveOnly] = useState(false);   // ON = 진행중(색 있는) 미션만 표시
   const [calOff, setCalOff] = useState(0);     // 📅 캘린더 월 이동 (0=이번 달)
   const [homeSub, setHomeSub] = useState("notice");   // 홈 상단: notice | cal
   const [calDay, setCalDay] = useState(null);   // 날짜 클릭 팝업 (YYYY-MM-DD | null)
@@ -10724,6 +10725,8 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
                 <b style={{ fontSize: 14, marginRight: 4 }}>📋 퀘스트 게시판</b>
+                <button type="button" onClick={() => setQActiveOnly((v) => !v)} title="진행중(색 있는) 미션만 보기"
+                  style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: qActiveOnly ? "#4b8f5f" : C.white, color: qActiveOnly ? C.white : C.inkSoft }}>진행중만 {qActiveOnly ? "ON" : "OFF"}</button>
                 {[["all", "전체"], ...HQ_CATS.map((c) => [c.id, `${c.icon} ${c.name}`])].map(([k, lb]) => (
                   <button key={k} type="button" onClick={() => setQcat(k)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: qcat === k ? C.ink : C.white, color: qcat === k ? C.white : C.ink }}>{lb}</button>
                 ))}
@@ -10753,7 +10756,10 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                         </div>
                       ); })()}
                       <div onClick={(e) => e.stopPropagation()}>
-                      {(q.subs || []).map((sb, i) => ({ sb, i })).sort((a, b) => (sbDone(a.sb) ? 1 : 0) - (sbDone(b.sb) ? 1 : 0)).map(({ sb, i }) => {
+                      {(() => {
+                        const rows = (q.subs || []).map((sb, i) => ({ sb, i })).filter(({ sb }) => !qActiveOnly || sb.active).sort((a, b) => (sbDone(a.sb) ? 1 : 0) - (sbDone(b.sb) ? 1 : 0));
+                        if (qActiveOnly && rows.length === 0) return <div style={{ fontSize: 10.5, color: C.inkSoft, padding: "2px 0" }}>진행중 미션 없음</div>;
+                        return rows.map(({ sb, i }) => {
                         const isD = sbDone(sb);
                         return (
                           <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
@@ -10766,7 +10772,8 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                             <input type="checkbox" checked={isD} onChange={() => toggleSubDone(q.id, i)} title="완료" style={{ flexShrink: 0, cursor: "pointer" }} />
                           </div>
                         );
-                      })}
+                        });
+                      })()}
                       </div>
                       {/* 진행률 = 완료 미션 ÷ 전체 미션 · 크게 표시 */}
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.parchEdge}` }}>
