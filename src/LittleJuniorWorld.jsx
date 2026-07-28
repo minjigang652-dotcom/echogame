@@ -563,6 +563,7 @@ const ROOM_TIPS = {
   reels: ["📺 위쪽 큰 화면에서 유튜브 롱폼(인사이트·인풋)을 봐요", "🎛 리모콘으로 롱폼 목록을 보고 링크를 추가해요", "📱 아래 카테고리를 누르면 쇼츠를 세로로 넘겨봐요", "각 카테고리에서 ＋로 유튜브 쇼츠 링크를 추가해요", "올린 영상은 모두에게 공유돼요"],
   minigame: ["🕵️ 라이어 게임은 실제 접속자 3명부터 시작해요", "방을 만들면 다른 사람에게 참가 버튼이 떠요", "반사신경·가위바위보·순서기억으로 🪙 골드를 모아요"],
   smoke: ["재떨이를 누르면 실제 접속자들과 수다 떨어요", "채팅창 위에 지금 방에 있는 사람이 보여요", "창문을 열면 공기가 맑아져요"],
+  dungeon: ["🌲 마을 위쪽 숲길로 올라오면 들어와요", "⬆⬇⬅➡ 로 던전 안을 돌아다녀요", "📦 보물상자를 누르면 하루 한 번 🪙 보상을 받아요", "🔥 모닥불·🍄 버섯을 눌러 살펴보세요", "🚪 던전 입구로 가면 마을로 돌아가요"],
   pool: ["레인에서 수영 대결을 해보세요", "1등을 하면 🪙 골드와 랭킹 기록을 얻어요"],
   gym: ["웨이트 존에서 운동하면 🪙4 을 받아요", "스트레칭 코너도 한 번 들러보세요"],
   sandbag: ["때릴 대상을 정하고 마음껏 두드려보세요", "같은 닉네임으로 등록하면 때린 수가 누적돼요"],
@@ -898,6 +899,7 @@ function buildWorld() {
 list.push({ id: "jjeop", kind: "small", x: 1820, y: 1210, r: 55, label: "🍴 쩝쩝박사", tint: "#c0563a" });
   list.push({ id: "petshop", kind: "small", x: 1820, y: 1400, r: 58, label: "🐾 형욱이네" });
   list.push({ id: "seagate", kind: "gate", x: 1312, y: 1460, r: 62, label: "🌊 바다 가는 길" });
+  list.push({ id: "dungeongate", kind: "gate", x: 1150, y: 120, r: 64, label: "🌲 숲속 비밀 던전" });
   // 은행 / 게시판
   list.push({ id: "bank", kind: "bank", x: 1000, y: 640, r: 65, label: "🏦 중앙은행" });
   list.push({ id: "board", kind: "board", x: 1585, y: 700, r: 60, label: "📋 게시판" });
@@ -3157,10 +3159,17 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
     if (o.kind === "shrine") return <QuestShrine size={160} />;
     if (o.kind === "airport") return <Airport size={96} tint={o.side === "cm" ? "#3fa07a" : "#5b8def"} tintDk={o.side === "cm" ? "#1d6b4a" : "#3a5fa8"} label={o.side === "cm" ? "치앙마이" : "인천"} />;
     if (o.kind === "gate") return (
-      <div style={{ textAlign: "center", filter: "drop-shadow(0 3px 2px rgba(0,0,0,0.3))" }}>
-        <div style={{ fontSize: 46, lineHeight: 1 }}>🌊</div>
-        <div style={{ fontSize: 30, marginTop: -6 }}>⛵</div>
-      </div>
+      o.id === "dungeongate" ? (
+        <div style={{ textAlign: "center", filter: "drop-shadow(0 3px 2px rgba(0,0,0,0.3))" }}>
+          <div style={{ fontSize: 34, lineHeight: 1, letterSpacing: -6 }}>🌲🌲🌲</div>
+          <div style={{ fontSize: 30, marginTop: -10 }}>🕳️</div>
+        </div>
+      ) : (
+        <div style={{ textAlign: "center", filter: "drop-shadow(0 3px 2px rgba(0,0,0,0.3))" }}>
+          <div style={{ fontSize: 46, lineHeight: 1 }}>🌊</div>
+          <div style={{ fontSize: 30, marginTop: -6 }}>⛵</div>
+        </div>
+      )
     );
     if (o.id === "coredict") return <BookIcon size={104} />;
     if (o.id === "sandbag") return <Sandbag size={92} />;
@@ -4287,6 +4296,7 @@ function HomeView({ house, notes = [], onSaveMemo, onDelMemo, onBack, bubble, sk
   const [text, setText] = useState("");
   const [noteView, setNoteView] = useState(null);
   const [giftPick, setGiftPick] = useState(null);
+  const [fridgeOpen, setFridgeOpen] = useState(false);
   const furniture = [
     { id: "bed", x: 40, y: 60, w: 150, h: 90, color: "#c98ba0", emoji: "🛏️", label: "침대", toast: "잠깐 누워 쉬었다 😌" },
     { id: "sofa", x: 40, y: 260, w: 130, h: 70, color: "#8ea9c9", emoji: "🛋️", label: "쇼파", toast: "쇼파에 앉아 한숨 돌린다 🛋️" },
@@ -4318,9 +4328,9 @@ function HomeView({ house, notes = [], onSaveMemo, onDelMemo, onBack, bubble, sk
     furniture.push({ id: "yard", x: 40, y: 330, w: 120, h: 60, color: "#a8d5a2", emoji: "🌳", label: "마당",
       onInteract: () => onOpenYard && onOpenYard() });
   }
-  /* 🧊 냉장고 */
+  /* 🧊 냉장고 (누르면 냉장고 안이 열려요) */
   furniture.push({ id: "fridge", x: 552, y: 285, w: 58, h: 80, color: "#dfe7ea", emoji: "🧊", label: `냉장고 (${fridge.length})`,
-    toast: fridge.length ? `🧊 냉장고 안: ${fridge.map((f) => `${f.emoji || "🍽"} ${f.name}`).join(", ")}` : "🧊 냉장고가 비었어요" });
+    onInteract: () => setFridgeOpen(true) });
   /* 저장해둔 위치가 있으면 그 자리에 놓아요 */
   const placed = furniture.map((f) => (layout[f.id] ? { ...f, x: layout[f.id].x, y: layout[f.id].y } : f));
   const arrangeBar = isMine ? (
@@ -4334,7 +4344,7 @@ function HomeView({ house, notes = [], onSaveMemo, onDelMemo, onBack, bubble, sk
   ) : null;
 
   return (
-    <RoomView title={house.name} icon="🏠" sub={skin ? `내 집 · ${skin.name} 스타일` : "침대·쇼파·티비·책상 · 책상에서 메모 작성"} bg={skin ? skin.bg : "#efe6d2"} roomW={640} roomH={400} furniture={placed} onBack={onBack} noExitDoor paused={open || tvOpen || !!giftPick} headerBg={skin ? skin.roof : house.wall} bubble={bubble}
+    <RoomView title={house.name} icon="🏠" sub={skin ? `내 집 · ${skin.name} 스타일` : "침대·쇼파·티비·책상 · 책상에서 메모 작성"} bg={skin ? skin.bg : "#efe6d2"} roomW={640} roomH={400} furniture={placed} onBack={onBack} noExitDoor paused={open || tvOpen || !!giftPick || fridgeOpen} headerBg={skin ? skin.roof : house.wall} bubble={bubble}
       banner={arrangeBar} editable={arrange} onMoveFurni={onMoveFurni} tipId="house">
       {giftPick && (
         <RoomModal title={`${giftPick.emoji || "🎁"} ${giftPick.name}`} onClose={() => setGiftPick(null)} maxW={320}>
@@ -4348,6 +4358,40 @@ function HomeView({ house, notes = [], onSaveMemo, onDelMemo, onBack, bubble, sk
             <PxButton tone="danger" onClick={() => { if (window.confirm(`${giftPick.name}을(를) 버릴까요? 되돌릴 수 없어요.`)) { onGiftHome && onGiftHome("trash", giftPick._i); setGiftPick(null); } }} style={{ width: "100%", padding: 10, fontSize: 12.5, marginTop: 7 }}>🗑 쓰레기통에 버리기</PxButton>
             <PxButton tone="ink" onClick={() => setGiftPick(null)} style={{ width: "100%", padding: 9, fontSize: 12, marginTop: 7 }}>그냥 두기</PxButton>
           </div>
+        </RoomModal>
+      )}
+      {fridgeOpen && (
+        <RoomModal title="🧊 냉장고 안" onClose={() => setFridgeOpen(false)} maxW={340}>
+          <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 10, textAlign: "center" }}>
+            {fridge.length ? `냉장고 안에 ${fridge.length}개가 들어 있어요` : "냉장고가 텅 비었어요"}
+          </div>
+          {/* 냉장고 본체 (문 열린 모습) */}
+          <div style={{ margin: "0 auto", width: 220, background: "linear-gradient(180deg,#eef4f7,#dbe6ec)", border: `4px solid ${C.ink}`, borderRadius: 14, padding: 10, boxShadow: `0 5px 0 ${C.parchEdge}, inset 0 0 0 3px #fff` }}>
+            {/* 냉동칸 라벨 */}
+            <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginBottom: 6, letterSpacing: 1 }}>❄️ FRIDGE</div>
+            {/* 3단 선반 */}
+            {[0, 1, 2].map((shelf) => {
+              const items = fridge.filter((_, idx) => idx % 3 === shelf);
+              return (
+                <div key={shelf} style={{ position: "relative", minHeight: 46, background: "rgba(255,255,255,0.55)", border: `2px solid #9db4bf`, borderRadius: 6, marginBottom: 7, padding: "6px 6px 8px", display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 4 }}>
+                  {items.length === 0 ? (
+                    <span style={{ fontSize: 9, color: "#9db4bf", margin: "auto" }}>비어 있음</span>
+                  ) : items.map((f, i) => (
+                    <div key={i} title={f.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 44 }}>
+                      <span style={{ fontSize: 24, lineHeight: 1, filter: "drop-shadow(0 2px 1px rgba(0,0,0,0.2))" }}>{f.emoji || "🍽"}</span>
+                      <span style={{ fontSize: 8.5, color: C.ink, textAlign: "center", lineHeight: 1.2, marginTop: 1, wordBreak: "break-word" }}>{f.name}</span>
+                    </div>
+                  ))}
+                  {/* 선반 바닥 그림자 */}
+                  <div style={{ position: "absolute", left: 4, right: 4, bottom: 2, height: 3, background: "#b6c8d1", borderRadius: 3 }} />
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 10, color: C.inkSoft, textAlign: "center", marginTop: 10, lineHeight: 1.6 }}>
+            🎁 선물함에서 🧊 냉장고 보관을 고르면 여기에 들어와요
+          </div>
+          <PxButton tone="ink" onClick={() => setFridgeOpen(false)} style={{ width: "100%", padding: 9, fontSize: 12, marginTop: 10 }}>🚪 냉장고 닫기</PxButton>
         </RoomModal>
       )}
       {tvOpen && (
@@ -4632,6 +4676,58 @@ function HeartView({ gems, worries, onPost, onBack, bubble }) {
   );
 }
 
+/* ======================= 🌲 숲속 비밀 던전 (마을 위쪽 숲길로 올라오면 나와요) ======================= */
+function DungeonView({ onBack, bubble, onReward, myName = "" }) {
+  const CHEST_KEY = "echotown_dungeon_chest_" + (myName || "guest");
+  const today = () => new Date().toISOString().slice(0, 10);
+  const [chestDone, setChestDone] = useState(() => {
+    try { return window.localStorage.getItem(CHEST_KEY) === today(); } catch (e) { return false; }
+  });
+  const [modal, setModal] = useState(null); // null | "chest"
+  const [gained, setGained] = useState(0);
+  const openChest = () => {
+    if (chestDone) { setModal("chest"); setGained(0); return; }
+    const reward = 8 + Math.floor(Math.random() * 8); // 🪙 8~15
+    onReward && onReward(reward);
+    setGained(reward);
+    setChestDone(true);
+    try { window.localStorage.setItem(CHEST_KEY, today()); } catch (e) {}
+    setModal("chest");
+  };
+  const furniture = [
+    { id: "chest", x: 470, y: 130, w: 90, h: 80, color: "#8a5a2b", emoji: chestDone ? "📭" : "📦", label: chestDone ? "보물상자 (오늘 완료)" : "🎁 보물상자", onInteract: openChest },
+    { id: "fire", x: 150, y: 250, w: 80, h: 70, color: "#c0563a", emoji: "🔥", label: "모닥불", toast: "🔥 모닥불이 따뜻하게 타오른다" },
+    { id: "mushroom", x: 320, y: 300, w: 60, h: 56, color: "#b8563a", emoji: "🍄", label: "빛나는 버섯", toast: "🍄 신비한 버섯이 은은하게 빛난다" },
+    { id: "crystal", x: 540, y: 300, w: 60, h: 60, color: "#7b6fd0", emoji: "🔮", label: "수정", toast: "🔮 수정 속에서 희미한 빛이 아른거린다" },
+    { id: "torch", x: 60, y: 90, w: 44, h: 70, color: "#e0a03a", emoji: "🕯️", label: "횃불", toast: "🕯️ 벽에 걸린 횃불이 흔들린다" },
+  ];
+  furniture.push({ id: "door", x: 290, y: 350, w: 70, h: 48, color: "#5b7a3a", emoji: "🌲", label: "던전 입구 (마을로)", onInteract: () => onBack && onBack() });
+  return (
+    <RoomView title="숲속 비밀 던전" icon="🌲" sub="⬆⬇⬅➡ 이동 · 📦 보물상자에서 하루 한 번 보상을 받아요" bg="#1c2a1e" roomW={640} roomH={400}
+      furniture={furniture} onBack={onBack} noExitDoor paused={!!modal} headerBg="#2f4a2c" bubble={bubble} tipId="dungeon">
+      {modal === "chest" && (
+        <RoomModal title="📦 보물상자" onClose={() => setModal(null)} maxW={320}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 52 }}>{gained > 0 ? "🎉" : "📭"}</div>
+            {gained > 0 ? (
+              <>
+                <div style={{ fontSize: 15, fontWeight: "bold", margin: "8px 0 4px" }}>보물을 발견했어요!</div>
+                <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 14 }}>🪙 {gained} 골드를 얻었어요</div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 15, fontWeight: "bold", margin: "8px 0 4px" }}>오늘은 이미 열었어요</div>
+                <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.7, marginBottom: 14 }}>보물상자는 하루 한 번 열 수 있어요.<br />내일 다시 찾아오세요!</div>
+              </>
+            )}
+            <PxButton tone="ink" onClick={() => setModal(null)} style={{ width: "100%", padding: 10, fontSize: 13 }}>닫기</PxButton>
+          </div>
+        </RoomModal>
+      )}
+    </RoomView>
+  );
+}
+
 /* ======================= 리스닝 방(디제이 + 관객석 + BGM) ======================= */
 function parseYouTubeId(url) {
   const s = String(url || "").trim();
@@ -4708,7 +4804,7 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
     { id: "dj", x: 40, y: 80, w: 175, h: 160, color: "#3a2b52", emoji: "🎧", label: "디제이 부스", onInteract: () => setDjOpen(true) },
     ...SEATS.map((st, i) => ({
       id: st.id, x: st.x, y: st.y, w: st.w, h: st.h, color: "#caa06a", emoji: "🪑",
-      label: seat && seat.id === st.id ? "앉는 중 ✓" : "관객석",
+      label: seat && seat.id === st.id ? "✓" : "관객석",
       onInteract: () => sitDown(st),
       toast: ["여기 앉아서 감상해요 🎶", "옆 사람과 리듬을 탄다 🕺", "눈을 감고 감상 중… 🎵", "앵콜! 👏"][i],
     })),
@@ -9941,7 +10037,8 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
   const [notes, setNotes] = useState(() => load("notes", []));
   const [diary, setDiary] = useState("");
   const [ti, setTi] = useState("");
-  useEffect(() => { saveAll({ mission: done, todos, huddles, notes }); }, [done, todos, huddles, notes]);
+  const [avSize, setAvSize] = useState(() => Math.max(40, Math.min(120, Number(load("avatarSize", 50)) || 50)));
+  useEffect(() => { saveAll({ mission: done, todos, huddles, notes, avatarSize: avSize }); }, [done, todos, huddles, notes, avSize]);
   const doneN = Object.values(done).filter(Boolean).length;
 
   if (!open) {
@@ -9970,7 +10067,11 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
       <div style={{ padding: 11 }}>
         {/* 프로필 */}
         <div style={{ textAlign: "center", marginBottom: 10, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 9, padding: 11 }}>
-          <div style={{ width: 50, height: 50, borderRadius: "50%", background: color, color: C.white, fontSize: 22, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", border: `3px solid ${C.ink}` }}>{av}</div>
+          <div style={{ width: avSize, height: avSize, borderRadius: "50%", background: color, color: C.white, fontSize: Math.round(avSize * 0.44), fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", border: `3px solid ${C.ink}` }}>{av}</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, marginTop: 6 }}>
+            <span style={{ fontSize: 9, color: C.inkSoft }}>사진 크기</span>
+            <input type="range" min={40} max={120} step={2} value={avSize} onChange={(e) => setAvSize(Number(e.target.value))} title="내 프로필 사진 크기 (계정마다 저장돼요)" style={{ width: 96, cursor: "pointer" }} />
+          </div>
           <div style={{ fontSize: 14, fontWeight: "bold", marginTop: 6 }}>{myName || "게스트"}</div>
           <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 8, fontSize: 10.5 }}>
             <span><b style={{ fontSize: 14 }}>{todos.filter((t) => !t.done).length}</b><br /><span style={{ color: C.inkSoft }}>할 일</span></span>
@@ -11731,9 +11832,11 @@ function EchoTown() {
   }, [myName]);
   const myHouseIdRef = useRef(null);
   myHouseIdRef.current = myHouseId;
-  /* 서버에 남아 있는 「꾸민 모습」을 먼저 불러와요 (집주인이 접속 안 해 있어도 보이게) */
+  /* 서버에 남아 있는 「꾸민 모습」을 먼저 불러와요 (집주인이 접속 안 해 있어도 보이게)
+     · 부팅 때 한 번만 불러오면, 내가 접속한 뒤에 집주인이 꾸민 건 방문해도 안 보였어요.
+     · 그래서 주기적으로도 다시 불러와서 최신 꾸미기를 반영해요. (내 집은 항상 내 것 우선) */
   useEffect(() => {
-    dbDecors().then((d) => {
+    const loadDecors = () => dbDecors().then((d) => {
       if (!d || !Object.keys(d).length) return;
       setHouseDecor((v) => {
         const o = { ...v };
@@ -11742,6 +11845,9 @@ function EchoTown() {
         return o;
       });
     });
+    loadDecors();
+    const iv = setInterval(loadDecors, 45000);
+    return () => clearInterval(iv);
   }, []);
   const [ikeaOwned, setIkeaOwned] = useState({});
   const [houseSkin, setHouseSkin] = useState(null);
@@ -11835,6 +11941,22 @@ function EchoTown() {
     // 같은 곡을 다시 고른 경우에도 처음부터 재생되도록
     if (worldBgm.playing && !ytNow) { if (a.currentTime > 0 && a.ended) a.currentTime = 0; a.play().catch(() => {}); } else a.pause();
   }, [worldBgm.playing, worldBgm.file, worldBgm.seq, bgmVol, ytNow]);
+  /* 🌊 바다 맵에 들어가면 배경음악을 바다 곡으로 바꾸고, 나오면 원래 곡으로 되돌려요 */
+  const seaBgmPrevRef = useRef(null);
+  useEffect(() => {
+    const SEA_TRACK = WORLD_TRACKS.find((t) => t.title === "파도") || WORLD_TRACKS.find((t) => t.title === "Aqua Man") || WORLD_TRACKS[0];
+    if (view === "sea") {
+      setWorldBgm((b) => {
+        if (b.file === SEA_TRACK.file) return b;                 // 이미 바다 곡이면 그대로
+        seaBgmPrevRef.current = { title: b.title, file: b.file, playing: b.playing };
+        return { ...b, title: SEA_TRACK.title, file: SEA_TRACK.file, playing: true, seq: (b.seq || 0) + 1 };
+      });
+    } else if (seaBgmPrevRef.current) {
+      const prev = seaBgmPrevRef.current;
+      seaBgmPrevRef.current = null;
+      setWorldBgm((b) => ({ ...b, title: prev.title, file: prev.file, playing: prev.playing, seq: (b.seq || 0) + 1 }));
+    }
+  }, [view]);
   const [chat, setChat] = useState([]);
   const [shout, setShout] = useState(false);
   const [bubble, setBubble] = useState(null);
@@ -12590,7 +12712,7 @@ function EchoTown() {
     onChatRef.net = (kind, p) => {
       if (!p) return;
       if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "hq" || kind === "hqroad" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
-      if (kind === "bell") { playBell(); setVisitor(p.from); }
+      if (kind === "bell") { playBell(); setVisitor(p.from); showNotice(`🔔 ${p.from}님이 초인종을 눌렀어요`); pushMsg("dm", { from: p.from, text: "🔔 초인종을 눌렀어요 — 집 앞에 찾아왔어요!" }); }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "qcallack") {
         if (p.to !== (myName || "나")) return;
@@ -13013,7 +13135,10 @@ function EchoTown() {
         if (o.id !== myHouseIdRef.current && netSendEventRef.current) netSendEventRef.current("decorreq", { hid: o.id, from: myName || "" });
         break;
       case "small": if (o.id === "smoke") bump("smoke"); setView(o.id); break; // thanks/heart/listening/reels/smoke
-      case "gate": setSeaPos({ x: SEA.w / 2, y: SEA_SAND_Y + 40 }); setView("sea"); break;
+      case "gate":
+        if (o.id === "dungeongate") { setView("dungeon"); }
+        else { setSeaPos({ x: SEA.w / 2, y: SEA_SAND_Y + 40 }); setView("sea"); }
+        break;
       case "shrine": setView("questdone"); break;
       case "facility": setView(o.id); break; // pool/gym
       case "rent": setRentId(o.id); setView("rent"); break;
@@ -13192,6 +13317,8 @@ function EchoTown() {
           outfit={outfit} look={myLook} carry={carrying} pet={petEmoji}
           onFish={() => setView("fishing")} onShop={() => setShopOpen(true)} onDex={() => setDexOpen(true)}
           onBack={() => { setWorldPos({ x: 1312, y: 1400 }); backToWorld(); }} />}
+        {view === "dungeon" && <DungeonView myName={myName} bubble={bubble} onReward={(n) => awardGold(n)}
+          onBack={() => { setWorldPos({ x: 1150, y: 210 }); backToWorld(); }} />}
         {view === "fishing" && <FishingView onBack={() => setView("sea")} bubble={bubble}
           rod={rod} bait={bait} bag={catchBag} caught={caughtDex}
           onCatch={doCatch} onUseBait={() => setBait((b) => Math.max(0, b - 1))}
