@@ -10389,7 +10389,7 @@ const HQ_ROADMAP = {
 };
 
 /* ======================= 🖥 에코월드 HQ (대시보드) ======================= */
-function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo, onGoBoard, hqQuests = [], onHQChange, hqRoad = {}, onRoadChange }) {
+function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo, onGoBoard, hqQuests = [], onHQChange, hqRoad = {}, onRoadChange, bossImg = () => "", onBossImg = () => {} }) {
   const [tab, setTab] = useState("home");
   const [notice, setNotice] = useState("");
   const [qcat, setQcat] = useState("all");
@@ -10980,6 +10980,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
           const rows = stageVals.slice().reverse();   // 위=높은 단계, 아래=0단계
           const bossKey = "__boss_" + rcat;
           const boss = (hqRoad[bossKey] && typeof hqRoad[bossKey] === "object") ? hqRoad[bossKey] : {};
+          const bImg = bossImg(rcat) || boss.img || "";
           const bossDefeated = rawCh.length > 0 && rawCh.every((c) => chapterPct(c.name) >= 100);
           return (
             <>
@@ -11000,21 +11001,23 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                     <div style={{ position: "relative", display: "inline-flex" }}>
                       <button type="button" onClick={() => setBossBubble({ txt: bossTaunt() })} title="보스를 클릭!"
-                        style={{ cursor: "pointer", width: 84, height: 84, borderRadius: "50%", border: `4px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, position: "relative", overflow: "hidden",
-                          background: bossDefeated ? "radial-gradient(circle at 50% 35%, #7fd6a0, #3f8f60)" : (boss.img || boss.icon) ? "radial-gradient(circle at 50% 35%, #6b4f8f, #2a1c40)" : "radial-gradient(circle at 50% 30%, #35304a, #17131f)", color: C.white, boxShadow: `0 4px 0 ${C.parchEdge}` }}>
-                        {boss.img ? <img src={boss.img} alt="boss" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          : boss.icon ? <span>{boss.icon}</span>
-                          : (
-                            <svg viewBox="0 0 64 64" width="56" height="56" style={{ display: "block" }}>
-                              <g fill="#0c0a12">
-                                <path d="M12 27 L18 7 L27 23 Z" /><path d="M52 27 L46 7 L37 23 Z" />
-                                <path d="M32 15 C15 15 9 30 9 41 C9 55 21 61 32 61 C43 61 55 55 55 41 C55 30 49 15 32 15 Z" />
-                              </g>
-                              <g fill="rgba(190,170,230,0.9)"><ellipse cx="24" cy="39" rx="4.6" ry="6.2" /><ellipse cx="40" cy="39" rx="4.6" ry="6.2" /></g>
-                              <path d="M23 51 Q28 47 32 51 Q36 55 41 51" stroke="rgba(190,170,230,0.7)" strokeWidth="2.4" fill="none" strokeLinecap="round" />
-                            </svg>
-                          )}
-                        {bossDefeated && <span style={{ position: "absolute", right: -2, bottom: -2, fontSize: 24 }}>💥</span>}
+                        style={{ cursor: "pointer", background: "none", border: "none", padding: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: 100, height: 100 }}>
+                        {bImg ? (
+                          <div style={{ width: 84, height: 84, borderRadius: "50%", overflow: "hidden", border: `4px solid ${C.ink}`, boxShadow: `0 4px 0 ${C.parchEdge}`, background: bossDefeated ? "#3f8f60" : "#2a1c40" }}>
+                            <img src={bImg} alt="boss" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          </div>
+                        ) : (
+                          <svg viewBox="0 0 64 70" width="98" height="108" style={{ display: "block", filter: "drop-shadow(0 4px 3px rgba(0,0,0,0.35))" }}>
+                            <g fill={bossDefeated ? "#2f6b47" : "#171320"}>
+                              <path d="M13 26 L19 6 L28 22 Z" /><path d="M51 26 L45 6 L36 22 Z" />
+                              <path d="M32 14 C15 14 9 29 9 41 C9 54 21 60 32 60 C43 60 55 54 55 41 C55 29 49 14 32 14 Z" />
+                              <ellipse cx="24" cy="61" rx="6" ry="4" /><ellipse cx="40" cy="61" rx="6" ry="4" />
+                            </g>
+                            <g fill="rgba(190,170,230,0.92)"><ellipse cx="24" cy="39" rx="4.6" ry="6.2" /><ellipse cx="40" cy="39" rx="4.6" ry="6.2" /></g>
+                            <path d="M23 51 Q28 47 32 51 Q36 55 41 51" stroke="rgba(190,170,230,0.72)" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+                          </svg>
+                        )}
+                        {bossDefeated && <span style={{ position: "absolute", right: 2, bottom: 2, fontSize: 24 }}>💥</span>}
                       </button>
                       {/* 오른쪽 말풍선 (왼쪽 꼬리로 보스를 가리킴) */}
                       {bossBubble && (
@@ -11026,7 +11029,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                       )}
                     </div>
                     <div style={{ fontSize: 13.5, fontWeight: "bold" }}>{boss.name || "??? (미공개 보스)"}
-                      <button type="button" onClick={() => setBossEdit({ cat: rcat, name: boss.name || "", icon: boss.icon || "", desc: boss.desc || "", img: boss.img || "" })} title="보스 수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 12, marginLeft: 4 }}>✏️</button>
+                      <button type="button" onClick={() => setBossEdit({ cat: rcat, name: boss.name || "", desc: boss.desc || "" })} title="보스 수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 12, marginLeft: 4 }}>✏️</button>
                     </div>
                     <div style={{ fontSize: 10, fontWeight: "bold", color: bossDefeated ? C.good : "#6b4f8f" }}>{bossDefeated ? "💥 격파! 최종 목표 달성" : "🏁 최종 목표 · 모든 챕터 완료 시 격파"}</div>
                   </div>
@@ -11103,21 +11106,21 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 <div onClick={() => setBossEdit(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 220, padding: 16 }}>
                   <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18 }}>
                     <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}><b style={{ flex: 1, fontSize: 15 }}>👹 보스 수정</b><button type="button" onClick={() => setBossEdit(null)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16 }}>✕</button></div>
-                    <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>이모지 또는 이미지 URL을 넣으면 그림자에서 보스가 나타나요. 둘 다 있으면 이미지가 우선이에요.</div>
-                    <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                      <input value={bossEdit.icon} onChange={(e) => setBossEdit({ ...bossEdit, icon: e.target.value })} placeholder="🐉" maxLength={4} style={{ width: 90, textAlign: "center", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 18 }} />
-                      <input value={bossEdit.name} onChange={(e) => setBossEdit({ ...bossEdit, name: e.target.value })} placeholder="보스 이름" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }} />
-                    </div>
+                    <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>이미지를 올리면 그림자에서 보스가 나타나요. 이미지는 모두에게 똑같이 보여요 (서버 공유).</div>
+                    <input value={bossEdit.name} onChange={(e) => setBossEdit({ ...bossEdit, name: e.target.value })} placeholder="보스 이름" style={{ width: "100%", boxSizing: "border-box", marginBottom: 8, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13 }} />
                     <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
-                      <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 8, border: `2px solid ${C.ink}`, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "#2a1c40", fontSize: 22 }}>
-                        {bossEdit.img ? <img src={bossEdit.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (bossEdit.icon || <span style={{ color: "rgba(255,255,255,0.5)" }}>?</span>)}
+                      <div style={{ width: 56, height: 56, flexShrink: 0, borderRadius: 10, border: `2px solid ${C.ink}`, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "#2a1c40" }}>
+                        {bossImg(bossEdit.cat) ? <img src={bossImg(bossEdit.cat)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 22 }}>?</span>}
                       </div>
-                      <input value={bossEdit.img || ""} onChange={(e) => setBossEdit({ ...bossEdit, img: e.target.value })} placeholder="이미지 URL (https://...)  · 선택" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5 }} />
+                      <label style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "9px 12px" }}>📁 이미지 올리기
+                        <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f || !f.type.startsWith("image/")) return; try { let data = await compressImage(f, 320, 1, "image/png"); if (data.length > 170000) data = await compressImage(f, 220, 1, "image/png"); if (data.length > 170000) data = await compressImage(f, 160, 1, "image/png"); onBossImg(bossEdit.cat, data); } catch (x) { window.alert("이미지를 읽지 못했어요"); } }} />
+                      </label>
+                      {bossImg(bossEdit.cat) && <button type="button" onClick={() => onBossImg(bossEdit.cat, "")} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, background: C.white, color: C.danger, border: `2px solid ${C.danger}`, borderRadius: 8, padding: "8px 10px" }}>이미지 지우기</button>}
                     </div>
                     <textarea value={bossEdit.desc} onChange={(e) => setBossEdit({ ...bossEdit, desc: e.target.value })} rows={3} placeholder="보스 소개 (이 프로젝트의 최종 목표를 재밌게 적어보세요)" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, resize: "vertical" }} />
                     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                      <PxButton tone="wood" onClick={() => { if (window.confirm("보스를 미공개(그림자)로 되돌릴까요?")) { onRoadChange && onRoadChange({ ...hqRoad, [("__boss_" + bossEdit.cat)]: {} }); setBossEdit(null); } }} style={{ fontSize: 11, padding: 10 }}>그림자로</PxButton>
-                      <PxButton tone="good" onClick={() => { onRoadChange && onRoadChange({ ...hqRoad, [("__boss_" + bossEdit.cat)]: { name: (bossEdit.name || "").trim(), icon: (bossEdit.icon || "").trim(), desc: (bossEdit.desc || "").trim(), img: (bossEdit.img || "").trim() } }); setBossEdit(null); }} style={{ flex: 1, fontSize: 13, padding: 10 }}>저장</PxButton>
+                      <PxButton tone="wood" onClick={() => { if (window.confirm("보스를 미공개(그림자)로 되돌릴까요?")) { onRoadChange && onRoadChange({ ...hqRoad, [("__boss_" + bossEdit.cat)]: {} }); onBossImg(bossEdit.cat, ""); setBossEdit(null); } }} style={{ fontSize: 11, padding: 10 }}>그림자로</PxButton>
+                      <PxButton tone="good" onClick={() => { onRoadChange && onRoadChange({ ...hqRoad, [("__boss_" + bossEdit.cat)]: { name: (bossEdit.name || "").trim(), desc: (bossEdit.desc || "").trim() } }); setBossEdit(null); }} style={{ flex: 1, fontSize: 13, padding: 10 }}>저장</PxButton>
                     </div>
                   </div>
                 </div>
@@ -11128,7 +11131,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 <div onClick={() => setBossPop(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 220, padding: 16 }}>
                   <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, background: "#2a1c40", border: `4px solid ${C.ink}`, borderRadius: 14, padding: 20, color: "#f3ecff", textAlign: "center" }}>
                     <div style={{ display: "flex", justifyContent: "flex-end" }}><button type="button" onClick={() => setBossPop(null)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16, color: "#f3ecff" }}>✕</button></div>
-                    <div style={{ width: 96, height: 96, margin: "0 auto 10px", borderRadius: "50%", border: `4px solid ${C.white}`, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, background: bossDefeated ? "radial-gradient(circle at 50% 35%, #7fd6a0, #3f8f60)" : "radial-gradient(circle at 50% 35%, #6b4f8f, #23162f)" }}>{boss.img ? <img src={boss.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : boss.icon || <span style={{ color: "rgba(255,255,255,0.5)" }}>?</span>}</div>
+                    <div style={{ width: 96, height: 96, margin: "0 auto 10px", borderRadius: "50%", border: `4px solid ${C.white}`, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, background: bossDefeated ? "radial-gradient(circle at 50% 35%, #7fd6a0, #3f8f60)" : "radial-gradient(circle at 50% 35%, #6b4f8f, #23162f)" }}>{bImg ? <img src={bImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ color: "rgba(255,255,255,0.5)" }}>?</span>}</div>
                     <div style={{ fontSize: 18, fontWeight: "bold" }}>{boss.name || "??? (미공개 보스)"}</div>
                     <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>{(HQ_CATS.find((c) => c.id === rcat) || {}).name} 월드의 최종 보스</div>
                     <div style={{ fontSize: 12.5, lineHeight: 1.6, margin: "12px 0", background: "rgba(255,255,255,0.08)", borderRadius: 10, padding: 12 }}>{boss.desc || "아직 베일에 싸여 있어요. ✏️로 이름과 모습을 정해주세요."}</div>
@@ -11138,7 +11141,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                       <div style={{ marginTop: 8, fontWeight: "bold" }}>🏁 격파 조건</div>
                       <div>이 월드의 <b>모든 챕터 100%</b> 완료 → {bossDefeated ? "이미 격파! 💥" : "아직 살아있어요."}</div>
                     </div>
-                    <PxButton tone="gold" onClick={() => { setBossPop(null); setBossEdit({ cat: rcat, name: boss.name || "", icon: boss.icon || "", desc: boss.desc || "", img: boss.img || "" }); }} style={{ width: "100%", fontSize: 12.5, padding: 10, marginTop: 12 }}>✏️ 보스 수정하기</PxButton>
+                    <PxButton tone="gold" onClick={() => { setBossPop(null); setBossEdit({ cat: rcat, name: boss.name || "", desc: boss.desc || "" }); }} style={{ width: "100%", fontSize: 12.5, padding: 10, marginTop: 12 }}>✏️ 보스 수정하기</PxButton>
                   </div>
                 </div>
               )}
@@ -11154,8 +11157,8 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                       const def = chs.length > 0 && chs.every((ch) => chapterPct(ch.name) >= 100);
                       return (
                         <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 12, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 10, padding: 10, marginBottom: 8 }}>
-                          <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: "50%", border: `3px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, color: C.white, position: "relative", background: def ? "radial-gradient(circle at 50% 35%, #7fd6a0, #3f8f60)" : b.icon ? "radial-gradient(circle at 50% 35%, #6b4f8f, #2a1c40)" : "radial-gradient(circle at 50% 35%, #4a4356, #23202b)" }}>
-                            {b.img ? <img src={b.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} /> : b.icon || <span style={{ color: "rgba(255,255,255,0.5)" }}>?</span>}
+                          <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: "50%", border: `3px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, color: C.white, position: "relative", background: def ? "radial-gradient(circle at 50% 35%, #7fd6a0, #3f8f60)" : bossImg(c.id) ? "radial-gradient(circle at 50% 35%, #6b4f8f, #2a1c40)" : "radial-gradient(circle at 50% 35%, #4a4356, #23202b)" }}>
+                            {bossImg(c.id) ? <img src={bossImg(c.id)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} /> : <span style={{ color: "rgba(255,255,255,0.5)" }}>?</span>}
                             {def && <span style={{ position: "absolute", right: -3, bottom: -3, fontSize: 16 }}>💥</span>}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -11163,7 +11166,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                             <div style={{ fontSize: 13, fontWeight: "bold" }}>{b.name || "??? (미공개)"}</div>
                             <div style={{ fontSize: 10, fontWeight: "bold", color: def ? C.good : "#6b4f8f" }}>{def ? "💥 격파" : chs.length === 0 ? "챕터 없음" : "진행 중"}</div>
                           </div>
-                          <button type="button" onClick={() => { setBossPop(null); setRcat(c.id); setBossEdit({ cat: c.id, name: b.name || "", icon: b.icon || "", desc: b.desc || "", img: b.img || "" }); }} title="수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14 }}>✏️</button>
+                          <button type="button" onClick={() => { setBossPop(null); setRcat(c.id); setBossEdit({ cat: c.id, name: b.name || "", desc: b.desc || "" }); }} title="수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14 }}>✏️</button>
                         </div>
                       );
                     })}
@@ -14472,7 +14475,9 @@ function EchoTown() {
           hqQuests={hqQuests} onHQChange={saveHQ} hqRoad={hqRoad} onRoadChange={saveRoad}
           onPostNotice={(t) => { dbAddNotice("공지", t, `${myName || "익명"}님의 공지`, myUid); showNotice("📢 공지를 등록했어요"); }}
           onGo={(mapId) => { setHqOpen(false); setQuestJump({ mapId, qid: null }); setView("project"); }}
-          onGoBoard={() => { setHqOpen(false); setView("board"); }} />
+          onGoBoard={() => { setHqOpen(false); setView("board"); }}
+          bossImg={(cat) => allSprites["hqboss_" + cat] || ""}
+          onBossImg={(cat, dataUrl) => { if (dataUrl) setSprite("hqboss_" + cat, dataUrl); else clearSprite("hqboss_" + cat); }} />
       )}
 
       {startPop && (
