@@ -7972,6 +7972,8 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
   const [q, setQ] = useState("");
   const [catFilter, setCatFilter] = useState("all");   // 단어 탭 카테고리 필터
   const [jumpTo, setJumpTo] = useState(null);           // 🔗 관련 개념 클릭 시 이동할 단어
+  const [openWords, setOpenWords] = useState(() => new Set());   // 펼쳐진 단어(설명 표시)
+  const toggleWord = (w) => setOpenWords((s) => { const n = new Set(s); n.has(w) ? n.delete(w) : n.add(w); return n; });
   const [msg, setMsg] = useState(null);
   const say = (m) => { setMsg(m); setTimeout(() => setMsg(null), 2400); };
 
@@ -8089,25 +8091,29 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
                 const ci = catInfo(p.cat);
                 const rel = relatedOf(it);
                 const highlight = jumpTo === it.word;
+                const open = openWords.has(it.word) || highlight;
                 return (
                 <div key={it.word} id={"dictword-" + it.word} style={{ background: highlight ? "#fff3d6" : C.white, border: `2px solid ${highlight ? "#e0a13d" : C.ink}`, borderRadius: 8, padding: 11, transition: "background .3s" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div onClick={() => toggleWord(it.word)} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                    <span style={{ fontSize: 11, color: C.inkSoft, flexShrink: 0, width: 12 }}>{open ? "▾" : "▸"}</span>
                     {ci && <span style={{ fontSize: 9.5, background: ci.color, color: C.white, borderRadius: 8, padding: "2px 7px", whiteSpace: "nowrap" }}>{ci.label}</span>}
                     <b style={{ flex: 1, fontSize: 15, wordBreak: "break-word" }}>📗 {it.word}</b>
-                    <PxButton tone="wood" onClick={() => openEdit(it)} style={{ fontSize: 10, padding: "4px 8px" }}>✏️</PxButton>
-                    <PxButton tone="danger" onClick={() => { if (window.confirm(`「${it.word}」를 삭제할까요? 모두에게서 사라져요.`)) onDelWord(it.word); }} style={{ fontSize: 10, padding: "4px 8px" }}>🗑</PxButton>
+                    <PxButton tone="wood" onClick={(e) => { e.stopPropagation(); openEdit(it); }} style={{ fontSize: 10, padding: "4px 8px" }}>✏️</PxButton>
+                    <PxButton tone="danger" onClick={(e) => { e.stopPropagation(); if (window.confirm(`「${it.word}」를 삭제할까요? 모두에게서 사라져요.`)) onDelWord(it.word); }} style={{ fontSize: 10, padding: "4px 8px" }}>🗑</PxButton>
                   </div>
+                  {open && (<>
                   <div style={{ fontSize: 13.5, lineHeight: 1.75, marginTop: 6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{p.text}</div>
                   {rel.length > 0 && (
                     <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap", marginTop: 8, paddingTop: 7, borderTop: `1px dashed ${C.parchEdge}` }}>
                       <span style={{ fontSize: 10.5, color: C.inkSoft }}>🔗 관련:</span>
                       {rel.map((rw) => (
-                        <button key={rw} type="button" onClick={() => { setQ(""); setCatFilter("all"); setJumpTo(rw); setTimeout(() => { const el = document.getElementById("dictword-" + rw); if (el) el.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => setJumpTo(null), 1500); }, 60); }}
+                        <button key={rw} type="button" onClick={() => { setQ(""); setCatFilter("all"); setOpenWords((s) => new Set(s).add(rw)); setJumpTo(rw); setTimeout(() => { const el = document.getElementById("dictword-" + rw); if (el) el.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => setJumpTo(null), 1500); }, 60); }}
                           style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5, fontWeight: "bold", padding: "3px 9px", borderRadius: 12, border: `2px solid ${C.ink}`, background: "#f0e7d5", color: C.ink }}>{rw}</button>
                       ))}
                     </div>
                   )}
                   {it.updated_by && <div style={{ fontSize: 10.5, color: C.inkSoft, marginTop: 6 }}>✍️ {it.updated_by}</div>}
+                  </>)}
                 </div>
                 );
               })}
