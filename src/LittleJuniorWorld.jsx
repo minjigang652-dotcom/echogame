@@ -2496,7 +2496,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "notorder").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "notorder").neq("type", "calevent").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2796,6 +2796,12 @@ async function dbLoadNoticeOrder() {
 async function dbSaveNoticeOrder(ids) {
   try { const s = await getSupa(); await s.from("notices").delete().eq("type", "notorder"); await s.from("notices").insert({ type: "notorder", title: "notorder", body: JSON.stringify(ids || []) }); return true; } catch (e) { return false; }
 }
+async function dbLoadCal() {
+  try { const s = await getSupa(); const r = await s.from("notices").select("body,created_at").eq("type", "calevent").order("created_at", { ascending: false }).limit(1).maybeSingle(); return (r && r.data && r.data.body) ? (JSON.parse(r.data.body) || {}) : {}; } catch (e) { return {}; }
+}
+async function dbSaveCal(obj) {
+  try { const s = await getSupa(); await s.from("notices").delete().eq("type", "calevent"); await s.from("notices").insert({ type: "calevent", title: "calevent", body: JSON.stringify(obj || {}) }); return true; } catch (e) { return false; }
+}
 async function dbDelNotice(id) {
   try { const s = await getSupa(); await s.from("notices").delete().eq("id", id); return true; } catch (e) { return false; }
 }
@@ -3009,7 +3015,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
   return { others, count, status, sendChat, sendEvent, reconnect };
 }
 
-function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = null, carry = null, pet = null, shuffle = false, onShuffle, onNextTrack, onPrevTrack, onReconnect, onDismount, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null, onGift = null, myNick = "", scales = {} }) {
+function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = null, carry = null, pet = null, shuffle = false, onShuffle, onNextTrack, onPrevTrack, onReconnect, onDismount, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null, onGift = null, myNick = "", scales = {}, positions = {}, onMovePos = null }) {
   const [songOpen, setSongOpen] = useState(false);
   const [teleport, setTeleport] = useState(null);
   const [whoOpen, setWhoOpen] = useState(false);
@@ -3017,6 +3023,13 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
   vehicleRef.current = vehicle;
   const scalesRef = useRef(scales);
   scalesRef.current = scales;
+  const posRef = useRef(positions);
+  posRef.current = positions;
+  const worldRef = useRef(null);
+  const [editMap, setEditMap] = useState(false);
+  const [drag, setDrag] = useState(null);   // { id, x, y }
+  const objX = (o) => (posRef.current[o.id] && posRef.current[o.id][0] != null) ? posRef.current[o.id][0] : o.x;
+  const objY = (o) => (posRef.current[o.id] && posRef.current[o.id][1] != null) ? posRef.current[o.id][1] : o.y;
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
@@ -3151,7 +3164,9 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
       let found = null, best = Infinity;
       for (const o of WORLD_OBJS) {
         if (!o.r) continue;
-        const d = Math.hypot(x - o.x, y - (o.y + 20));
+        const bx = (posRef.current[o.id] && posRef.current[o.id][0] != null) ? posRef.current[o.id][0] : o.x;
+        const by = (posRef.current[o.id] && posRef.current[o.id][1] != null) ? posRef.current[o.id][1] : o.y;
+        const d = Math.hypot(x - bx, y - (by + 20));
         const sc = Number((scalesRef.current || {})[o.id]) || 1;
       const reach = o.r * (vehicleRef.current ? 1.55 : 1) * Math.max(0.7, Math.min(2, sc));   // 탈것을 타면 조준이 쉽도록 넉넉하게 · 큰 건물은 범위도 넓게
         if (d < reach && d < best) { best = d; found = o; }
@@ -3252,7 +3267,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
       <div ref={vpRef} tabIndex={0} onMouseDown={focusGame} className="game-vp" style={{ position: "relative", height: 480, overflow: "hidden", outline: "none",
         background: `repeating-linear-gradient(0deg, ${C.grass} 0 22px, ${C.grassDark} 22px 44px)` }}>
         {/* 월드(카메라 이동) */}
-        <div style={{ position: "absolute", width: WORLD.w, height: WORLD.h, left: -camX, top: -camY }}>
+        <div ref={worldRef} style={{ position: "absolute", width: WORLD.w, height: WORLD.h, left: -camX, top: -camY }}>
           {/* 흙길: 중앙 광장 십자 */}
           <div style={{ position: "absolute", left: 1290, top: 0, width: 44, height: WORLD.h, background: `repeating-linear-gradient(0deg, ${C.path} 0 10px, ${C.pathDark} 10px 20px)` }} />
           <div style={{ position: "absolute", top: 720, left: 0, width: WORLD.w, height: 44, background: `repeating-linear-gradient(90deg, ${C.path} 0 10px, ${C.pathDark} 10px 20px)` }} />
@@ -3286,18 +3301,26 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
           ))}
 
           {/* 건물들 */}
-          {WORLD_OBJS.map((o) => (
-            <button key={o.id} className={o.r ? "map-obj" : ""} disabled={!o.r}
-              onClick={() => o.r && handleObj(o)}
-              style={{ position: "absolute", left: o.x, top: o.y, transform: "translate(-50%,-50%)", background: "none", border: "none", cursor: o.r ? "pointer" : "default", textAlign: "center", padding: 0 }}>
-              <div style={{ transform: `scale(${scaleOf(o)})`, transformOrigin: "bottom center", display: "inline-block" }}>{spriteFor(o)}</div>
+          {WORLD_OBJS.map((o) => {
+            const isDragging = drag && drag.id === o.id;
+            const bx = isDragging ? drag.x : objX(o);
+            const by = isDragging ? drag.y : objY(o);
+            return (
+            <button key={o.id} className={o.r && !editMap ? "map-obj" : ""} disabled={!o.r && !editMap}
+              onClick={() => { if (editMap) return; o.r && handleObj(o); }}
+              onPointerDown={(e) => { if (!editMap || !onMovePos) return; e.preventDefault(); e.stopPropagation(); try { e.currentTarget.setPointerCapture(e.pointerId); } catch (x) {} setDrag({ id: o.id, x: objX(o), y: objY(o) }); }}
+              onPointerMove={(e) => { if (!editMap || !drag || drag.id !== o.id || !worldRef.current) return; const rect = worldRef.current.getBoundingClientRect(); let wx = (e.clientX - rect.left) * (WORLD.w / rect.width); let wy = (e.clientY - rect.top) * (WORLD.h / rect.height); wx = Math.max(20, Math.min(WORLD.w - 20, wx)); wy = Math.max(20, Math.min(WORLD.h - 20, wy)); setDrag({ id: o.id, x: Math.round(wx), y: Math.round(wy) }); }}
+              onPointerUp={(e) => { if (!editMap || !drag || drag.id !== o.id) return; onMovePos && onMovePos(o.id, drag.x, drag.y); setDrag(null); }}
+              style={{ position: "absolute", left: bx, top: by, transform: "translate(-50%,-50%)", background: "none", border: editMap ? `2px dashed ${C.gem}` : "none", borderRadius: editMap ? 8 : 0, cursor: editMap ? (isDragging ? "grabbing" : "grab") : (o.r ? "pointer" : "default"), textAlign: "center", padding: 0, touchAction: editMap ? "none" : "auto", zIndex: isDragging ? 30 : "auto" }}>
+              <div style={{ transform: `scale(${scaleOf(o)})`, transformOrigin: "bottom center", display: "inline-block", pointerEvents: editMap ? "none" : "auto" }}>{spriteFor(o)}</div>
               <div style={{ marginTop: -6 }}>
                 <span style={{ display: "inline-block", background: o.kind === "center" ? C.ink : C.parch, color: o.kind === "center" ? C.gem : C.ink, fontSize: 11, padding: "3px 7px", border: `2px solid ${C.ink}`, whiteSpace: "nowrap" }}>
                   {o.label}{o.kind === "rent" && rentedHouses[o.id] ? " ✅" : ""}
                 </span>
               </div>
             </button>
-          ))}
+            );
+          })}
 
           {/* 비 효과 (마을 / 치앙마이 각각) */}
 
@@ -3371,6 +3394,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
 
         {/* HUD 오버레이: 날짜 */}
         <div style={{ position: "absolute", right: 10, top: 10, display: "flex", gap: 8, alignItems: "center" }}>
+          {onMovePos && <button onClick={() => { setEditMap((v) => !v); setDrag(null); }} title="건물을 드래그해 위치를 옮겨요 (모두에게 공유)" style={{ cursor: "pointer", background: editMap ? C.gem : C.ink, color: editMap ? C.ink : C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontWeight: "bold" }}>{editMap ? "✅ 위치편집 끝" : "🏠 위치편집"}</button>}
           <button onClick={() => setWhoOpen((v) => !v)} title="접속자 보기" style={{ position: "relative", cursor: "pointer", background: netStatus === "접속됨" ? "#2f9e6e" : C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
             👥 {Object.keys(others).length + 1}
             {whoOpen && (
@@ -8674,15 +8698,27 @@ function BoardView({ onBack, myName = "", myUid = "" }) {
   const [tab, setTab] = useState("notice");
   const [openDoc, setOpenDoc] = useState(null);
   const [day, setDay] = useState(null);
-  const first = new Date(2026, 6, 1);
-  const startDow = first.getDay();
+  const [calOff, setCalOff] = useState(0);   // 표시 월 (0=이번 달)
+  const [calEv, setCalEv] = useState({});    // 편집한 일정 (서버 공유)
+  const [calInput, setCalInput] = useState("");
+  useEffect(() => { dbLoadCal().then((o) => setCalEv(o && typeof o === "object" ? o : {})); }, []);
+  const today = new Date();
+  const calBase = new Date(); calBase.setDate(1); calBase.setMonth(calBase.getMonth() + calOff);
+  const calY = calBase.getFullYear(), calM = calBase.getMonth();
+  const startDow = new Date(calY, calM, 1).getDay();
+  const dim = new Date(calY, calM + 1, 0).getDate();
   const cells = [];
   for (let i = 0; i < startDow; i++) cells.push(null);
-  for (let d = 1; d <= 31; d++) cells.push(d);
-  const key = (d) => `2026-07-${String(d).padStart(2, "0")}`;
+  for (let d = 1; d <= dim; d++) cells.push(d);
+  const key = (d) => `${calY}-${String(calM + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const isToday = (d) => today.getFullYear() === calY && today.getMonth() === calM && today.getDate() === d;
+  const allEvents = { ...CAL_EVENTS, ...calEv };
+  const evOf = (d) => allEvents[key(d)] || [];
+  const addEvent = () => { if (!day || !calInput.trim()) return; const k = key(day); const cur = allEvents[k] || []; const next = { ...calEv, [k]: [...cur, calInput.trim()] }; setCalEv(next); dbSaveCal(next); setCalInput(""); };
+  const delEvent = (idx) => { if (!day) return; const k = key(day); const cur = allEvents[k] || []; const next = { ...calEv, [k]: cur.filter((_, j) => j !== idx) }; setCalEv(next); dbSaveCal(next); };
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
-      <TitleBar tipId="board" icon="📋" title="게시판" sub="공지사항 · 2026년 7월 캘린더" onBack={onBack} bg={C.wood} fg={C.white}
+      <TitleBar tipId="board" icon="📋" title="게시판" sub="공지사항 · 캘린더" onBack={onBack} bg={C.wood} fg={C.white}
         right={<PxButton tone="gold" onClick={() => setWOpen(true)} style={{ fontSize: 11, padding: "5px 10px" }}>✍️ 글쓰기</PxButton>} />
       {edit && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120, padding: 14 }} onClick={() => setEdit(null)}>
@@ -8859,27 +8895,46 @@ function BoardView({ onBack, myName = "", myUid = "" }) {
 
         {tab === "cal" && (
           <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <b style={{ flex: 1, fontSize: 15 }}>{calY}년 {calM + 1}월</b>
+              <PxButton tone="wood" onClick={() => { setCalOff((v) => v - 1); setDay(null); }} style={{ fontSize: 12, padding: "5px 10px" }}>‹</PxButton>
+              <PxButton tone="wood" onClick={() => { setCalOff(0); setDay(null); }} style={{ fontSize: 11, padding: "5px 10px" }}>오늘</PxButton>
+              <PxButton tone="wood" onClick={() => { setCalOff((v) => v + 1); setDay(null); }} style={{ fontSize: 12, padding: "5px 10px" }}>›</PxButton>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, background: C.white, border: `3px solid ${C.ink}`, padding: 8 }}>
               {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
-                <div key={d} style={{ textAlign: "center", fontSize: 11, fontWeight: "bold", color: i === 0 ? C.danger : C.inkSoft }}>{d}</div>
+                <div key={d} style={{ textAlign: "center", fontSize: 11, fontWeight: "bold", color: i === 0 ? C.danger : i === 6 ? "#5b8def" : C.inkSoft }}>{d}</div>
               ))}
-              {cells.map((d, i) => (
+              {cells.map((d, i) => {
+                const td = d && isToday(d);
+                return (
                 <button key={i} disabled={!d} onClick={() => d && setDay(d)} className={d ? "px-btn" : ""}
-                  style={{ aspectRatio: "1/1", background: !d ? "transparent" : day === d ? C.gem : "#fffdf5", border: d ? `2px solid ${C.ink}` : "none", cursor: d ? "pointer" : "default", position: "relative", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, color: C.ink }}>
-                  {d === 31 ? <span style={{ display: "inline-block", border: `3px solid ${C.danger}`, borderRadius: "50%", width: 24, height: 24, lineHeight: "20px" }}>{d}</span> : d}
-                  {d && CAL_EVENTS[key(d)] && d !== 31 && <span style={{ position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)", width: 5, height: 5, background: C.bankRoof, borderRadius: "50%" }} />}
+                  style={{ aspectRatio: "1/1", background: !d ? "transparent" : day === d ? C.gem : td ? "#ffe9c2" : "#fffdf5", border: d ? `2px solid ${td ? "#e0a13d" : C.ink}` : "none", cursor: d ? "pointer" : "default", position: "relative", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, fontWeight: td ? "bold" : "normal", color: C.ink }}>
+                  {td ? <span style={{ display: "inline-block", border: `2px solid ${C.danger}`, borderRadius: "50%", width: 22, height: 22, lineHeight: "18px" }}>{d}</span> : d}
+                  {d && evOf(d).length > 0 && <span style={{ position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)", width: 5, height: 5, background: C.bankRoof, borderRadius: "50%" }} />}
                 </button>
-              ))}
+                );
+              })}
             </div>
             <div style={{ marginTop: 12, background: C.white, border: `3px solid ${C.ink}`, padding: 12, minHeight: 60 }}>
               {day ? (
                 <>
-                  <div style={{ fontWeight: "bold", fontSize: 14, marginBottom: 6 }}>7월 {day}일 {day === 31 && "🔴"}</div>
-                  {(CAL_EVENTS[key(day)] || ["등록된 일정이 없습니다."]).map((e, i) => (
-                    <div key={i} style={{ fontSize: 13, color: C.inkSoft }}>• {e}</div>
+                  <div style={{ fontWeight: "bold", fontSize: 14, marginBottom: 8 }}>{calM + 1}월 {day}일 {isToday(day) && <span style={{ fontSize: 11, color: C.danger }}>· 오늘</span>}</div>
+                  {evOf(day).length === 0 && <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 8 }}>등록된 일정이 없습니다.</div>}
+                  {evOf(day).map((e, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+                      <span style={{ flex: 1, fontSize: 13, color: C.ink, wordBreak: "break-word" }}>• {e}</span>
+                      <button type="button" onClick={() => { if (window.confirm("정말로 삭제하시겠습니까?")) delEvent(i); }} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 12, color: C.danger }}>🗑</button>
+                    </div>
                   ))}
+                  <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                    <input value={calInput} onChange={(e) => setCalInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addEvent(); }} placeholder="일정 입력 (예: 10:00 전체 회의)"
+                      style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5 }} />
+                    <PxButton tone="gold" disabled={!calInput.trim()} onClick={addEvent} style={{ fontSize: 12, padding: "8px 12px" }}>＋ 추가</PxButton>
+                  </div>
+                  <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 6 }}>일정은 모두에게 저장·공유돼요</div>
                 </>
-              ) : <span style={{ fontSize: 13, color: C.inkSoft }}>날짜를 누르면 일정을 확인할 수 있어요. (7월 31일 🔴 월말 결산)</span>}
+              ) : <span style={{ fontSize: 13, color: C.inkSoft }}>날짜를 누르면 일정을 보고 추가할 수 있어요.</span>}
             </div>
           </div>
         )}
@@ -12835,18 +12890,30 @@ function EchoTown() {
   const [spriteScale, setSpriteScale] = useState(() => loadJSON("echotown_spritescale_v1", {}) || {});
   const scaleRef = useRef({});
   scaleRef.current = spriteScale;
+  const [spritePos, setSpritePos] = useState(() => loadJSON("echotown_spritepos_v1", {}) || {});   // 🏠 건물 위치 override (모두 공유)
+  const posRef = useRef({});
+  posRef.current = spritePos;
   useEffect(() => {
     dbSprites().then((d) => {
       if (!d || !Object.keys(d).length) return;
-      const imgs = {}, scl = {};
+      const imgs = {}, scl = {}, pos = {};
       Object.keys(d).forEach((k) => {
         if (k.endsWith("|s")) { const n = Number(d[k]); if (n > 0) scl[k.slice(0, -2)] = n; }
+        else if (k.endsWith("|p")) { const pr = String(d[k]).split(","); const x = Number(pr[0]), y = Number(pr[1]); if (isFinite(x) && isFinite(y)) pos[k.slice(0, -2)] = [x, y]; }
         else imgs[k] = d[k];
       });
       if (Object.keys(imgs).length) setSharedSprites((v) => ({ ...imgs, ...v }));
       if (Object.keys(scl).length) setSpriteScale((v) => ({ ...scl, ...v }));
+      if (Object.keys(pos).length) setSpritePos((v) => ({ ...pos, ...v }));
     });
   }, []);
+  /* 🏠 건물 위치 — 모두에게 똑같이 보이도록 공유돼요 */
+  const publishPos = (id, x, y) => {
+    const p = [Math.round(x), Math.round(y)];
+    setSpritePos((m) => { const o = { ...m, [id]: p }; saveJSON("echotown_spritepos_v1", o); return o; });
+    if (netSendEventRef.current) netSendEventRef.current("spr", { id, pos: p, by: myNameRef.current || "익명" });
+    dbSaveSprite(id + "|p", p.join(","), myUid);
+  };
   /* 🔍 건물 크기 — 모두에게 똑같이 보이도록 공유돼요 */
   const publishScale = (id, v) => {
     const n = Math.max(0.4, Math.min(3, Number(v) || 1));
@@ -13799,6 +13866,11 @@ function EchoTown() {
           setSpriteScale((m) => { const o = { ...m, [p.id]: n }; saveJSON("echotown_spritescale_v1", o); return o; });
           return;
         }
+        if (p.pos) {
+          const x = Number(p.pos[0]), y = Number(p.pos[1]);
+          if (isFinite(x) && isFinite(y)) setSpritePos((m) => { const o = { ...m, [p.id]: [x, y] }; saveJSON("echotown_spritepos_v1", o); return o; });
+          return;
+        }
         setSharedSprites((v) => { const n = { ...v }; if (p.src) n[p.id] = p.src; else delete n[p.id]; return n; });
         showNotice(p.src ? `🎨 ${p.by || "누군가"}님이 건물 이미지를 바꿨어요` : `🎨 ${p.by || "누군가"}님이 건물 이미지를 되돌렸어요`);
         return;
@@ -14083,7 +14155,7 @@ function EchoTown() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gold} sprites={allSprites} cutCfg={cutCfg} scales={spriteScale} look={myLook} carry={carrying} pet={petEmoji} shuffle={shuffle} onShuffle={toggleShuffle} onNextTrack={() => stepTrack(1)} onPrevTrack={() => stepTrack(-1)} onReconnect={netReconnect} onDismount={() => { setVehicle(null); showNotice("🚶 탈것에서 내렸어요"); }} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} myNick={myName} onGift={(n) => setGiftTarget(n)} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gold} sprites={allSprites} cutCfg={cutCfg} scales={spriteScale} look={myLook} carry={carrying} pet={petEmoji} shuffle={shuffle} onShuffle={toggleShuffle} onNextTrack={() => stepTrack(1)} onPrevTrack={() => stepTrack(-1)} onReconnect={netReconnect} onDismount={() => { setVehicle(null); showNotice("🚶 탈것에서 내렸어요"); }} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} myNick={myName} onGift={(n) => setGiftTarget(n)} positions={spritePos} onMovePos={publishPos} />}
         {view === "center" && <CenterView meetings={myMeetings} meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => { setCenterChat((c) => [...c, { who: myName || "나", text: t, me: true }].slice(-80)); if (netSendEvent) netSendEvent("cchat", { who: myName || "나", text: t }); }} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} myName={myName} people={people}
           chat={meetingChat[meetingId] || []}
