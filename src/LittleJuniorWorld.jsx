@@ -2496,7 +2496,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2676,6 +2676,24 @@ async function dbSaveMyPage(name, data) {
   try {
     const s = await getSupa();
     const r = await s.from("notices").insert({ type: "mypage", title: name, body: JSON.stringify(data || {}) });
+    return !(r && r.error);
+  } catch (e) { return false; }
+}
+/* 🏷 프로필 해시태그 (notices 재사용: type="ptag", title=대상 이름 · 누구나 달 수 있어요) */
+async function dbLoadPtags(name) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("body,created_at").eq("type", "ptag").eq("title", name).order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    if (!row) return [];
+    const v = JSON.parse(row.body || "[]");
+    return Array.isArray(v) ? v : [];
+  } catch (e) { return []; }
+}
+async function dbSavePtags(name, tags) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "ptag", title: name, body: JSON.stringify(tags || []) });
     return !(r && r.error);
   } catch (e) { return false; }
 }
@@ -10132,8 +10150,31 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
   const [panelW, setPanelW] = useState(() => Math.max(210, Math.min(380, Number(load("panelW", 258)) || 258)));
   const [panelH, setPanelH] = useState(() => Math.max(240, Math.min(1200, Number(load("panelH", 440)) || 440)));
   useEffect(() => { saveAll({ mission: done, todos, huddles, notes, neck, panelW, panelH }); }, [done, todos, huddles, notes, neck, panelW, panelH]);
+  /* 👥 공유 프로필 — 계정 드롭다운으로 다른 사람 페이지 보기 (디폴트 = 나) · 🏷 해시태그 */
+  const [pView, setPView] = useState(myName || "");
+  const pSelf = !pView || pView === myName;
+  const [pOther, setPOther] = useState(null);
+  const [pTags, setPTags] = useState([]);
+  const [pTagIn, setPTagIn] = useState("");
+  const pAccts = Array.from(new Set([myName, ...(people || []).map((p) => p && p.name)].filter(Boolean)));
+  useEffect(() => {
+    let alive = true;
+    if (!pView) { setPOther(null); setPTags([]); return; }
+    if (pView !== myName) { dbLoadMyPage(pView).then((d) => { if (alive) setPOther(d && typeof d === "object" ? d : {}); }); }
+    else { setPOther(null); }
+    dbLoadPtags(pView).then((t) => { if (alive) setPTags(Array.isArray(t) ? t : []); });
+    return () => { alive = false; };
+  }, [pView, myName]);
+  const pAddTag = () => { const t = pTagIn.trim().replace(/^#/, ""); if (!t || !pView) return; const next = Array.from(new Set([...(pTags || []), t])).slice(0, 30); setPTags(next); setPTagIn(""); dbSavePtags(pView, next); };
+  const pDelTag = (t) => { const next = (pTags || []).filter((x) => x !== t); setPTags(next); dbSavePtags(pView, next); };
+  const vDone = pSelf ? done : ((pOther && pOther.mission) || {});
+  const vTodos = pSelf ? todos : ((pOther && pOther.todos) || []);
   const resizeRef = useRef(null);
   const doneN = Object.values(done).filter(Boolean).length;
+  const vDoneN = Object.values(vDone).filter(Boolean).length;
+  const pAv = (pView || "?").trim().slice(0, 1);
+  let pH = 0; for (let i = 0; i < (pView || "").length; i++) pH = (pH * 31 + pView.charCodeAt(i)) % 360;
+  const pColor = `hsl(${pH},55%,58%)`;
 
   if (!open) {
     return (
@@ -10159,45 +10200,67 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
         <button type="button" onClick={() => setOpen(false)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: C.inkSoft }}>◀</button>
       </div>
       <div style={{ padding: 11, flex: 1, overflowY: "auto", minHeight: 0 }}>
-        {/* 프로필 */}
+        {/* 프로필 + 계정 드롭다운 + 해시태그 */}
         <div style={{ textAlign: "center", marginBottom: 10, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 9, padding: 11 }}>
-          <div style={{ width: 50, height: 50, borderRadius: "50%", background: color, color: C.white, fontSize: 22, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", border: `3px solid ${C.ink}` }}>{av}</div>
-          <div style={{ fontSize: 14, fontWeight: "bold", marginTop: 6 }}>{myName || "게스트"}</div>
+          <div style={{ width: 50, height: 50, borderRadius: "50%", background: pColor, color: C.white, fontSize: 22, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", border: `3px solid ${C.ink}` }}>{pAv}</div>
+          <select value={pView} onChange={(e) => setPView(e.target.value)} title="다른 사람 페이지 보기"
+            style={{ marginTop: 7, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, fontWeight: "bold", padding: "2px 5px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white, maxWidth: "100%" }}>
+            {pAccts.map((nm) => (<option key={nm} value={nm}>{nm === myName ? `${nm} (나)` : nm}</option>))}
+          </select>
           <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 8, fontSize: 10.5 }}>
-            <span><b style={{ fontSize: 14 }}>{todos.filter((t) => !t.done).length}</b><br /><span style={{ color: C.inkSoft }}>할 일</span></span>
-            <span><b style={{ fontSize: 14 }}>{doneN}</b><br /><span style={{ color: C.inkSoft }}>미션</span></span>
+            <span><b style={{ fontSize: 14 }}>{vTodos.filter((t) => !t.done).length}</b><br /><span style={{ color: C.inkSoft }}>할 일</span></span>
+            <span><b style={{ fontSize: 14 }}>{vDoneN}</b><br /><span style={{ color: C.inkSoft }}>미션</span></span>
+          </div>
+          {/* 🏷 해시태그 (누구나) */}
+          <div style={{ marginTop: 9, paddingTop: 9, borderTop: `1px solid ${C.parchEdge}`, textAlign: "left" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6 }}>
+              {(pTags || []).length === 0 && <span style={{ fontSize: 9.5, color: C.inkSoft }}>해시태그 없음</span>}
+              {(pTags || []).map((t) => (
+                <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9.5, fontWeight: "bold", color: "#4b3fb0", background: "#ece9fb", border: "1px solid #cfc7f2", borderRadius: 12, padding: "2px 7px" }}>
+                  #{t}<button type="button" onClick={() => pDelTag(t)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 9, color: C.inkSoft, padding: 0 }}>✕</button>
+                </span>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 4 }}>
+              <input value={pTagIn} onChange={(e) => setPTagIn(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") pAddTag(); }} placeholder={pSelf ? "해시태그 추가" : "태그 달기"} maxLength={20}
+                style={{ flex: 1, minWidth: 0, padding: 5, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 10 }} />
+              <button type="button" onClick={pAddTag} disabled={!pTagIn.trim()} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 9.5, fontWeight: "bold", background: pTagIn.trim() ? "#b07a4e" : "#cfc2ad", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "4px 7px" }}>＋</button>
+            </div>
           </div>
         </div>
 
         {/* 일일 미션 */}
         <div style={cardBox}>
-          {cardH("🎯", "일일 미션", <span style={{ fontSize: 10, color: C.inkSoft }}>{doneN}/{MISSIONS.length} · +10🪙</span>)}
+          {cardH("🎯", pSelf ? "일일 미션" : `${pView}님의 미션`, <span style={{ fontSize: 10, color: C.inkSoft }}>{vDoneN}/{MISSIONS.length} · +10🪙</span>)}
           {MISSIONS.map((m, i) => (
-            <label key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 10.5, marginBottom: 6, cursor: "pointer", lineHeight: 1.5 }}>
-              <input type="checkbox" checked={!!done[i]} onChange={() => setDone((d) => ({ ...d, [i]: !d[i] }))} style={{ marginTop: 1, flexShrink: 0 }} />
-              <span style={{ textDecoration: done[i] ? "line-through" : "none", color: done[i] ? C.inkSoft : C.ink }}>{m}</span>
+            <label key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 10.5, marginBottom: 6, cursor: pSelf ? "pointer" : "default", lineHeight: 1.5 }}>
+              <input type="checkbox" checked={!!vDone[i]} disabled={!pSelf} onChange={() => pSelf && setDone((d) => ({ ...d, [i]: !d[i] }))} style={{ marginTop: 1, flexShrink: 0 }} />
+              <span style={{ textDecoration: vDone[i] ? "line-through" : "none", color: vDone[i] ? C.inkSoft : C.ink }}>{m}</span>
             </label>
           ))}
         </div>
 
         {/* 개인 할 일 (투두) */}
         <div style={cardBox}>
-          {cardH("📋", "내 할 일")}
-          {todos.length === 0 && <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 6 }}>할 일이 없어요.</div>}
-          {todos.map((t, i) => (
+          {cardH("📋", pSelf ? "내 할 일" : `${pView}님의 할 일`)}
+          {vTodos.length === 0 && <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 6 }}>할 일이 없어요.</div>}
+          {vTodos.map((t, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, marginBottom: 4 }}>
-              <input type="checkbox" checked={t.done} onChange={() => setTodos((v) => v.map((x, j) => (j === i ? { ...x, done: !x.done } : x)))} style={{ flexShrink: 0 }} />
+              <input type="checkbox" checked={t.done} disabled={!pSelf} onChange={() => pSelf && setTodos((v) => v.map((x, j) => (j === i ? { ...x, done: !x.done } : x)))} style={{ flexShrink: 0 }} />
               <span style={{ flex: 1, minWidth: 0, textDecoration: t.done ? "line-through" : "none", color: t.done ? C.inkSoft : C.ink, wordBreak: "break-word" }}>{t.t}</span>
-              <button type="button" onClick={() => setTodos((v) => v.filter((_, j) => j !== i))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.inkSoft }}>✕</button>
+              {pSelf && <button type="button" onClick={() => setTodos((v) => v.filter((_, j) => j !== i))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.inkSoft }}>✕</button>}
             </div>
           ))}
+          {pSelf && (
           <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
             <input value={ti} onChange={(e) => setTi(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && ti.trim()) { setTodos((v) => [...v, { t: ti.trim(), done: false }]); setTi(""); } }}
               placeholder="개인 할 일 입력 후 Enter" style={{ flex: 1, minWidth: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 10.5 }} />
             {addBtn(() => { if (ti.trim()) { setTodos((v) => [...v, { t: ti.trim(), done: false }]); setTi(""); } })}
           </div>
+          )}
         </div>
 
+        {pSelf && (<>
         {/* 🗄️ 내 서랍 (칠판 메모) */}
         <div style={{ marginBottom: 9 }}>
           <DrawerBoard notes={notes} onAdd={(t) => setNotes((v) => [{ t, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v])} onDelete={(i) => setNotes((v) => v.filter((_, j) => j !== i))} />
@@ -10230,6 +10293,7 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
             </div>
           )}
         </div>
+        </>)}
       </div>
       {/* 🪟 크기 조절 바 — 끌어서 창 크기를 바꿔요 (계정마다 저장돼요) */}
       <div
@@ -10330,6 +10394,31 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const [mpNkPoint, setMpNkPoint] = useState("");
   const [mpNkAction, setMpNkAction] = useState("");
   useEffect(() => { mpSaveAll({ mission: mpDone, todos: mpTodos, huddles: mpHuddles, notes: mpNotes, neck: mpNeck }); }, [mpDone, mpTodos, mpHuddles, mpNotes, mpNeck]);
+  /* 👥 공유 프로필 — 상단 드롭다운으로 다른 사람 페이지 보기 (디폴트 = 나) · 🏷 해시태그 */
+  const [mpView, setMpView] = useState(myName || "");   // 지금 보고 있는 계정
+  const mpSelf = !mpView || mpView === myName;
+  const [mpOther, setMpOther] = useState(null);   // 남의 프로필 데이터 { mission, todos } | null
+  const [mpTags, setMpTags] = useState([]);       // 지금 보는 프로필의 해시태그
+  const [mpTagIn, setMpTagIn] = useState("");
+  const mpAccts = Array.from(new Set([myName, ...(people || []).map((p) => p && p.name)].filter(Boolean)));
+  useEffect(() => {   // 보는 계정이 바뀌면 서버에서 불러와요 (실패해도 안 죽게 방어적)
+    let alive = true;
+    if (!mpView) { setMpOther(null); setMpTags([]); return; }
+    if (mpView !== myName) { dbLoadMyPage(mpView).then((d) => { if (alive) setMpOther(d && typeof d === "object" ? d : {}); }); }
+    else { setMpOther(null); }
+    dbLoadPtags(mpView).then((t) => { if (alive) setMpTags(Array.isArray(t) ? t : []); });
+    return () => { alive = false; };
+  }, [mpView, myName]);
+  const mpAddTag = () => {
+    const t = mpTagIn.trim().replace(/^#/, ""); if (!t || !mpView) return;
+    const next = Array.from(new Set([...(mpTags || []), t])).slice(0, 30);
+    setMpTags(next); setMpTagIn("");
+    dbSavePtags(mpView, next);
+  };
+  const mpDelTag = (t) => { const next = (mpTags || []).filter((x) => x !== t); setMpTags(next); dbSavePtags(mpView, next); };
+  /* 보고 있는 프로필의 미션/할일 (나=내 상태, 남=서버 로드본) */
+  const viewDone = mpSelf ? mpDone : ((mpOther && mpOther.mission) || {});
+  const viewTodos = mpSelf ? mpTodos : ((mpOther && mpOther.todos) || []);
   const blankQuest = () => ({ id: "q" + Date.now(), cat: "core", title: "", star: 2, gold: 0, gem: 0, chapter: "", due: "", subs: [] });
   const commitQuest = (q) => {
     const clean = { ...q, star: Number(q.star) || 1, gold: Number(q.gold) || 0, gem: Number(q.gem) || 0, editedBy: myName || "익명", editedAt: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
@@ -10768,54 +10857,81 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
         })()}
         {tab === "doc" && soon("📄 문서")}
         {tab === "me" && (() => {
-          const mpDoneN = Object.values(mpDone).filter(Boolean).length;
+          const viewDoneN = Object.values(viewDone).filter(Boolean).length;
           const card = { background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 15, marginBottom: 14 };
           const hd = (ic, t, right) => (<div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 11 }}><span style={{ fontSize: 18 }}>{ic}</span><b style={{ flex: 1, fontSize: 14 }}>{t}</b>{right}</div>);
           const addBtn = (fn) => <button type="button" onClick={fn} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "5px 10px" }}>＋</button>;
           return (
             <div style={{ maxWidth: 620, margin: "0 auto" }}>
-              {/* 프로필 */}
-              <div style={{ ...card, display: "flex", alignItems: "center", gap: 14 }}>
-                <div style={{ width: 56, height: 56, borderRadius: "50%", background: colorOf(myName), color: C.white, fontSize: 24, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", border: `3px solid ${C.ink}`, flexShrink: 0 }}>{avatarOf(myName)}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 17, fontWeight: "bold" }}>{myName || "게스트"}</div>
-                  <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 3 }}>나만 볼 수 있는 개인 페이지예요 · 왼쪽 🙋 패널과 같은 내용이에요</div>
+              {/* 프로필 + 계정 드롭다운 + 해시태그 */}
+              <div style={card}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{ width: 56, height: 56, borderRadius: "50%", background: colorOf(mpView), color: C.white, fontSize: 24, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", border: `3px solid ${C.ink}`, flexShrink: 0 }}>{avatarOf(mpView)}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <select value={mpView} onChange={(e) => setMpView(e.target.value)} title="다른 사람 페이지 보기"
+                        style={{ fontFamily: "'DotGothic16', monospace", fontSize: 15, fontWeight: "bold", padding: "3px 6px", border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white }}>
+                        {mpAccts.map((nm) => (<option key={nm} value={nm}>{nm === myName ? `${nm} (나)` : nm}</option>))}
+                      </select>
+                    </div>
+                    <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 4 }}>{mpSelf ? "내 페이지 · 일일미션·할일은 남에게도 보여요" : `${mpView}님의 페이지 (보기 전용)`}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 16, textAlign: "center", fontSize: 11, flexShrink: 0 }}>
+                    <div><div style={{ fontSize: 19, fontWeight: "bold" }}>{viewTodos.filter((t) => !t.done).length}</div><div style={{ color: C.inkSoft }}>할 일</div></div>
+                    <div><div style={{ fontSize: 19, fontWeight: "bold" }}>{viewDoneN}</div><div style={{ color: C.inkSoft }}>미션</div></div>
+                  </div>
                 </div>
-                <div style={{ display: "flex", gap: 16, textAlign: "center", fontSize: 11 }}>
-                  <div><div style={{ fontSize: 19, fontWeight: "bold" }}>{mpTodos.filter((t) => !t.done).length}</div><div style={{ color: C.inkSoft }}>할 일</div></div>
-                  <div><div style={{ fontSize: 19, fontWeight: "bold" }}>{mpDoneN}</div><div style={{ color: C.inkSoft }}>미션</div></div>
+                {/* 🏷 해시태그 (누구나 달 수 있어요) */}
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.parchEdge}` }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginBottom: 8 }}>
+                    {(mpTags || []).length === 0 && <span style={{ fontSize: 11, color: C.inkSoft }}>아직 해시태그가 없어요</span>}
+                    {(mpTags || []).map((t) => (
+                      <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: "bold", color: "#4b3fb0", background: "#ece9fb", border: "2px solid #cfc7f2", borderRadius: 14, padding: "3px 9px" }}>
+                        #{t}<button type="button" onClick={() => mpDelTag(t)} title="지우기" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 10, color: C.inkSoft, padding: 0 }}>✕</button>
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input value={mpTagIn} onChange={(e) => setMpTagIn(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") mpAddTag(); }}
+                      placeholder={mpSelf ? "내 프로필에 해시태그 추가" : `${mpView}님에게 해시태그 달기`} maxLength={20}
+                      style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12 }} />
+                    <PxButton tone="wood" disabled={!mpTagIn.trim()} onClick={mpAddTag} style={{ fontSize: 11, padding: "8px 12px" }}>＋ 태그</PxButton>
+                  </div>
                 </div>
               </div>
 
               {/* 일일 미션 */}
               <div style={card}>
-                {hd("🎯", "일일 미션", <span style={{ fontSize: 11, color: C.inkSoft }}>{mpDoneN}/{MP_MISSIONS.length} · +10🪙</span>)}
+                {hd("🎯", mpSelf ? "일일 미션" : `${mpView}님의 일일 미션`, <span style={{ fontSize: 11, color: C.inkSoft }}>{viewDoneN}/{MP_MISSIONS.length} · +10🪙</span>)}
                 {MP_MISSIONS.map((m, i) => (
-                  <label key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12.5, marginBottom: 8, cursor: "pointer", lineHeight: 1.5 }}>
-                    <input type="checkbox" checked={!!mpDone[i]} onChange={() => setMpDone((d) => ({ ...d, [i]: !d[i] }))} style={{ marginTop: 2, flexShrink: 0 }} />
-                    <span style={{ textDecoration: mpDone[i] ? "line-through" : "none", color: mpDone[i] ? C.inkSoft : C.ink }}>{m}</span>
+                  <label key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12.5, marginBottom: 8, cursor: mpSelf ? "pointer" : "default", lineHeight: 1.5 }}>
+                    <input type="checkbox" checked={!!viewDone[i]} disabled={!mpSelf} onChange={() => mpSelf && setMpDone((d) => ({ ...d, [i]: !d[i] }))} style={{ marginTop: 2, flexShrink: 0 }} />
+                    <span style={{ textDecoration: viewDone[i] ? "line-through" : "none", color: viewDone[i] ? C.inkSoft : C.ink }}>{m}</span>
                   </label>
                 ))}
               </div>
 
               {/* 내 할 일 */}
               <div style={card}>
-                {hd("📋", "내 할 일")}
-                {mpTodos.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>할 일이 없어요.</div>}
-                {mpTodos.map((t, i) => (
+                {hd("📋", mpSelf ? "내 할 일" : `${mpView}님의 할 일`)}
+                {viewTodos.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8 }}>할 일이 없어요.</div>}
+                {viewTodos.map((t, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, marginBottom: 6 }}>
-                    <input type="checkbox" checked={t.done} onChange={() => setMpTodos((v) => v.map((x, j) => (j === i ? { ...x, done: !x.done } : x)))} style={{ flexShrink: 0 }} />
+                    <input type="checkbox" checked={t.done} disabled={!mpSelf} onChange={() => mpSelf && setMpTodos((v) => v.map((x, j) => (j === i ? { ...x, done: !x.done } : x)))} style={{ flexShrink: 0 }} />
                     <span style={{ flex: 1, minWidth: 0, textDecoration: t.done ? "line-through" : "none", color: t.done ? C.inkSoft : C.ink, wordBreak: "break-word" }}>{t.t}</span>
-                    <button type="button" onClick={() => setMpTodos((v) => v.filter((_, j) => j !== i))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: C.inkSoft }}>✕</button>
+                    {mpSelf && <button type="button" onClick={() => setMpTodos((v) => v.filter((_, j) => j !== i))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: C.inkSoft }}>✕</button>}
                   </div>
                 ))}
-                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                  <input value={mpTi} onChange={(e) => setMpTi(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && mpTi.trim()) { setMpTodos((v) => [...v, { t: mpTi.trim(), done: false }]); setMpTi(""); } }}
-                    placeholder="개인 할 일 입력 후 Enter" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5 }} />
-                  {addBtn(() => { if (mpTi.trim()) { setMpTodos((v) => [...v, { t: mpTi.trim(), done: false }]); setMpTi(""); } })}
-                </div>
+                {mpSelf && (
+                  <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                    <input value={mpTi} onChange={(e) => setMpTi(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && mpTi.trim()) { setMpTodos((v) => [...v, { t: mpTi.trim(), done: false }]); setMpTi(""); } }}
+                      placeholder="개인 할 일 입력 후 Enter" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5 }} />
+                    {addBtn(() => { if (mpTi.trim()) { setMpTodos((v) => [...v, { t: mpTi.trim(), done: false }]); setMpTi(""); } })}
+                  </div>
+                )}
               </div>
 
+              {mpSelf && (<>
               {/* 🗄️ 내 서랍 (칠판 메모) */}
               <div style={{ marginBottom: 12 }}>
                 <DrawerBoard big notes={mpNotes} onAdd={(t) => setMpNotes((v) => [{ t, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v])} onDelete={(i) => setMpNotes((v) => v.filter((_, j) => j !== i))} />
@@ -10848,6 +10964,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                   </div>
                 )}
               </div>
+              </>)}
             </div>
           );
         })()}
