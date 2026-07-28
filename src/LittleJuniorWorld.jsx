@@ -10505,6 +10505,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const saveCats = (arr) => onRoadChange && onRoadChange({ ...hqRoad, __cats: arr });
   const catMove = (i, d) => { const a = HQ_CATS.map((c) => ({ ...c })); const j = i + d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; saveCats(a); };
   const catEdit = (i) => { const c = HQ_CATS[i]; const nm = (window.prompt("월드 이름", c.name) || "").trim(); if (!nm) return; const ic = (window.prompt("월드 아이콘 (이모지 1개)", c.icon || "") || "").trim() || c.icon; saveCats(HQ_CATS.map((x, j) => j === i ? { ...x, name: nm, icon: ic } : x)); };
+  const catAdd = () => { const nm = (window.prompt("새 월드 이름") || "").trim(); if (!nm) return; const ic = (window.prompt("월드 아이콘 (이모지 1개)", "🌍") || "").trim() || "🌍"; const palette = ["#3b82f6", "#f97316", "#8b5cf6", "#eab308", "#10b981", "#ec4899", "#06b6d4", "#ef4444"]; const color = palette[HQ_CATS.length % palette.length]; const id = "w" + Date.now().toString(36); saveCats([...HQ_CATS.map((c) => ({ ...c })), { id, name: nm, icon: ic, color }]); };
   const cats = HQ_CATS.map((c) => {
     const qs = hqQuests.filter((q) => q.cat === c.id);
     const done = qs.filter((q) => avgOf(q) >= 100).length;
@@ -10922,6 +10923,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                         <button type="button" onClick={() => catEdit(i)} title="이름·아이콘 수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13 }}>✏️</button>
                       </div>
                     ))}
+                    <button type="button" onClick={catAdd} style={{ width: "100%", cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "8px 0", marginBottom: 6 }}>＋ 월드 추가</button>
                     <div style={{ fontSize: 9.5, color: C.inkSoft, marginBottom: 12 }}>순서를 바꾸면 로드맵·퀘스트 탭의 월드 순서도 함께 바뀌어요 · 이름을 바꿔도 퀘스트 연결은 유지돼요</div>
 
                     <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6, paddingTop: 10, borderTop: `2px solid ${C.parchEdge}` }}>📜 퀘스트</div>
