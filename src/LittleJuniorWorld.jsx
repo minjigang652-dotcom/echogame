@@ -10037,8 +10037,11 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
   const [notes, setNotes] = useState(() => load("notes", []));
   const [diary, setDiary] = useState("");
   const [ti, setTi] = useState("");
-  const [avSize, setAvSize] = useState(() => Math.max(40, Math.min(120, Number(load("avatarSize", 50)) || 50)));
-  useEffect(() => { saveAll({ mission: done, todos, huddles, notes, avatarSize: avSize }); }, [done, todos, huddles, notes, avSize]);
+  /* 🪟 패널 창 크기 (계정마다 저장 · 모서리를 끌어서 조절) */
+  const [panelW, setPanelW] = useState(() => Math.max(210, Math.min(380, Number(load("panelW", 258)) || 258)));
+  const [panelH, setPanelH] = useState(() => Math.max(240, Math.min(1200, Number(load("panelH", 440)) || 440)));
+  useEffect(() => { saveAll({ mission: done, todos, huddles, notes, panelW, panelH }); }, [done, todos, huddles, notes, panelW, panelH]);
+  const resizeRef = useRef(null);
   const doneN = Object.values(done).filter(Boolean).length;
 
   if (!open) {
@@ -10057,21 +10060,17 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
   const addBtn = (fn) => <button type="button" onClick={fn} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "4px 8px" }}>＋</button>;
 
   return (
-    <div style={{ position: "fixed", left: 10, top: "50%", transform: "translateY(-50%)", zIndex: 60, width: 270, maxHeight: "92vh", overflow: "auto",
+    <div style={{ position: "fixed", left: 10, top: 8, zIndex: 60, width: panelW, height: panelH, maxWidth: "94vw", maxHeight: "94vh", display: "flex", flexDirection: "column", overflow: "hidden",
       background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 12, boxShadow: `0 5px 0 ${C.parchEdge}, 0 10px 22px rgba(0,0,0,0.25)`, fontFamily: "'DotGothic16', monospace" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 11px", borderBottom: `2px solid ${C.ink}`, position: "sticky", top: 0, background: C.parch, zIndex: 2 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 11px", borderBottom: `2px solid ${C.ink}`, background: C.parch, flexShrink: 0 }}>
         <b style={{ flex: 1, fontSize: 12.5 }}>🙋 내 페이지</b>
         <button type="button" onClick={onOpenHQ} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 10, background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "4px 7px" }}>🖥 HQ</button>
         <button type="button" onClick={() => setOpen(false)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: C.inkSoft }}>◀</button>
       </div>
-      <div style={{ padding: 11 }}>
+      <div style={{ padding: 11, flex: 1, overflowY: "auto", minHeight: 0 }}>
         {/* 프로필 */}
         <div style={{ textAlign: "center", marginBottom: 10, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 9, padding: 11 }}>
-          <div style={{ width: avSize, height: avSize, borderRadius: "50%", background: color, color: C.white, fontSize: Math.round(avSize * 0.44), fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", border: `3px solid ${C.ink}` }}>{av}</div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, marginTop: 6 }}>
-            <span style={{ fontSize: 9, color: C.inkSoft }}>사진 크기</span>
-            <input type="range" min={40} max={120} step={2} value={avSize} onChange={(e) => setAvSize(Number(e.target.value))} title="내 프로필 사진 크기 (계정마다 저장돼요)" style={{ width: 96, cursor: "pointer" }} />
-          </div>
+          <div style={{ width: 50, height: 50, borderRadius: "50%", background: color, color: C.white, fontSize: 22, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", border: `3px solid ${C.ink}` }}>{av}</div>
           <div style={{ fontSize: 14, fontWeight: "bold", marginTop: 6 }}>{myName || "게스트"}</div>
           <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 8, fontSize: 10.5 }}>
             <span><b style={{ fontSize: 14 }}>{todos.filter((t) => !t.done).length}</b><br /><span style={{ color: C.inkSoft }}>할 일</span></span>
@@ -10135,6 +10134,26 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
             style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 10.5, resize: "vertical" }} />
           <PxButton tone="ink" onClick={() => { if (diary.trim()) { setNotes((v) => [{ t: "📝 " + diary.trim(), at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v]); setDiary(""); } }} style={{ width: "100%", fontSize: 10.5, padding: 7, marginTop: 6 }}>일지 남기기</PxButton>
         </div>
+      </div>
+      {/* 🪟 크기 조절 바 — 끌어서 창 크기를 바꿔요 (계정마다 저장돼요) */}
+      <div
+        onPointerDown={(e) => {
+          e.preventDefault();
+          resizeRef.current = { x: e.clientX, y: e.clientY, w: panelW, h: panelH };
+          try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+        }}
+        onPointerMove={(e) => {
+          const r = resizeRef.current; if (!r) return;
+          const nw = Math.max(210, Math.min(Math.round(window.innerWidth * 0.94), r.w + (e.clientX - r.x)));
+          const nh = Math.max(240, Math.min(Math.round(window.innerHeight * 0.94), r.h + (e.clientY - r.y)));
+          setPanelW(nw); setPanelH(nh);
+        }}
+        onPointerUp={(e) => { resizeRef.current = null; try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (err) {} }}
+        title="끌어서 창 크기 조절 (계정마다 저장돼요)"
+        style={{ flexShrink: 0, height: 18, borderTop: `2px solid ${C.ink}`, background: C.parchLine, cursor: "nwse-resize", touchAction: "none",
+          display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, padding: "0 8px", userSelect: "none" }}>
+        <span style={{ fontSize: 9, color: C.inkSoft, marginRight: "auto" }}>↔ 크기 조절</span>
+        <span style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1 }}>⤡</span>
       </div>
     </div>
   );
