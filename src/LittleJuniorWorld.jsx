@@ -52,7 +52,7 @@ const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v114 · 2026-07-28";
+const APP_VERSION = "v115 · 2026-07-28";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -8450,6 +8450,8 @@ function SmokeView({ onBack, bubble, myName = "", chat = [], onChat }) {
 
 /* ======================= 게시판(캘린더 + 공지) ======================= */
 const UPDATE_NOTES = [
+  { id: "u20260728n6", type: "업데이트", date: "2026-07-28", title: "🔗 카페 외부 방 — 상태 필터 · 중요 키워드 · 검색량 열",
+    body: "· 제품 버튼에서 「전체」를 없앴어요 (제품을 하나 골라서 봐요, 처음엔 첫 제품이 자동 선택돼요)\n· 제품 버튼 아래에 상태 필터 줄을 넣었어요 : 전체 / ⭐중요 / 상위 / 하위 / 누락 — 누르면 그 상태의 키워드만 보여요\n· 관리자 페이지에서 키워드 앞의 별(☆)을 누르면 ⭐ 중요 키워드로 설정/해제할 수 있어요\n· 표에 검색량 열을 추가했어요 (매칭 URL 옆)\n· 표의 모든 칸을 가운데 정렬로 정리했어요" },
   { id: "u20260728n5", type: "업데이트", date: "2026-07-28", title: "🔗 카페 외부 방 — 제품 버튼 필터 · 키워드 일괄 등록 · 툴바 정리",
     body: "· 「방 목록으로」 와 같은 행 오른쪽에 🔗 URL 등록 · 🔄 새로고침 · ⚙️ 환경설정 아이콘을 나란히 놨어요\n· 그 아래에 관리자가 등록한 제품 버튼이 생겨요 — 누르면 그 제품의 키워드만 표에 보여요 (전체 버튼으로 모두 보기)\n· 관리자 페이지에서 키워드를 한 줄에 하나씩 여러 개 일괄 등록할 수 있어요\n· 「자동 2시간 주기」 안내는 아주 작게 우측 최상단으로 옮겼어요" },
   { id: "u20260728n4", type: "업데이트", date: "2026-07-28", title: "🔗 카페 외부 방 개편 — 관리자 설정 · URL 등록 · 새 표",
@@ -12179,7 +12181,10 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
   const [kwPw, setKwPw] = useState(''); const [kwPwErr, setKwPwErr] = useState(false);
   const [newProduct, setNewProduct] = useState('');
   const [newKw, setNewKw] = useState({});   // { productId: '일괄입력값' }
-  const [kwProductFilter, setKwProductFilter] = useState('all');   // 'all' | 제품id
+  const [kwProductFilter, setKwProductFilter] = useState('');   // 제품id (전체 없음)
+  const [kwStatusFilter, setKwStatusFilter] = useState('all');   // all | important | high | low | miss
+  // 제품이 로드되면 첫 제품을 자동 선택
+  useEffect(() => { if (kwProducts.length && !kwProducts.some((p) => p.id === kwProductFilter)) setKwProductFilter(kwProducts[0].id); }, [kwProducts]); // eslint-disable-line
   /* 🔗 카페 외부: 발행 URL 등록 (알바) */
   const [urlOpen, setUrlOpen] = useState(false);
   const [urlText, setUrlText] = useState('');
@@ -12335,9 +12340,15 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
           </div>
           {tab === 'kw' && kwProducts.length > 0 && (
             <div className="nsp-prodfilter">
-              <button className={`nsp-prodbtn ${kwProductFilter === 'all' ? 'on' : ''}`} onClick={() => setKwProductFilter('all')}>전체</button>
               {kwProducts.map((p) => (
                 <button key={p.id} className={`nsp-prodbtn ${kwProductFilter === p.id ? 'on' : ''}`} onClick={() => setKwProductFilter(p.id)}>📦 {p.name}</button>
+              ))}
+            </div>
+          )}
+          {tab === 'kw' && kwProducts.length > 0 && (
+            <div className="nsp-statfilter">
+              {[['all','전체'],['important','⭐ 중요'],['high','상위'],['low','하위'],['miss','누락']].map(([k, lb]) => (
+                <button key={k} className={`nsp-statbtn ${kwStatusFilter === k ? 'on' : ''}`} onClick={() => setKwStatusFilter(k)}>{lb}</button>
               ))}
             </div>
           )}
@@ -12358,42 +12369,50 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
             (data.keywords || []).forEach((k) => { kwByWord[(k.keyword || '').trim()] = k; });
             const urlByWord = {};
             (data.urls || []).forEach((u) => { if (u.keyword) urlByWord[(u.keyword || '').trim()] = u.url; });
-            const rows = [];
-            kwProducts.filter((p) => kwProductFilter === 'all' || p.id === kwProductFilter).forEach((p) => (p.keywords || []).forEach((kw) => {
+            let rows = [];
+            kwProducts.filter((p) => p.id === kwProductFilter).forEach((p) => (p.keywords || []).forEach((kw) => {
               const w = (kw.word || '').trim();
               const src = kwByWord[w] || {};
               rows.push({
-                product: p.name, keyword: w,
+                product: p.name, keyword: w, important: !!kw.important,
                 cafeRank: src.cafeRank ?? src.ourRank ?? null,
                 totalRank: src.totalRank ?? src.rank ?? null,
-                status: src.status, url: src.url || urlByWord[w] || '',
+                status: src.status, volume: src.volume, url: src.url || urlByWord[w] || '',
               });
             }));
+            // 상태 필터
+            rows = rows.filter((r) => {
+              if (kwStatusFilter === 'all') return true;
+              if (kwStatusFilter === 'important') return r.important;
+              return normStatus(r.status) === kwStatusFilter;
+            });
             return (
             <>
-              <table className="nsp-table">
+              <table className="nsp-table nsp-table-c">
                 <thead><tr>
                   <th>키워드</th>
-                  <th style={{ textAlign: 'center' }}>카페순위</th>
-                  <th style={{ textAlign: 'center' }}>전체순위</th>
+                  <th>카페순위</th>
+                  <th>전체순위</th>
                   <th>상태</th>
                   <th>매칭 URL</th>
+                  <th>검색량</th>
                 </tr></thead>
                 <tbody>
                   {rows.map((k, i) => {
                     const st = ST[normStatus(k.status)] || ST.miss;
                     return (
                       <tr key={i}>
-                        <td className="nsp-kw">{k.keyword}</td>
+                        <td className="nsp-kw">{k.important && <span className="nsp-imp">★</span>}{k.keyword}</td>
                         <td className="nsp-rank">{k.cafeRank ?? '–'}</td>
                         <td className="nsp-rank">{k.totalRank ?? '–'}</td>
                         <td><span className={`nsp-st ${st.cls}`}>{st.label}</span></td>
                         <td className="nsp-urlcell">{k.url ? <a href={k.url} target="_blank" rel="noreferrer">열기 ↗</a> : <span className="nsp-nourl">–</span>}</td>
+                        <td className="nsp-vol">{k.volume != null ? num(k.volume) : '–'}</td>
                       </tr>
                     );
                   })}
                   {rows.length === 0 && (
-                    <tr><td colSpan={5} className="nsp-empty">등록된 키워드가 없어요 · ⚙️ 환경설정에서 제품·키워드를 등록하세요</td></tr>
+                    <tr><td colSpan={6} className="nsp-empty">해당하는 키워드가 없어요</td></tr>
                   )}
                 </tbody>
               </table>
@@ -12449,7 +12468,12 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
                           </div>
                           <div className="nsp-kwtags">
                             {(p.keywords || []).map((kw) => (
-                              <span key={kw.id} className="nsp-kwtag">{kw.word}<button onClick={() => saveKwProducts(kwProducts.map((x) => x.id === p.id ? { ...x, keywords: x.keywords.filter((y) => y.id !== kw.id) } : x))}>✕</button></span>
+                              <span key={kw.id} className={`nsp-kwtag ${kw.important ? 'imp' : ''}`}>
+                                <button className="nsp-kwstar" title={kw.important ? '중요 해제' : '중요로 설정'}
+                                  onClick={() => saveKwProducts(kwProducts.map((x) => x.id === p.id ? { ...x, keywords: x.keywords.map((y) => y.id === kw.id ? { ...y, important: !y.important } : y) } : x))}>{kw.important ? '⭐' : '☆'}</button>
+                                {kw.word}
+                                <button className="nsp-kwdel" title="삭제" onClick={() => saveKwProducts(kwProducts.map((x) => x.id === p.id ? { ...x, keywords: x.keywords.filter((y) => y.id !== kw.id) } : x))}>✕</button>
+                              </span>
                             ))}
                           </div>
                           <div className="nsp-kwadd">
@@ -12548,6 +12572,14 @@ const CSS = `
 .nsp-prodfilter{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
 .nsp-prodbtn{background:#fff;border:2px solid #4a3a22;border-radius:16px;padding:6px 13px;cursor:pointer;font-family:'DotGothic16',monospace;font-size:12px;font-weight:bold;color:#4a3a22;}
 .nsp-prodbtn.on{background:#5b8def;color:#fff;}
+.nsp-statfilter{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.nsp-statbtn{background:#fff;border:2px solid #4a3a22;border-radius:14px;padding:5px 12px;cursor:pointer;font-family:'DotGothic16',monospace;font-size:11.5px;font-weight:bold;color:#4a3a22;}
+.nsp-statbtn.on{background:#4a3a22;color:#fff;}
+.nsp-table-c th,.nsp-table-c td{text-align:center !important;vertical-align:middle;}
+.nsp-table-c .nsp-urlcell a{justify-content:center;}
+.nsp-kwtag.imp{background:#fff3d6;border-color:#e0a13d;}
+.nsp-kwstar{background:none;border:none;cursor:pointer;font-size:12px;padding:0;margin-right:2px;}
+.nsp-kwdel{background:none;border:none;cursor:pointer;color:#8a7a5a;font-size:11px;padding:0;margin-left:2px;}
 .nsp-kwadd{display:flex;gap:6px;align-items:flex-start;margin-top:8px;}
 .nsp-kwadd .nsp-modal-ta.sm{height:66px;font-size:11.5px;flex:1;}
 .nsp-kwadd .nsp-btn{white-space:nowrap;}
