@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v138 · 2026-07-29";
+const APP_VERSION = "v139 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -10544,6 +10544,15 @@ function HQQuestRail({ quests = [], onOpenHQ }) {
 /* 🖥 HQ 예시 데이터 (보스맵과 별개) */
 /* 👑 GM(운영자) 명단 — 이 이름으로 로그인하면 HQ 홈에 GM 대시보드가 보여요 (표시용 · 나중에 창민만 남기면 됨) */
 const GM_NAMES = ["창민", "민지"];
+/* 🚫 비활성화(잠금)된 계정 — 어디에도 안 보임 */
+const DISABLED_ACCOUNTS = ["주빈", "민우"];
+/* ✏️ 이름 표시 치환 (송현 → 성현) */
+const NAME_ALIAS = { "송현": "성현" };
+const normName = (n) => (n && NAME_ALIAS[n]) || n;
+const isDisabledName = (n) => DISABLED_ACCOUNTS.includes(n) || DISABLED_ACCOUNTS.includes(normName(n));
+/* 🔑 권한 코드 (여기서 값만 바꾸면 됨) · 숙련자=디스코드 로그인 / 초보자=이름 바로 입력 */
+const EXPERT_CODE = "숙련코드1234";
+const NOVICE_CODE = "초보코드1234";
 const HQ_CATS_DEFAULT = [
   { id: "core", name: "코어 앱", icon: "🟦", color: "#3b82f6" },
   { id: "comm", name: "제품 (이커머스)", icon: "🟧", color: "#f97316" },
@@ -11365,7 +11374,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
           const list = hqQuests.filter((q) => qcat === "all" || q.cat === qcat);
           const catInfo = (id) => HQ_CATS.find((c) => c.id === id) || { name: "", color: "#888", icon: "" };
           const avgPct = avgOf;   // 완료 미션 비율 (avgOf 재사용)
-          const acctNames = Array.from(new Set([myName, ...(people || []).map((p) => p && p.name)].filter(Boolean)));
+          const acctNames = Array.from(new Set([normName(myName), ...(people || []).map((p) => p && normName(p.name))].filter(Boolean))).filter((n) => !isDisabledName(n));
           return (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
@@ -13278,6 +13287,15 @@ function EchoTown() {
   const [qcDeclineOpen, setQcDeclineOpen] = useState(false);
   const [qcDeclineWhy, setQcDeclineWhy] = useState("");
   const [nameOpen, setNameOpen] = useState(() => !loadJSON("echotown_myname", ""));
+  const [gateRole, setGateRole] = useState(() => loadJSON("echotown_role", "") || "");   // "" | expert | novice
+  const [expertCodeIn, setExpertCodeIn] = useState("");
+  const [noviceCodeIn, setNoviceCodeIn] = useState("");
+  const [gateErr, setGateErr] = useState("");
+  const submitGate = () => {
+    if (expertCodeIn.trim() && expertCodeIn.trim() === EXPERT_CODE) { setGateRole("expert"); saveJSON("echotown_role", "expert"); setGateErr(""); return; }
+    if (noviceCodeIn.trim() && noviceCodeIn.trim() === NOVICE_CODE) { setGateRole("novice"); saveJSON("echotown_role", "novice"); setGateErr(""); return; }
+    setGateErr("코드가 올바르지 않아요. 알맞은 칸에 알맞은 코드를 넣어주세요.");
+  };
   const [discord, setDiscord] = useState(null);          // 로그인한 디스코드 사용자
   const [discordBusy, setDiscordBusy] = useState(false);
   /* 디스코드에서 돌아왔는지 확인 — 돌아왔으면 이름칸을 닉네임으로 채워줘요 */
@@ -13349,8 +13367,9 @@ function EchoTown() {
   };
   const confirmName = async (nm, opts = {}) => {
     const t = (nm || "").trim(); if (!t) return;
+    if (isDisabledName(t)) { setNameErr("비활성화된(잠긴) 계정이에요."); return; }
     // 🔗 디스코드 필수 · 매칭표 검사 (자동 시작 fromDiscord 는 이미 검증된 것이라 건너뜀)
-    if (!opts.fromDiscord) {
+    if (!opts.fromDiscord && !opts.novice) {
       if (!discord || !discord.id) { setNameErr("먼저 디스코드로 로그인해주세요."); return; }
       setNameChecking(true); setNameErr("");
       const map = await dbNameMap();
@@ -14731,7 +14750,7 @@ function EchoTown() {
   const people = useMemo(() => {
     const online = Object.values(netOthers).map((o) => o.name).filter(Boolean);
     const bad = /[ㄱ-ㅎㅏ-ㅣ]/;
-    const names = Array.from(new Set([...(myName ? [myName] : []), ...online, ...dbPlayers])).filter((n) => n && !bad.test(n));
+    const names = Array.from(new Set([...(myName ? [myName] : []), ...online, ...dbPlayers].map(normName))).filter((n) => n && !bad.test(n) && !isDisabledName(n));
     return names.map((n, i) => ({
       avatar: AVATARS[(n.charCodeAt(0) + n.length) % AVATARS.length],
       name: n,
@@ -15110,7 +15129,27 @@ function EchoTown() {
             <Panel style={{ padding: 18 }}>
               <div style={{ textAlign: "center", fontSize: 34 }}>🌱</div>
               <div style={{ textAlign: "center", fontFamily: "'Press Start 2P', monospace", fontSize: 12, margin: "8px 0" }}>ECHO WORLD</div>
-              {!discord ? (
+              {!gateRole ? (
+                <>
+                  <div style={{ fontSize: 13, textAlign: "center", marginBottom: 12, lineHeight: 1.7 }}>권한 코드를 입력해주세요</div>
+                  <div style={{ fontSize: 11.5, fontWeight: "bold", marginBottom: 4 }}>👷 숙련자(직원) 코드</div>
+                  <input value={expertCodeIn} onChange={(e) => { setExpertCodeIn(e.target.value); setGateErr(""); }} placeholder="숙련자 코드" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white, marginBottom: 10 }} />
+                  <div style={{ fontSize: 11.5, fontWeight: "bold", marginBottom: 4 }}>🌱 초보자(알바) 코드</div>
+                  <input value={noviceCodeIn} onChange={(e) => { setNoviceCodeIn(e.target.value); setGateErr(""); }} onKeyDown={(e) => { if (e.key === "Enter") submitGate(); }} placeholder="초보자 코드" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white, marginBottom: 8 }} />
+                  {gateErr && <div style={{ fontSize: 11, color: C.danger, marginBottom: 8, textAlign: "center", fontWeight: "bold" }}>⚠️ {gateErr}</div>}
+                  <PxButton tone="gold" onClick={submitGate} style={{ width: "100%", padding: 12, fontSize: 14 }}>입력</PxButton>
+                  <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 10, textAlign: "center", lineHeight: 1.7 }}>숙련자 코드 → 디스코드 로그인<br />초보자 코드 → 이름만 입력해서 시작</div>
+                </>
+              ) : gateRole === "novice" ? (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: "bold", color: "#4b8f5f", textAlign: "center", marginBottom: 6 }}>🌱 초보자(알바)로 시작</div>
+                  <div style={{ fontSize: 13, textAlign: "center", marginBottom: 8 }}>마을에서 사용할 이름을 정해주세요!</div>
+                  <input value={nameInput} onChange={(e) => { setNameInput(e.target.value); setNameErr(""); }} onKeyDown={(e) => { if (e.key === "Enter") confirmName(nameInput, { novice: true }); }} maxLength={8} autoFocus placeholder="예: 정인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${nameErr ? C.danger : C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 15, background: C.white, textAlign: "center" }} />
+                  {nameErr && <div style={{ fontSize: 11, color: C.danger, marginTop: 6, textAlign: "center", fontWeight: "bold" }}>⚠️ {nameErr}</div>}
+                  <PxButton tone="good" onClick={() => confirmName(nameInput, { novice: true })} style={{ width: "100%", padding: 12, fontSize: 14, marginTop: 10 }}>시작하기 🌱</PxButton>
+                  <button type="button" onClick={() => { setGateRole(""); saveJSON("echotown_role", ""); setNameErr(""); }} style={{ width: "100%", cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, color: C.inkSoft, background: "none", border: "none", marginTop: 10 }}>← 코드 다시 입력</button>
+                </>
+              ) : !discord ? (
                 <>
                   <div style={{ fontSize: 13, textAlign: "center", marginBottom: 12, lineHeight: 1.7 }}>디스코드로 로그인해서 시작해요</div>
                   <button type="button" disabled={discordBusy}
@@ -15120,6 +15159,7 @@ function EchoTown() {
                     <span style={{ fontSize: 18 }}>🎮</span> {discordBusy ? "디스코드로 이동 중…" : "디스코드로 로그인"}
                   </button>
                   <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 10, textAlign: "center", lineHeight: 1.7 }}>디스코드 계정으로 안전하게 시작해요<br />처음 한 번만 마을 이름을 정하면 돼요</div>
+                  <button type="button" onClick={() => { setGateRole(""); saveJSON("echotown_role", ""); }} style={{ width: "100%", cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, color: C.inkSoft, background: "none", border: "none", marginTop: 10 }}>← 코드 다시 입력</button>
                 </>
               ) : (
                 <>
