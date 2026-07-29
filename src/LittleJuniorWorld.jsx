@@ -125,17 +125,17 @@ const RENT_HOUSES = [
 ];
 
 const ANNOUNCEMENTS = [
-  { id: "a1", type: "이벤트", title: "에코타운 사전예약자 공지", date: "2026-07-10", body: "에코타운 사전예약에 참여해주신 모든 분들께 감사드립니다! 사전예약자에게는 오픈 첫날 스타 젬 100개와 한정 스킨이 지급됩니다. 입주 일정과 웰컴 혜택은 순차적으로 안내드릴 예정이니 조금만 기다려주세요 🌱" },
+  { id: "a1", type: "이벤트", title: "에코월드 사전예약자 공지", date: "2026-07-10", body: "에코월드 사전예약에 참여해주신 모든 분들께 감사드립니다! 사전예약자에게는 오픈 첫날 스타 젬 100개와 한정 스킨이 지급됩니다. 입주 일정과 웰컴 혜택은 순차적으로 안내드릴 예정이니 조금만 기다려주세요 🌱" },
   { id: "a2", type: "이벤트", title: "치앙마이 한 달 살기 신청", date: "2026-07-12", body: "강 건너 치앙마이 하우스 렌트 신청을 받습니다. 렌트비는 스타 젬으로 결제되며, 리버뷰 동은 조기 마감될 수 있습니다." },
   { id: "a3", type: "공지", title: "감사의 방 리뉴얼", date: "2026-07-18", body: "감사의 방 선반에 신규 상품(향초, 꽃다발)이 입고되었습니다. 감사 칠판에 포스트잇도 자유롭게 붙여주세요." },
-  { id: "a4", type: "공지", title: "에코타운 입주준비중", date: "2026-07-20", body: "현재 에코타운은 막바지 입주 준비 중입니다. 마을 곳곳의 건물과 편의시설을 정비하고 있어요. 더 편안하고 즐거운 마을에서 만나뵐 수 있도록 열심히 꾸미는 중이니, 곧 활짝 열릴 에코타운을 기대해주세요! 🏡✨" },
+  { id: "a4", type: "공지", title: "에코월드 입주준비중", date: "2026-07-20", body: "현재 에코월드은 막바지 입주 준비 중입니다. 마을 곳곳의 건물과 편의시설을 정비하고 있어요. 더 편안하고 즐거운 마을에서 만나뵐 수 있도록 열심히 꾸미는 중이니, 곧 활짝 열릴 에코월드을 기대해주세요! 🏡✨" },
   { id: "a5", type: "공지", title: "월말 결산 & 정산 안내", date: "2026-07-28", body: "7월 31일 월말 결산이 있습니다. 중앙은행에서 보유 젬을 확인하고 정산(환전)을 진행해 주세요." },
 ];
 
 const CAL_EVENTS = {
   "2026-07-10": ["10:00 전체 회의"],
   "2026-07-15": ["14:00 이날은뭐였지?"],
-  "2026-07-22": ["11:00 에코타운 구경해보세요"],
+  "2026-07-22": ["11:00 에코월드 구경해보세요"],
   "2026-07-31": ["7시 롯데호텔 라세느"],
 };
 
@@ -2266,7 +2266,7 @@ function BigMap({ pos, onClose, onGo }) {
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 700 }}>
         <Panel style={{ padding: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11 }}>🗺 에코타운 전체 지도</div>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11 }}>🗺 에코월드 전체 지도</div>
             <PxButton tone="ink" onClick={onClose} style={{ fontSize: 11, padding: "5px 9px" }}>✕</PxButton>
           </div>
           <div style={{ position: "relative", width: "100%", paddingBottom: `${(WORLD.h / WORLD.w) * 100}%`, background: "#cfe3c0", border: `3px solid ${C.ink}`, overflow: "hidden" }}>
@@ -3469,7 +3469,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
             const nx = toCM ? RIVER_X + RIVER_W + 70 : RIVER_X - 70;   // 강 건너편 육지로
             posRef.current = { x: nx, y: 745 };
             setPos({ x: nx, y: 745 });
-            setTeleport(toCM ? "치앙마이" : "에코타운");
+            setTeleport(toCM ? "치앙마이" : "에코월드");
             setTimeout(() => setTeleport(null), 1600);
           }}
           onClose={() => setGuardOpen(false)} />}
@@ -5249,7 +5249,7 @@ const LIAR_TOPICS = {
   "직장": ["회의", "연차", "월급", "출근", "야근", "회식", "점심시간", "퇴사", "결재", "카톡 답장"],
   "장소": ["수영장", "헬스장", "공항", "도서관", "편의점", "놀이공원", "카페", "지하철", "찜질방", "노래방"],
   "취미": ["넷플릭스", "등산", "캠핑", "게임", "독서", "여행", "사진", "낚시", "홈트", "덕질"],
-  "에코타운": ["스타 젬", "치앙마이", "쩝쩝박사", "주민센터", "무신사", "샌드백", "점심술사", "보스맵", "흡연의 방", "네이버스쿨"],
+  "에코월드": ["스타 젬", "치앙마이", "쩝쩝박사", "주민센터", "무신사", "샌드백", "점심술사", "보스맵", "흡연의 방", "네이버스쿨"],
 };
 const LIAR_LINES = [
   "음... 저는 꽤 자주 접하는 편이에요.", "생각보다 호불호가 갈리죠.", "저는 좋아하는데 사람마다 다르더라고요.",
@@ -5998,7 +5998,7 @@ function SwimRace({ onClose, onReward, scores, onRecord, myName = "" }) {
 function SwimContest({ onClose }) {
   const list = [
     { date: "8/3 (일) 15:00", title: "자유형 50m 오픈전", note: "누구나 참가 가능 · 우승 🪙50" },
-    { date: "8/10 (일) 15:00", title: "에코타운 수영 챔피언십", note: "예선 통과자 본선 진출" },
+    { date: "8/10 (일) 15:00", title: "에코월드 수영 챔피언십", note: "예선 통과자 본선 진출" },
     { date: "8/17 (일) 15:00", title: "릴레이 단체전", note: "4인 1팀 · 팀 우승 🪙100" },
   ];
   return (
@@ -8639,7 +8639,7 @@ const UPDATE_NOTES = [
   { id: "u20260723n", type: "업데이트", date: "2026-07-23", title: "🏆 퀘스트 완료의 제단 오픈",
     body: "· 주민센터 남쪽에 신비로운 상징물 「퀘스트 완료의 제단」이 세워졌어요\n· 안에서 [퀘스트 신청 파편] · [퀘스트 수락 파편] 을 봉헌할 수 있어요\n· 항목마다 🛡 GM 검수 완료 / ⭐ 보상 완료 체크 가능\n· 둘 다 체크되면 ✦ 봉인 완료로 바뀌고 상단 봉인도 게이지가 올라가요\n· 신청/수락/미완/완료 필터와 검색 지원" },
   { id: "u20260723m", type: "업데이트", date: "2026-07-23", title: "🧭 우측 하단 버튼 4개로 정리 · ✉️ 메세지함 신설",
-    body: "· 세로로 쌓여 잘리던 버튼들을 가로 4개 아이콘으로 정리했어요\n· ☰ 메뉴 : 마을주민들 · 피드백 보내기\n· 🧑 내 프로필 : 프로필 · 인벤토리 · 뱃지\n· 📖 안내책자 : 에코타운 사용설명서 · 코어사전\n· ✉️ 메세지 : 공지 · 초대장 · 선물/우편 · 메세지/DM · 부재중 통화\n· 안 읽은 항목이 있으면 빨간 숫자로 표시돼요\n· 📨 회의실 초대장 버튼을 회의실 안 큰 배너로 옮겨 잘 보이게 했어요" },
+    body: "· 세로로 쌓여 잘리던 버튼들을 가로 4개 아이콘으로 정리했어요\n· ☰ 메뉴 : 마을주민들 · 피드백 보내기\n· 🧑 내 프로필 : 프로필 · 인벤토리 · 뱃지\n· 📖 안내책자 : 에코월드 사용설명서 · 코어사전\n· ✉️ 메세지 : 공지 · 초대장 · 선물/우편 · 메세지/DM · 부재중 통화\n· 안 읽은 항목이 있으면 빨간 숫자로 표시돼요\n· 📨 회의실 초대장 버튼을 회의실 안 큰 배너로 옮겨 잘 보이게 했어요" },
   { id: "u20260723l", type: "업데이트", date: "2026-07-23", title: "📖 코어사전 오픈 · ⏳ 퀘스트 제한시간",
     body: "· 주민센터 근처에 📖 코어사전이 생겼어요\n· 누구나 우리만의 단어와 뜻을 등록·수정·삭제할 수 있어요 (나무위키처럼)\n· 단어 검색과 최근 수정자 표시 지원\n· 퀘스트 추가 시 ⏳ 제한시간(마감 일시)을 정할 수 있어요 — 실시간 카운트다운 표시\n· 하드모드(광장)에서는 스테이지 선택 없이 바로 광장에 퀘스트가 추가돼요" },
   { id: "u20260723k", type: "업데이트", date: "2026-07-23", title: "🔧 편의 개선 모음",
@@ -9145,11 +9145,11 @@ function ChatDock({ messages, shout, onToggleShout, onSend, gems = 0 }) {
 
 /* ======================= 뱃지 ======================= */
 const BADGES = [
-  { id: "v1", cat: "방문", stat: "visit", need: 1, icon: "🌱", name: "웰컴", desc: "에코타운에 처음 방문했어요" },
+  { id: "v1", cat: "방문", stat: "visit", need: 1, icon: "🌱", name: "웰컴", desc: "에코월드에 처음 방문했어요" },
   { id: "v2", cat: "방문", stat: "visit", need: 5, icon: "🚪", name: "시작이 좋아", desc: "5일 방문" },
   { id: "v3", cat: "방문", stat: "visit", need: 10, icon: "📅", name: "꾸준함이 곧 답", desc: "10일 방문" },
   { id: "v4", cat: "방문", stat: "visit", need: 30, icon: "🛋", name: "하루쯤은 쉬어도 좋아", desc: "30일 방문" },
-  { id: "v5", cat: "방문", stat: "visit", need: 100, icon: "🏅", name: "에코타운 터줏대감", desc: "100일 방문" },
+  { id: "v5", cat: "방문", stat: "visit", need: 100, icon: "🏅", name: "에코월드 터줏대감", desc: "100일 방문" },
 
   { id: "c1", cat: "소통", stat: "chat", need: 1, icon: "💬", name: "첫 인사", desc: "채팅 1회" },
   { id: "c2", cat: "소통", stat: "chat", need: 10, icon: "🗣", name: "수다쟁이", desc: "채팅 10회" },
@@ -9291,7 +9291,7 @@ function HelpBody({ onGo }) {
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
             <span style={{ fontSize: 22 }}>📖</span>
-            <b style={{ flex: 1, fontSize: 15 }}>에코타운 사용설명서</b>
+            <b style={{ flex: 1, fontSize: 15 }}>에코월드 사용설명서</b>
           </div>
           <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
             {HELP_CATS.map((c) => (
@@ -9768,7 +9768,7 @@ function MyPanel({ onClose, myName, gems, gold = 0, lifetime, hp, mp, level = 1,
   const badgeCount = BADGES.filter((b) => (stats[b.stat] || 0) >= b.need).length;
   const invCount = Object.keys(ownedClothes).length + Object.keys(ikeaOwned).length + thanksInv.length;
   const me = {
-    avatar: prof.avatar || "🧑‍💻", name: myName || "나 (플레이어)", job: (prof.job || "에코타운 주민") + ` · Lv.${level}`,
+    avatar: prof.avatar || "🧑‍💻", name: myName || "나 (플레이어)", job: (prof.job || "에코월드 주민") + ` · Lv.${level}`,
     stats: { 체력: Math.round(hp), 마나: Math.round(mp), 집중: Math.min(99, 50 + (stats.quest || 0) * 3), 친화: Math.min(99, 50 + (stats.chat || 0)) },
     equipment: [outfit.top ? `👕 ${outfit.top.name}` : "👕 기본 상의", outfit.bottom ? `👖 ${outfit.bottom.name}` : "👖 기본 하의", outfit.shoes ? `👟 ${outfit.shoes.name}` : "👟 기본 신발", vehicle ? `${vehicle.emoji} ${vehicle.name}` : "🚶 도보"],
     achievements: BADGES.filter((b) => (stats[b.stat] || 0) >= b.need).slice(-6).map((b) => `${b.icon} ${b.name}`).concat(badgeCount === 0 ? ["아직 뱃지가 없어요"] : []),
@@ -9928,7 +9928,7 @@ function GuideSheet({ onClose, onGo }) {
             <div style={{ textAlign: "center", fontSize: 40 }}>📚</div>
             <div style={{ textAlign: "center", fontSize: 15, fontWeight: "bold", margin: "8px 0 6px" }}>코어사전</div>
             <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.8 }}>
-              에코타운에서 쓰는 우리만의 단어를 모아둔 사전이에요.<br />
+              에코월드에서 쓰는 우리만의 단어를 모아둔 사전이에요.<br />
               · 누구나 단어를 <b>등록 · 수정 · 삭제</b>할 수 있어요 (나무위키처럼)<br />
               · 🖼 <b>갤러리</b> 탭에서 사진을 올리고 한 줄 설명을 달 수 있어요<br />
               · 단어 검색과 최근 수정자가 표시돼요<br />
@@ -10387,6 +10387,7 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, marginBottom: 4 }}>
                   <input type="checkbox" checked={t.done} disabled={!pSelf} onChange={() => pSelf && setTodos((v) => v.map((x, j) => (j === i ? { ...x, done: !x.done } : x)))} style={{ flexShrink: 0 }} />
                   <span style={{ flex: 1, minWidth: 0, textDecoration: t.done ? "line-through" : "none", color: t.done ? C.inkSoft : C.ink, wordBreak: "break-word" }}>{t.t}</span>
+                  {pSelf && <button type="button" onClick={() => { const nt = window.prompt("할 일 수정", t.t); if (nt !== null && nt.trim()) setTodos((v) => v.map((x, j) => j === i ? { ...x, t: nt.trim() } : x)); }} title="수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 10, color: C.inkSoft }}>✏️</button>}
                   {pSelf && <button type="button" onClick={() => { if (window.confirm("정말로 삭제하시겠습니까?")) setTodos((v) => v.filter((_, j) => j !== i)); }} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.inkSoft }}>✕</button>}
                 </div>
               ))}
@@ -10419,10 +10420,11 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
             <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
               {neck.map((n, i) => (
                 <div key={i} style={{ display: "flex", gap: 4, alignItems: "stretch" }}>
-                  <div style={{ flex: 1, minWidth: 0, maxHeight: 46, overflowY: "auto", background: n.done ? "#d7ecdc" : C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "4px 5px", fontSize: 9.5, lineHeight: 1.35, wordBreak: "break-word", textDecoration: n.done ? "line-through" : "none", color: n.done ? C.inkSoft : C.ink }}>{n.point || "(병목)"}</div>
+                  <div style={{ flex: 1, minWidth: 0, maxHeight: 46, overflowY: "auto", background: n.done ? "#d7ecdc" : C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "4px 5px", fontSize: 9.5, lineHeight: 1.35, wordBreak: "break-word", textDecoration: n.done ? "line-through" : "none", color: n.done ? C.inkSoft : C.ink }}>{n.locked ? "🔒 " : ""}{n.point || "(병목)"}</div>
                   <div style={{ flex: 1, minWidth: 0, maxHeight: 46, overflowY: "auto", background: n.done ? "#d7ecdc" : C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "4px 5px", fontSize: 9.5, lineHeight: 1.35, wordBreak: "break-word", color: C.inkSoft }}>{n.action || "-"}</div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, flexShrink: 0 }}>
                     <span style={{ fontSize: 8, color: C.inkSoft }}>{n.at}</span>
+                    <button type="button" title={n.locked ? "비공개 · 눌러서 공개" : "공개 · 눌러서 비공개"} onClick={() => setNeck((v) => v.map((x, j) => j === i ? { ...x, locked: !x.locked } : x))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, padding: 0 }}>{n.locked ? "🔒" : "🔓"}</button>
                     <input type="checkbox" checked={!!n.done} onChange={() => setNeck((v) => v.map((x, j) => j === i ? { ...x, done: !x.done } : x))} />
                     <button type="button" onClick={() => { if (window.confirm("정말로 삭제하시겠습니까?")) setNeck((v) => v.filter((_, j) => j !== i)); }} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 9, color: C.inkSoft, padding: 0 }}>✕</button>
                   </div>
@@ -10493,7 +10495,7 @@ const HQ_QUESTS_INIT = [
 const HQ_ROADMAP = {
   core: [{ name: "프리런칭 — Core Hunt", pct: 32, cur: true }, { name: "정식 런칭 & 온보딩", pct: 0 }, { name: "개강 시즌 확장 (희기·희양)", pct: 0 }, { name: "새 챕터", pct: 0 }],
   comm: [{ name: "상세페이지 리뉴얼", pct: 40, cur: true }, { name: "신제품 출시", pct: 10 }, { name: "시즌 프로모션", pct: 0 }],
-  game: [{ name: "에코타운 베타", pct: 48, cur: true }, { name: "정식 오픈", pct: 0 }],
+  game: [{ name: "에코월드 베타", pct: 48, cur: true }, { name: "정식 오픈", pct: 0 }],
   guild: [{ name: "HQ 시스템 구축", pct: 0, cur: true }, { name: "보상 경제 설계", pct: 0 }],
 };
 
@@ -10581,6 +10583,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   /* 보고 있는 프로필의 미션/할일 (나=내 상태, 남=서버 로드본) */
   const viewDone = mpSelf ? mpDone : ((mpOther && mpOther.mission) || {});
   const viewTodos = mpSelf ? mpTodos : ((mpOther && mpOther.todos) || []);
+  const viewNeck = mpSelf ? mpNeck : ((mpOther && mpOther.neck) || []).filter((n) => !n.locked);
   const blankQuest = () => ({ id: "q" + Date.now(), cat: "core", title: "", star: 2, gold: 0, gem: 0, chapter: "", due: "", subs: [] });
   const commitQuest = (q) => {
     const clean = { ...q, star: Number(q.star) || 1, gold: Number(q.gold) || 0, gem: Number(q.gem) || 0, editedBy: myName || "익명", editedAt: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
@@ -10597,6 +10600,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const toggleSubDone = (qid, idx) => {
     onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: q.subs.map((sb, i) => i === idx ? { ...sb, done: !sbDone(sb) } : sb), ...editStamp() } : q));
   };
+  const addSubTo = (qid) => { const t = (window.prompt("추가할 미션을 입력하세요") || "").trim(); if (!t) return; onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: [...(q.subs || []), { t, who: "미지정", done: false, active: false }], ...editStamp() } : q)); };
   const setSubWho = (qid, idx, who) => {
     onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: q.subs.map((sb, i) => i === idx ? { ...sb, who } : sb), ...editStamp() } : q));
   };
@@ -10913,6 +10917,8 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                         <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
                           <span style={{ fontSize: 26, fontWeight: "bold", color: avgPct(q) >= 100 ? C.good : ci.color, lineHeight: 1 }}>{avgPct(q)}%</span>
                           <span style={{ fontSize: 10.5, color: C.inkSoft }}>{(q.subs || []).filter(sbDone).length}/{(q.subs || []).length} 미션 완료</span>
+                          <span style={{ flex: 1 }} />
+                          <button type="button" onClick={(e) => { e.stopPropagation(); addSubTo(q.id); }} title="미션 바로 추가" style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", alignSelf: "center", fontSize: 15, fontWeight: "bold", lineHeight: 1, width: 26, height: 26, borderRadius: "50%", border: `2px solid ${C.ink}`, background: C.white, color: C.ink, flexShrink: 0 }}>＋</button>
                         </div>
                         <div style={{ height: 10, borderRadius: 6, background: "#eadfc6", overflow: "hidden", marginTop: 6 }}>
                           <div style={{ width: avgPct(q) + "%", height: "100%", background: avgPct(q) >= 100 ? C.good : ci.color, transition: "width .2s" }} />
@@ -11358,22 +11364,24 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                     <div><div style={{ fontSize: 19, fontWeight: "bold" }}>{viewDoneN}</div><div style={{ color: C.inkSoft }}>미션</div></div>
                   </div>
                 </div>
-                {/* 🏷 해시태그 (누구나 달 수 있어요) */}
+                {/* 🏷 해시태그 (남들이 달아줘요 · 내 것엔 내가 못 달아요) */}
                 <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.parchEdge}` }}>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginBottom: 8 }}>
-                    {(mpTags || []).length === 0 && <span style={{ fontSize: 11, color: C.inkSoft }}>아직 해시태그가 없어요</span>}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginBottom: mpSelf ? 0 : 8 }}>
+                    {(mpTags || []).length === 0 && <span style={{ fontSize: 11, color: C.inkSoft }}>{mpSelf ? "아직 받은 해시태그가 없어요 (남들이 달아줘요)" : "아직 해시태그가 없어요"}</span>}
                     {(mpTags || []).map((t) => (
                       <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: "bold", color: "#4b3fb0", background: "#ece9fb", border: "2px solid #cfc7f2", borderRadius: 14, padding: "3px 9px" }}>
-                        #{t}<button type="button" onClick={() => mpDelTag(t)} title="지우기" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 10, color: C.inkSoft, padding: 0 }}>✕</button>
+                        #{t}{!mpSelf && <button type="button" onClick={() => mpDelTag(t)} title="지우기" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 10, color: C.inkSoft, padding: 0 }}>✕</button>}
                       </span>
                     ))}
                   </div>
+                  {!mpSelf && (
                   <div style={{ display: "flex", gap: 6 }}>
                     <input value={mpTagIn} onChange={(e) => setMpTagIn(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") mpAddTag(); }}
-                      placeholder={mpSelf ? "내 프로필에 해시태그 추가" : `${mpView}님에게 해시태그 달기`} maxLength={20}
+                      placeholder={`${mpView}님에게 해시태그 달기`} maxLength={20}
                       style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
                     <PxButton tone="wood" disabled={!mpTagIn.trim()} onClick={mpAddTag} style={{ fontSize: 11, padding: "8px 12px" }}>＋ 태그</PxButton>
                   </div>
+                  )}
                 </div>
               </div>
 
@@ -11415,6 +11423,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, marginBottom: 6 }}>
                         <input type="checkbox" checked={t.done} disabled={!mpSelf} onChange={() => mpSelf && setMpTodos((v) => v.map((x, j) => (j === i ? { ...x, done: !x.done } : x)))} style={{ flexShrink: 0 }} />
                         <span style={{ flex: 1, minWidth: 0, textDecoration: t.done ? "line-through" : "none", color: t.done ? C.inkSoft : C.ink, wordBreak: "break-word" }}>{t.t}</span>
+                        {mpSelf && <button type="button" onClick={() => { const nt = window.prompt("할 일 수정", t.t); if (nt !== null && nt.trim()) setMpTodos((v) => v.map((x, j) => j === i ? { ...x, t: nt.trim() } : x)); }} title="수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 12, color: C.inkSoft }}>✏️</button>}
                         {mpSelf && <button type="button" onClick={() => { if (window.confirm("정말로 삭제하시겠습니까?")) setMpTodos((v) => v.filter((_, j) => j !== i)); }} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: C.inkSoft }}>✕</button>}
                       </div>
                     ))}
@@ -11429,37 +11438,41 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 )}
               </div>
 
-              {mpSelf && (<>
-              {/* 🗄️ 내 서랍 (칠판 메모) */}
+              {mpSelf && (
               <div style={{ marginBottom: 12 }}>
                 <DrawerBoard big notes={mpNotes} onAdd={(t) => setMpNotes((v) => [{ t, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v])} onDelete={(i) => setMpNotes((v) => v.filter((_, j) => j !== i))} />
               </div>
+              )}
 
-              {/* 🚧 병목지점 일기 */}
+              {/* 🚧 병목지점 일기 (남에게도 보여요 · 🔒 자물쇠로 개별 비공개) */}
               <div style={card}>
-                {hd("🚧", "병목지점 일기")}
+                {hd("🚧", mpSelf ? "병목지점 일기" : `${mpView}님의 병목지점 일기`)}
+                {mpSelf && (<>
                 <input value={mpNkPoint} onChange={(e) => setMpNkPoint(e.target.value)} placeholder="병목지점 (어디서 막혔나요?)"
                   style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, marginBottom: 6 }} />
                 <input value={mpNkAction} onChange={(e) => setMpNkAction(e.target.value)} placeholder="액션 (어떻게 뚫을까요?)"
                   style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5 }} />
-                <PxButton tone="ink" onClick={() => { if (mpNkPoint.trim() || mpNkAction.trim()) { setMpNeck((v) => [{ point: mpNkPoint.trim(), action: mpNkAction.trim(), done: false, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v]); setMpNkPoint(""); setMpNkAction(""); } }} style={{ width: "100%", fontSize: 12.5, padding: 9, marginTop: 8 }}>＋ 추가</PxButton>
-                {mpNeck.length > 0 && (
-                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-                    {mpNeck.map((n, i) => (
+                <PxButton tone="ink" onClick={() => { if (mpNkPoint.trim() || mpNkAction.trim()) { setMpNeck((v) => [{ point: mpNkPoint.trim(), action: mpNkAction.trim(), done: false, locked: false, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v]); setMpNkPoint(""); setMpNkAction(""); } }} style={{ width: "100%", fontSize: 12.5, padding: 9, marginTop: 8 }}>＋ 추가</PxButton>
+                </>)}
+                {viewNeck.length > 0 ? (
+                  <div style={{ marginTop: mpSelf ? 10 : 2, display: "flex", flexDirection: "column", gap: 8 }}>
+                    {viewNeck.map((n, i) => (
                       <div key={i} style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
-                        <div style={{ flex: 1, minWidth: 0, maxHeight: 60, overflowY: "auto", background: n.done ? "#d7ecdc" : C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "7px 9px", fontSize: 12, lineHeight: 1.4, wordBreak: "break-word", textDecoration: n.done ? "line-through" : "none", color: n.done ? C.inkSoft : C.ink }}>{n.point || "(병목)"}</div>
+                        <div style={{ flex: 1, minWidth: 0, maxHeight: 60, overflowY: "auto", background: n.done ? "#d7ecdc" : C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "7px 9px", fontSize: 12, lineHeight: 1.4, wordBreak: "break-word", textDecoration: n.done ? "line-through" : "none", color: n.done ? C.inkSoft : C.ink }}>{n.locked && mpSelf ? "🔒 " : ""}{n.point || "(병목)"}</div>
                         <div style={{ flex: 1, minWidth: 0, maxHeight: 60, overflowY: "auto", background: n.done ? "#d7ecdc" : C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "7px 9px", fontSize: 12, lineHeight: 1.4, wordBreak: "break-word", color: C.inkSoft }}>{n.action || "-"}</div>
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, flexShrink: 0 }}>
                           <span style={{ fontSize: 9.5, color: C.inkSoft }}>{n.at}</span>
+                          {mpSelf && (<>
+                          <button type="button" title={n.locked ? "비공개 (나만 보임) · 눌러서 공개" : "공개 · 눌러서 비공개"} onClick={() => setMpNeck((v) => v.map((x, j) => j === i ? { ...x, locked: !x.locked } : x))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, padding: 0 }}>{n.locked ? "🔒" : "🔓"}</button>
                           <input type="checkbox" checked={!!n.done} onChange={() => setMpNeck((v) => v.map((x, j) => j === i ? { ...x, done: !x.done } : x))} />
                           <button type="button" onClick={() => { if (window.confirm("정말로 삭제하시겠습니까?")) setMpNeck((v) => v.filter((_, j) => j !== i)); }} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.inkSoft, padding: 0 }}>✕</button>
+                          </>)}
                         </div>
                       </div>
                     ))}
                   </div>
-                )}
+                ) : (!mpSelf && <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 4 }}>공개된 병목지점이 없어요.</div>)}
               </div>
-              </>)}
             </div>
           );
         })()}
@@ -12705,7 +12718,16 @@ function EchoTown() {
     // ② 서버는 한 번만 조회 (더 최신이면 덮어쓰고, 처음이면 쿠폰 지급)
     dbLoadProfile(t).then((d) => {
       const serverNewer = d && (!local || (d.savedAt || 0) >= (local.savedAt || 0));
-      if (serverNewer) applySave(d);
+      const base = serverNewer ? d : local;
+      const other = serverNewer ? local : d;
+      if (base) applySave(base);
+      // 💰 재화 보호: 최신본이 비어있거나 더 적은데 다른 저장본에 값이 남아있으면 큰 쪽을 살려요
+      //    (한쪽 저장이 0으로 꼬여도 골드·젬이 통째로 날아가지 않게)
+      if (base && other) {
+        const pick = (k) => Math.max(Number(base[k]) || 0, Number(other[k]) || 0);
+        setGems(pick("gems")); setGold(pick("gold")); setLifetime(pick("lifetime"));
+        setExp((e) => Math.max(e, pick("exp")));
+      }
       if (d || local) showNotice(`💾 ${t}님의 저장 데이터를 불러왔어요`);
       dbLoadMail(t).then((ms) => { if (ms && ms.length) setMail(ms); });
       if (!d && !local && !couponDone) {
@@ -12715,6 +12737,7 @@ function EchoTown() {
         // 쿠폰은 받자마자 바로 저장 (디바운스를 기다리지 않아요)
         setTimeout(() => flushSaveRef.current && flushSaveRef.current(t), 80);
       }
+      hydratedRef.current = true;   // ✅ 로드 완료 — 이제부터 자동저장 허용 (로드 전 0 덮어쓰기 방지)
     });
   };
   /* 자동 로그인은 하지 않아요. 디스코드 세션이 있으면 위 useEffect 가 매칭표로 이름을 찾아 시작합니다. */
@@ -13134,7 +13157,7 @@ function EchoTown() {
   const [hqQuests, setHqQuests] = useState(() => loadJSON("echotown_hq_v1", null) || HQ_QUESTS_INIT);
   const hqQRef = useRef([]); hqQRef.current = hqQuests;
   /* 🗺 로드맵 챕터 (카테고리별 이름 목록만 저장 · 진행률은 퀘스트에서 자동계산) */
-  const HQ_ROAD_INIT = { core: [{ id: "r1", name: "프리런칭 — Core Hunt" }, { id: "r2", name: "정식 런칭 & 온보딩" }], comm: [{ id: "r3", name: "상세페이지 리뉴얼" }, { id: "r4", name: "신제품 출시" }], game: [{ id: "r5", name: "에코타운 베타" }], guild: [{ id: "r6", name: "HQ 시스템 구축" }] };
+  const HQ_ROAD_INIT = { core: [{ id: "r1", name: "프리런칭 — Core Hunt" }, { id: "r2", name: "정식 런칭 & 온보딩" }], comm: [{ id: "r3", name: "상세페이지 리뉴얼" }, { id: "r4", name: "신제품 출시" }], game: [{ id: "r5", name: "에코월드 베타" }], guild: [{ id: "r6", name: "HQ 시스템 구축" }] };
   const [hqRoad, setHqRoad] = useState(() => loadJSON("echotown_hqroad_v1", null) || HQ_ROAD_INIT);
   const hqRoadRef = useRef({}); hqRoadRef.current = hqRoad;
   const saveRoad = (data) => {
@@ -13971,6 +13994,7 @@ function EchoTown() {
   const ringBell = (owner) => { if (netSendEvent) netSendEvent("bell", { to: owner, from: myName || "익명" }); };
   const [savedAt, setSavedAt] = useState(null);
   const saveTimer = useRef(null);
+  const hydratedRef = useRef(false);   // 초기 로드 완료 여부 (완료 전엔 자동저장 금지)
   /* 현재 저장할 내용을 항상 최신으로 들고 있습니다 */
   const payloadRef = useRef(null);
   payloadRef.current = { gems, gold, exp, lifetime, townRegion, profile, skills, schoolDone, rod, bait, catchBag, caughtDex, treasures, pets, activePet, fishes, facilities, homeLayout, homeGifts, fridge, outfit, owned, ikeaOwned, houseSkin, vehicle, myFurni, thanksInv, memos, stats, housePw, couponDone, qNotes, qAccept, qThreads, qLogs };
@@ -13986,7 +14010,7 @@ function EchoTown() {
   flushSaveRef.current = flushSave;
 
   useEffect(() => {
-    if (!myName) return;
+    if (!myName || !hydratedRef.current) return;   // 로드가 끝나기 전엔 저장 안 함 (초기 0으로 서버 덮어쓰기 방지)
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => flushSave(myName), 800);
     return () => clearTimeout(saveTimer.current);
@@ -14018,7 +14042,7 @@ function EchoTown() {
       online: n === myName || online.includes(n),
       job: n === myName ? "나" : (online.includes(n) ? "🟢 접속 중" : "⚪ 오프라인"),
       stats: { 체력: 70, 마나: 70, 집중: 70, 친화: 70 },
-      equipment: ["🎒 인벤토리"], achievements: ["🌱 에코타운 주민"], quests: ["마을 생활"], affiliation: "ECHO TOWN",
+      equipment: ["🎒 인벤토리"], achievements: ["🌱 에코월드 주민"], quests: ["마을 생활"], affiliation: "ECHO TOWN",
     }));
   }, [netOthers, dbPlayers, myName]);
 
@@ -14435,7 +14459,7 @@ function EchoTown() {
               <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 12, margin: "10px 0 6px", color: "#a86e13" }}>WELCOME COUPON</div>
               <div style={{ fontSize: 15, fontWeight: "bold", marginBottom: 8 }}>{myName}님, 사전예약 감사합니다!</div>
               <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.7, marginBottom: 12 }}>
-                에코타운 사전예약자에게 드리는<br />웰컴 쿠폰이 발급되었어요.
+                에코월드 사전예약자에게 드리는<br />웰컴 쿠폰이 발급되었어요.
               </div>
               <div style={{ background: C.white, border: `3px dashed ${C.ink}`, borderRadius: 10, padding: "14px 10px", marginBottom: 14 }}>
                 <div style={{ fontSize: 11, color: C.inkSoft }}>지급 보상</div>
@@ -14905,7 +14929,7 @@ class ErrorBoundary extends React.Component {
       <div style={{ minHeight: "100vh", background: "#e9e3d6", padding: 20, boxSizing: "border-box", fontFamily: "var(--game-font, 'DotGothic16', monospace)", color: "#2a1e14" }}>
         <div style={{ maxWidth: 720, margin: "0 auto", background: "#f0e4cf", border: "4px solid #2a1e14", borderRadius: 14, padding: 20 }}>
           <div style={{ fontSize: 40, textAlign: "center" }}>🚧</div>
-          <h2 style={{ textAlign: "center", fontSize: 18, margin: "10px 0 4px" }}>에코타운에 문제가 생겼어요</h2>
+          <h2 style={{ textAlign: "center", fontSize: 18, margin: "10px 0 4px" }}>에코월드에 문제가 생겼어요</h2>
           <p style={{ textAlign: "center", fontSize: 13, color: "#4a382a", margin: "0 0 14px" }}>
             아래 내용을 개발자에게 그대로 알려주시면 바로 고칠 수 있어요.
           </p>
