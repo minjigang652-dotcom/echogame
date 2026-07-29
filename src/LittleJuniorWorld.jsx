@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v137 · 2026-07-29";
+const APP_VERSION = "v138 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -7984,7 +7984,7 @@ function mergeDict(dbList, localList) {
 }
 
 /* 업로드한 사진을 리사이즈·압축해서 용량을 줄입니다 (로컬 저장 한도 대비) */
-function compressImage(file, maxSide = 900, quality = 0.72, mime = "image/jpeg") {
+export function compressImage(file, maxSide = 900, quality = 0.72, mime = "image/jpeg") {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error("read fail"));
