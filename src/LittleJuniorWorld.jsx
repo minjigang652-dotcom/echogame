@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v128 · 2026-07-29";
+const APP_VERSION = "v129 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -10534,8 +10534,60 @@ const HQ_ROADMAP = {
 };
 
 /* ======================= 🖥 에코월드 HQ (대시보드) ======================= */
+/* 진행상황 / 아이디어&피드백 섹션: 한 글을 계속 업데이트 (저장=글만 보임, 수정=편집창) + 댓글 스레드 */
+function DocSection({ title, color, html, comments, onSave, onAddComment, onDelComment, myName }) {
+  const [editing, setEditing] = useState(!html);
+  const [showCm, setShowCm] = useState(false);
+  const [cmIn, setCmIn] = useState("");
+  const edRef = useRef(null);
+  useEffect(() => { if (editing && edRef.current) edRef.current.innerHTML = html || ""; }, [editing]);
+  const exec = (cmd, val) => { try { document.execCommand(cmd, false, val || null); } catch (e) {} if (edRef.current) edRef.current.focus(); };
+  const insertImage = async (file) => { if (!file) return; try { const url = await compressImage(file, 700, 0.7, "image/jpeg"); exec("insertHTML", `<img src="${url}" style="max-width:100%;border-radius:6px;margin:4px 0;" />`); } catch (e) { window.alert("이미지를 넣지 못했어요"); } };
+  const tbBtn = (label, fn, t) => (<button type="button" title={t} onMouseDown={(e) => { e.preventDefault(); fn(); }} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, fontWeight: "bold", minWidth: 28, height: 26, border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white, color: C.ink }}>{label}</button>);
+  const cms = comments || [];
+  return (
+    <div style={{ border: `2px solid ${color}`, borderRadius: 10, padding: 12, marginBottom: 12, background: C.white }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <b style={{ fontSize: 13.5, color }}>{title}</b>
+        <span style={{ flex: 1 }} />
+        {!editing && <button type="button" onClick={() => setEditing(true)} title="수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14 }}>✏️</button>}
+        <button type="button" onClick={() => setShowCm((v) => !v)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5, fontWeight: "bold", background: showCm ? color : C.white, color: showCm ? C.white : color, border: `2px solid ${color}`, borderRadius: 12, padding: "3px 9px" }}>💬 댓글{cms.length ? ` ${cms.length}` : ""}</button>
+      </div>
+      {editing ? (<>
+        <div style={{ display: "flex", gap: 4, marginBottom: 6, flexWrap: "wrap", alignItems: "center" }}>
+          {tbBtn("B", () => exec("bold"), "굵게")}{tbBtn("H", () => exec("formatBlock", "H3"), "제목")}{tbBtn("•", () => exec("insertUnorderedList"), "목록")}{tbBtn("―", () => exec("insertHorizontalRule"), "구분선")}
+          <label style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, fontWeight: "bold", height: 26, lineHeight: "22px", padding: "0 9px", border: `2px solid ${C.ink}`, borderRadius: 6, background: "#4b3fb0", color: C.white }}>🖼<input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; insertImage(f); }} /></label>
+        </div>
+        <div ref={edRef} contentEditable suppressContentEditableWarning style={{ minHeight: 110, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 10, background: C.white, fontSize: 13, lineHeight: 1.6, overflowY: "auto", outline: "none" }} />
+        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+          <PxButton tone="good" onClick={() => { onSave(edRef.current ? edRef.current.innerHTML : ""); setEditing(false); }} style={{ flex: 1, fontSize: 12, padding: 8 }}>저장</PxButton>
+          {html && <PxButton tone="wood" onClick={() => setEditing(false)} style={{ fontSize: 11.5, padding: 8 }}>취소</PxButton>}
+        </div>
+      </>) : (
+        html ? <div style={{ fontSize: 13, lineHeight: 1.65, wordBreak: "break-word" }} dangerouslySetInnerHTML={{ __html: html }} /> : <div style={{ fontSize: 11.5, color: C.inkSoft }}>아직 작성된 내용이 없어요. ✏️ 로 작성하세요.</div>
+      )}
+      {showCm && (
+        <div style={{ marginTop: 10, borderTop: `1px dashed ${C.parchEdge}`, paddingTop: 8 }}>
+          {cms.length === 0 && <div style={{ fontSize: 10.5, color: C.inkSoft, marginBottom: 6 }}>첫 댓글을 남겨보세요.</div>}
+          {cms.slice().sort((a, b) => (a.at || 0) - (b.at || 0)).map((c) => (
+            <div key={c.at} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 5 }}>
+              <span style={{ fontSize: 10, fontWeight: "bold", color: C.inkSoft, flexShrink: 0 }}>{c.by}</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, wordBreak: "break-word" }}>{c.text}</span>
+              {c.by === myName && <button type="button" onClick={() => onDelComment(c.at)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 10, color: C.inkSoft }}>🗑</button>}
+            </div>
+          ))}
+          <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
+            <input value={cmIn} onChange={(e) => setCmIn(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && cmIn.trim()) { onAddComment(cmIn.trim()); setCmIn(""); } }} placeholder="댓글 입력" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5 }} />
+            <PxButton tone="ink" onClick={() => { if (cmIn.trim()) { onAddComment(cmIn.trim()); setCmIn(""); } }} style={{ fontSize: 10.5, padding: "6px 10px" }}>등록</PxButton>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* 📜 히스토리 큰 창(퀘스트 단위): 좌=내용 추가(리치 에디터·이미지·임시저장 목록), 우=회의록·문서. 채팅 없음, 편집중 표시 */
-function HistoryModal({ quest, myName, editingBy, onSaveNote, onDelNote, onAddMinute, onDelMinute, onAddDoc, onDelDoc, onClose }) {
+function HistoryModal({ quest, myName, editingBy, onSaveDoc, onAddComment, onDelComment, onAddMinute, onDelMinute, onAddDoc, onDelDoc, onClose }) {
   const CATS = [["피드백", "#5b8def"], ["아이디어", "#e0913d"], ["정리", "#4b8f5f"]];
   const [cat, setCat] = useState("피드백");
   const [drafts, setDrafts] = useState([]);
@@ -10569,52 +10621,8 @@ function HistoryModal({ quest, myName, editingBy, onSaveNote, onDelNote, onAddMi
         </div>
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexWrap: "wrap" }}>
           <div style={{ flex: "1 1 380px", minWidth: 0, display: "flex", flexDirection: "column", borderRight: `2px solid ${C.parchEdge}`, overflowY: "auto", padding: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>📝 내용 추가</div>
-            <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
-              {CATS.map(([lb, col]) => (<button key={lb} type="button" onClick={() => setCat(lb)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, fontWeight: "bold", padding: "6px 12px", borderRadius: 14, border: `2px solid ${cat === lb ? col : C.parchEdge}`, background: cat === lb ? col : C.white, color: cat === lb ? C.white : C.inkSoft }}>{lb}</button>))}
-            </div>
-            <div style={{ display: "flex", gap: 4, marginBottom: 6, flexWrap: "wrap", alignItems: "center" }}>
-              {tbBtn("B", () => exec("bold"), "굵게")}
-              {tbBtn("H", () => exec("formatBlock", "H3"), "제목")}
-              {tbBtn("• 목록", () => exec("insertUnorderedList"), "글머리표")}
-              {tbBtn("― 줄", () => exec("insertHorizontalRule"), "구분선")}
-              <label style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, fontWeight: "bold", height: 28, lineHeight: "24px", padding: "0 10px", border: `2px solid ${C.ink}`, borderRadius: 6, background: "#4b3fb0", color: C.white }}>🖼 이미지
-                <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; insertImage(f); }} />
-              </label>
-            </div>
-            <div ref={edRef} contentEditable suppressContentEditableWarning style={{ minHeight: 150, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 10, background: C.white, fontSize: 13, lineHeight: 1.6, overflowY: "auto", outline: "none" }} />
-            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-              <PxButton tone="wood" onClick={doTemp} style={{ flex: 1, fontSize: 11.5, padding: 9 }}>임시저장</PxButton>
-              <PxButton tone="good" onClick={doSave} style={{ flex: 1, fontSize: 12.5, padding: 9 }}>저장</PxButton>
-            </div>
-            {drafts.length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: "bold", color: C.inkSoft, marginBottom: 5 }}>📝 임시저장 목록 ({drafts.length})</div>
-                {drafts.map((d) => (
-                  <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 6, background: "#fff8e8", border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "6px 9px", marginBottom: 5 }}>
-                    <span style={{ fontSize: 9, fontWeight: "bold", color: C.white, background: catColor(d.cat), borderRadius: 8, padding: "2px 7px", flexShrink: 0 }}>{d.cat}</span>
-                    <span style={{ flex: 1, minWidth: 0, fontSize: 10.5, color: C.inkSoft, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(d.html || "").replace(/<[^>]*>/g, " ").trim().slice(0, 30) || "(빈 내용)"}</span>
-                    <button type="button" onClick={() => loadDraft(d)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10, fontWeight: "bold", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "3px 7px" }}>불러오기</button>
-                    <button type="button" onClick={() => delDraft(d.id)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.danger }}>🗑</button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div style={{ fontSize: 11, fontWeight: "bold", margin: "14px 0 6px" }}>저장된 내용 ({notes.length})</div>
-            <div style={{ maxHeight: 260, overflowY: "auto" }}>
-              {notes.length === 0 && <div style={{ fontSize: 11, color: C.inkSoft }}>아직 저장된 내용이 없어요.</div>}
-              {notes.slice().sort((a, b) => (b.at || 0) - (a.at || 0)).map((n) => (
-                <div key={n.at} style={{ background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                    <span style={{ fontSize: 9.5, fontWeight: "bold", color: C.white, background: catColor(n.cat), borderRadius: 8, padding: "2px 8px" }}>{n.cat}</span>
-                    <span style={{ fontSize: 9, color: C.inkSoft }}>{n.by} · {new Date(n.at).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" })}</span>
-                    <span style={{ flex: 1 }} />
-                    <button type="button" onClick={() => onDelNote(n.at)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.danger }}>🗑</button>
-                  </div>
-                  <div style={{ fontSize: 12.5, lineHeight: 1.6, wordBreak: "break-word" }} dangerouslySetInnerHTML={{ __html: n.html || "" }} />
-                </div>
-              ))}
-            </div>
+            <DocSection title="🚀 진행상황" color="#4b8f5f" html={quest.docProgress} comments={quest.docProgressC} myName={myName} onSave={(h) => onSaveDoc("docProgress", h)} onAddComment={(t) => onAddComment("docProgress", t)} onDelComment={(at) => onDelComment("docProgress", at)} />
+            <DocSection title="💡 아이디어 & 피드백" color="#e0913d" html={quest.docIdeas} comments={quest.docIdeasC} myName={myName} onSave={(h) => onSaveDoc("docIdeas", h)} onAddComment={(t) => onAddComment("docIdeas", t)} onDelComment={(at) => onDelComment("docIdeas", at)} />
           </div>
           <div style={{ flex: "1 1 300px", minWidth: 0, display: "flex", flexDirection: "column", overflowY: "auto", padding: 14 }}>
             <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>🗒 회의록</div>
@@ -10797,11 +10805,39 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const approveReview = (q) => { onHQChange && onHQChange(hqQuests.map((x) => x.id === q.id ? { ...x, reviewStatus: "approved", reviewBy: myName || "익명", reviewAt: Date.now(), ...editStamp() } : x)); };
   const reopenReview = (q) => { onHQChange && onHQChange(hqQuests.map((x) => x.id === q.id ? { ...x, reviewStatus: "", ...editStamp() } : x)); };
   const [histOpen, setHistOpen] = useState(null);   // 📜 히스토리 창 (퀘스트 id)
+  const [asgOpenId, setAsgOpenId] = useState(null);   // 담당자 추가 목록 펼친 퀘스트
   const saveQuestNote = (qid, entry) => onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, notes: [{ ...entry, at: Date.now(), by: myName || "익명" }, ...(x.notes || [])], ...editStamp() } : x));
   const delQuestNote = (qid, at) => { if (!window.confirm("이 내용을 삭제할까요?")) return; onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, notes: (x.notes || []).filter((n) => n.at !== at), ...editStamp() } : x)); };
   const addQuestMinute = (qid, date, text) => onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, minutes: [{ date, text, at: Date.now(), by: myName || "익명" }, ...mlogList(x)], ...editStamp() } : x));
   const startEdit = (qid) => onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, editingBy: myName || "익명", editingAt: Date.now() } : x));
+  const saveQuestDoc = (qid, field, html) => onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, [field]: html, [field + "By"]: myName || "익명", [field + "At"]: Date.now(), ...editStamp() } : x));
+  const addDocComment = (qid, field, text) => onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, [field + "C"]: [...(x[field + "C"] || []), { text, by: myName || "익명", at: Date.now() }] } : x));
+  const delDocComment = (qid, field, at) => onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, [field + "C"]: (x[field + "C"] || []).filter((c) => c.at !== at) } : x));
   const stopEdit = (qid) => onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, editingBy: "", editingAt: 0 } : x));
+  const questStatus = (q) => { if (q.reviewStatus === "approved") return "done"; if (q.reviewStatus === "pending") return "review"; if ((avgOf(q) > 0) || (q.subs || []).some((sb) => sb.active)) return "doing"; return "todo"; };
+  const STATUS_META = { todo: ["진행전", "#8a8677"], doing: ["진행중", "#4b8f5f"], review: ["검토대기", "#d98a1f"], done: ["검토완료", "#4b3fb0"] };
+  const STATUS_ICON = { todo: "⚪", doing: "🟢", review: "🟡", done: "🔵" };
+  const statusSections = (quests, goQuest) => {
+    const groups = { todo: [], doing: [], review: [], done: [] };
+    quests.forEach((q) => { groups[questStatus(q)].push(q); });
+    return ["todo", "doing", "review", "done"].map((k) => {
+      const meta = STATUS_META[k];
+      return (
+        <div key={k} style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: "bold", color: meta[1] }}>{STATUS_ICON[k]} {meta[0]} ({groups[k].length})</div>
+          {groups[k].length === 0 ? <div style={{ fontSize: 10.5, color: C.inkSoft, marginLeft: 16 }}>없음</div> : groups[k].map((q) => {
+            const ci = (Array.isArray(HQ_CATS) ? HQ_CATS.find((c) => c.id === q.cat) : null) || { icon: "" };
+            return (
+              <div key={q.id} onClick={() => goQuest(q)} style={{ cursor: "pointer", fontSize: 11.5, marginLeft: 16, marginTop: 3, display: "flex", gap: 6 }}>
+                <span style={{ flex: 1, minWidth: 0, wordBreak: "break-word" }}>{ci.icon} {q.title}</span>
+                <span style={{ color: C.inkSoft, flexShrink: 0 }}>{avgOf(q)}%{asgList(q).length ? ` · ${asgList(q).join(",")}` : ""}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    });
+  };
   const toggleSubDone = (qid, idx) => {
     onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: q.subs.map((sb, i) => i === idx ? { ...sb, done: !sbDone(sb) } : sb), ...editStamp() } : q));
   };
@@ -10952,8 +10988,10 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                     );
                   })()}
                   <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-                    {btn("world", "🌍 월드")}{btn("quest", "📋 퀘스트")}{btn("mission", "🎯 미션")}
+                    {btn("world", "🌍 월드")}{btn("quest", "📋 퀘스트")}{btn("mission", "🎯 미션")}{btn("noti", "🔔 알림")}
                   </div>
+
+                  {gmView === "noti" && statusSections(hqQuests, goQuest)}
 
                   {gmView === "world" && HQ_CATS.map((c) => { const ms = wMembers(c.id); return (
                     <div key={c.id} style={{ fontSize: 12.5, marginBottom: 7, wordBreak: "break-word" }}>
@@ -10978,6 +11016,21 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 </div>
               );
             })()}
+            {/* 🔔 내 퀘스트 알림 (개인 대시보드 · 모두에게) */}
+            {myName && (() => {
+              const goQuest = (q) => { setTab("quest"); setQcat(q.cat); setQView(q); };
+              const mine = hqQuests.filter((q) => asgList(q).includes(myName) || (q.subs || []).some((sb) => sb.who === myName) || q.reviewer === myName);
+              return (
+                <div style={{ ...card, background: "#eef6ff", borderColor: "#5b8def" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <b style={{ fontSize: 14 }}>🔔 내 퀘스트 알림</b>
+                    <span style={{ fontSize: 10, color: C.inkSoft }}>{myName}님이 참여한 퀘스트</span>
+                  </div>
+                  {mine.length === 0 ? <div style={{ fontSize: 12, color: C.inkSoft }}>참여 중인 퀘스트가 없어요.</div> : statusSections(mine, goQuest)}
+                </div>
+              );
+            })()}
+
             {/* 📢 공지사항 / 📅 캘린더 — 버튼으로 전환 (게시판과 같은 글 연동) */}
             <div style={{ ...card, background: "#fff8e8", borderColor: "#e0a13d" }}>
               <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
@@ -11178,14 +11231,20 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                           <button type="button" onClick={() => requestReview(q)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, fontWeight: "bold", background: pct >= 100 ? "#4b3fb0" : "#b9b3cc", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "6px 11px" }}>✅ 검토요청</button>
                         </>)}
                       </div>
-                      {/* 담당자(여러 명) */}
+                      {/* 담당자(여러 명) — ＋추가 눌러야 목록 나옴 */}
                       <div style={{ background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px", marginBottom: 8 }}>
-                        <div style={{ fontSize: 11.5, fontWeight: "bold", marginBottom: 6 }}>🧑 담당자 {asgList(q).length > 0 ? `: ${asgList(q).join(", ")}` : ""}</div>
-                        <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                          {acctNames.map((nm) => { const on = asgList(q).includes(nm); return (
-                            <button key={nm} type="button" onClick={() => toggleAsg(q.id, nm)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", padding: "4px 10px", borderRadius: 14, border: `2px solid ${on ? "#2f7d51" : C.parchEdge}`, background: on ? "#4b8f5f" : C.white, color: on ? C.white : C.inkSoft }}>{on ? "✓ " : ""}{nm}</button>
-                          ); })}
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 11.5, fontWeight: "bold" }}>🧑 담당자 {asgList(q).length > 0 ? `: ${asgList(q).join(", ")}` : ": 없음"}</span>
+                          <span style={{ flex: 1 }} />
+                          <button type="button" onClick={() => setAsgOpenId(asgOpenId === q.id ? null : q.id)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5, fontWeight: "bold", background: asgOpenId === q.id ? C.ink : "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "4px 9px" }}>{asgOpenId === q.id ? "닫기" : "＋ 추가"}</button>
                         </div>
+                        {asgOpenId === q.id && (
+                          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 8 }}>
+                            {acctNames.map((nm) => { const on = asgList(q).includes(nm); return (
+                              <button key={nm} type="button" onClick={() => toggleAsg(q.id, nm)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", padding: "4px 10px", borderRadius: 14, border: `2px solid ${on ? "#2f7d51" : C.parchEdge}`, background: on ? "#4b8f5f" : C.white, color: on ? C.white : C.inkSoft }}>{on ? "✓ " : ""}{nm}</button>
+                            ); })}
+                          </div>
+                        )}
                       </div>
                       {/* 검토자 */}
                       <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "6px 9px", fontSize: 12, marginBottom: 12 }}>
@@ -11287,8 +11346,9 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                   if (!hq) return null;
                   return (
                     <HistoryModal quest={hq} myName={myName} editingBy={hq.editingBy}
-                      onSaveNote={(entry) => saveQuestNote(hq.id, entry)}
-                      onDelNote={(at) => delQuestNote(hq.id, at)}
+                      onSaveDoc={(field, html) => saveQuestDoc(hq.id, field, html)}
+                      onAddComment={(field, text) => addDocComment(hq.id, field, text)}
+                      onDelComment={(field, at) => delDocComment(hq.id, field, at)}
                       onAddMinute={(date, text) => addQuestMinute(hq.id, date, text)}
                       onDelMinute={(at) => delMinute(hq.id, at)}
                       onAddDoc={(f) => addQDoc(hq.id, f)}
@@ -13896,7 +13956,8 @@ function EchoTown() {
   const [musicChat, setMusicChat] = useState([]);
   const [profileTab, setProfileTab] = useState(null);
   const [notice, setNotice] = useState(null);
-  const showNotice = (t) => { setNotice(t); setTimeout(() => setNotice(null), 3200); };
+  const noticeActRef = useRef(null);
+  const showNotice = (t, act) => { setNotice(t); noticeActRef.current = act || null; setTimeout(() => setNotice(null), 3200); };
   /* 🎁 보상 지급 (퀘스트 · 제단 검토 자동지급 공용) */
   const applyRewards = (rs, from) => {
     const list = typeof rs === "number" ? [{ kind: "gem", qty: rs }] : Array.isArray(rs) ? rs : [rs];
@@ -14028,7 +14089,7 @@ function EchoTown() {
       if (!p) return;
       if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "hq" || kind === "hqroad" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); showNotice(`🔔 ${p.from}님이 초인종을 눌렀어요`); pushMsg("dm", { from: p.from, text: "🔔 초인종을 눌렀어요 — 집 앞에 찾아왔어요!" }); }
-      if (kind === "qrev") { showNotice(p.txt || `📋 ${p.by || "누군가"}님이 당신을 검토자로 지정했어요`); pushMsg("dm", { from: p.by || "HQ", text: p.txt || "📋 퀘스트 검토자로 지정되었어요" }); return; }
+      if (kind === "qrev") { showNotice("🔔 새로운 퀘스트 알림이 왔습니다!", () => setHqOpen(true)); pushMsg("dm", { from: p.by || "HQ", text: p.txt || "🔔 새로운 퀘스트 알림" }); return; }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "qcallack") {
         if (p.to !== (myName || "나")) return;
@@ -14981,7 +15042,7 @@ function EchoTown() {
         </div>
       )}
       {notice && (
-        <div style={{ position: "fixed", left: "50%", top: 16, transform: "translateX(-50%)", zIndex: 150, background: C.ink, color: C.white, border: `3px solid ${C.gem}`, borderRadius: 10, padding: "10px 18px", fontSize: 13, fontFamily: "var(--game-font, 'DotGothic16', monospace)", boxShadow: "0 6px 16px rgba(0,0,0,0.4)" }}>{notice}</div>
+        <div onClick={() => { const a = noticeActRef.current; setNotice(null); if (a) a(); }} style={{ position: "fixed", left: "50%", top: 16, transform: "translateX(-50%)", zIndex: 150, cursor: noticeActRef.current ? "pointer" : "default", background: C.ink, color: C.white, border: `3px solid ${C.gem}`, borderRadius: 10, padding: "10px 18px", fontSize: 13, fontFamily: "var(--game-font, 'DotGothic16', monospace)", boxShadow: "0 6px 16px rgba(0,0,0,0.4)" }}>{notice}</div>
       )}
       {!hqOpen && myName && (
         <HQSidePanel key={"mp" + mpVersion} myName={myName} people={people} questBox={questBox} hqQuests={hqQuests} hqCats={(hqRoad && hqRoad.__cats && hqRoad.__cats.length) ? hqRoad.__cats : HQ_CATS_DEFAULT} onOpenHQ={() => { setHqOpen(true); }} />
