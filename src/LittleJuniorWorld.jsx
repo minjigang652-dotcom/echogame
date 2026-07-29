@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v134 · 2026-07-29";
+const APP_VERSION = "v135 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -10788,7 +10788,10 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const viewNeck = mpSelf ? mpNeck : ((mpOther && mpOther.neck) || []).filter((n) => !n.locked);
   const blankQuest = () => ({ id: "q" + Date.now(), cat: "core", title: "", star: 2, gold: 0, gem: 0, chapter: "", due: "", assignees: [], reviewer: "", content: "", feedback: "", minutes: "", docs: [], reward: { exp: 0, gold: 0, gem: 0, items: [] }, rewardPaid: [], subs: [] });
   const commitQuest = (q) => {
-    const clean = { ...q, star: Number(q.star) || 1, gold: Number(q.gold) || 0, gem: Number(q.gem) || 0, editedBy: myName || "익명", editedAt: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
+    const curAsg = Array.isArray(q.assignees) ? q.assignees : (q.assignee ? [q.assignee] : []);
+    const missionWhos = (q.subs || []).map((sb) => sb && sb.who).filter((w) => w && w !== "미지정");
+    const mergedAsg = Array.from(new Set([...curAsg, ...missionWhos]));
+    const clean = { ...q, assignees: mergedAsg, assignee: undefined, star: Number(q.star) || 1, gold: Number(q.gold) || 0, gem: Number(q.gem) || 0, editedBy: myName || "익명", editedAt: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
     const exists = hqQuests.some((x) => x.id === q.id);
     const prev = exists ? hqQuests.find((x) => x.id === q.id) : null;
     const next = exists ? hqQuests.map((x) => (x.id === q.id ? clean : x)) : [clean, ...hqQuests];
