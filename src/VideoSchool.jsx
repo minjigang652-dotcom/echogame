@@ -2,6 +2,14 @@ import React, { useContext, useState, useEffect, useRef } from "react";
 import { C, NetContext, PixelHouse, Hero, Panel, PxButton, TitleBar } from "./LittleJuniorWorld.jsx";
 import ChatBot from "./ChatBot.jsx";
 
+/* 입력창(input/textarea 등)에 타이핑 중이면 게임 키 조작 무시 */
+function isTyping(e) {
+  const el = (e && e.target) || (typeof document !== "undefined" ? document.activeElement : null);
+  if (!el) return false;
+  const tag = (el.tagName || "").toLowerCase();
+  return tag === "input" || tag === "textarea" || tag === "select" || el.isContentEditable;
+}
+
 /* ======================= 스쿨(네이버/영상) ======================= */
 function School({ wall = "#8fd0d6", roof = "#c95d7b", size = 140 }) {
   return (
@@ -170,9 +178,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear }) {
         const n = nearRef.current;
         if (n) {
           const h = housesRef.current.find((x) => x.id === n);
-          const idx = housesRef.current.findIndex((x) => x.id === n);
-          const locked = idx > 0 && !clearedRef.current[housesRef.current[idx - 1].id];
-          if (h && !locked) setOpen(h);
+          if (h) setOpen(h);
         }
         return;
       }
@@ -236,7 +242,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear }) {
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
       {chatOpen && <ChatBot onClose={() => setChatOpen(false)} />}
-      <TitleBar tipId={school} icon={s.icon} title={s.title} sub="WASD 이동 · 집 근처에서 E · 👑은 보스급, 🔒은 잠긴 퀘스트" onBack={onBack} bg={s.color} fg={C.white}
+      <TitleBar tipId={school} icon={s.icon} title={s.title} sub="WASD 이동 · 집 근처에서 E · 아무 집이나 자유롭게" onBack={onBack} bg={s.color} fg={C.white}
         right={<PxButton tone="good" onClick={() => setChatOpen(true)} style={{ fontSize: 11, padding: "5px 10px" }}>🐣 코코</PxButton>} />
       <div style={{ padding: 12, background: C.parch }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -254,7 +260,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear }) {
 
           {houses.map((h, i) => {
             const done = !!cleared[h.id];
-            const locked = i > 0 && !cleared[houses[i - 1].id];
+            const locked = false;
             const active = near === h.id;
             return (
               <div key={h.id} style={{ position: "absolute", left: h.x, top: h.y, transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", filter: locked ? "grayscale(0.8) brightness(0.8)" : "none" }}>
