@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v142 · 2026-07-29";
+const APP_VERSION = "v143 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -10628,7 +10628,7 @@ function MentionField({ value, onChange, expertNames = [], multiline = false, pl
   const update = (v) => {
     onChange(v);
     const m = /@([^\s@]*)$/.exec(v);
-    if (m) { const q = m[1]; const items = expertNames.filter((n) => n && n.includes(q)).slice(0, 6); setDrop(items.length ? items : null); }
+    if (m) { const q = m[1]; const items = expertNames.filter((n) => n && n.includes(q)).slice(0, 40); setDrop(items.length ? items : null); }
     else setDrop(null);
   };
   const pick = (name) => { const v = (value || "").replace(/@([^\s@]*)$/, "@" + name + " "); onChange(v); setDrop(null); if (ref.current) ref.current.focus(); };
@@ -10640,8 +10640,8 @@ function MentionField({ value, onChange, expertNames = [], multiline = false, pl
         ? <textarea ref={ref} value={value} onChange={(e) => update(e.target.value)} onKeyDown={onKey} placeholder={placeholder} rows={rows} style={{ ...base, resize: "vertical" }} />
         : <input ref={ref} value={value} onChange={(e) => update(e.target.value)} onKeyDown={onKey} placeholder={placeholder} style={base} />}
       {drop && drop.length > 0 && (
-        <div style={{ position: "absolute", left: 0, bottom: multiline ? "auto" : "100%", top: multiline ? "100%" : "auto", zIndex: 50, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, boxShadow: "0 4px 10px rgba(0,0,0,0.2)", minWidth: 140, maxWidth: 220 }}>
-          <div style={{ fontSize: 9, color: C.inkSoft, padding: "4px 8px", borderBottom: `1px solid ${C.parchEdge}` }}>@언급 (숙련자)</div>
+        <div style={{ position: "absolute", left: 0, bottom: multiline ? "auto" : "100%", top: multiline ? "100%" : "auto", zIndex: 50, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, boxShadow: "0 4px 10px rgba(0,0,0,0.2)", minWidth: 150, maxWidth: 240, maxHeight: 200, overflowY: "auto", overscrollBehavior: "contain" }}>
+          <div style={{ position: "sticky", top: 0, fontSize: 9, color: C.inkSoft, padding: "4px 8px", borderBottom: `1px solid ${C.parchEdge}`, background: C.white }}>@언급 (숙련자) · {drop.length}명</div>
           {drop.map((n) => (<button key={n} type="button" onMouseDown={(e) => { e.preventDefault(); pick(n); }} style={{ display: "block", width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, background: C.white, border: "none", padding: "7px 10px" }}>🧑 {n}</button>))}
         </div>
       )}
