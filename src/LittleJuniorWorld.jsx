@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v124 · 2026-07-29";
+const APP_VERSION = "v125 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -10545,6 +10545,18 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const isGM = GM_NAMES.includes(myName);
   const [gmView, setGmView] = useState("quest");   // GM 대시보드 카테고리: world | quest | mission
   const [qFull, setQFull] = useState(null);   // 전체보기 모달 (퀘스트 id)
+  const [mlogDate, setMlogDate] = useState("");   // 회의록 입력 날짜
+  const [mlogText, setMlogText] = useState("");   // 회의록 입력 내용
+  const mlogList = (q) => Array.isArray(q && q.minutes) ? q.minutes : ((q && q.minutes) ? [{ date: "", text: q.minutes, at: 0 }] : []);
+  const addMinute = (qid) => {
+    if (!mlogDate) { window.alert("회의록 날짜를 선택해주세요. (필수)"); return; }
+    if (!mlogText.trim()) { window.alert("회의록 내용을 입력해주세요."); return; }
+    const q = hqQuests.find((x) => x.id === qid); if (!q) return;
+    const next = [{ date: mlogDate, text: mlogText.trim(), at: Date.now(), by: myName || "익명" }, ...mlogList(q)];
+    onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, minutes: next, ...editStamp() } : x));
+    setMlogText("");
+  };
+  const delMinute = (qid, at) => { if (!window.confirm("이 회의록을 삭제할까요?")) return; const q = hqQuests.find((x) => x.id === qid); if (!q) return; onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, minutes: mlogList(q).filter((m) => m.at !== at), ...editStamp() } : x)); };
   const [qManage, setQManage] = useState(false);   // ⚙️ 퀘스트 관리(삭제·이름·순서)
   const [qActiveOnly, setQActiveOnly] = useState(false);   // ON = 진행중(색 있는) 미션만 표시
   const [catForm, setCatForm] = useState(null);   // 🌍 월드 추가/수정 폼 { mode, i, name, icon } | null
@@ -10773,7 +10785,11 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
           <>
             {isGM && (() => {
               const inProg = hqQuests.filter((q) => avgOf(q) < 100);
+              const allMembers = Array.from(new Set([myName, ...(people || []).map((pp) => pp && pp.name)].filter(Boolean)));
               const goQuest = (q) => { setTab("quest"); setQcat(q.cat); setQView(q); };
+              const wMembers = (cid) => { const set = new Set(); hqQuests.filter((q) => q.cat === cid && avgOf(q) < 100).forEach((q) => { asgList(q).forEach((n) => n && set.add(n)); (q.subs || []).forEach((sb) => { if ((sb.active || sb.who) && !sbDone(sb) && sb.who) set.add(sb.who); }); }); return Array.from(set); };
+              const mQuests = (nm) => inProg.filter((q) => asgList(q).includes(nm));
+              const mMissions = (nm) => { const arr = []; hqQuests.forEach((q) => (q.subs || []).forEach((sb) => { if (sb.who === nm && !sbDone(sb)) arr.push({ q, sb }); })); return arr; };
               const btn = (k, lb) => (<button key={k} type="button" onClick={() => setGmView(k)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, fontWeight: "bold", padding: "7px 12px", borderRadius: 16, border: `2px solid ${C.ink}`, background: gmView === k ? "#4b3fb0" : C.white, color: gmView === k ? C.white : C.ink }}>{lb}</button>);
               return (
                 <div style={{ ...card, background: "#f3f0ff", borderColor: "#4b3fb0" }}>
@@ -10785,50 +10801,26 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                     {btn("world", "🌍 월드")}{btn("quest", "📋 퀘스트")}{btn("mission", "🎯 미션")}
                   </div>
 
-                  {gmView === "world" && HQ_CATS.map((c) => {
-                    const qs = hqQuests.filter((q) => q.cat === c.id && avgOf(q) < 100);
-                    return (
-                      <div key={c.id} style={{ marginBottom: 10 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: "bold", color: c.color }}>{c.icon} {c.name} <span style={{ fontSize: 10, color: C.inkSoft }}>({qs.length} 진행중)</span></div>
-                        {qs.length === 0 ? <div style={{ fontSize: 10.5, color: C.inkSoft, marginLeft: 14 }}>진행중 없음</div> : qs.map((q) => (
-                          <div key={q.id} onClick={() => goQuest(q)} style={{ cursor: "pointer", fontSize: 11.5, marginLeft: 14, marginTop: 3, display: "flex", gap: 6 }}>
-                            <span style={{ flex: 1, minWidth: 0, wordBreak: "break-word" }}>• {q.title}</span>
-                            <span style={{ color: C.inkSoft, flexShrink: 0 }}>{avgOf(q)}%{asgList(q).length ? ` · 🧑${asgList(q).join(",")}` : ""}</span>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })}
+                  {gmView === "world" && HQ_CATS.map((c) => { const ms = wMembers(c.id); return (
+                    <div key={c.id} style={{ fontSize: 12.5, marginBottom: 7, wordBreak: "break-word" }}>
+                      <b style={{ color: c.color }}>{c.icon} {c.name}</b>
+                      <span style={{ color: C.inkSoft }}> : {ms.length ? ms.join(", ") : "진행중 멤버 없음"}</span>
+                    </div>
+                  ); })}
 
-                  {gmView === "quest" && (inProg.length === 0 ? <div style={{ fontSize: 12, color: C.inkSoft }}>진행중인 퀘스트가 없어요.</div> : inProg.map((q) => {
-                    const ci = HQ_CATS.find((c) => c.id === q.cat) || { icon: "", color: "#888" };
-                    return (
-                      <div key={q.id} onClick={() => goQuest(q)} style={{ cursor: "pointer", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontSize: 14 }}>{ci.icon}</span>
-                          <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: "bold", wordBreak: "break-word" }}>{q.title}</span>
-                          <span style={{ fontSize: 12, fontWeight: "bold", color: ci.color }}>{avgOf(q)}%</span>
-                        </div>
-                        <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 3 }}>🧑 {asgList(q).length ? asgList(q).join(", ") : "미지정"} · 🔎 {q.reviewer || "없음"}{q.due ? ` · 📅 ${q.due}` : ""}</div>
-                      </div>
-                    );
-                  }))}
+                  {gmView === "quest" && allMembers.map((nm) => { const qs = mQuests(nm); return (
+                    <div key={nm} style={{ fontSize: 12.5, marginBottom: 8, wordBreak: "break-word", lineHeight: 1.6 }}>
+                      <b>🧑 {nm}</b><span style={{ color: C.inkSoft }}> : </span>
+                      {qs.length === 0 ? <span style={{ fontSize: 11, color: C.inkSoft }}>없음</span> : qs.map((q, i) => (<span key={q.id}>{i > 0 ? ", " : ""}<span onClick={() => goQuest(q)} style={{ cursor: "pointer", color: "#4b3fb0", fontWeight: "bold" }}>{q.title}</span></span>))}
+                    </div>
+                  ); })}
 
-                  {gmView === "mission" && (() => {
-                    const rows = [];
-                    hqQuests.forEach((q) => (q.subs || []).forEach((sb) => { if ((sb.active || sb.who) && !sbDone(sb)) rows.push({ q, sb }); }));
-                    if (rows.length === 0) return <div style={{ fontSize: 12, color: C.inkSoft }}>진행중인 미션이 없어요.</div>;
-                    return rows.map((r, idx) => (
-                      <div key={idx} onClick={() => goQuest(r.q)} style={{ cursor: "pointer", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          {r.sb.active && <span style={{ fontSize: 8.5, fontWeight: "bold", color: C.white, background: "#4b8f5f", borderRadius: 8, padding: "1px 6px", flexShrink: 0 }}>진행중</span>}
-                          <span style={{ flex: 1, minWidth: 0, fontSize: 12, wordBreak: "break-word" }}>{r.sb.t || "(내용 없음)"}</span>
-                          <span style={{ fontSize: 10.5, color: C.inkSoft, flexShrink: 0 }}>🧑 {r.sb.who || "미지정"}</span>
-                        </div>
-                        <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 2 }}>↳ {r.q.title}</div>
-                      </div>
-                    ));
-                  })()}
+                  {gmView === "mission" && allMembers.map((nm) => { const mis = mMissions(nm); return (
+                    <div key={nm} style={{ fontSize: 12.5, marginBottom: 8, wordBreak: "break-word", lineHeight: 1.6 }}>
+                      <b>🧑 {nm}</b><span style={{ color: C.inkSoft }}> : </span>
+                      {mis.length === 0 ? <span style={{ fontSize: 11, color: C.inkSoft }}>없음</span> : mis.map((r, i) => (<span key={i}>{i > 0 ? ", " : ""}<span onClick={() => goQuest(r.q)} style={{ cursor: "pointer", color: "#4b3fb0", fontWeight: "bold" }} title={r.q.title}>{r.sb.t}</span></span>))}
+                    </div>
+                  ); })}
                 </div>
               );
             })()}
@@ -10982,27 +10974,6 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 <PxButton tone="gold" onClick={() => setQEdit(blankQuest())} style={{ fontSize: 11, padding: "7px 12px" }}>＋ 새 퀘스트</PxButton>
               </div>
               {(() => {
-                const worldMembers = (cid) => {
-                  const set = new Set();
-                  hqQuests.filter((q) => q.cat === cid && avgOf(q) < 100).forEach((q) => {
-                    asgList(q).forEach((n) => n && set.add(n));
-                    (q.subs || []).forEach((sb) => { if ((sb.active || sb.who) && !sbDone(sb) && sb.who) set.add(sb.who); });
-                  });
-                  return Array.from(set);
-                };
-                const worldsToShow = qcat === "all" ? HQ_CATS : HQ_CATS.filter((c) => c.id === qcat);
-                return (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12, background: "#fff8e8", border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 11px" }}>
-                    {worldsToShow.map((c) => { const ms = worldMembers(c.id); return (
-                      <div key={c.id} style={{ fontSize: 11.5, wordBreak: "break-word" }}>
-                        <b style={{ color: c.color }}>{c.icon} {c.name}</b>
-                        <span style={{ color: C.inkSoft }}> : {ms.length ? ms.join(", ") : "진행중 멤버 없음"}</span>
-                      </div>
-                    ); })}
-                  </div>
-                );
-              })()}
-              {(() => {
                 const chapterOrder = qcat === "all"
                   ? Array.from(new Set(HQ_CATS.flatMap((c) => (hqRoad[c.id] || []).map((ch) => ch.name))))
                   : (hqRoad[qcat] || []).map((ch) => ch.name);
@@ -11084,9 +11055,24 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                       {/* 📝 내용 */}
                       <div style={{ fontSize: 12, fontWeight: "bold", margin: "14px 0 6px" }}>📝 내용</div>
                       <textarea key={q.id + "-content"} defaultValue={q.content || ""} onBlur={(e) => { if ((e.target.value || "") !== (q.content || "")) setQField(q.id, "content", e.target.value); }} placeholder="퀘스트 내용을 적어보세요 (칸을 벗어나면 저장돼요)" rows={full ? 6 : 4} style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, resize: "vertical", background: C.white }} />
-                      {/* 🗒 회의록 */}
+                      {/* 🗒 회의록 (날짜 필수 · 최신이 위로 쌓임) */}
                       <div style={{ fontSize: 12, fontWeight: "bold", margin: "12px 0 6px" }}>🗒 회의록</div>
-                      <textarea key={q.id + "-minutes"} defaultValue={q.minutes || ""} onBlur={(e) => { if ((e.target.value || "") !== (q.minutes || "")) setQField(q.id, "minutes", e.target.value); }} placeholder="회의록 · 결정사항을 적어보세요 (칸을 벗어나면 저장돼요)" rows={full ? 6 : 4} style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, resize: "vertical", background: C.white }} />
+                      <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
+                        <input type="date" value={mlogDate} onChange={(e) => setMlogDate(e.target.value)} title="회의록 날짜 (필수)" style={{ padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11 }} />
+                        <input value={mlogText} onChange={(e) => setMlogText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addMinute(q.id); }} placeholder="회의록 · 결정사항 입력" style={{ flex: 1, minWidth: 120, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
+                        <PxButton tone="good" onClick={() => addMinute(q.id)} style={{ fontSize: 11.5, padding: "8px 12px" }}>＋ 기록</PxButton>
+                      </div>
+                      {mlogList(q).slice().sort((a, b) => (String(b.date || "").localeCompare(String(a.date || ""))) || ((b.at || 0) - (a.at || 0))).map((m) => (
+                        <div key={m.at} style={{ background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                            <span style={{ fontSize: 10.5, fontWeight: "bold", color: "#4b3fb0" }}>📅 {m.date || "(날짜 없음)"}</span>
+                            {m.by && <span style={{ fontSize: 9, color: C.inkSoft }}>· {m.by}</span>}
+                            <span style={{ flex: 1 }} />
+                            <button type="button" onClick={() => delMinute(q.id, m.at)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.danger }}>🗑</button>
+                          </div>
+                          <div style={{ fontSize: 12.5, lineHeight: 1.55, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{m.text}</div>
+                        </div>
+                      ))}
                       {/* 📎 문서 (맨 아래) */}
                       <div style={{ fontSize: 12, fontWeight: "bold", margin: "14px 0 6px" }}>📎 문서</div>
                       {docs.length > 0 && docs.map((d, i) => (
