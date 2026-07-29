@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v135 · 2026-07-29";
+const APP_VERSION = "v136 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2496,7 +2496,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "notorder").neq("type", "calevent").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2770,6 +2770,23 @@ async function dbSaveHQ(list, by) {
     return { ok: true };
   } catch (e) { console.warn("[HQ 저장 예외]", e); return { ok: false, msg: (e && e.message) || String(e) }; }
 }
+async function dbLoadCommunity() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("body,created_at").eq("type", "community").order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    if (!row) return null;
+    return JSON.parse(row.body || "null");
+  } catch (e) { return null; }
+}
+async function dbSaveCommunity(list) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "community", title: "community", body: JSON.stringify(list || []) });
+    if (r && r.error) return { ok: false, msg: r.error.message || String(r.error) };
+    return { ok: true };
+  } catch (e) { return { ok: false, msg: (e && e.message) || String(e) }; }
+}
 async function dbMeetSignal(payload) {
   try {
     const s = await getSupa();
@@ -2860,7 +2877,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
         });
         /* ⚠️ 새 이벤트를 만들면 반드시 여기에 이름을 넣어야 상대에게 도착해요 */
-        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor", "decorreq", "luck", "hq", "hqroad", "qrev"].forEach((ev) => {
+        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor", "decorreq", "luck", "hq", "hqroad", "qrev", "comm"].forEach((ev) => {
           ch.on("broadcast", { event: ev }, ({ payload }) => {
             if (onChatRef && onChatRef.net) onChatRef.net(ev, payload);
           });
@@ -8671,7 +8688,7 @@ const UPDATE_NOTES = [
     body: "· 같은 방 안에서도 서로 보여요\n· 채팅·말풍선·춤·옷·집 외관이 실시간으로 공유돼요\n· 말풍선이 50자까지 줄바꿈돼요\n· 🔊 배경음악·리스닝방 볼륨 조절\n· 🏅 뱃지 시스템 (방문·소통·운동·흡연·샌드백·보스맵·노래)\n· 📖 게임 내 사용설명서 추가 (장소 바로가기 포함)\n· 입력창에서 방향키·스페이스가 막히던 문제 해결" },
 ];
 
-function BoardView({ onBack, myName = "", myUid = "" }) {
+function BoardView({ onBack, myName = "", myUid = "", onCommunity }) {
   const [dbList, setDbList] = useState([]);
   const [edit, setEdit] = useState(null);   // 내가 쓴 글 수정
   const [wOpen, setWOpen] = useState(false);
@@ -8724,7 +8741,7 @@ function BoardView({ onBack, myName = "", myUid = "" }) {
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
       <TitleBar tipId="board" icon="📋" title="게시판" sub="공지사항 · 캘린더" onBack={onBack} bg={C.wood} fg={C.white}
-        right={<PxButton tone="gold" onClick={() => setWOpen(true)} style={{ fontSize: 11, padding: "5px 10px" }}>✍️ 글쓰기</PxButton>} />
+        right={<span style={{ display: "flex", gap: 6 }}><PxButton tone="good" onClick={() => onCommunity && onCommunity()} style={{ fontSize: 11, padding: "5px 10px" }}>💬 커뮤니티</PxButton><PxButton tone="gold" onClick={() => setWOpen(true)} style={{ fontSize: 11, padding: "5px 10px" }}>✍️ 글쓰기</PxButton></span>} />
       {edit && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120, padding: 14 }} onClick={() => setEdit(null)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 400, maxHeight: "calc(100vh - 28px)", overflowY: "auto" }}>
@@ -10549,6 +10566,107 @@ const HQ_ROADMAP = {
 };
 
 /* ======================= 🖥 에코월드 HQ (대시보드) ======================= */
+/* 💬 커뮤니티 게시판: 꿀팁·가이드·질문 자유 공유 (한 JSON으로 실시간 공유) */
+const COMM_CATS = [["tip", "💡 꿀팁", "#e0913d"], ["guide", "📖 가이드", "#4b8f5f"], ["qna", "❓ 질문", "#5b8def"]];
+function CommunityView({ posts = [], myName = "", myUid = "", onSave, onBack }) {
+  const [filter, setFilter] = useState("all");
+  const [writing, setWriting] = useState(false);
+  const [wCat, setWCat] = useState("tip");
+  const [wTitle, setWTitle] = useState("");
+  const [wBody, setWBody] = useState("");
+  const [openId, setOpenId] = useState(null);
+  const [cmIn, setCmIn] = useState("");
+  const meta = (k) => COMM_CATS.find((c) => c[0] === k) || ["", "", "#888"];
+  const submit = () => { if (!wTitle.trim() || !wBody.trim()) { window.alert("제목과 내용을 입력해주세요."); return; } const post = { id: "c" + Date.now(), cat: wCat, title: wTitle.trim(), body: wBody.trim(), author: myName || "익명", uid: myUid || "", at: Date.now(), comments: [], likes: [] }; onSave([post, ...posts]); setWTitle(""); setWBody(""); setWriting(false); setFilter(wCat); };
+  const del = (id) => { if (!window.confirm("이 글을 삭제할까요?")) return; onSave(posts.filter((p) => p.id !== id)); setOpenId(null); };
+  const toggleLike = (id) => onSave(posts.map((p) => p.id === id ? { ...p, likes: (p.likes || []).includes(myName) ? p.likes.filter((n) => n !== myName) : [...(p.likes || []), myName] } : p));
+  const addCm = (id) => { if (!cmIn.trim()) return; onSave(posts.map((p) => p.id === id ? { ...p, comments: [...(p.comments || []), { text: cmIn.trim(), by: myName || "익명", at: Date.now() }] } : p)); setCmIn(""); };
+  const delCm = (id, at) => onSave(posts.map((p) => p.id === id ? { ...p, comments: (p.comments || []).filter((c) => c.at !== at) } : p));
+  const list = filter === "all" ? posts : posts.filter((p) => p.cat === filter);
+  const open = openId ? posts.find((p) => p.id === openId) : null;
+  const tab = (k, lb) => (<button key={k} type="button" onClick={() => setFilter(k)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, fontWeight: "bold", padding: "7px 13px", borderRadius: 16, border: `2px solid ${C.ink}`, background: filter === k ? C.ink : C.white, color: filter === k ? C.white : C.ink }}>{lb}</button>);
+  return (
+    <div style={{ position: "fixed", inset: 0, background: C.parch, zIndex: 120, display: "flex", flexDirection: "column", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderBottom: `3px solid ${C.ink}`, flexShrink: 0 }}>
+        <PxButton tone="ink" onClick={onBack} style={{ fontSize: 12, padding: "6px 12px" }}>← 나가기</PxButton>
+        <b style={{ fontSize: 16 }}>💬 커뮤니티</b>
+        <span style={{ fontSize: 10, color: C.inkSoft }}>꿀팁·가이드·질문을 나눠요</span>
+        <span style={{ flex: 1 }} />
+        <PxButton tone="gold" onClick={() => setWriting(true)} style={{ fontSize: 12, padding: "6px 12px" }}>✏️ 글쓰기</PxButton>
+      </div>
+      <div style={{ display: "flex", gap: 6, padding: "10px 16px", flexWrap: "wrap", flexShrink: 0 }}>
+        {tab("all", "전체")}{COMM_CATS.map(([k, lb]) => tab(k, lb))}
+      </div>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 16px 20px" }}>
+        {list.length === 0 && <div style={{ textAlign: "center", color: C.inkSoft, fontSize: 13, padding: 40 }}>아직 글이 없어요. ✏️ 글쓰기로 첫 글을 남겨보세요!</div>}
+        {list.slice().sort((a, b) => (b.at || 0) - (a.at || 0)).map((p) => { const m = meta(p.cat); return (
+          <div key={p.id} onClick={() => setOpenId(p.id)} style={{ cursor: "pointer", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 10, padding: "11px 13px", marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{ fontSize: 10, fontWeight: "bold", color: C.white, background: m[2], borderRadius: 8, padding: "2px 8px", flexShrink: 0 }}>{m[1]}</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: "bold", wordBreak: "break-word" }}>{p.title}</span>
+            </div>
+            <div style={{ fontSize: 11.5, color: C.inkSoft, marginTop: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.body}</div>
+            <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 6, display: "flex", gap: 10 }}>
+              <span>🧑 {p.author}</span>
+              <span>{new Date(p.at).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" })}</span>
+              <span style={{ flex: 1 }} />
+              <span>❤ {(p.likes || []).length}</span>
+              <span>💬 {(p.comments || []).length}</span>
+            </div>
+          </div>
+        ); })}
+      </div>
+
+      {writing && (
+        <div onClick={() => setWriting(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 130, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18 }}>
+            <b style={{ fontSize: 15 }}>✏️ 새 글</b>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "10px 0" }}>
+              {COMM_CATS.map(([k, lb, col]) => (<button key={k} type="button" onClick={() => setWCat(k)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, fontWeight: "bold", padding: "6px 12px", borderRadius: 14, border: `2px solid ${wCat === k ? col : C.parchEdge}`, background: wCat === k ? col : C.white, color: wCat === k ? C.white : C.inkSoft }}>{lb}</button>))}
+            </div>
+            <input value={wTitle} onChange={(e) => setWTitle(e.target.value)} placeholder="제목" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, marginBottom: 8 }} />
+            <textarea value={wBody} onChange={(e) => setWBody(e.target.value)} placeholder="내용을 자유롭게 적어주세요" rows={7} style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, resize: "vertical" }} />
+            <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+              <PxButton tone="good" onClick={submit} style={{ flex: 1, fontSize: 13, padding: 10 }}>등록</PxButton>
+              <PxButton tone="ink" onClick={() => setWriting(false)} style={{ fontSize: 12, padding: 10 }}>취소</PxButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {open && (() => { const m = meta(open.cat); const liked = (open.likes || []).includes(myName); return (
+        <div onClick={() => setOpenId(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 130, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: "bold", color: C.white, background: m[2], borderRadius: 8, padding: "2px 8px" }}>{m[1]}</span>
+              <b style={{ flex: 1, fontSize: 16, wordBreak: "break-word" }}>{open.title}</b>
+              {(open.author === myName || (myUid && open.uid === myUid)) && <button type="button" onClick={() => del(open.id)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14, color: C.danger }}>🗑</button>}
+              <button type="button" onClick={() => setOpenId(null)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 18 }}>✕</button>
+            </div>
+            <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 12 }}>🧑 {open.author} · {new Date(open.at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+            <div style={{ fontSize: 13.5, lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word", marginBottom: 14 }}>{open.body}</div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+              <button type="button" onClick={() => toggleLike(open.id)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, fontWeight: "bold", padding: "7px 14px", borderRadius: 16, border: `2px solid ${C.ink}`, background: liked ? "#ff6b8a" : C.white, color: liked ? C.white : C.ink }}>❤ 좋아요 {(open.likes || []).length}</button>
+            </div>
+            <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 8, borderTop: `2px solid ${C.parchEdge}`, paddingTop: 10 }}>💬 댓글 ({(open.comments || []).length})</div>
+            {(open.comments || []).slice().sort((a, b) => (a.at || 0) - (b.at || 0)).map((c) => (
+              <div key={c.at} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 7, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "7px 9px" }}>
+                <span style={{ fontSize: 10, fontWeight: "bold", color: C.inkSoft, flexShrink: 0 }}>{c.by}</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 12, wordBreak: "break-word" }}>{c.text}</span>
+                {c.by === myName && <button type="button" onClick={() => delCm(open.id, c.at)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 10, color: C.inkSoft }}>🗑</button>}
+              </div>
+            ))}
+            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+              <input value={cmIn} onChange={(e) => setCmIn(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addCm(open.id); }} placeholder="댓글 달기" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
+              <PxButton tone="wood" onClick={() => addCm(open.id)} style={{ fontSize: 11.5, padding: "8px 12px" }}>등록</PxButton>
+            </div>
+          </div>
+        </div>
+      ); })()}
+    </div>
+  );
+}
+
 /* 진행상황 / 아이디어&피드백 섹션: 한 글을 계속 업데이트 (저장=글만 보임, 수정=편집창) + 댓글 스레드 */
 function DocSection({ title, color, html, comments, onSave, onAddComment, onDelComment, myName }) {
   const [editing, setEditing] = useState(!html);
@@ -13670,6 +13788,14 @@ function EchoTown() {
     });
   };
   useEffect(() => { dbLoadHQ().then((d) => { if (d && Array.isArray(d)) { setHqQuests(d); try { saveJSON("echotown_hq_v1", d); } catch (e) {} } }); }, []);
+  const [community, setCommunity] = useState(() => loadJSON("echotown_comm_v1", []) || []);
+  const saveCommunity = (list) => {
+    setCommunity(list);
+    try { saveJSON("echotown_comm_v1", list); } catch (e) {}
+    if (netSendEventRef.current) netSendEventRef.current("comm", { list });
+    dbSaveCommunity(list);
+  };
+  useEffect(() => { dbLoadCommunity().then((d) => { if (d && Array.isArray(d)) { setCommunity(d); try { saveJSON("echotown_comm_v1", d); } catch (e) {} } }); }, []);
   // 🎁 검토완료된 내 담당 퀘스트의 보상을 내 지갑에 1회 지급 (담당자 본인 클라이언트에서)
   useEffect(() => {
     if (!myName || !hydratedRef.current) return;
@@ -14179,7 +14305,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "hq" || kind === "hqroad" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "hq" || kind === "hqroad" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx" || kind === "comm") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); showNotice(`🔔 ${p.from}님이 초인종을 눌렀어요`); pushMsg("dm", { from: p.from, text: "🔔 초인종을 눌렀어요 — 집 앞에 찾아왔어요!" }); }
       if (kind === "qrev") { showNotice("🔔 퀘스트 알림이 도착했습니다!", () => setHqOpen(true)); pushMsg("dm", { from: p.by || "HQ", text: p.txt || "🔔 퀘스트 알림" }); return; }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
@@ -14352,6 +14478,10 @@ function EchoTown() {
       }
       if (kind === "hq") {
         if (Array.isArray(p.list)) { setHqQuests(p.list); try { saveJSON("echotown_hq_v1", p.list); } catch (e) {} }
+        return;
+      }
+      if (kind === "comm") {
+        if (Array.isArray(p.list)) { setCommunity(p.list); try { saveJSON("echotown_comm_v1", p.list); } catch (e) {} }
         return;
       }
       if (kind === "hqroad") {
@@ -14899,7 +15029,8 @@ function EchoTown() {
         }} />}
         {view === "musinsa" && <MusinsaView gems={gold} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
         {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} onReward={(n) => awardGold(n)} myName={myName} recList={recList} onRec={addRec} />}
-        {view === "board" && <BoardView myName={myName} onBack={backToWorld} />}
+        {view === "board" && <BoardView myName={myName} myUid={myUid} onBack={backToWorld} onCommunity={() => setView("community")} />}
+        {view === "community" && <CommunityView posts={community} myName={myName} myUid={myUid} onSave={saveCommunity} onBack={backToWorld} />}
         {view === "bank" && <BankView gems={gems} lifetime={lifetime} exchanged={exchanged} history={history} onExchange={doExchange} onBack={backToWorld} />}
         {view === "rent" && rentMeta && <RentView house={rentMeta} gems={gold} rented={!!rented[rentId]} onRent={() => { setGold((g) => g - rentMeta.rent); setRented((r) => ({ ...r, [rentId]: true })); }} onBack={backToWorld} />}
       </div>
