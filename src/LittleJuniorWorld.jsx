@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v121 · 2026-07-29";
+const APP_VERSION = "v122 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -10617,7 +10617,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const viewDone = mpSelf ? mpDone : ((mpOther && mpOther.mission) || {});
   const viewTodos = mpSelf ? mpTodos : ((mpOther && mpOther.todos) || []);
   const viewNeck = mpSelf ? mpNeck : ((mpOther && mpOther.neck) || []).filter((n) => !n.locked);
-  const blankQuest = () => ({ id: "q" + Date.now(), cat: "core", title: "", star: 2, gold: 0, gem: 0, chapter: "", due: "", reviewer: "", subs: [] });
+  const blankQuest = () => ({ id: "q" + Date.now(), cat: "core", title: "", star: 2, gold: 0, gem: 0, chapter: "", due: "", assignee: "", reviewer: "", content: "", feedback: "", minutes: "", subs: [] });
   const commitQuest = (q) => {
     const clean = { ...q, star: Number(q.star) || 1, gold: Number(q.gold) || 0, gem: Number(q.gem) || 0, editedBy: myName || "익명", editedAt: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
     const exists = hqQuests.some((x) => x.id === q.id);
@@ -10907,66 +10907,128 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 <PxButton tone="wood" onClick={() => setQManage(true)} style={{ fontSize: 11, padding: "7px 11px", marginLeft: "auto" }}>⚙️ 설정</PxButton>
                 <PxButton tone="gold" onClick={() => setQEdit(blankQuest())} style={{ fontSize: 11, padding: "7px 12px" }}>＋ 새 퀘스트</PxButton>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
-                {list.map((q) => {
-                  const ci = catInfo(q.cat);
-                  return (
-                    <div key={q.id} onClick={() => setQView(q)} style={{ cursor: "pointer", position: "relative", background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 14 }}>
-                      {ci.icon && <span style={{ position: "absolute", top: -15, left: -9, fontSize: 30, lineHeight: 1, zIndex: 2, filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.3))", pointerEvents: "none" }}>{ci.icon}</span>}
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
-                        <b style={{ flex: 1, fontSize: 14, wordBreak: "keep-all", marginLeft: ci.icon ? 18 : 0 }}>{q.title}</b>
-                        <button type="button" onClick={(e) => { e.stopPropagation(); setQEdit({ ...q, subs: (q.subs || []).map((x) => ({ ...x })) }); }} title="수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13 }}>✏️</button>
-                        <button type="button" onClick={(e) => { e.stopPropagation(); if (window.confirm("정말로 삭제하시겠습니까?")) removeQuest(q.id); }} title="삭제" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: C.danger }}>🗑</button>
+              {(() => {
+                const chapterOrder = qcat === "all"
+                  ? Array.from(new Set(HQ_CATS.flatMap((c) => (hqRoad[c.id] || []).map((ch) => ch.name))))
+                  : (hqRoad[qcat] || []).map((ch) => ch.name);
+                const byCh = {};
+                list.forEach((q) => { const k = q.chapter || "__none"; (byCh[k] = byCh[k] || []).push(q); });
+                const keys = [...chapterOrder.filter((k) => byCh[k]), ...Object.keys(byCh).filter((k) => k !== "__none" && !chapterOrder.includes(k)), ...(byCh["__none"] ? ["__none"] : [])];
+                const sel = qView ? (hqQuests.find((x) => x.id === qView.id) || null) : null;
+                return (
+                <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+                  {/* ◀ 왼쪽: 챕터별 퀘스트 리스트 */}
+                  <div style={{ flex: "1 1 300px", minWidth: 0, maxHeight: 600, overflowY: "auto", paddingRight: 4 }}>
+                    {list.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 24 }}>퀘스트가 없어요 · ＋ 새 퀘스트</div>}
+                    {keys.map((k) => (
+                      <div key={k} style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 11, fontWeight: "bold", color: C.inkSoft, margin: "0 0 6px 2px" }}>📁 {k === "__none" ? "챕터 없음" : k} <span style={{ opacity: 0.65 }}>({byCh[k].length})</span></div>
+                        {byCh[k].map((q) => {
+                          const ci = catInfo(q.cat);
+                          const doneN = (q.subs || []).filter(sbDone).length;
+                          const total = (q.subs || []).length;
+                          const pct = avgPct(q);
+                          const selected = qView && qView.id === q.id;
+                          return (
+                            <button key={q.id} type="button" onClick={() => setQView(q)}
+                              style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, padding: "9px 11px", marginBottom: 6, borderRadius: 10, border: `2px solid ${selected ? ci.color : C.ink}`, background: selected ? "#fff8e8" : C.white, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", boxShadow: selected ? `0 2px 0 ${ci.color}` : "none" }}>
+                              {ci.icon && <span style={{ fontSize: 18, flexShrink: 0 }}>{ci.icon}</span>}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 12.5, fontWeight: "bold", color: C.ink, wordBreak: "break-word" }}>{q.title}</div>
+                                <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                  <span>✔ {doneN}/{total}</span>
+                                  {q.due && <span>📅 {q.due}</span>}
+                                  {q.assignee && <span>🧑 {q.assignee}</span>}
+                                  {q.reviewer && <span>🔎 {q.reviewer}</span>}
+                                </div>
+                              </div>
+                              <span style={{ fontSize: 12, fontWeight: "bold", color: pct >= 100 ? C.good : ci.color, flexShrink: 0 }}>{pct}%</span>
+                            </button>
+                          );
+                        })}
                       </div>
-                      {q.chapter && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "7px 0", fontSize: 11, color: C.inkSoft, flexWrap: "wrap" }}>
-                          <span>📁 {q.chapter}</span>
-                        </div>
-                      )}
-                      {q.due && (() => { const dd = dDay(q.due); return (
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, fontSize: 10.5, color: C.inkSoft }}>
-                          <span>📅 {q.due}</span>
-                          {dd && <span style={{ fontSize: 10, fontWeight: "bold", color: C.white, borderRadius: 8, padding: "1px 7px", background: dd.over ? C.danger : dd.today ? "#e0a13d" : dd.days <= 3 ? "#e0663d" : C.good }}>{dd.txt}</span>}
-                        </div>
-                      ); })()}
-                      <div onClick={(e) => e.stopPropagation()} style={{ maxHeight: 148, overflowY: "auto", ...((q.subs || []).length > 5 ? { border: `1px dashed ${C.parchEdge}`, borderRadius: 8, padding: "5px 7px" } : {}) }}>
-                      {(() => {
-                        const rows = (q.subs || []).map((sb, i) => ({ sb, i })).filter(({ sb }) => !qActiveOnly || sb.active).sort((a, b) => (sbDone(a.sb) ? 1 : 0) - (sbDone(b.sb) ? 1 : 0));
-                        if (qActiveOnly && rows.length === 0) return <div style={{ fontSize: 10.5, color: C.inkSoft, padding: "2px 0" }}>진행중 미션 없음</div>;
-                        return rows.map(({ sb, i }) => {
-                        const isD = sbDone(sb);
-                        return (
-                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                            <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: isD ? "line-through" : "none", color: isD ? C.inkSoft : C.ink }}>{sb.t}</span>
-                            <select value={sb.who || ""} onChange={(e) => setSubWho(q.id, i, e.target.value)} onDoubleClick={() => toggleSubActive(q.id, i)} title="담당 계정 선택 · 더블클릭 = 진행중 표시"
-                              style={{ flexShrink: 0, maxWidth: 90, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10, fontWeight: sb.active ? "bold" : "normal", padding: "2px 3px", border: `2px solid ${sb.active ? (sb.who ? colorOf(sb.who) : "#4b8f5f") : C.ink}`, borderRadius: 6, background: sb.active ? (sb.who ? colorOf(sb.who) : "#cfe7d6") : C.white, color: sb.active && sb.who ? C.white : C.ink }}>
-                              <option value="">미지정</option>
-                              {(sb.who && !acctNames.includes(sb.who) ? [sb.who, ...acctNames] : acctNames).map((nm) => (<option key={nm} value={nm}>{nm}</option>))}
-                            </select>
-                            <input type="checkbox" checked={isD} onChange={() => toggleSubDone(q.id, i)} title="완료" style={{ flexShrink: 0, cursor: "pointer" }} />
+                    ))}
+                  </div>
+                  {/* ▶ 오른쪽: 선택한 퀘스트 상세 */}
+                  <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+                    {sel ? (() => {
+                      const ci = catInfo(sel.cat);
+                      const dd = dDay(sel.due);
+                      const subs = sel.subs || [];
+                      const doneN = subs.filter(sbDone).length;
+                      const pct = avgOf(sel);
+                      return (
+                        <div style={{ background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 16 }}>
+                          <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10 }}>
+                            <span style={{ fontSize: 11, color: C.white, background: ci.color, borderRadius: 8, padding: "3px 8px", whiteSpace: "nowrap", flexShrink: 0 }}>{ci.icon} {ci.name}</span>
+                            <b style={{ flex: 1, fontSize: 16, wordBreak: "keep-all" }}>{sel.title}</b>
+                            <button type="button" onClick={() => setQEdit({ ...sel, subs: (sel.subs || []).map((x) => ({ ...x })) })} title="수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14 }}>✏️</button>
+                            <button type="button" onClick={() => { if (window.confirm("정말로 삭제하시겠습니까?")) { removeQuest(sel.id); setQView(null); } }} title="삭제" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14, color: C.danger }}>🗑</button>
                           </div>
-                        );
-                        });
-                      })()}
-                      </div>
-                      {/* 진행률 = 완료 미션 ÷ 전체 미션 · 크게 표시 */}
-                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.parchEdge}` }}>
-                        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                          <span style={{ fontSize: 26, fontWeight: "bold", color: avgPct(q) >= 100 ? C.good : ci.color, lineHeight: 1 }}>{avgPct(q)}%</span>
-                          <span style={{ fontSize: 10.5, color: C.inkSoft }}>{(q.subs || []).filter(sbDone).length}/{(q.subs || []).length} 미션 완료</span>
-                          <span style={{ flex: 1 }} />
-                          <button type="button" onClick={(e) => { e.stopPropagation(); addSubTo(q.id); }} title="미션 바로 추가" style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", alignSelf: "center", fontSize: 20, fontWeight: "bold", lineHeight: 1, background: "none", border: "none", color: ci.color, padding: "0 2px", flexShrink: 0 }}>＋</button>
+                          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 12, color: C.inkSoft, marginBottom: 10 }}>
+                            {sel.chapter && <span>📁 {sel.chapter}</span>}
+                            {sel.due && <span>📅 {sel.due} {dd && <b style={{ color: dd.over ? C.danger : dd.today ? "#e0a13d" : C.good }}>{dd.txt}</b>}</span>}
+                          </div>
+                          {/* 담당자 + 검토자 */}
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "6px 9px", fontSize: 12 }}>
+                              <span style={{ fontWeight: "bold" }}>🧑 담당자</span>
+                              <select value={sel.assignee || ""} onChange={(e) => onHQChange && onHQChange(hqQuests.map((x) => x.id === sel.id ? { ...x, assignee: e.target.value, ...editStamp() } : x))} style={{ padding: 4, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, background: C.white }}>
+                                <option value="">없음</option>
+                                {(sel.assignee && !acctNames.includes(sel.assignee) ? [sel.assignee, ...acctNames] : acctNames).map((nm) => (<option key={nm} value={nm}>{nm}</option>))}
+                              </select>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "6px 9px", fontSize: 12 }}>
+                              <span style={{ fontWeight: "bold" }}>🔎 검토자</span>
+                              {revEditId === sel.id ? (
+                                <select autoFocus value={sel.reviewer || ""} onChange={(e) => { const nm = e.target.value; onHQChange && onHQChange(hqQuests.map((x) => x.id === sel.id ? { ...x, reviewer: nm, ...editStamp() } : x)); if (nm && nm !== sel.reviewer) notifyReviewer(nm, sel.title); setRevEditId(null); }} style={{ padding: 4, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, background: C.white }}>
+                                  <option value="">없음</option>
+                                  {(sel.reviewer && !acctNames.includes(sel.reviewer) ? [sel.reviewer, ...acctNames] : acctNames).map((nm) => (<option key={nm} value={nm}>{nm}</option>))}
+                                </select>
+                              ) : (
+                                <>
+                                  <span style={{ fontWeight: "bold", color: sel.reviewer ? C.ink : C.inkSoft }}>{sel.reviewer || "없음"}</span>
+                                  <button type="button" onClick={() => { const code = window.prompt("검토자를 변경하려면 관리자 코드를 입력하세요"); if (code == null) return; if (code !== REVIEW_ADMIN_CODE) { window.alert("관리자 코드가 올바르지 않습니다."); return; } setRevEditId(sel.id); }} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "3px 7px" }}>🔒</button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          {/* 진행률 */}
+                          <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
+                            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                              <span style={{ fontSize: 30, fontWeight: "bold", color: pct >= 100 ? C.good : ci.color, lineHeight: 1 }}>{pct}%</span>
+                              <span style={{ fontSize: 12, color: C.inkSoft }}>{doneN}/{subs.length} 미션 완료</span>
+                              <span style={{ flex: 1 }} />
+                              <button type="button" onClick={() => addSubTo(sel.id)} title="미션 바로 추가" style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 20, fontWeight: "bold", lineHeight: 1, background: "none", border: "none", color: ci.color, padding: "0 2px" }}>＋</button>
+                            </div>
+                            <div style={{ height: 10, borderRadius: 6, background: "#eadfc6", overflow: "hidden", marginTop: 8 }}>
+                              <div style={{ width: pct + "%", height: "100%", background: pct >= 100 ? C.good : ci.color }} />
+                            </div>
+                          </div>
+                          {/* 미션 목록 */}
+                          <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>세부 미션</div>
+                          {subs.length === 0 ? <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 8 }}>미션이 없어요 · 위 ＋ 로 추가</div> : subs.map((sb, i) => {
+                            const isD = sbDone(sb);
+                            const sdd = sb.due ? dDay(sb.due) : null;
+                            return (
+                              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "7px 9px", marginBottom: 5 }}>
+                                <input type="checkbox" checked={isD} onChange={() => toggleSubDone(sel.id, i)} style={{ flexShrink: 0, cursor: "pointer" }} />
+                                <span style={{ flex: 1, minWidth: 0, fontSize: 12, wordBreak: "break-word", textDecoration: isD ? "line-through" : "none", color: isD ? C.inkSoft : C.ink }}>{sb.t || "(내용 없음)"}</span>
+                                {sb.due && <span style={{ fontSize: 9.5, color: sdd && sdd.over ? C.danger : C.inkSoft, flexShrink: 0 }}>📅 {sb.due}</span>}
+                                <span style={{ fontSize: 10, color: C.inkSoft, flexShrink: 0 }}>{sb.who ? `🧑 ${sb.who}` : ""}</span>
+                              </div>
+                            );
+                          })}
+                          {sel.editedBy && <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 8, textAlign: "right" }}>수정 {sel.editedBy} · {sel.editedAt}</div>}
                         </div>
-                        <div style={{ height: 10, borderRadius: 6, background: "#eadfc6", overflow: "hidden", marginTop: 6 }}>
-                          <div style={{ width: avgPct(q) + "%", height: "100%", background: avgPct(q) >= 100 ? C.good : ci.color, transition: "width .2s" }} />
-                        </div>
-                        {q.editedBy && <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 5, textAlign: "right" }}>수정 {q.editedBy} · {q.editedAt}</div>}
-                      </div>
-                    </div>
-                  );
-                })}
-                {list.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 30 }}>이 카테고리에 퀘스트가 없어요 · ＋ 새 퀘스트로 만들어보세요</div>}
-              </div>
+                      );
+                    })() : (
+                      <div style={{ background: C.white, border: `2px dashed ${C.parchEdge}`, borderRadius: 12, padding: 40, textAlign: "center", color: C.inkSoft, fontSize: 13 }}>← 왼쪽에서 퀘스트를 선택하면<br />여기에 자세히 나와요</div>
+                    )}
+                  </div>
+                </div>
+                );
+              })()}
 
               {/* 등록/수정 모달 */}
               {qEdit && (
@@ -10991,6 +11053,13 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                       </select>
                       <button type="button" onClick={() => window.alert("로드맵 탭에서 새 챕터를 추가해주세요.\n(🗺 로드맵 → ＋ 챕터 추가)")} title="새 챕터 추가" style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "0 11px" }}>＋</button>
                       <input type="date" value={qEdit.due} onChange={(e) => setQEdit({ ...qEdit, due: e.target.value })} style={{ padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11 }} />
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: "bold", flexShrink: 0 }}>🧑 담당자</span>
+                      <select value={qEdit.assignee || ""} onChange={(e) => setQEdit({ ...qEdit, assignee: e.target.value })} style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, background: C.white }}>
+                        <option value="">담당자 없음</option>
+                        {(qEdit.assignee && !acctNames.includes(qEdit.assignee) ? [qEdit.assignee, ...acctNames] : acctNames).map((nm) => (<option key={nm} value={nm}>{nm}</option>))}
+                      </select>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                       <span style={{ fontSize: 12, fontWeight: "bold", flexShrink: 0 }}>🔎 검토자</span>
@@ -11026,77 +11095,6 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                   </div>
                 </div>
               )}
-
-              {/* 🔍 퀘스트 자세히 보기 */}
-              {qView && (() => {
-                const qv = hqQuests.find((x) => x.id === qView.id) || qView;
-                const ci = catInfo(qv.cat);
-                const dd = dDay(qv.due);
-                const subs = qv.subs || [];
-                const doneN = subs.filter(sbDone).length;
-                const pct = avgOf(qv);
-                return (
-                  <div onClick={() => setQView(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 }}>
-                    <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, maxHeight: "90%", overflow: "auto", background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18 }}>
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10 }}>
-                        <span style={{ fontSize: 11, color: C.white, background: ci.color, borderRadius: 8, padding: "3px 8px", whiteSpace: "nowrap", flexShrink: 0 }}>{ci.icon} {ci.name}</span>
-                        <b style={{ flex: 1, fontSize: 16, wordBreak: "keep-all" }}>{qv.title}</b>
-                        <button type="button" onClick={() => setQView(null)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16 }}>✕</button>
-                      </div>
-                      {qv.chapter && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12, color: C.inkSoft, marginBottom: 10 }}>
-                          <span>📁 {qv.chapter}</span>
-                        </div>
-                      )}
-                      {qv.due && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, fontSize: 12 }}>
-                          <span style={{ color: C.inkSoft }}>📅 마감 {qv.due}</span>
-                          {dd && <span style={{ fontSize: 11, fontWeight: "bold", color: C.white, borderRadius: 8, padding: "2px 9px", background: dd.over ? C.danger : dd.today ? "#e0a13d" : dd.days <= 3 ? "#e0663d" : C.good }}>{dd.txt}</span>}
-                        </div>
-                      )}
-                      {/* 🔎 검토자 (눌러야 보이는 상세 · 변경은 관리자 코드) */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px" }}>
-                        <span style={{ fontSize: 12, fontWeight: "bold", flexShrink: 0 }}>🔎 검토자</span>
-                        {revEditId === qv.id ? (
-                          <select autoFocus value={qv.reviewer || ""} onChange={(e) => { const nm = e.target.value; onHQChange && onHQChange(hqQuests.map((x) => x.id === qv.id ? { ...x, reviewer: nm, ...editStamp() } : x)); if (nm && nm !== qv.reviewer) notifyReviewer(nm, qv.title); setRevEditId(null); }} style={{ flex: 1, minWidth: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, background: C.white }}>
-                            <option value="">검토자 없음</option>
-                            {(qv.reviewer && !acctNames.includes(qv.reviewer) ? [qv.reviewer, ...acctNames] : acctNames).map((nm) => (<option key={nm} value={nm}>{nm}</option>))}
-                          </select>
-                        ) : (
-                          <>
-                            <span style={{ flex: 1, fontSize: 13, fontWeight: "bold", color: qv.reviewer ? C.ink : C.inkSoft }}>{qv.reviewer || "지정 안 됨"}</span>
-                            <button type="button" onClick={() => { const code = window.prompt("검토자를 변경하려면 관리자 코드를 입력하세요"); if (code == null) return; if (code !== REVIEW_ADMIN_CODE) { window.alert("관리자 코드가 올바르지 않습니다."); return; } setRevEditId(qv.id); }} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "5px 10px" }}>🔒 변경</button>
-                          </>
-                        )}
-                      </div>
-                      {/* 진행률 크게 */}
-                      <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
-                        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                          <span style={{ fontSize: 34, fontWeight: "bold", color: pct >= 100 ? C.good : ci.color, lineHeight: 1 }}>{pct}%</span>
-                          <span style={{ fontSize: 12, color: C.inkSoft }}>{doneN}/{subs.length} 미션 완료</span>
-                        </div>
-                        <div style={{ height: 12, borderRadius: 7, background: "#eadfc6", overflow: "hidden", marginTop: 8 }}>
-                          <div style={{ width: pct + "%", height: "100%", background: pct >= 100 ? C.good : ci.color }} />
-                        </div>
-                      </div>
-                      {/* 미션 목록 */}
-                      <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>세부 미션</div>
-                      {subs.length === 0 ? <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 10 }}>등록된 미션이 없어요.</div> : subs.map((sb, i) => {
-                        const isD = sbDone(sb);
-                        return (
-                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
-                            <span style={{ fontSize: 14 }}>{isD ? "✅" : "⬜"}</span>
-                            <span style={{ flex: 1, minWidth: 0, fontSize: 12, wordBreak: "break-word", textDecoration: isD ? "line-through" : "none", color: isD ? C.inkSoft : C.ink }}>{sb.t || "(내용 없음)"}</span>
-                            <span style={{ fontSize: 10.5, color: C.inkSoft, flexShrink: 0, display: "flex", alignItems: "center", gap: 5 }}>{sb.active && <span style={{ fontSize: 9, fontWeight: "bold", color: C.white, background: "#4b8f5f", borderRadius: 8, padding: "1px 6px" }}>진행중</span>}{sb.who ? `🧑 ${sb.who}` : "미지정"}</span>
-                          </div>
-                        );
-                      })}
-                      {qv.editedBy && <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6 }}>마지막 수정 · {qv.editedBy} · {qv.editedAt}</div>}
-                      <PxButton tone="wood" onClick={() => { setQView(null); setQEdit({ ...qv, subs: subs.map((x) => ({ ...x })) }); }} style={{ width: "100%", fontSize: 12.5, padding: 10, marginTop: 12 }}>✏️ 수정하기</PxButton>
-                    </div>
-                  </div>
-                );
-              })()}
 
               {/* ⚙️ 퀘스트 관리 (이름 수정 · 순서 변경 · 삭제) */}
               {qManage && (
