@@ -7984,7 +7984,7 @@ function mergeDict(dbList, localList) {
 }
 
 /* 업로드한 사진을 리사이즈·압축해서 용량을 줄입니다 (로컬 저장 한도 대비) */
-export function compressImage(file, maxSide = 900, quality = 0.72, mime = "image/jpeg") {
+function compressImage(file, maxSide = 900, quality = 0.72, mime = "image/jpeg") {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error("read fail"));
@@ -10570,50 +10570,70 @@ const HQ_ROADMAP = {
 /* ======================= 🖥 에코월드 HQ (대시보드) ======================= */
 /* 💬 커뮤니티 게시판: 꿀팁·가이드·질문 자유 공유 (한 JSON으로 실시간 공유) */
 const COMM_CATS = [["tip", "💡 꿀팁", "#e0913d"], ["guide", "📖 가이드", "#4b8f5f"], ["qna", "❓ 질문", "#5b8def"]];
+const commPopular = (p) => (p.likes || []).length >= 5;
 function CommunityView({ posts = [], myName = "", myUid = "", onSave, onBack }) {
   const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const [writing, setWriting] = useState(false);
+  const [editId, setEditId] = useState(null);
   const [wCat, setWCat] = useState("tip");
   const [wTitle, setWTitle] = useState("");
   const [wBody, setWBody] = useState("");
+  const [wDocs, setWDocs] = useState([]);
   const [openId, setOpenId] = useState(null);
   const [cmIn, setCmIn] = useState("");
+  const [replyTo, setReplyTo] = useState(null);
+  const [replyIn, setReplyIn] = useState("");
   const meta = (k) => COMM_CATS.find((c) => c[0] === k) || ["", "", "#888"];
-  const submit = () => { if (!wTitle.trim() || !wBody.trim()) { window.alert("제목과 내용을 입력해주세요."); return; } const post = { id: "c" + Date.now(), cat: wCat, title: wTitle.trim(), body: wBody.trim(), author: myName || "익명", uid: myUid || "", at: Date.now(), comments: [], likes: [] }; onSave([post, ...posts]); setWTitle(""); setWBody(""); setWriting(false); setFilter(wCat); };
+  const mine = (p) => p.author === myName || (myUid && p.uid === myUid);
+  const openWrite = () => { setEditId(null); setWCat("tip"); setWTitle(""); setWBody(""); setWDocs([]); setWriting(true); };
+  const openEdit = (p) => { setEditId(p.id); setWCat(p.cat); setWTitle(p.title); setWBody(p.body); setWDocs(p.docs || []); setWriting(true); setOpenId(null); };
+  const addWDoc = (file) => { if (!file) return; if (file.size > 800 * 1024) { window.alert("800KB 이하 파일만 첨부할 수 있어요."); return; } const r = new FileReader(); r.onload = () => setWDocs((v) => [...v, { name: file.name, url: r.result, at: Date.now() }]); r.readAsDataURL(file); };
+  const submit = () => {
+    if (!wTitle.trim() || !wBody.trim()) { window.alert("제목과 내용을 입력해주세요."); return; }
+    if (editId) { onSave(posts.map((p) => p.id === editId ? { ...p, cat: wCat, title: wTitle.trim(), body: wBody.trim(), docs: wDocs, editedAt: Date.now() } : p)); }
+    else { onSave([{ id: "c" + Date.now(), cat: wCat, title: wTitle.trim(), body: wBody.trim(), docs: wDocs, author: myName || "익명", uid: myUid || "", at: Date.now(), comments: [], likes: [] }, ...posts]); setFilter(wCat); }
+    setWriting(false); setEditId(null); setWTitle(""); setWBody(""); setWDocs([]);
+  };
   const del = (id) => { if (!window.confirm("이 글을 삭제할까요?")) return; onSave(posts.filter((p) => p.id !== id)); setOpenId(null); };
   const toggleLike = (id) => onSave(posts.map((p) => p.id === id ? { ...p, likes: (p.likes || []).includes(myName) ? p.likes.filter((n) => n !== myName) : [...(p.likes || []), myName] } : p));
-  const addCm = (id) => { if (!cmIn.trim()) return; onSave(posts.map((p) => p.id === id ? { ...p, comments: [...(p.comments || []), { text: cmIn.trim(), by: myName || "익명", at: Date.now() }] } : p)); setCmIn(""); };
-  const delCm = (id, at) => onSave(posts.map((p) => p.id === id ? { ...p, comments: (p.comments || []).filter((c) => c.at !== at) } : p));
-  const list = filter === "all" ? posts : posts.filter((p) => p.cat === filter);
+  const addCm = (id) => { if (!cmIn.trim()) return; onSave(posts.map((p) => p.id === id ? { ...p, comments: [...(p.comments || []), { id: "cm" + Date.now(), text: cmIn.trim(), by: myName || "익명", at: Date.now(), replies: [] }] } : p)); setCmIn(""); };
+  const delCm = (id, cid) => onSave(posts.map((p) => p.id === id ? { ...p, comments: (p.comments || []).filter((c) => c.id !== cid) } : p));
+  const addReply = (id, cid) => { if (!replyIn.trim()) return; onSave(posts.map((p) => p.id === id ? { ...p, comments: (p.comments || []).map((c) => c.id === cid ? { ...c, replies: [...(c.replies || []), { text: replyIn.trim(), by: myName || "익명", at: Date.now() }] } : c) } : p)); setReplyIn(""); setReplyTo(null); };
+  const delReply = (id, cid, at) => onSave(posts.map((p) => p.id === id ? { ...p, comments: (p.comments || []).map((c) => c.id === cid ? { ...c, replies: (c.replies || []).filter((r) => r.at !== at) } : c) } : p));
+  const q = search.trim().toLowerCase();
+  let list = filter === "popular" ? posts.filter(commPopular) : (filter === "all" ? posts : posts.filter((p) => p.cat === filter));
+  if (q) list = list.filter((p) => ((p.title || "") + " " + (p.body || "") + " " + (p.author || "")).toLowerCase().includes(q));
+  list = list.slice().sort((a, b) => filter === "popular" ? ((b.likes || []).length - (a.likes || []).length) || ((b.at || 0) - (a.at || 0)) : (b.at || 0) - (a.at || 0));
   const open = openId ? posts.find((p) => p.id === openId) : null;
   const tab = (k, lb) => (<button key={k} type="button" onClick={() => setFilter(k)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, fontWeight: "bold", padding: "7px 13px", borderRadius: 16, border: `2px solid ${C.ink}`, background: filter === k ? C.ink : C.white, color: filter === k ? C.white : C.ink }}>{lb}</button>);
   return (
     <div style={{ position: "fixed", inset: 0, background: C.parch, zIndex: 120, display: "flex", flexDirection: "column", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderBottom: `3px solid ${C.ink}`, flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderBottom: `3px solid ${C.ink}`, flexShrink: 0, flexWrap: "wrap" }}>
         <PxButton tone="ink" onClick={onBack} style={{ fontSize: 12, padding: "6px 12px" }}>← 나가기</PxButton>
         <b style={{ fontSize: 16 }}>💬 커뮤니티</b>
-        <span style={{ fontSize: 10, color: C.inkSoft }}>꿀팁·가이드·질문을 나눠요</span>
         <span style={{ flex: 1 }} />
-        <PxButton tone="gold" onClick={() => setWriting(true)} style={{ fontSize: 12, padding: "6px 12px" }}>✏️ 글쓰기</PxButton>
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 검색 (제목·내용·작성자)" style={{ width: 180, maxWidth: "40vw", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5 }} />
+        <PxButton tone="gold" onClick={openWrite} style={{ fontSize: 12, padding: "6px 12px" }}>✏️ 글쓰기</PxButton>
       </div>
       <div style={{ display: "flex", gap: 6, padding: "10px 16px", flexWrap: "wrap", flexShrink: 0 }}>
-        {tab("all", "전체")}{COMM_CATS.map(([k, lb]) => tab(k, lb))}
+        {tab("all", "전체")}{tab("popular", "🔥 인기")}{COMM_CATS.map(([k, lb]) => tab(k, lb))}
       </div>
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 16px 20px" }}>
-        {list.length === 0 && <div style={{ textAlign: "center", color: C.inkSoft, fontSize: 13, padding: 40 }}>아직 글이 없어요. ✏️ 글쓰기로 첫 글을 남겨보세요!</div>}
-        {list.slice().sort((a, b) => (b.at || 0) - (a.at || 0)).map((p) => { const m = meta(p.cat); return (
-          <div key={p.id} onClick={() => setOpenId(p.id)} style={{ cursor: "pointer", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 10, padding: "11px 13px", marginBottom: 8 }}>
+        {list.length === 0 && <div style={{ textAlign: "center", color: C.inkSoft, fontSize: 13, padding: 40 }}>{q ? "검색 결과가 없어요." : filter === "popular" ? "아직 인기글이 없어요 (좋아요 5개 이상)" : "아직 글이 없어요. ✏️ 글쓰기로 첫 글을 남겨보세요!"}</div>}
+        {list.map((p) => { const m = meta(p.cat); const pop = commPopular(p); return (
+          <div key={p.id} onClick={() => setOpenId(p.id)} style={{ cursor: "pointer", background: pop ? "#fff3f5" : C.white, border: `2px solid ${pop ? "#ff9db0" : C.parchEdge}`, borderRadius: 10, padding: "11px 13px", marginBottom: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+              {pop && <span style={{ fontSize: 14, flexShrink: 0 }}>❤️</span>}
               <span style={{ fontSize: 10, fontWeight: "bold", color: C.white, background: m[2], borderRadius: 8, padding: "2px 8px", flexShrink: 0 }}>{m[1]}</span>
               <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: "bold", wordBreak: "break-word" }}>{p.title}</span>
             </div>
             <div style={{ fontSize: 11.5, color: C.inkSoft, marginTop: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.body}</div>
             <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 6, display: "flex", gap: 10 }}>
-              <span>🧑 {p.author}</span>
-              <span>{new Date(p.at).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" })}</span>
+              <span>🧑 {p.author}</span><span>{new Date(p.at).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" })}</span>
               <span style={{ flex: 1 }} />
-              <span>❤ {(p.likes || []).length}</span>
-              <span>💬 {(p.comments || []).length}</span>
+              {(p.docs || []).length > 0 && <span>📎 {(p.docs || []).length}</span>}
+              <span>❤ {(p.likes || []).length}</span><span>💬 {(p.comments || []).length}</span>
             </div>
           </div>
         ); })}
@@ -10621,15 +10641,20 @@ function CommunityView({ posts = [], myName = "", myUid = "", onSave, onBack }) 
 
       {writing && (
         <div onClick={() => setWriting(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 130, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18 }}>
-            <b style={{ fontSize: 15 }}>✏️ 새 글</b>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto", background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18 }}>
+            <b style={{ fontSize: 15 }}>{editId ? "✏️ 글 수정" : "✏️ 새 글"}</b>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "10px 0" }}>
               {COMM_CATS.map(([k, lb, col]) => (<button key={k} type="button" onClick={() => setWCat(k)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, fontWeight: "bold", padding: "6px 12px", borderRadius: 14, border: `2px solid ${wCat === k ? col : C.parchEdge}`, background: wCat === k ? col : C.white, color: wCat === k ? C.white : C.inkSoft }}>{lb}</button>))}
             </div>
             <input value={wTitle} onChange={(e) => setWTitle(e.target.value)} placeholder="제목" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, marginBottom: 8 }} />
             <textarea value={wBody} onChange={(e) => setWBody(e.target.value)} placeholder="내용을 자유롭게 적어주세요" rows={7} style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, resize: "vertical" }} />
-            <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-              <PxButton tone="good" onClick={submit} style={{ flex: 1, fontSize: 13, padding: 10 }}>등록</PxButton>
+            <div style={{ margin: "8px 0" }}>
+              {wDocs.map((d, i) => (<div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, marginBottom: 4 }}><span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#4b3fb0", fontWeight: "bold" }}>📄 {d.name}</span><button type="button" onClick={() => setWDocs((v) => v.filter((_, j) => j !== i))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.danger }}>✕</button></div>))}
+              <label style={{ cursor: "pointer", display: "inline-block", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "6px 11px" }}>📎 문서 첨부<input type="file" style={{ display: "none" }} onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; addWDoc(f); }} /></label>
+              <span style={{ fontSize: 9, color: C.inkSoft, marginLeft: 6 }}>800KB 이하</span>
+            </div>
+            <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+              <PxButton tone="good" onClick={submit} style={{ flex: 1, fontSize: 13, padding: 10 }}>{editId ? "수정 완료" : "등록"}</PxButton>
               <PxButton tone="ink" onClick={() => setWriting(false)} style={{ fontSize: 12, padding: 10 }}>취소</PxButton>
             </div>
           </div>
@@ -10638,24 +10663,44 @@ function CommunityView({ posts = [], myName = "", myUid = "", onSave, onBack }) 
 
       {open && (() => { const m = meta(open.cat); const liked = (open.likes || []).includes(myName); return (
         <div onClick={() => setOpenId(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 130, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 580, maxHeight: "90vh", overflowY: "auto", background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
+              {commPopular(open) && <span style={{ fontSize: 15 }}>❤️</span>}
               <span style={{ fontSize: 10, fontWeight: "bold", color: C.white, background: m[2], borderRadius: 8, padding: "2px 8px" }}>{m[1]}</span>
               <b style={{ flex: 1, fontSize: 16, wordBreak: "break-word" }}>{open.title}</b>
-              {(open.author === myName || (myUid && open.uid === myUid)) && <button type="button" onClick={() => del(open.id)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14, color: C.danger }}>🗑</button>}
+              {mine(open) && <button type="button" onClick={() => openEdit(open)} title="수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14 }}>✏️</button>}
+              {mine(open) && <button type="button" onClick={() => del(open.id)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14, color: C.danger }}>🗑</button>}
               <button type="button" onClick={() => setOpenId(null)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 18 }}>✕</button>
             </div>
-            <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 12 }}>🧑 {open.author} · {new Date(open.at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
-            <div style={{ fontSize: 13.5, lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word", marginBottom: 14 }}>{open.body}</div>
+            <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 12 }}>🧑 {open.author} · {new Date(open.at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}{open.editedAt ? " · 수정됨" : ""}</div>
+            <div style={{ fontSize: 13.5, lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word", marginBottom: 12 }}>{open.body}</div>
+            {(open.docs || []).length > 0 && <div style={{ marginBottom: 12 }}>{(open.docs || []).map((d, i) => (<a key={i} href={d.url} download={d.name} style={{ display: "block", fontSize: 12, color: "#4b3fb0", fontWeight: "bold", textDecoration: "none", marginBottom: 4 }}>📄 {d.name}</a>))}</div>}
             <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
               <button type="button" onClick={() => toggleLike(open.id)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, fontWeight: "bold", padding: "7px 14px", borderRadius: 16, border: `2px solid ${C.ink}`, background: liked ? "#ff6b8a" : C.white, color: liked ? C.white : C.ink }}>❤ 좋아요 {(open.likes || []).length}</button>
+              {commPopular(open) && <span style={{ alignSelf: "center", fontSize: 11.5, fontWeight: "bold", color: "#ff6b8a" }}>❤️ 인기글</span>}
             </div>
             <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 8, borderTop: `2px solid ${C.parchEdge}`, paddingTop: 10 }}>💬 댓글 ({(open.comments || []).length})</div>
             {(open.comments || []).slice().sort((a, b) => (a.at || 0) - (b.at || 0)).map((c) => (
-              <div key={c.at} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 7, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "7px 9px" }}>
-                <span style={{ fontSize: 10, fontWeight: "bold", color: C.inkSoft, flexShrink: 0 }}>{c.by}</span>
-                <span style={{ flex: 1, minWidth: 0, fontSize: 12, wordBreak: "break-word" }}>{c.text}</span>
-                {c.by === myName && <button type="button" onClick={() => delCm(open.id, c.at)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 10, color: C.inkSoft }}>🗑</button>}
+              <div key={c.id} style={{ background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "7px 9px", marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+                  <span style={{ fontSize: 10, fontWeight: "bold", color: C.inkSoft, flexShrink: 0 }}>{c.by}</span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 12, wordBreak: "break-word" }}>{c.text}</span>
+                  <button type="button" onClick={() => { setReplyTo(replyTo === c.id ? null : c.id); setReplyIn(""); }} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 10, color: "#4b3fb0", fontWeight: "bold" }}>답글</button>
+                  {c.by === myName && <button type="button" onClick={() => delCm(open.id, c.id)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 10, color: C.inkSoft }}>🗑</button>}
+                </div>
+                {(c.replies || []).map((r) => (
+                  <div key={r.at} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 6, marginLeft: 14, paddingLeft: 8, borderLeft: `2px solid ${C.parchEdge}` }}>
+                    <span style={{ fontSize: 9.5, color: "#4b3fb0", flexShrink: 0 }}>↳ {r.by}</span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, wordBreak: "break-word" }}>{r.text}</span>
+                    {r.by === myName && <button type="button" onClick={() => delReply(open.id, c.id, r.at)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 9, color: C.inkSoft }}>🗑</button>}
+                  </div>
+                ))}
+                {replyTo === c.id && (
+                  <div style={{ display: "flex", gap: 5, marginTop: 6, marginLeft: 14 }}>
+                    <input value={replyIn} onChange={(e) => setReplyIn(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addReply(open.id, c.id); }} placeholder="답글 달기" autoFocus style={{ flex: 1, minWidth: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11 }} />
+                    <PxButton tone="wood" onClick={() => addReply(open.id, c.id)} style={{ fontSize: 10, padding: "6px 9px" }}>등록</PxButton>
+                  </div>
+                )}
               </div>
             ))}
             <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
@@ -14483,7 +14528,15 @@ function EchoTown() {
         return;
       }
       if (kind === "comm") {
-        if (Array.isArray(p.list)) { setCommunity(p.list); try { saveJSON("echotown_comm_v1", p.list); } catch (e) {} }
+        if (Array.isArray(p.list)) {
+          const newest = p.list[0];
+          setCommunity((prev) => {
+            const isNew = newest && newest.author !== (myName || "") && !(prev || []).some((x) => x.id === newest.id);
+            if (isNew) setTimeout(() => showNotice("💬 커뮤니티에 새 글이 올라왔어요! " + (newest.title || "").slice(0, 20)), 0);
+            return p.list;
+          });
+          try { saveJSON("echotown_comm_v1", p.list); } catch (e) {}
+        }
         return;
       }
       if (kind === "hqroad") {
