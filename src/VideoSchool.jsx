@@ -33,47 +33,61 @@ const SCHOOLS = {
   videoschool: {
     title: "영상스쿨", icon: "🎬", color: "#8e5a9e", grass: "#a8c8e8", road: "#e6dff2",
     quests: [
-      { id: "v1", title: "코어 개념", cat: "기초", roof: "#e4a04f", wall: "#fff3e0",
-        story: "영상은 '무엇을 보여주느냐'보다 '어떻게 보여주느냐'로 갈린다. 이 퀘스트는 구도·컷·리듬이라는 기본 근육을 만드는 단계다.",
+      { id: "v1", title: "제품 소개", cat: "기획", roof: "#e4a04f", wall: "#fff3e0",
+        story: "좋은 제품 영상은 '기능 나열'이 아니라 '이걸 쓰면 내 삶이 어떻게 좋아지는지'를 보여준다.",
         sections: [
-          { icon: "🎬", label: "영상 후크", text: "다들 좋은 카메라부터 사는데... 사실 조회수를 가르는 건 첫 3초 구도였다." },
-          { icon: "🧠", label: "학습 체크", text: "1) 삼분할 구도로 5컷 찍기\n2) 같은 장면을 컷 길이만 바꿔 2버전 만들기\n3) 어떤 게 덜 지루한지 비교" },
-          { icon: "📝", label: "정리 프롬프트", text: "다음 영상의 구도와 컷 리듬을 초보자에게 설명하듯 3줄로 정리해줘." },
+          { icon: "🎯", label: "핵심 메시지", text: "이 제품이 해결하는 '단 하나의 문제'를 한 문장으로 정한다." },
+          { icon: "✨", label: "구성 포인트", text: "문제 공감 → 제품 등장 → 사용 장면 → 전후 비교 → 한 줄 정리" },
+          { icon: "📝", label: "정리 프롬프트", text: "이 제품의 매력 포인트 3가지를 초보자도 이해되게 짧게 정리해줘." },
         ] },
-      { id: "v2", title: "레퍼런스", cat: "리서치", roof: "#7fbfe0", wall: "#eaf6ff",
-        story: "잘 만드는 사람은 잘 훔친다. 다만 '느낌'이 아니라 '구조'를 가져와야 내 것이 된다.",
+      { id: "v2", title: "가이드라인 작성", cat: "기획", roof: "#7fbfe0", wall: "#eaf6ff",
+        story: "가이드라인이 있으면 누가 만들어도 톤이 흔들리지 않는다. 브랜드의 '기준표'를 만드는 단계.",
         sections: [
-          { icon: "🔍", label: "찾기 기준", text: "조회수보다 '끝까지 본 비율'이 좋아 보이는 영상 5개를 고른다." },
-          { icon: "🧩", label: "분석 프레임", text: "후크(0~3초) / 전개 / 반전 / 마무리 — 네 칸으로 쪼개서 적는다." },
-          { icon: "📝", label: "분석 프롬프트", text: "이 영상의 후크가 왜 효과적인지 3가지 이유로 분석해줘. 내 주제에 적용할 버전도 제안해줘." },
+          { icon: "📐", label: "정할 것", text: "톤앤매너 / 자막 스타일 / 색·폰트 / 인트로·아웃트로 규칙" },
+          { icon: "🧩", label: "작성 틀", text: "① 해도 되는 것 ② 하면 안 되는 것 ③ 예시 이미지·영상" },
+          { icon: "📝", label: "정리 프롬프트", text: "우리 채널의 영상 가이드라인 초안을 항목별로 만들어줘. 주제: [입력]" },
         ] },
-      { id: "v3", title: "원고작성 & 소재수집", cat: "기획", roof: "#e07b8a", wall: "#ffeef0",
-        story: "소재가 없는 게 아니라, 소재를 적어두지 않았을 뿐이다. 원고는 기억이 아니라 기록에서 나온다.",
+      { id: "v3", title: "레퍼런스 전달", cat: "리서치", roof: "#e07b8a", wall: "#ffeef0",
+        story: "레퍼런스는 '느낌'이 아니라 '구조'로 전달해야 한다. 왜 좋은지까지 적어줘야 팀이 재현한다.",
         sections: [
-          { icon: "🎬", label: "영상 후크", text: "매번 소재가 없다고 했는데, 알고 보니 메모를 안 했을 뿐이었다." },
+          { icon: "🔍", label: "고르는 기준", text: "끝까지 본 비율이 좋아 보이는 영상, 우리 주제와 겹치는 영상 위주." },
+          { icon: "🗂", label: "전달 양식", text: "링크 + 왜 좋은지 3줄 + 우리에게 적용할 포인트 1줄" },
+          { icon: "📝", label: "정리 프롬프트", text: "이 레퍼런스 영상의 잘된 점과 우리에게 적용할 포인트를 정리해줘." },
+        ] },
+      { id: "v4", title: "원고 작성", cat: "기획", roof: "#8fd0a0", wall: "#eefaf0",
+        story: "원고는 기억이 아니라 기록에서 나온다. 후크가 3초 안에 꽂혀야 끝까지 본다.",
+        sections: [
           { icon: "✍️", label: "대본 구조", text: "후크 → 문제 제기 → 사례 → 해결 → 한 줄 정리" },
-          { icon: "📝", label: "원고 프롬프트", text: "아래 주제로 60초 숏폼 대본을 써줘. 후크는 3초 안에 끝나고, 문장은 짧게. 주제: [여기 입력]" },
+          { icon: "⏱", label: "체크", text: "첫 문장이 3초 안에 궁금증을 만드는가? 문장은 짧은가?" },
+          { icon: "📝", label: "원고 프롬프트", text: "아래 주제로 60초 숏폼 대본을 써줘. 후크는 3초 안에, 문장은 짧게. 주제: [입력]" },
         ] },
-      { id: "v4", title: "영상제작", cat: "실행", roof: "#8fd0a0", wall: "#eefaf0",
-        story: "촬영은 준비의 결과다. 세팅표 하나면 촬영 시간이 절반으로 줄어든다.",
+      { id: "v5", title: "영상소스찾기", cat: "리서치", roof: "#b48fd9", wall: "#f3ecff",
+        story: "필요한 컷을 미리 정리해두면 편집 시간이 반으로 준다. B롤·효과음·음악을 목록으로 모은다.",
         sections: [
-          { icon: "🎥", label: "촬영 세팅", text: "고정 앵글 / 조명 방향 / 오디오 거리 — 이 3개만 매번 같게 유지" },
-          { icon: "✂️", label: "편집 흐름", text: "컷 정리 → 자막 → 사운드 → 색보정 → 마지막에 후크 다시 손보기" },
-          { icon: "📝", label: "자막 프롬프트", text: "이 대본을 숏폼 자막용으로 끊어줘. 한 줄 12자 이내, 리듬감 있게." },
+          { icon: "🎞", label: "모을 소스", text: "B롤 영상 / 효과음 / 배경음악 / 폰트·자막 템플릿" },
+          { icon: "📁", label: "정리법", text: "장면별 폴더로 나누고, 저작권(무료/출처표기) 여부를 함께 적는다." },
+          { icon: "📝", label: "정리 프롬프트", text: "이 주제 영상에 어울리는 B롤·효과음 아이디어를 장면별로 제안해줘." },
         ] },
-      { id: "v5", title: "최종 과제", cat: "보스", boss: true, roof: "#d9a441", wall: "#fff6da",
-        story: "배운 걸 전부 한 편에 담는다. 완벽한 한 편보다, 끝까지 낸 한 편이 이긴다.",
+      { id: "v6", title: "영상편집", cat: "실행", roof: "#e0b04f", wall: "#fff6da",
+        story: "편집은 '빼는 기술'이다. 지루한 1초를 자르는 감각이 완성도를 만든다.",
         sections: [
-          { icon: "👑", label: "미션", text: "기획 → 대본 → 촬영 → 편집 → 업로드까지 완주한 영상 1편" },
-          { icon: "📋", label: "제출 항목", text: "1) 기획 한 줄\n2) 대본\n3) 완성 영상 링크" },
-          { icon: "📝", label: "피드백 프롬프트", text: "이 영상의 후크·전개·마무리를 각각 점수와 개선점으로 평가해줘." },
+          { icon: "✂️", label: "편집 순서", text: "컷 편집(군더더기 제거) → 자막 → 효과음·음악 → 색보정 → 검수" },
+          { icon: "🎚", label: "리듬 팁", text: "말이 끊기는 지점, 늘어지는 지점을 먼저 자른다. 후크는 특히 빠르게." },
+          { icon: "📝", label: "정리 프롬프트", text: "이 영상에서 늘어질 수 있는 구간과 컷 편집 포인트를 짚어줘." },
+        ] },
+      { id: "v7", title: "업로드", cat: "실행", boss: true, roof: "#d9a441", wall: "#fff6da",
+        story: "업로드는 끝이 아니라 시작이다. 제목·썸네일·설명이 조회수의 문을 연다.",
+        sections: [
+          { icon: "👑", label: "미션", text: "기획 → 가이드라인 → 레퍼런스 → 원고 → 소스 → 편집 → 업로드까지 완주한 영상 1편" },
+          { icon: "🖼", label: "발행 체크", text: "제목(키워드 앞쪽) / 썸네일(3초 안에 읽힘) / 설명·태그 / 공개 시간" },
+          { icon: "📝", label: "피드백 프롬프트", text: "이 영상의 제목·썸네일 문구를 클릭하고 싶게 3가지 버전으로 제안해줘." },
         ] },
     ],
   },
 };
 const SCHOOL_HOUSE_POS = [
-  { x: 120, y: 110 }, { x: 320, y: 110 }, { x: 520, y: 110 },
-  { x: 170, y: 300 }, { x: 430, y: 300 },
+  { x: 100, y: 120 }, { x: 250, y: 120 }, { x: 400, y: 120 }, { x: 550, y: 120 },
+  { x: 175, y: 300 }, { x: 325, y: 300 }, { x: 475, y: 300 },
 ];
 function QuestAssistant({ questTitle }) {
   const [msgs, setMsgs] = useState([{ me: false, text: "이 퀘스트 관련해서 훅 변형, 아이디어, 카피 다듬기 등 뭐든 물어보세요 ✍️" }]);
@@ -123,10 +137,12 @@ function CopyBox({ sec }) {
   );
 }
 function SchoolView({ school, onBack, cleared = {}, onClear }) {
-  const meNet = (useContext(NetContext) || {}).me || {};
+  const net = useContext(NetContext) || {};
+  const meNet = net.me || {};
   const s = SCHOOLS[school];
   const MAP_W = 640, MAP_H = 420;
   const [pos, setPos] = useState({ x: MAP_W / 2, y: MAP_H - 50 });
+  useEffect(() => { if (net && net.roomPosRef) net.roomPosRef.current = pos; }, [pos, net]);
   const [facing, setFacing] = useState(1);
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
@@ -254,6 +270,19 @@ function SchoolView({ school, onBack, cleared = {}, onClear }) {
           <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-100%)", zIndex: 5 }}>
             <Hero facing={facing} moving={moving} size={34} outfit={meNet.outfit} look={meNet.look} carry={meNet.carry} pet={meNet.pet} />
           </div>
+
+          {/* 같은 스쿨의 다른 접속자 */}
+          {net && net.others && Object.values(net.others).filter((o) => o.v && o.v === net.view && (o.rm || null) === (net.room || null)).map((o) => (
+            <div key={o.id} style={{ position: "absolute", left: o.rx || 0, top: o.ry || 0, transform: "translate(-50%,-100%)", zIndex: 4, transition: "left .18s linear, top .18s linear", pointerEvents: "none" }}>
+              {o.bubble && (
+                <div style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 180, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 11, padding: "3px 7px" }}>{o.bubble}</div>
+              )}
+              <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#8e5a9e", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
+              <div className={o.dm ? "dance-" + o.dm : ""} style={{ position: "relative", transformOrigin: "bottom center" }}>
+                <Hero facing={o.f || 1} moving={false} size={30} look={o.lk} pet={o.pt} carry={o.cy ? { emoji: o.cy } : null} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
+              </div>
+            </div>
+          ))}
 
           {near && (
             <div className="enter-prompt" style={{ position: "absolute", left: "50%", bottom: 10, transform: "translateX(-50%)", background: C.ink, color: C.white, border: `2px solid ${C.gem}`, padding: "5px 12px", fontSize: 12, zIndex: 6 }}>E · 퀘스트 확인</div>
