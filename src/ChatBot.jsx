@@ -29,6 +29,55 @@ const FAQ = [
   ["초보자는 어디까지 가능해요?", "초보자는 🍀 초심자의 행운, 📗 네이버스쿨, 🎬 영상스쿨을 이용할 수 있어요. 다른 곳은 숙련자 전용이에요."],
 ];
 
+/* 📗 네이버스쿨 방 이름 (이동 버튼 라벨) */
+const ROOM_LABELS = { tutorial: "📖 튜토리얼", cafe: "☕ 카페 최신글", kw: "🔗 카페 외부(키워드·URL)", kin: "💬 지식인 최신글", kinTop: "📊 지식인 상위" };
+
+/* 📗 네이버스쿨 질의응답 (카테고리별 · room = 이동할 방) */
+const NAVER_QA = [
+  { cat: "시작·튜토리얼", room: "tutorial", items: [
+    ["네이버스쿨 처음인데 뭐부터 봐요?", "먼저 📖 튜토리얼 방에서 작성 방법·프롬프트·답변 예시를 보고, 카페 → 지식인 순으로 익히면 돼요."],
+    ["프롬프트는 어디서 봐요?", "튜토리얼 방에 작성용 프롬프트가 정리돼 있어요. 복사해서 그대로 활용하세요."],
+    ["답변·댓글 예시 사진은 어디 있어요?", "튜토리얼 방의 예시 이미지에서 실제 등록된 답변·댓글 형태를 볼 수 있어요."],
+  ] },
+  { cat: "아이디·계정", room: "tutorial", items: [
+    ["어떤 아이디로 활동해요?", "배정받은 계정으로 활동해요. 계정 배정·규칙은 담당자에게 확인하세요."],
+    ["계정이 여러 개라 헷갈려요.", "계정별 용도(블로그용/카페용/지식인용)를 메모해두면 헷갈리지 않아요."],
+    ["로그인이 안 돼요.", "비밀번호·2단계 인증을 확인하고, 그래도 안 되면 담당자에게 계정 상태를 문의하세요."],
+  ] },
+  { cat: "원고·블로그", room: "tutorial", items: [
+    ["원고는 어떻게 써요?", "후크(첫 3줄) → 문제 → 정보/사례 → 정리 순서로, 키워드를 제목 앞쪽에 넣어요."],
+    ["제목은 어떻게 정해요?", "핵심 키워드를 앞에 두고, 궁금증이나 이득을 담아 클릭하고 싶게 만들어요."],
+    ["발행 전에 뭘 확인해요?", "제목 키워드·오탈자·사진·링크·태그 5가지를 체크해요."],
+  ] },
+  { cat: "카페 답변", room: "cafe", items: [
+    ["답변할 글은 어디서 봐요?", "☕ 카페 최신글 방의 '답변 요망' 목록에서 확인해요."],
+    ["답변을 끝냈어요. 처리는?", "그 글을 '답변 완료' 상태로 바꿔주면 목록에서 정리돼요."],
+    ["캘린더는 어디에 써요?", "답변·발행 일정을 캘린더 워크플로우로 관리해 누락을 막아요."],
+    ["이미 답변된 글인지 어떻게 알아요?", "상태가 '완료'면 이미 처리된 글이에요. 중복 답변을 피하세요."],
+  ] },
+  { cat: "지식인 답변", room: "kin", items: [
+    ["답변 카운터는 뭐예요?", "💬 지식인 방에서 오늘 답변한 개수를 세어줘요. 목표 관리에 써요."],
+    ["타이머는 왜 있어요?", "답변 간 간격을 지키기 위한 거예요. 너무 빠른 연속 답변을 피하는 데 도움돼요."],
+    ["좋은 지식인 답변의 조건은?", "질문에 정확히 답하고, 근거·경험을 담되 과장·홍보 티 없이 자연스럽게 써요."],
+    ["지식인 상위 방은 언제 열려요?", "📊 지식인 상위는 현재 준비 중이에요."],
+  ] },
+  { cat: "키워드·순위", room: "kw", items: [
+    ["키워드 순위는 어디서 봐요?", "🔗 카페 외부 방에서 네이버 키워드 순위를 추적할 수 있어요."],
+    ["어떤 키워드를 노려요?", "주제와 맞고 검색량은 있는데 경쟁이 덜한 키워드부터 공략해요."],
+    ["순위가 떨어졌어요.", "최신 정보로 글을 보완하거나 관련 키워드로 새 글을 보강해요."],
+  ] },
+  { cat: "URL·발행 관리", room: "kw", items: [
+    ["발행한 URL은 어디에 정리해요?", "발행 URL 풀(모음)에 모아 어디에 무엇을 올렸는지 추적해요. 🔗 카페 외부 방에서 볼 수 있어요."],
+    ["URL 풀이 뭐예요?", "그동안 발행한 글 링크를 한곳에 모아둔 목록이에요. 중복·관리에 써요."],
+  ] },
+  { cat: "자주 겪는 문제", room: null, items: [
+    ["저장이 안 돼요.", "인터넷 연결을 확인하고 새로고침 후 다시 시도해요. 계속되면 담당자에게 알려요."],
+    ["링크가 안 열려요.", "만료됐거나 권한 문제일 수 있어요. 최신 링크를 다시 받으세요."],
+    ["사진 업로드가 실패해요.", "용량을 줄이거나(압축) 다른 형식으로 바꿔 다시 올려보세요."],
+    ["다른 사람과 작업이 겹쳐요.", "답변 상태(요망/완료)를 실시간으로 바꿔주면 겹침을 줄일 수 있어요."],
+  ] },
+];
+
 /* 규칙 기반 응답 (키워드 매칭) */
 function ruleAnswer(text) {
   const t = (text || "").toLowerCase();
@@ -41,6 +90,16 @@ function ruleAnswer(text) {
   if (has("담당")) return { text: FAQ[2][1] };
   if (has("커뮤니티", "게시판")) return { text: FAQ[3][1] };
   if (has("초보자", "알바", "숙련자")) return { text: FAQ[4][1] };
+  if (has("답변 요망", "답변요망", "답변할 글", "카페 답변")) return { text: NAVER_QA[3].items[0][1], go: "cafe" };
+  if (has("카운터", "답변 개수", "몇 개")) return { text: NAVER_QA[4].items[0][1], go: "kin" };
+  if (has("타이머")) return { text: NAVER_QA[4].items[1][1], go: "kin" };
+  if (has("키워드", "순위")) return { text: NAVER_QA[5].items[0][1], go: "kw" };
+  if (has("url", "발행", "링크 정리")) return { text: NAVER_QA[6].items[0][1], go: "kw" };
+  if (has("프롬프트")) return { text: NAVER_QA[0].items[1][1], go: "tutorial" };
+  if (has("원고", "제목")) return { text: NAVER_QA[2].items[0][1], go: "tutorial" };
+  if (has("계정", "아이디", "로그인")) return { text: NAVER_QA[1].items[0][1], go: "tutorial" };
+  if (has("지식인")) return { text: NAVER_QA[4].items[2][1], go: "kin" };
+  if (has("카페")) return { text: NAVER_QA[3].items[0][1], go: "cafe" };
   if (has("블로그", "포스팅", "글쓰기", "노하우")) return { text: TOPICS[1][2] };
   if (has("퀘스트", "미션", "업무")) return { text: TOPICS[0][2] };
   if (has("게임", "사용법", "어떻게 해")) return { text: TOPICS[2][2] };
@@ -50,15 +109,16 @@ function ruleAnswer(text) {
   return { text: "음, 아직은 정해진 주제 위주로 도와줄 수 있어! 위의 버튼(업무·블로그·게임·고민·FAQ)을 눌러보거나, 조금 더 구체적으로 물어봐 줄래? 🐣\n(곧 더 똑똑하게 자유 대화도 할 수 있게 업그레이드될 예정이야!)" };
 }
 
-export default function ChatBot({ onClose, botName = "코코" }) {
+export default function ChatBot({ onClose, botName = "코코", onGo }) {
   const [msgs, setMsgs] = useState([{ role: "bot", text: "안녕! 나는 " + botName + "야 🐣\n업무·블로그·게임·고민 뭐든 편하게 물어봐. 아래 버튼을 눌러도 좋아!" }]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [faqOpen, setFaqOpen] = useState(false);
+  const [qaCat, setQaCat] = useState(null);   // 네이버 Q&A: null | "cats" | 카테고리 index
   const endRef = useRef(null);
-  useEffect(() => { if (endRef.current) endRef.current.scrollIntoView({ block: "end" }); }, [msgs, faqOpen]);
+  useEffect(() => { if (endRef.current) endRef.current.scrollIntoView({ block: "end" }); }, [msgs, faqOpen, qaCat]);
 
-  const pushBot = (text) => setMsgs((m) => [...m, { role: "bot", text }]);
+  const pushBot = (text, go) => setMsgs((m) => [...m, { role: "bot", text, go: go || null }]);
   const pushUser = (text) => setMsgs((m) => [...m, { role: "user", text }]);
 
   const callAI = async (history) => {
@@ -81,13 +141,15 @@ export default function ChatBot({ onClose, botName = "코코" }) {
       await callAI([...msgs, { role: "user", text }]);
       setBusy(false);
     } else {
-      setTimeout(() => pushBot(ruleAnswer(text).text), 250);
+      const rule = ruleAnswer(text);
+      setTimeout(() => pushBot(rule.text, rule.go), 250);
     }
   };
 
   const topicClick = (tp) => {
     pushUser(tp[1]);
-    if (tp[0] === "faq") { setTimeout(() => { pushBot(tp[2]); setFaqOpen(true); }, 200); return; }
+    if (tp[0] === "naver") { setTimeout(() => { pushBot("📗 네이버스쿨 Q&A예요! 궁금한 카테고리를 눌러봐 👇"); setQaCat("cats"); setFaqOpen(false); }, 200); return; }
+    if (tp[0] === "faq") { setTimeout(() => { pushBot(tp[2]); setFaqOpen(true); setQaCat(null); }, 200); return; }
     setTimeout(() => pushBot(tp[2]), 200);
   };
 
@@ -107,9 +169,14 @@ export default function ChatBot({ onClose, botName = "코코" }) {
         {/* 대화 */}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 14 }}>
           {msgs.map((m, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", marginBottom: 10 }}>
-              {m.role === "bot" && <span style={{ fontSize: 20, marginRight: 6, alignSelf: "flex-end" }}>🐣</span>}
-              <div style={{ maxWidth: "78%", background: m.role === "user" ? CB.user : CB.white, color: m.role === "user" ? CB.white : CB.ink, border: `2px solid ${m.role === "user" ? CB.user : CB.edge}`, borderRadius: 12, padding: "9px 12px", fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{m.text}</div>
+            <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: m.role === "user" ? "flex-end" : "flex-start", marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", width: "100%" }}>
+                {m.role === "bot" && <span style={{ fontSize: 20, marginRight: 6, alignSelf: "flex-end" }}>🐣</span>}
+                <div style={{ maxWidth: "78%", background: m.role === "user" ? CB.user : CB.white, color: m.role === "user" ? CB.white : CB.ink, border: `2px solid ${m.role === "user" ? CB.user : CB.edge}`, borderRadius: 12, padding: "9px 12px", fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{m.text}</div>
+              </div>
+              {m.go && onGo && ROOM_LABELS[m.go] && (
+                <button type="button" onClick={() => { onGo(m.go); }} style={{ marginLeft: 26, marginTop: 5, cursor: "pointer", fontFamily: CB.font, fontSize: 11.5, fontWeight: "bold", background: CB.accent, color: CB.white, border: `2px solid ${CB.ink}`, borderRadius: 10, padding: "6px 11px" }}>📍 {ROOM_LABELS[m.go]}으로 이동</button>
+              )}
             </div>
           ))}
           {busy && <div style={{ fontSize: 12, color: CB.soft, marginLeft: 30 }}>🐣 생각 중…</div>}
@@ -120,11 +187,29 @@ export default function ChatBot({ onClose, botName = "코코" }) {
               ))}
             </div>
           )}
+          {qaCat === "cats" && (
+            <div style={{ marginTop: 4, marginLeft: 30, display: "flex", flexWrap: "wrap", gap: 5 }}>
+              {NAVER_QA.map((c, i) => (
+                <button key={i} type="button" onClick={() => setQaCat(i)} style={{ cursor: "pointer", fontFamily: CB.font, fontSize: 11.5, fontWeight: "bold", background: CB.white, border: `2px solid ${CB.ink}`, borderRadius: 12, padding: "6px 10px", color: CB.ink }}>{c.cat}</button>
+              ))}
+            </div>
+          )}
+          {typeof qaCat === "number" && NAVER_QA[qaCat] && (
+            <div style={{ marginTop: 4, marginLeft: 30 }}>
+              <button type="button" onClick={() => setQaCat("cats")} style={{ cursor: "pointer", fontFamily: CB.font, fontSize: 11, color: CB.soft, background: "none", border: "none", marginBottom: 4 }}>← 카테고리</button>
+              {NAVER_QA[qaCat].items.map(([q, a], i) => (
+                <button key={i} type="button" onClick={() => { pushUser(q); const room = NAVER_QA[qaCat].room; setTimeout(() => pushBot(a, room), 180); }} style={{ display: "block", width: "100%", textAlign: "left", cursor: "pointer", fontFamily: CB.font, fontSize: 11.5, background: CB.white, border: `2px solid ${CB.edge}`, borderRadius: 10, padding: "8px 10px", marginBottom: 5, color: CB.ink }}>❓ {q}</button>
+              ))}
+            </div>
+          )}
           <div ref={endRef} />
         </div>
 
         {/* 주제 버튼 */}
         <div style={{ display: "flex", gap: 5, padding: "8px 12px 0", flexWrap: "wrap", flexShrink: 0 }}>
+          {onGo && (
+            <button type="button" onClick={() => topicClick(["naver", "📗 네이버 Q&A"])} style={{ cursor: "pointer", fontFamily: CB.font, fontSize: 11, fontWeight: "bold", padding: "6px 10px", borderRadius: 14, border: `2px solid ${CB.ink}`, background: "#eaf7ea", color: CB.ink }}>📗 네이버 Q&A</button>
+          )}
           {TOPICS.map((tp) => (
             <button key={tp[0]} type="button" onClick={() => topicClick(tp)} style={{ cursor: "pointer", fontFamily: CB.font, fontSize: 11, fontWeight: "bold", padding: "6px 10px", borderRadius: 14, border: `2px solid ${CB.ink}`, background: CB.white, color: CB.ink }}>{tp[1]}</button>
           ))}
