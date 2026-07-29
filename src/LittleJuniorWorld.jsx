@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v141 · 2026-07-29";
+const APP_VERSION = "v142 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2498,7 +2498,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "mention").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2806,6 +2806,23 @@ async function dbLoadNovices() {
     return Array.from(new Set(((r && r.data) || []).map((x) => x.title).filter(Boolean)));
   } catch (e) { return []; }
 }
+/* 💬 @멘션 알림 (notices type="mention", body=JSON 리스트 · 최신 우선) */
+async function dbLoadMentions() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("body,created_at").eq("type", "mention").order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    if (!row) return null;
+    return JSON.parse(row.body || "null");
+  } catch (e) { return null; }
+}
+async function dbSaveMentions(list) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "mention", title: "mention", body: JSON.stringify(list || []) });
+    return !(r && r.error);
+  } catch (e) { return false; }
+}
 async function dbMeetSignal(payload) {
   try {
     const s = await getSupa();
@@ -2896,7 +2913,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
         });
         /* ⚠️ 새 이벤트를 만들면 반드시 여기에 이름을 넣어야 상대에게 도착해요 */
-        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor", "decorreq", "luck", "hq", "hqroad", "qrev", "comm"].forEach((ev) => {
+        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor", "decorreq", "luck", "hq", "hqroad", "qrev", "comm", "mention"].forEach((ev) => {
           ch.on("broadcast", { event: ev }, ({ payload }) => {
             if (onChatRef && onChatRef.net) onChatRef.net(ev, payload);
           });
@@ -10567,6 +10584,15 @@ const DISABLED_ACCOUNTS = ["주빈", "민우"];
 const NAME_ALIAS = { "송현": "성현" };
 const normName = (n) => (n && NAME_ALIAS[n]) || n;
 const isDisabledName = (n) => DISABLED_ACCOUNTS.includes(n) || DISABLED_ACCOUNTS.includes(normName(n));
+/* @멘션 파싱: 텍스트에서 아는 이름(@이름)만 골라냄 */
+function parseMentions(text, names) {
+  if (!text || !names || !names.length) return [];
+  const t = String(text);
+  const sorted = [...names].filter(Boolean).sort((a, b) => b.length - a.length);
+  const found = [];
+  sorted.forEach((n) => { if (t.includes("@" + n) && !found.includes(n)) found.push(n); });
+  return found;
+}
 /* 🔑 권한 코드 (여기서 값만 바꾸면 됨) · 숙련자=디스코드 로그인 / 초보자=이름 바로 입력 */
 const EXPERT_CODE = "sksmsditnrfuswk";
 const NOVICE_CODE = "dhknsnfoqjs0";
@@ -10595,9 +10621,37 @@ const HQ_ROADMAP = {
 
 /* ======================= 🖥 에코월드 HQ (대시보드) ======================= */
 /* 💬 커뮤니티 게시판: 꿀팁·가이드·질문 자유 공유 (한 JSON으로 실시간 공유) */
+/* @이름 자동완성 입력 필드 (숙련자 목록에서 고름) */
+function MentionField({ value, onChange, expertNames = [], multiline = false, placeholder = "", onEnter, rows = 3, style = {} }) {
+  const [drop, setDrop] = useState(null);
+  const ref = useRef(null);
+  const update = (v) => {
+    onChange(v);
+    const m = /@([^\s@]*)$/.exec(v);
+    if (m) { const q = m[1]; const items = expertNames.filter((n) => n && n.includes(q)).slice(0, 6); setDrop(items.length ? items : null); }
+    else setDrop(null);
+  };
+  const pick = (name) => { const v = (value || "").replace(/@([^\s@]*)$/, "@" + name + " "); onChange(v); setDrop(null); if (ref.current) ref.current.focus(); };
+  const base = { width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white, ...style };
+  const onKey = (e) => { if (drop && drop.length && e.key === "Enter") { e.preventDefault(); pick(drop[0]); return; } if (!drop && onEnter && e.key === "Enter") { if (!multiline) { e.preventDefault(); onEnter(); } } };
+  return (
+    <div style={{ position: "relative" }}>
+      {multiline
+        ? <textarea ref={ref} value={value} onChange={(e) => update(e.target.value)} onKeyDown={onKey} placeholder={placeholder} rows={rows} style={{ ...base, resize: "vertical" }} />
+        : <input ref={ref} value={value} onChange={(e) => update(e.target.value)} onKeyDown={onKey} placeholder={placeholder} style={base} />}
+      {drop && drop.length > 0 && (
+        <div style={{ position: "absolute", left: 0, bottom: multiline ? "auto" : "100%", top: multiline ? "100%" : "auto", zIndex: 50, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, boxShadow: "0 4px 10px rgba(0,0,0,0.2)", minWidth: 140, maxWidth: 220 }}>
+          <div style={{ fontSize: 9, color: C.inkSoft, padding: "4px 8px", borderBottom: `1px solid ${C.parchEdge}` }}>@언급 (숙련자)</div>
+          {drop.map((n) => (<button key={n} type="button" onMouseDown={(e) => { e.preventDefault(); pick(n); }} style={{ display: "block", width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, background: C.white, border: "none", padding: "7px 10px" }}>🧑 {n}</button>))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const COMM_CATS = [["tip", "💡 꿀팁", "#e0913d"], ["guide", "📖 가이드", "#4b8f5f"], ["qna", "❓ 질문", "#5b8def"]];
 const commPopular = (p) => (p.likes || []).length >= 5;
-function CommunityView({ posts = [], myName = "", myUid = "", onSave, onBack }) {
+function CommunityView({ posts = [], myName = "", myUid = "", onSave, onBack, expertNames = [], onMention = () => {}, openPostId = null, onOpened = () => {} }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [writing, setWriting] = useState(false);
@@ -10610,6 +10664,7 @@ function CommunityView({ posts = [], myName = "", myUid = "", onSave, onBack }) 
   const [cmIn, setCmIn] = useState("");
   const [replyTo, setReplyTo] = useState(null);
   const [replyIn, setReplyIn] = useState("");
+  useEffect(() => { if (openPostId) { setOpenId(openPostId); onOpened(); } }, [openPostId]);
   const meta = (k) => COMM_CATS.find((c) => c[0] === k) || ["", "", "#888"];
   const mine = (p) => p.author === myName || (myUid && p.uid === myUid);
   const openWrite = () => { setEditId(null); setWCat("tip"); setWTitle(""); setWBody(""); setWDocs([]); setWriting(true); };
@@ -10617,15 +10672,17 @@ function CommunityView({ posts = [], myName = "", myUid = "", onSave, onBack }) 
   const addWDoc = (file) => { if (!file) return; if (file.size > 800 * 1024) { window.alert("800KB 이하 파일만 첨부할 수 있어요."); return; } const r = new FileReader(); r.onload = () => setWDocs((v) => [...v, { name: file.name, url: r.result, at: Date.now() }]); r.readAsDataURL(file); };
   const submit = () => {
     if (!wTitle.trim() || !wBody.trim()) { window.alert("제목과 내용을 입력해주세요."); return; }
+    const pid = editId || ("c" + Date.now());
     if (editId) { onSave(posts.map((p) => p.id === editId ? { ...p, cat: wCat, title: wTitle.trim(), body: wBody.trim(), docs: wDocs, editedAt: Date.now() } : p)); }
-    else { onSave([{ id: "c" + Date.now(), cat: wCat, title: wTitle.trim(), body: wBody.trim(), docs: wDocs, author: myName || "익명", uid: myUid || "", at: Date.now(), comments: [], likes: [] }, ...posts]); setFilter(wCat); }
+    else { onSave([{ id: pid, cat: wCat, title: wTitle.trim(), body: wBody.trim(), docs: wDocs, author: myName || "익명", uid: myUid || "", at: Date.now(), comments: [], likes: [] }, ...posts]); setFilter(wCat); }
+    onMention(parseMentions(wTitle + " " + wBody, expertNames), pid, wTitle.trim(), wBody.trim());
     setWriting(false); setEditId(null); setWTitle(""); setWBody(""); setWDocs([]);
   };
   const del = (id) => { if (!window.confirm("이 글을 삭제할까요?")) return; onSave(posts.filter((p) => p.id !== id)); setOpenId(null); };
   const toggleLike = (id) => onSave(posts.map((p) => p.id === id ? { ...p, likes: (p.likes || []).includes(myName) ? p.likes.filter((n) => n !== myName) : [...(p.likes || []), myName] } : p));
-  const addCm = (id) => { if (!cmIn.trim()) return; onSave(posts.map((p) => p.id === id ? { ...p, comments: [...(p.comments || []), { id: "cm" + Date.now(), text: cmIn.trim(), by: myName || "익명", at: Date.now(), replies: [] }] } : p)); setCmIn(""); };
+  const addCm = (id) => { if (!cmIn.trim()) return; const p0 = posts.find((p) => p.id === id); onSave(posts.map((p) => p.id === id ? { ...p, comments: [...(p.comments || []), { id: "cm" + Date.now(), text: cmIn.trim(), by: myName || "익명", at: Date.now(), replies: [] }] } : p)); onMention(parseMentions(cmIn, expertNames), id, p0 ? p0.title : "", cmIn.trim()); setCmIn(""); };
   const delCm = (id, cid) => onSave(posts.map((p) => p.id === id ? { ...p, comments: (p.comments || []).filter((c) => c.id !== cid) } : p));
-  const addReply = (id, cid) => { if (!replyIn.trim()) return; onSave(posts.map((p) => p.id === id ? { ...p, comments: (p.comments || []).map((c) => c.id === cid ? { ...c, replies: [...(c.replies || []), { text: replyIn.trim(), by: myName || "익명", at: Date.now() }] } : c) } : p)); setReplyIn(""); setReplyTo(null); };
+  const addReply = (id, cid) => { if (!replyIn.trim()) return; const p0 = posts.find((p) => p.id === id); onSave(posts.map((p) => p.id === id ? { ...p, comments: (p.comments || []).map((c) => c.id === cid ? { ...c, replies: [...(c.replies || []), { text: replyIn.trim(), by: myName || "익명", at: Date.now() }] } : c) } : p)); onMention(parseMentions(replyIn, expertNames), id, p0 ? p0.title : "", replyIn.trim()); setReplyIn(""); setReplyTo(null); };
   const delReply = (id, cid, at) => onSave(posts.map((p) => p.id === id ? { ...p, comments: (p.comments || []).map((c) => c.id === cid ? { ...c, replies: (c.replies || []).filter((r) => r.at !== at) } : c) } : p));
   const q = search.trim().toLowerCase();
   let list = filter === "popular" ? posts.filter(commPopular) : (filter === "all" ? posts : posts.filter((p) => p.cat === filter));
@@ -10673,7 +10730,7 @@ function CommunityView({ posts = [], myName = "", myUid = "", onSave, onBack }) 
               {COMM_CATS.map(([k, lb, col]) => (<button key={k} type="button" onClick={() => setWCat(k)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, fontWeight: "bold", padding: "6px 12px", borderRadius: 14, border: `2px solid ${wCat === k ? col : C.parchEdge}`, background: wCat === k ? col : C.white, color: wCat === k ? C.white : C.inkSoft }}>{lb}</button>))}
             </div>
             <input value={wTitle} onChange={(e) => setWTitle(e.target.value)} placeholder="제목" style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, marginBottom: 8 }} />
-            <textarea value={wBody} onChange={(e) => setWBody(e.target.value)} placeholder="내용을 자유롭게 적어주세요" rows={7} style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, resize: "vertical" }} />
+            <MentionField value={wBody} onChange={setWBody} expertNames={expertNames} multiline rows={7} placeholder="내용을 자유롭게 적어주세요 (@로 멤버 언급)" style={{ fontSize: 12.5 }} />
             <div style={{ margin: "8px 0" }}>
               {wDocs.map((d, i) => (<div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, marginBottom: 4 }}><span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#4b3fb0", fontWeight: "bold" }}>📄 {d.name}</span><button type="button" onClick={() => setWDocs((v) => v.filter((_, j) => j !== i))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.danger }}>✕</button></div>))}
               <label style={{ cursor: "pointer", display: "inline-block", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "6px 11px" }}>📎 문서 첨부<input type="file" style={{ display: "none" }} onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; addWDoc(f); }} /></label>
@@ -10723,14 +10780,14 @@ function CommunityView({ posts = [], myName = "", myUid = "", onSave, onBack }) 
                 ))}
                 {replyTo === c.id && (
                   <div style={{ display: "flex", gap: 5, marginTop: 6, marginLeft: 14 }}>
-                    <input value={replyIn} onChange={(e) => setReplyIn(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addReply(open.id, c.id); }} placeholder="답글 달기" autoFocus style={{ flex: 1, minWidth: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}><MentionField value={replyIn} onChange={setReplyIn} expertNames={expertNames} placeholder="답글 달기 (@로 언급)" onEnter={() => addReply(open.id, c.id)} style={{ padding: 6, fontSize: 11 }} /></div>
                     <PxButton tone="wood" onClick={() => addReply(open.id, c.id)} style={{ fontSize: 10, padding: "6px 9px" }}>등록</PxButton>
                   </div>
                 )}
               </div>
             ))}
             <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-              <input value={cmIn} onChange={(e) => setCmIn(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addCm(open.id); }} placeholder="댓글 달기" style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
+              <div style={{ flex: 1, minWidth: 0 }}><MentionField value={cmIn} onChange={setCmIn} expertNames={expertNames} placeholder="댓글 달기 (@로 언급)" onEnter={() => addCm(open.id)} style={{ padding: 8, fontSize: 12 }} /></div>
               <PxButton tone="wood" onClick={() => addCm(open.id)} style={{ fontSize: 11.5, padding: "8px 12px" }}>등록</PxButton>
             </div>
           </div>
@@ -10741,7 +10798,7 @@ function CommunityView({ posts = [], myName = "", myUid = "", onSave, onBack }) 
 }
 
 /* 진행상황 / 아이디어&피드백 섹션: 한 글을 계속 업데이트 (저장=글만 보임, 수정=편집창) + 댓글 스레드 */
-function DocSection({ title, color, html, comments, onSave, onAddComment, onDelComment, myName }) {
+function DocSection({ title, color, html, comments, onSave, onAddComment, onDelComment, myName, expertNames = [] }) {
   const [editing, setEditing] = useState(!html);
   const [showCm, setShowCm] = useState(false);
   const [cmIn, setCmIn] = useState("");
@@ -10783,7 +10840,7 @@ function DocSection({ title, color, html, comments, onSave, onAddComment, onDelC
             </div>
           ))}
           <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
-            <input value={cmIn} onChange={(e) => setCmIn(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && cmIn.trim()) { onAddComment(cmIn.trim()); setCmIn(""); } }} placeholder="댓글 입력" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5 }} />
+            <div style={{ flex: 1, minWidth: 0 }}><MentionField value={cmIn} onChange={setCmIn} expertNames={expertNames} placeholder="댓글 입력 (@로 언급)" onEnter={() => { if (cmIn.trim()) { onAddComment(cmIn.trim()); setCmIn(""); } }} style={{ padding: 7, fontSize: 11.5 }} /></div>
             <PxButton tone="ink" onClick={() => { if (cmIn.trim()) { onAddComment(cmIn.trim()); setCmIn(""); } }} style={{ fontSize: 10.5, padding: "6px 10px" }}>등록</PxButton>
           </div>
         </div>
@@ -10793,7 +10850,7 @@ function DocSection({ title, color, html, comments, onSave, onAddComment, onDelC
 }
 
 /* 📜 히스토리 큰 창(퀘스트 단위): 좌=내용 추가(리치 에디터·이미지·임시저장 목록), 우=회의록·문서. 채팅 없음, 편집중 표시 */
-function HistoryModal({ quest, myName, editingBy, onSaveDoc, onAddComment, onDelComment, onAddMinute, onDelMinute, onAddDoc, onDelDoc, onClose }) {
+function HistoryModal({ quest, myName, editingBy, onSaveDoc, onAddComment, onDelComment, onAddMinute, onDelMinute, onAddDoc, onDelDoc, onClose, expertNames = [] }) {
   const CATS = [["피드백", "#5b8def"], ["아이디어", "#e0913d"], ["정리", "#4b8f5f"]];
   const [cat, setCat] = useState("피드백");
   const [drafts, setDrafts] = useState([]);
@@ -10827,8 +10884,8 @@ function HistoryModal({ quest, myName, editingBy, onSaveDoc, onAddComment, onDel
         </div>
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexWrap: "wrap" }}>
           <div style={{ flex: "1 1 380px", minWidth: 0, display: "flex", flexDirection: "column", borderRight: `2px solid ${C.parchEdge}`, overflowY: "auto", padding: 14 }}>
-            <DocSection title="🚀 진행상황" color="#4b8f5f" html={quest.docProgress} comments={quest.docProgressC} myName={myName} onSave={(h) => onSaveDoc("docProgress", h)} onAddComment={(t) => onAddComment("docProgress", t)} onDelComment={(at) => onDelComment("docProgress", at)} />
-            <DocSection title="💡 아이디어 & 피드백" color="#e0913d" html={quest.docIdeas} comments={quest.docIdeasC} myName={myName} onSave={(h) => onSaveDoc("docIdeas", h)} onAddComment={(t) => onAddComment("docIdeas", t)} onDelComment={(at) => onDelComment("docIdeas", at)} />
+            <DocSection title="🚀 진행상황" color="#4b8f5f" html={quest.docProgress} comments={quest.docProgressC} myName={myName} onSave={(h) => onSaveDoc("docProgress", h)} onAddComment={(t) => onAddComment("docProgress", t)} onDelComment={(at) => onDelComment("docProgress", at)} expertNames={expertNames} />
+            <DocSection title="💡 아이디어 & 피드백" color="#e0913d" html={quest.docIdeas} comments={quest.docIdeasC} myName={myName} onSave={(h) => onSaveDoc("docIdeas", h)} onAddComment={(t) => onAddComment("docIdeas", t)} onDelComment={(at) => onDelComment("docIdeas", at)} expertNames={expertNames} />
           </div>
           <div style={{ flex: "1 1 300px", minWidth: 0, display: "flex", flexDirection: "column", overflowY: "auto", padding: 14 }}>
             <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>🗒 회의록</div>
@@ -10866,7 +10923,7 @@ function HistoryModal({ quest, myName, editingBy, onSaveDoc, onAddComment, onDel
   );
 }
 
-function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo, onGoBoard, hqQuests = [], onHQChange, hqRoad = {}, onRoadChange, bossImg = () => "", onBossImg = () => {}, onNotifyUser = () => {} }) {
+function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo, onGoBoard, hqQuests = [], onHQChange, hqRoad = {}, onRoadChange, bossImg = () => "", onBossImg = () => {}, onNotifyUser = () => {}, mentions = [], onGoMention = () => {}, openHistId = null, onHistOpened = () => {}, expertNames = [], onMention = () => {} }) {
   const [tab, setTab] = useState("home");
   const [notice, setNotice] = useState("");
   const [qcat, setQcat] = useState("all");
@@ -10878,7 +10935,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const [gmView, setGmView] = useState("quest");   // GM 대시보드 카테고리: world | quest | mission
   const [myDash, setMyDash] = useState("quest");   // 개인 대시보드 카테고리: quest | noti
   const [bannerHide, setBannerHide] = useState(false);   // 알림 배너 닫힘
-  const pendCount = hqQuests.filter((q) => q.reviewStatus === "pending" && (isGM || q.reviewer === myName)).length;
+  const pendCount = hqQuests.filter((q) => q.reviewStatus === "pending" && (isGM || q.reviewer === myName)).length + (mentions || []).filter((m) => m.to === myName && !m.read).length;
   const prevPendRef = useRef(0);
   useEffect(() => { if (pendCount > prevPendRef.current) setBannerHide(false); prevPendRef.current = pendCount; }, [pendCount]);
   const [qFull, setQFull] = useState(null);   // 전체보기 모달 (퀘스트 id)
@@ -11019,6 +11076,13 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const approveReview = (q) => { onHQChange && onHQChange(hqQuests.map((x) => x.id === q.id ? { ...x, reviewStatus: "approved", reviewBy: myName || "익명", reviewAt: Date.now(), ...editStamp() } : x)); };
   const reopenReview = (q) => { onHQChange && onHQChange(hqQuests.map((x) => x.id === q.id ? { ...x, reviewStatus: "", ...editStamp() } : x)); };
   const [histOpen, setHistOpen] = useState(null);   // 📜 히스토리 창 (퀘스트 id)
+  const myMentions = (mentions || []).filter((m) => m.to === myName && !m.read);
+  useEffect(() => {
+    if (!openHistId) return;
+    const q = hqQuests.find((x) => x.id === openHistId);
+    if (q) { setTab("quest"); setQcat(q.cat); setQView(q); setHistOpen(openHistId); }
+    onHistOpened();
+  }, [openHistId]);
   const [asgOpenId, setAsgOpenId] = useState(null);   // 담당자 추가 목록 펼친 퀘스트
   const [rwOpen, setRwOpen] = useState(false);   // 편집 폼 보상 섹션 펼침
   const [rwItem, setRwItem] = useState("");   // 아이템 입력
@@ -11026,8 +11090,8 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const delQuestNote = (qid, at) => { if (!window.confirm("이 내용을 삭제할까요?")) return; onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, notes: (x.notes || []).filter((n) => n.at !== at), ...editStamp() } : x)); };
   const addQuestMinute = (qid, date, text) => onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, minutes: [{ date, text, at: Date.now(), by: myName || "익명" }, ...mlogList(x)], ...editStamp() } : x));
   const startEdit = (qid) => onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, editingBy: myName || "익명", editingAt: Date.now() } : x));
-  const saveQuestDoc = (qid, field, html) => onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, [field]: html, [field + "By"]: myName || "익명", [field + "At"]: Date.now(), ...editStamp() } : x));
-  const addDocComment = (qid, field, text) => onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, [field + "C"]: [...(x[field + "C"] || []), { text, by: myName || "익명", at: Date.now() }] } : x));
+  const saveQuestDoc = (qid, field, html) => { onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, [field]: html, [field + "By"]: myName || "익명", [field + "At"]: Date.now(), ...editStamp() } : x)); const q = hqQuests.find((x) => x.id === qid); const plain = String(html || "").replace(/<[^>]*>/g, " "); onMention(parseMentions(plain, expertNames), qid, q ? q.title : "", plain); };
+  const addDocComment = (qid, field, text) => { onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, [field + "C"]: [...(x[field + "C"] || []), { text, by: myName || "익명", at: Date.now() }] } : x)); const q = hqQuests.find((x) => x.id === qid); onMention(parseMentions(text, expertNames), qid, q ? q.title : "", text); };
   const delDocComment = (qid, field, at) => onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, [field + "C"]: (x[field + "C"] || []).filter((c) => c.at !== at) } : x));
   const stopEdit = (qid) => onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, editingBy: "", editingAt: 0 } : x));
   const questStatus = (q) => { if (q.reviewStatus === "approved") return "done"; if (q.reviewStatus === "pending") return "review"; if ((avgOf(q) > 0) || (q.subs || []).some((sb) => sb.active)) return "doing"; return "todo"; };
@@ -11053,6 +11117,21 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
         </div>
       );
     });
+  };
+  const mentionBoard = () => {
+    if (myMentions.length === 0) return null;
+    const whereLabel = (w) => w === "community" ? "💬 커뮤니티" : w === "history" ? "📜 히스토리" : "글";
+    return (
+      <div style={{ marginBottom: 10 }}>
+        {myMentions.slice().sort((a, b) => (b.at || 0) - (a.at || 0)).map((m) => (
+          <div key={m.id} onClick={() => onGoMention(m)} style={{ cursor: "pointer", background: "#eef0ff", border: "2px solid #4b3fb0", borderRadius: 8, padding: "9px 11px", marginBottom: 6 }}>
+            <div style={{ fontSize: 11.5, fontWeight: "bold", color: "#4b3fb0" }}>💬 {m.by}님이 당신을 언급했어요!</div>
+            <div style={{ fontSize: 12, marginTop: 3, wordBreak: "break-word" }}>{whereLabel(m.where)} · {m.refTitle || ""}</div>
+            {m.snippet ? <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 2 }}>"{m.snippet}" · 눌러서 이동</div> : <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 2 }}>눌러서 이동</div>}
+          </div>
+        ))}
+      </div>
+    );
   };
   const notifBoard = (quests, goQuest) => {
     const items = quests.filter((q) => q.reviewStatus === "pending").sort((a, b) => (b.reviewReqAt || 0) - (a.reviewReqAt || 0));
@@ -11207,7 +11286,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                     {btn("world", "🌍 월드")}{btn("quest", "📋 퀘스트")}{btn("mission", "🎯 미션")}{btn("noti", "🔔 알림")}
                   </div>
 
-                  {gmView === "noti" && notifBoard(hqQuests, goQuest)}
+                  {gmView === "noti" && <>{mentionBoard()}{notifBoard(hqQuests, goQuest)}</>}
 
                   {gmView === "world" && HQ_CATS.map((c) => { const ms = wMembers(c.id); return (
                     <div key={c.id} style={{ fontSize: 12.5, marginBottom: 7, wordBreak: "break-word" }}>
@@ -11248,7 +11327,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                     {dbtn("quest", "📋 퀘스트")}{dbtn("noti", `🔔 알림${myNotif.length ? " " + myNotif.length : ""}`)}
                   </div>
                   {myDash === "quest" && (mine.length === 0 ? <div style={{ fontSize: 12, color: C.inkSoft }}>참여 중인 퀘스트가 없어요.</div> : statusSections(mine, goQuest))}
-                  {myDash === "noti" && notifBoard(myNotif, goQuest)}
+                  {myDash === "noti" && <>{mentionBoard()}{notifBoard(myNotif, goQuest)}</>}
                 </div>
               );
             })()}
@@ -11580,7 +11659,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                   const hq = hqQuests.find((x) => x.id === histOpen);
                   if (!hq) return null;
                   return (
-                    <HistoryModal quest={hq} myName={myName} editingBy={hq.editingBy}
+                    <HistoryModal quest={hq} myName={myName} editingBy={hq.editingBy} expertNames={expertNames}
                       onSaveDoc={(field, html) => saveQuestDoc(hq.id, field, html)}
                       onAddComment={(field, text) => addDocComment(hq.id, field, text)}
                       onDelComment={(field, at) => delDocComment(hq.id, field, at)}
@@ -13881,6 +13960,32 @@ function EchoTown() {
     dbSaveCommunity(list);
   };
   useEffect(() => { dbLoadCommunity().then((d) => { if (d && Array.isArray(d)) { setCommunity(d); try { saveJSON("echotown_comm_v1", d); } catch (e) {} } }); }, []);
+  // 💬 @멘션 알림
+  const [mentions, setMentions] = useState(() => loadJSON("echotown_mention_v1", []) || []);
+  const saveMentions = (list) => {
+    setMentions(list);
+    try { saveJSON("echotown_mention_v1", list); } catch (e) {}
+    if (netSendEventRef.current) netSendEventRef.current("mention", { list });
+    dbSaveMentions(list);
+  };
+  useEffect(() => { dbLoadMentions().then((d) => { if (d && Array.isArray(d)) { setMentions(d); try { saveJSON("echotown_mention_v1", d); } catch (e) {} } }); }, []);
+  const expertNamesRef = useRef([]);
+  const notifyMention = (names, where, refId, refTitle, snippet) => {
+    const targets = Array.from(new Set((names || []).filter((n) => n && n !== (myName || ""))));
+    if (targets.length === 0) return;
+    const now = Date.now();
+    const add = targets.map((to, i) => ({ id: "mt" + now + "_" + i, to, by: myName || "익명", at: now, where, refId, refTitle: refTitle || "", snippet: (snippet || "").slice(0, 40), read: false }));
+    setMentions((prev) => { const next = [...add, ...(prev || [])].slice(0, 300); try { saveJSON("echotown_mention_v1", next); } catch (e) {} if (netSendEventRef.current) netSendEventRef.current("mention", { list: next }); dbSaveMentions(next); return next; });
+  };
+  const markMentionRead = (id) => setMentions((prev) => { const next = (prev || []).map((m) => m.id === id ? { ...m, read: true } : m); try { saveJSON("echotown_mention_v1", next); } catch (e) {} if (netSendEventRef.current) netSendEventRef.current("mention", { list: next }); dbSaveMentions(next); return next; });
+  const [commOpenPost, setCommOpenPost] = useState(null);   // 멘션 클릭 → 열 커뮤니티 글
+  const [pendingHist, setPendingHist] = useState(null);     // 멘션 클릭 → 열 퀘스트 히스토리
+  const goMention = (m) => {
+    if (!m) return;
+    markMentionRead(m.id);
+    if (m.where === "community") { setCommOpenPost(m.refId); setHqOpen(false); setView("community"); }
+    else if (m.where === "history") { setPendingHist(m.refId); setHqOpen(true); }
+  };
   // 🎁 검토완료된 내 담당 퀘스트의 보상을 내 지갑에 1회 지급 (담당자 본인 클라이언트에서)
   useEffect(() => {
     if (!myName || !hydratedRef.current) return;
@@ -14396,7 +14501,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "hq" || kind === "hqroad" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx" || kind === "comm") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "hq" || kind === "hqroad" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx" || kind === "comm" || kind === "mention") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); showNotice(`🔔 ${p.from}님이 초인종을 눌렀어요`); pushMsg("dm", { from: p.from, text: "🔔 초인종을 눌렀어요 — 집 앞에 찾아왔어요!" }); }
       if (kind === "qrev") { showNotice("🔔 퀘스트 알림이 도착했습니다!", () => setHqOpen(true)); pushMsg("dm", { from: p.by || "HQ", text: p.txt || "🔔 퀘스트 알림" }); return; }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
@@ -14580,6 +14685,18 @@ function EchoTown() {
             return p.list;
           });
           try { saveJSON("echotown_comm_v1", p.list); } catch (e) {}
+        }
+        return;
+      }
+      if (kind === "mention") {
+        if (Array.isArray(p.list)) {
+          setMentions((prev) => {
+            const newest = p.list.find((m) => m.to === (myName || "") && !m.read);
+            const known = new Set((prev || []).map((x) => x.id));
+            if (newest && !known.has(newest.id)) setTimeout(() => showNotice("💬 " + (newest.by || "누군가") + "님이 당신을 언급했어요!", () => setHqOpen(true)), 0);
+            return p.list;
+          });
+          try { saveJSON("echotown_mention_v1", p.list); } catch (e) {}
         }
         return;
       }
@@ -14787,6 +14904,7 @@ function EchoTown() {
       equipment: ["🎒 인벤토리"], achievements: ["🌱 에코월드 주민"], quests: ["마을 생활"], affiliation: "ECHO WORLD",
     }));
   }, [netOthers, dbPlayers, myName, novices]);
+  useEffect(() => { expertNamesRef.current = (people || []).map((p) => p && p.name).filter(Boolean); }, [people]);
 
   const requestWorldSong = (title) => {
     if (gold < 5) return;
@@ -15132,7 +15250,7 @@ function EchoTown() {
         {view === "musinsa" && <MusinsaView gems={gold} outfit={outfit} owned={owned} onTryOn={tryOnClothing} onBuy={buyClothing} onBack={backToWorld} bubble={bubble} />}
         {view === "jjeop" && <JjeopView onBack={backToWorld} bubble={bubble} onReward={(n) => awardGold(n)} myName={myName} recList={recList} onRec={addRec} />}
         {view === "board" && <BoardView myName={myName} myUid={myUid} onBack={backToWorld} onCommunity={() => setView("community")} />}
-        {view === "community" && <CommunityView posts={community} myName={myName} myUid={myUid} onSave={saveCommunity} onBack={backToWorld} />}
+        {view === "community" && <CommunityView posts={community} myName={myName} myUid={myUid} onSave={saveCommunity} onBack={backToWorld} expertNames={(people || []).map((p) => p && normName(p.name)).filter(Boolean)} openPostId={commOpenPost} onOpened={() => setCommOpenPost(null)} onMention={(names, refId, refTitle, snippet) => notifyMention(names, "community", refId, refTitle, snippet)} />}
         {view === "bank" && <BankView gems={gems} lifetime={lifetime} exchanged={exchanged} history={history} onExchange={doExchange} onBack={backToWorld} />}
         {view === "rent" && rentMeta && <RentView house={rentMeta} gems={gold} rented={!!rented[rentId]} onRent={() => { setGold((g) => g - rentMeta.rent); setRented((r) => ({ ...r, [rentId]: true })); }} onBack={backToWorld} />}
       </div>
@@ -15453,6 +15571,9 @@ function EchoTown() {
         <HQView onClose={() => setHqOpen(false)} myName={myName} people={people}
           notices={allNotices} bossMaps={bossMaps} bossCleared={bossCleared} qAccept={qAccept} questBox={questBox} unreadMsgCount={unreadMsgCount}
           hqQuests={hqQuests} onHQChange={saveHQ} hqRoad={hqRoad} onRoadChange={saveRoad}
+          mentions={mentions} onGoMention={goMention} openHistId={pendingHist} onHistOpened={() => setPendingHist(null)}
+          expertNames={(people || []).map((p) => p && normName(p.name)).filter(Boolean)}
+          onMention={(names, refId, refTitle, snippet) => notifyMention(names, "history", refId, refTitle, snippet)}
           onPostNotice={(t) => { dbAddNotice("공지", t, `${myName || "익명"}님의 공지`, myUid); showNotice("📢 공지를 등록했어요"); }}
           onGo={(mapId) => { setHqOpen(false); setQuestJump({ mapId, qid: null }); setView("project"); }}
           onGoBoard={() => { setHqOpen(false); setView("board"); }}
