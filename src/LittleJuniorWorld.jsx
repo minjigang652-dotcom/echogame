@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v144 · 2026-07-29";
+const APP_VERSION = "v145 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -5836,7 +5836,7 @@ function LottoRoom({ onBack, bubble, gold = 0, onBuy }) {
   );
 }
 
-function MiniGameRoom({ onBack, onReward, bubble, myName = "", people = [] }) {
+function MiniGameRoom({ onBack, onReward, bubble, myName = "", people = [], liarGame = null, onLiarAction = () => {} }) {
   const [game, setGame] = useState(null); // 'reaction' | 'rps' | 'sequence'
   const [contest, setContest] = useState(false);
   const furniture = [
