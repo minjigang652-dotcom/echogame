@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v117 · 2026-07-28";
+const APP_VERSION = "v119 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -3241,7 +3241,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
       <div style={{ padding: "10px 14px", borderBottom: `3px solid ${C.parchEdge}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-        <b style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10 }}>ECHO TOWN</b>
+        <b style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10 }}>ECHO WORLD</b>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", background: "#241a33", color: "#ffe680", border: `2px solid ${C.ink}`, padding: "4px 8px" }}>
           <span className={bgm.playing ? "gem-spin" : ""} style={{ fontSize: 15 }}>♬</span>
           <div style={{ position: "relative" }}>
@@ -5074,6 +5074,11 @@ function ReelsView({ onBack, bubble, extraCats = {}, onAddCat, myName = "" }) {
   return (
     <RoomView title="릴스방" icon="📱" sub="📺 유튜브 롱폼 + 📱 카테고리별 쇼츠 · 세로로 스크롤하며 봐요" bg="#141c26" roomW={640} roomH={400} furniture={[]} onBack={onBack} paused headerBg="#3fa07a" bubble={bubble}>
       <div style={{ position: "absolute", inset: 0, overflowY: "auto", padding: 14, zIndex: 20, background: "linear-gradient(180deg,#1b2530,#141c26)" }}>
+
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
+          <PxButton tone="danger" onClick={onBack} style={{ fontSize: 12, padding: "6px 13px" }}>← 나가기</PxButton>
+          <span style={{ flex: 1 }} />
+        </div>
 
         {/* ── 📺 유튜브 롱폼 (가로 16:9) ── */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -9574,12 +9579,12 @@ const MY_PROFILE = {
   equipment: ["🎧 노이즈캔슬 헤드셋", "☕ 무한 리필 텀블러", "💻 듀얼 모니터", "⌨️ 기계식 키보드"],
   achievements: ["🏅 첫 퀘스트 클리어", "🌴 치앙마이 렌트 성공", "💌 감사 포스트잇 10개", "🔥 7일 연속 출근"],
   quests: ["어플 v2.0 출시 준비", "월말 결산 정산하기", "워크샵 발표 자료 만들기"],
-  affiliation: "ECHO TOWN · 개발팀",
+  affiliation: "ECHO WORLD · 개발팀",
 };
 const PROFILES = [
-  { avatar: "👩‍🎨", name: "도희", job: "프로덕트 디자이너", stats: { 체력: 70, 마나: 80, 집중: 88, 친화: 85 }, equipment: ["🖊️ 태블릿펜", "🎨 컬러칩", "📐 그리드 자"], achievements: ["🏆 리디자인 대상", "✨ 디자인 시스템 구축"], quests: ["릴스방 UI 개편"], affiliation: "ECHO TOWN · 디자인팀" },
-  { avatar: "🧑‍💼", name: "창민", job: "소싱 MD", stats: { 체력: 82, 마나: 60, 집중: 75, 친화: 90 }, equipment: ["📋 검수 클립보드", "🧦 샘플 양말", "📞 업체 다이얼"], achievements: ["🥇 항균양말 라인 런칭", "🤝 협력사 30곳"], quests: ["항균속옷 인증 미팅"], affiliation: "ECHO TOWN · 커머스팀" },
-  { avatar: "👧", name: "유리", job: "그로스 마케터", stats: { 체력: 68, 마나: 74, 집중: 80, 친화: 88 }, equipment: ["📈 대시보드", "📣 캠페인 메가폰"], achievements: ["🚀 CTR 2배 달성"], quests: ["여름 프로모션 기획"], affiliation: "ECHO TOWN · 마케팅팀" },
+  { avatar: "👩‍🎨", name: "도희", job: "프로덕트 디자이너", stats: { 체력: 70, 마나: 80, 집중: 88, 친화: 85 }, equipment: ["🖊️ 태블릿펜", "🎨 컬러칩", "📐 그리드 자"], achievements: ["🏆 리디자인 대상", "✨ 디자인 시스템 구축"], quests: ["릴스방 UI 개편"], affiliation: "ECHO WORLD · 디자인팀" },
+  { avatar: "🧑‍💼", name: "창민", job: "소싱 MD", stats: { 체력: 82, 마나: 60, 집중: 75, 친화: 90 }, equipment: ["📋 검수 클립보드", "🧦 샘플 양말", "📞 업체 다이얼"], achievements: ["🥇 항균양말 라인 런칭", "🤝 협력사 30곳"], quests: ["항균속옷 인증 미팅"], affiliation: "ECHO WORLD · 커머스팀" },
+  { avatar: "👧", name: "유리", job: "그로스 마케터", stats: { 체력: 68, 마나: 74, 집중: 80, 친화: 88 }, equipment: ["📈 대시보드", "📣 캠페인 메가폰"], achievements: ["🚀 CTR 2배 달성"], quests: ["여름 프로모션 기획"], affiliation: "ECHO WORLD · 마케팅팀" },
   { avatar: "🧑‍🎬", name: "봉준호", job: "영상 감독", stats: { 체력: 72, 마나: 92, 집중: 95, 친화: 78 }, equipment: ["🎬 클래퍼보드", "🎥 시네마 카메라", "🕶️ 뿔테 안경"], achievements: ["🏆 마을 영상제 대상", "🎞️ 단편 12편"], quests: ["영상스쿨 특강 준비"], affiliation: "영상스쿨 · 마스터" },
   { avatar: "🗿", name: "황혼의 파수꾼", job: "디자인 스승", stats: { 체력: 99, 마나: 99, 집중: 99, 친화: 60 }, equipment: ["🛡️ 황혼의 방패", "🖌️ 전설의 붓"], achievements: ["🌌 마을 수호 300일"], quests: ["디자인스쿨 신입 지도"], affiliation: "디자인스쿨 · 수호자" },
 ];
@@ -9773,7 +9778,7 @@ function MyPanel({ onClose, myName, gems, gold = 0, lifetime, hp, mp, level = 1,
     equipment: [outfit.top ? `👕 ${outfit.top.name}` : "👕 기본 상의", outfit.bottom ? `👖 ${outfit.bottom.name}` : "👖 기본 하의", outfit.shoes ? `👟 ${outfit.shoes.name}` : "👟 기본 신발", vehicle ? `${vehicle.emoji} ${vehicle.name}` : "🚶 도보"],
     achievements: BADGES.filter((b) => (stats[b.stat] || 0) >= b.need).slice(-6).map((b) => `${b.icon} ${b.name}`).concat(badgeCount === 0 ? ["아직 뱃지가 없어요"] : []),
     quests: [`📅 DAY ${day} 진행 중`, `🗺 클리어한 퀘스트 ${stats.quest || 0}개`, `👹 잡은 보스 ${stats.boss || 0}마리`],
-    affiliation: "ECHO TOWN",
+    affiliation: "ECHO WORLD",
   };
   return (
     <Sheet icon="🧑" title="내 프로필" onClose={onClose} tab={tab} setTab={setTab}
@@ -10918,7 +10923,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                           <span style={{ fontSize: 26, fontWeight: "bold", color: avgPct(q) >= 100 ? C.good : ci.color, lineHeight: 1 }}>{avgPct(q)}%</span>
                           <span style={{ fontSize: 10.5, color: C.inkSoft }}>{(q.subs || []).filter(sbDone).length}/{(q.subs || []).length} 미션 완료</span>
                           <span style={{ flex: 1 }} />
-                          <button type="button" onClick={(e) => { e.stopPropagation(); addSubTo(q.id); }} title="미션 바로 추가" style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", alignSelf: "center", fontSize: 15, fontWeight: "bold", lineHeight: 1, width: 26, height: 26, borderRadius: "50%", border: `2px solid ${C.ink}`, background: C.white, color: C.ink, flexShrink: 0 }}>＋</button>
+                          <button type="button" onClick={(e) => { e.stopPropagation(); addSubTo(q.id); }} title="미션 바로 추가" style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", alignSelf: "center", fontSize: 20, fontWeight: "bold", lineHeight: 1, background: "none", border: "none", color: ci.color, padding: "0 2px", flexShrink: 0 }}>＋</button>
                         </div>
                         <div style={{ height: 10, borderRadius: 6, background: "#eadfc6", overflow: "hidden", marginTop: 6 }}>
                           <div style={{ width: avgPct(q) + "%", height: "100%", background: avgPct(q) >= 100 ? C.good : ci.color, transition: "width .2s" }} />
@@ -11395,7 +11400,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                       <div style={{ fontSize: 12, color: C.inkSoft }}>진행중인 퀘스트가 없어요. 미션에 담당으로 지정되면 여기 떠요.</div>
                     ) : (
                       <div style={{ display: "flex", gap: 10, overflowX: "auto", padding: "4px 2px 6px" }}>
-                        {inProg.map((q) => { const ci = catInfo(q.cat); return (
+                        {inProg.map((q) => { const ci = HQ_CATS.find((c) => c.id === q.cat) || { color: "#888" }; return (
                           <button key={q.id} type="button" onClick={() => setQView(q)} title={q.title}
                             style={{ flexShrink: 0, width: 76, height: 76, borderRadius: "50%", border: `3px solid ${C.ink}`, background: ci.color, color: C.white, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 7, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 9, fontWeight: "bold", lineHeight: 1.15, textAlign: "center", boxShadow: `0 3px 0 ${C.parchEdge}` }}>
                             <span style={{ display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", wordBreak: "break-word" }}>{q.title}</span>
@@ -14064,7 +14069,7 @@ function EchoTown() {
       online: n === myName || online.includes(n),
       job: n === myName ? "나" : (online.includes(n) ? "🟢 접속 중" : "⚪ 오프라인"),
       stats: { 체력: 70, 마나: 70, 집중: 70, 친화: 70 },
-      equipment: ["🎒 인벤토리"], achievements: ["🌱 에코월드 주민"], quests: ["마을 생활"], affiliation: "ECHO TOWN",
+      equipment: ["🎒 인벤토리"], achievements: ["🌱 에코월드 주민"], quests: ["마을 생활"], affiliation: "ECHO WORLD",
     }));
   }, [netOthers, dbPlayers, myName]);
 
@@ -14149,7 +14154,7 @@ function EchoTown() {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 22 }}>🌱</span>
             <div>
-              <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, color: C.inkSoft }}>ECHO TOWN <span style={{ fontSize: 7, opacity: 0.7 }}>{APP_VERSION}</span></div>
+              <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, color: C.inkSoft }}>ECHO WORLD <span style={{ fontSize: 7, opacity: 0.7 }}>{APP_VERSION}</span></div>
               <div style={{ fontSize: 13, color: C.inkSoft }}>오픈월드 워크 시뮬레이터</div>
             </div>
           </div>
@@ -14433,7 +14438,7 @@ function EchoTown() {
           <div style={{ width: "100%", maxWidth: 340 }}>
             <Panel style={{ padding: 18 }}>
               <div style={{ textAlign: "center", fontSize: 34 }}>🌱</div>
-              <div style={{ textAlign: "center", fontFamily: "'Press Start 2P', monospace", fontSize: 12, margin: "8px 0" }}>ECHO TOWN</div>
+              <div style={{ textAlign: "center", fontFamily: "'Press Start 2P', monospace", fontSize: 12, margin: "8px 0" }}>ECHO WORLD</div>
               {!discord ? (
                 <>
                   <div style={{ fontSize: 13, textAlign: "center", marginBottom: 12, lineHeight: 1.7 }}>디스코드로 로그인해서 시작해요</div>
@@ -14939,7 +14944,7 @@ class ErrorBoundary extends React.Component {
   static getDerivedStateFromError(err) { return { err }; }
   componentDidCatch(err, info) {
     this.setState({ info });
-    try { console.error("[ECHO TOWN] 렌더링 오류:", err, info); } catch (e) {}
+    try { console.error("[ECHO WORLD] 렌더링 오류:", err, info); } catch (e) {}
   }
   render() {
     if (!this.state.err) return this.props.children;
