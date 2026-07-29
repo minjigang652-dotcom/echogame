@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v129 · 2026-07-29";
+const APP_VERSION = "v130 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -11016,8 +11016,8 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 </div>
               );
             })()}
-            {/* 🔔 내 퀘스트 알림 (개인 대시보드 · 모두에게) */}
-            {myName && (() => {
+            {/* 🔔 내 퀘스트 알림 (개인 대시보드 · GM은 위 GM대시보드로 대체) */}
+            {myName && !isGM && (() => {
               const goQuest = (q) => { setTab("quest"); setQcat(q.cat); setQView(q); };
               const mine = hqQuests.filter((q) => asgList(q).includes(myName) || (q.subs || []).some((sb) => sb.who === myName) || q.reviewer === myName);
               return (
