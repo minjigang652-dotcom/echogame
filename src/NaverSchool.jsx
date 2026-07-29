@@ -1439,7 +1439,7 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
   return (
     <div className="nsp-overlay" onClick={onClose}>
       <style>{CSS}</style>
-      {chatOpen && <ChatBot onClose={() => setChatOpen(false)} />}
+      {chatOpen && <ChatBot onClose={() => setChatOpen(false)} onGo={(room) => { setTab(room); setChatOpen(false); }} />}
       <div className="nsp-panel" onClick={(e) => e.stopPropagation()}>
         <div className="nsp-hd">
           <span className="nsp-badge">🏫</span>
