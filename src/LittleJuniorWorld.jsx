@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v122 · 2026-07-29";
+const APP_VERSION = "v123 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -10508,6 +10508,8 @@ function HQQuestRail({ quests = [], onOpenHQ }) {
 }
 
 /* 🖥 HQ 예시 데이터 (보스맵과 별개) */
+/* 👑 GM(운영자) 명단 — 이 이름으로 로그인하면 HQ 홈에 GM 대시보드가 보여요 (표시용 · 나중에 창민만 남기면 됨) */
+const GM_NAMES = ["창민", "민지"];
 const HQ_CATS_DEFAULT = [
   { id: "core", name: "코어 앱", icon: "🟦", color: "#3b82f6" },
   { id: "comm", name: "제품 (이커머스)", icon: "🟧", color: "#f97316" },
@@ -10540,6 +10542,8 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const [qEdit, setQEdit] = useState(null);   // 편집/등록 중인 퀘스트 (null=닫힘)
   const [qView, setQView] = useState(null);   // 🔍 자세히 보기 팝업 (null=닫힘)
   const [revEditId, setRevEditId] = useState(null);   // 검토자 변경 중인 퀘스트 (관리자 코드 통과 후)
+  const isGM = GM_NAMES.includes(myName);
+  const [gmView, setGmView] = useState("quest");   // GM 대시보드 카테고리: world | quest | mission
   const [qManage, setQManage] = useState(false);   // ⚙️ 퀘스트 관리(삭제·이름·순서)
   const [qActiveOnly, setQActiveOnly] = useState(false);   // ON = 진행중(색 있는) 미션만 표시
   const [catForm, setCatForm] = useState(null);   // 🌍 월드 추가/수정 폼 { mode, i, name, icon } | null
@@ -10753,6 +10757,67 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
       <div style={{ flex: 1, overflow: "auto", padding: "16px", maxWidth: 940, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
         {tab === "home" && (
           <>
+            {isGM && (() => {
+              const inProg = hqQuests.filter((q) => avgOf(q) < 100);
+              const goQuest = (q) => { setTab("quest"); setQcat(q.cat); setQView(q); };
+              const btn = (k, lb) => (<button key={k} type="button" onClick={() => setGmView(k)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, fontWeight: "bold", padding: "7px 12px", borderRadius: 16, border: `2px solid ${C.ink}`, background: gmView === k ? "#4b3fb0" : C.white, color: gmView === k ? C.white : C.ink }}>{lb}</button>);
+              return (
+                <div style={{ ...card, background: "#f3f0ff", borderColor: "#4b3fb0" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <b style={{ fontSize: 14 }}>👑 GM 대시보드</b>
+                    <span style={{ fontSize: 10, color: C.inkSoft }}>지금 누가 뭘 하고 있나</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+                    {btn("world", "🌍 월드")}{btn("quest", "📋 퀘스트")}{btn("mission", "🎯 미션")}
+                  </div>
+
+                  {gmView === "world" && HQ_CATS.map((c) => {
+                    const qs = hqQuests.filter((q) => q.cat === c.id && avgOf(q) < 100);
+                    return (
+                      <div key={c.id} style={{ marginBottom: 10 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: "bold", color: c.color }}>{c.icon} {c.name} <span style={{ fontSize: 10, color: C.inkSoft }}>({qs.length} 진행중)</span></div>
+                        {qs.length === 0 ? <div style={{ fontSize: 10.5, color: C.inkSoft, marginLeft: 14 }}>진행중 없음</div> : qs.map((q) => (
+                          <div key={q.id} onClick={() => goQuest(q)} style={{ cursor: "pointer", fontSize: 11.5, marginLeft: 14, marginTop: 3, display: "flex", gap: 6 }}>
+                            <span style={{ flex: 1, minWidth: 0, wordBreak: "break-word" }}>• {q.title}</span>
+                            <span style={{ color: C.inkSoft, flexShrink: 0 }}>{avgOf(q)}%{q.assignee ? ` · 🧑${q.assignee}` : ""}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+
+                  {gmView === "quest" && (inProg.length === 0 ? <div style={{ fontSize: 12, color: C.inkSoft }}>진행중인 퀘스트가 없어요.</div> : inProg.map((q) => {
+                    const ci = HQ_CATS.find((c) => c.id === q.cat) || { icon: "", color: "#888" };
+                    return (
+                      <div key={q.id} onClick={() => goQuest(q)} style={{ cursor: "pointer", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 14 }}>{ci.icon}</span>
+                          <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: "bold", wordBreak: "break-word" }}>{q.title}</span>
+                          <span style={{ fontSize: 12, fontWeight: "bold", color: ci.color }}>{avgOf(q)}%</span>
+                        </div>
+                        <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 3 }}>🧑 {q.assignee || "미지정"} · 🔎 {q.reviewer || "없음"}{q.due ? ` · 📅 ${q.due}` : ""}</div>
+                      </div>
+                    );
+                  }))}
+
+                  {gmView === "mission" && (() => {
+                    const rows = [];
+                    hqQuests.forEach((q) => (q.subs || []).forEach((sb) => { if ((sb.active || sb.who) && !sbDone(sb)) rows.push({ q, sb }); }));
+                    if (rows.length === 0) return <div style={{ fontSize: 12, color: C.inkSoft }}>진행중인 미션이 없어요.</div>;
+                    return rows.map((r, idx) => (
+                      <div key={idx} onClick={() => goQuest(r.q)} style={{ cursor: "pointer", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          {r.sb.active && <span style={{ fontSize: 8.5, fontWeight: "bold", color: C.white, background: "#4b8f5f", borderRadius: 8, padding: "1px 6px", flexShrink: 0 }}>진행중</span>}
+                          <span style={{ flex: 1, minWidth: 0, fontSize: 12, wordBreak: "break-word" }}>{r.sb.t || "(내용 없음)"}</span>
+                          <span style={{ fontSize: 10.5, color: C.inkSoft, flexShrink: 0 }}>🧑 {r.sb.who || "미지정"}</span>
+                        </div>
+                        <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 2 }}>↳ {r.q.title}</div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              );
+            })()}
             {/* 📢 공지사항 / 📅 캘린더 — 버튼으로 전환 (게시판과 같은 글 연동) */}
             <div style={{ ...card, background: "#fff8e8", borderColor: "#e0a13d" }}>
               <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
