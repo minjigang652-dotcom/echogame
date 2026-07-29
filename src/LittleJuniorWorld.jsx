@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v119 · 2026-07-29";
+const APP_VERSION = "v120 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -10240,7 +10240,8 @@ function DrawerBoard({ notes = [], onAdd, onDelete, big = false }) {
 }
 
 /* 🙋 왼쪽 상시 「내 페이지」 패널 */
-function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
+function HQSidePanel({ myName = "", people = [], questBox = [], hqQuests = [], hqCats = [], onOpenHQ }) {
+  const sbDone = (sb) => (sb && sb.done != null) ? !!sb.done : ((Number(sb && sb.pct) || 0) >= 100);
   const [open, setOpen] = useState(true);
   const av = (myName || "?").trim().slice(0, 1);
   let hh = 0; for (let i = 0; i < (myName || "").length; i++) hh = (hh * 31 + myName.charCodeAt(i)) % 360;
@@ -10297,6 +10298,7 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
   const pDelTag = (t) => { if (!window.confirm("정말로 삭제하시겠습니까?")) return; const next = (pTags || []).filter((x) => x !== t); setPTags(next); dbSavePtags(pView, next); };
   const vDone = pSelf ? done : ((pOther && pOther.mission) || {});
   const vTodos = pSelf ? todos : ((pOther && pOther.todos) || []);
+  const vNeck = pSelf ? neck : ((pOther && pOther.neck) || []).filter((n) => !n.locked);
   const resizeRef = useRef(null);
   const doneN = Object.values(done).filter(Boolean).length;
   const vDoneN = Object.values(vDone).filter(Boolean).length;
@@ -10354,6 +10356,28 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
           )}
         </div>
 
+        {/* 🔥 진행중인 퀘스트 */}
+        {(() => {
+          const inProg = (hqQuests || []).filter((q) => (q.subs || []).some((sb) => sb.who === pView && (sb.active || !sbDone(sb))));
+          return (
+            <div style={cardBox}>
+              {cardH("🔥", pSelf ? "진행중인 퀘스트" : `${pView}님의 진행중 퀘스트`, <span style={{ fontSize: 10, color: C.inkSoft }}>{inProg.length}개</span>)}
+              {inProg.length === 0 ? (
+                <div style={{ fontSize: 10, color: C.inkSoft }}>진행중인 퀘스트가 없어요.</div>
+              ) : (
+                <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "2px 1px 4px" }}>
+                  {inProg.map((q) => { const ci = (hqCats.find((c) => c.id === q.cat)) || { color: "#888" }; return (
+                    <button key={q.id} type="button" onClick={onOpenHQ} title={q.title}
+                      style={{ flexShrink: 0, width: 58, height: 58, borderRadius: "50%", border: `2px solid ${C.ink}`, background: ci.color, color: C.white, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 5, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 8, fontWeight: "bold", lineHeight: 1.1, textAlign: "center" }}>
+                      <span style={{ display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", wordBreak: "break-word" }}>{q.title}</span>
+                    </button>
+                  ); })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {/* 일일 미션 */}
         <div style={cardBox}>
           {cardH("🎯", pSelf ? "일일 미션" : `${pView}님의 미션`, <span style={{ fontSize: 10, color: C.inkSoft }}>{vDoneN}/{MISSIONS.length} · +10🪙</span>)}
@@ -10407,38 +10431,41 @@ function HQSidePanel({ myName = "", people = [], questBox = [], onOpenHQ }) {
           )}
         </div>
 
-        {pSelf && (<>
-        {/* 🗄️ 내 서랍 (칠판 메모) */}
+        {pSelf && (
         <div style={{ marginBottom: 9 }}>
           <DrawerBoard notes={notes} onAdd={(t) => setNotes((v) => [{ t, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v])} onDelete={(i) => setNotes((v) => v.filter((_, j) => j !== i))} />
         </div>
+        )}
 
-        {/* 🚧 병목지점 일기 */}
+        {/* 🚧 병목지점 일기 (남에게도 보여요 · 🔒 개별 비공개) */}
         <div style={cardBox}>
-          {cardH("🚧", "병목지점 일기")}
+          {cardH("🚧", pSelf ? "병목지점 일기" : `${pView}님의 병목지점 일기`)}
+          {pSelf && (<>
           <input value={nkPoint} onChange={(e) => setNkPoint(e.target.value)} placeholder="병목지점 (어디서 막혔나요?)"
             style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5, marginBottom: 5 }} />
           <input value={nkAction} onChange={(e) => setNkAction(e.target.value)} placeholder="액션 (어떻게 뚫을까요?)"
             style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5 }} />
-          <PxButton tone="ink" onClick={() => { if (nkPoint.trim() || nkAction.trim()) { setNeck((v) => [{ point: nkPoint.trim(), action: nkAction.trim(), done: false, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v]); setNkPoint(""); setNkAction(""); } }} style={{ width: "100%", fontSize: 10.5, padding: 7, marginTop: 6 }}>＋ 추가</PxButton>
-          {neck.length > 0 && (
-            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
-              {neck.map((n, i) => (
+          <PxButton tone="ink" onClick={() => { if (nkPoint.trim() || nkAction.trim()) { setNeck((v) => [{ point: nkPoint.trim(), action: nkAction.trim(), done: false, locked: false, at: new Date().toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) }, ...v]); setNkPoint(""); setNkAction(""); } }} style={{ width: "100%", fontSize: 10.5, padding: 7, marginTop: 6 }}>＋ 추가</PxButton>
+          </>)}
+          {vNeck.length > 0 ? (
+            <div style={{ marginTop: pSelf ? 8 : 2, display: "flex", flexDirection: "column", gap: 6 }}>
+              {vNeck.map((n, i) => (
                 <div key={i} style={{ display: "flex", gap: 4, alignItems: "stretch" }}>
-                  <div style={{ flex: 1, minWidth: 0, maxHeight: 46, overflowY: "auto", background: n.done ? "#d7ecdc" : C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "4px 5px", fontSize: 9.5, lineHeight: 1.35, wordBreak: "break-word", textDecoration: n.done ? "line-through" : "none", color: n.done ? C.inkSoft : C.ink }}>{n.locked ? "🔒 " : ""}{n.point || "(병목)"}</div>
+                  <div style={{ flex: 1, minWidth: 0, maxHeight: 46, overflowY: "auto", background: n.done ? "#d7ecdc" : C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "4px 5px", fontSize: 9.5, lineHeight: 1.35, wordBreak: "break-word", textDecoration: n.done ? "line-through" : "none", color: n.done ? C.inkSoft : C.ink }}>{n.locked && pSelf ? "🔒 " : ""}{n.point || "(병목)"}</div>
                   <div style={{ flex: 1, minWidth: 0, maxHeight: 46, overflowY: "auto", background: n.done ? "#d7ecdc" : C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "4px 5px", fontSize: 9.5, lineHeight: 1.35, wordBreak: "break-word", color: C.inkSoft }}>{n.action || "-"}</div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, flexShrink: 0 }}>
                     <span style={{ fontSize: 8, color: C.inkSoft }}>{n.at}</span>
+                    {pSelf && (<>
                     <button type="button" title={n.locked ? "비공개 · 눌러서 공개" : "공개 · 눌러서 비공개"} onClick={() => setNeck((v) => v.map((x, j) => j === i ? { ...x, locked: !x.locked } : x))} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, padding: 0 }}>{n.locked ? "🔒" : "🔓"}</button>
                     <input type="checkbox" checked={!!n.done} onChange={() => setNeck((v) => v.map((x, j) => j === i ? { ...x, done: !x.done } : x))} />
                     <button type="button" onClick={() => { if (window.confirm("정말로 삭제하시겠습니까?")) setNeck((v) => v.filter((_, j) => j !== i)); }} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 9, color: C.inkSoft, padding: 0 }}>✕</button>
+                    </>)}
                   </div>
                 </div>
               ))}
             </div>
-          )}
+          ) : (!pSelf && <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 2 }}>공개된 병목지점이 없어요.</div>)}
         </div>
-        </>)}
       </div>
       {/* 🪟 크기 조절 바 — 끌어서 창 크기를 바꿔요 (계정마다 저장돼요) */}
       <div
@@ -14652,7 +14679,7 @@ function EchoTown() {
         <div style={{ position: "fixed", left: "50%", top: 16, transform: "translateX(-50%)", zIndex: 150, background: C.ink, color: C.white, border: `3px solid ${C.gem}`, borderRadius: 10, padding: "10px 18px", fontSize: 13, fontFamily: "var(--game-font, 'DotGothic16', monospace)", boxShadow: "0 6px 16px rgba(0,0,0,0.4)" }}>{notice}</div>
       )}
       {!hqOpen && myName && (
-        <HQSidePanel key={"mp" + mpVersion} myName={myName} people={people} questBox={questBox} onOpenHQ={() => { setHqOpen(true); }} />
+        <HQSidePanel key={"mp" + mpVersion} myName={myName} people={people} questBox={questBox} hqQuests={hqQuests} hqCats={(hqRoad && hqRoad.__cats && hqRoad.__cats.length) ? hqRoad.__cats : HQ_CATS_DEFAULT} onOpenHQ={() => { setHqOpen(true); }} />
       )}
       {/* ⚙️ 설정 (우측 상단 · 아이콘만) */}
       {myName && (
