@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v136 · 2026-07-29";
+const APP_VERSION = "v137 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -903,6 +903,7 @@ list.push({ id: "jjeop", kind: "small", x: 1820, y: 1210, r: 55, label: "🍴 �
   // 은행 / 게시판
   list.push({ id: "bank", kind: "bank", x: 1000, y: 640, r: 65, label: "🏦 중앙은행" });
   list.push({ id: "board", kind: "board", x: 1585, y: 700, r: 60, label: "📋 게시판" });
+  list.push({ id: "community", kind: "small", x: 1745, y: 700, r: 58, label: "💬 커뮤니티", tint: "#4b8f5f" });
   // 대형건물(상단)
   const bigPos = { cs: [1300, 330] };
   BIG_BUILDINGS.forEach((b) => { const p = bigPos[b.id] || [1300, 400]; list.push({ id: b.id, kind: "big", x: p[0], y: p[1], r: 75, label: `${b.icon} ${b.name}`, meta: b }); });
@@ -2383,6 +2384,7 @@ const PLACE_NAME = {
   musinsa: "🛍 무신사", ikea: "🛒 이케아", project: "🗺 보스맵", questdone: "🏆 제단",
   coredict: "📚 코어사전", meeting: "🎥 회의실", naverschool: "📗 네이버스쿨", videoschool: "🎬 영상스쿨", lotto: "🎟 복권방",
   rent: "🏝 렌트하우스", big: "🏢 회사", alba: "💼 알바", gate: "🚧 검문소",
+  community: "💬 커뮤니티",
 };
 const placeLabel = (v) => PLACE_NAME[v || "world"] || "🏢 건물 안";
 
