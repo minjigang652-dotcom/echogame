@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { dbLoadNspTut, dbSaveNspTut, dbLoadNspKw, dbSaveNspKw, dbLoadNspUrls, dbSaveNspUrls, dbLoadCafeKw, dbSaveCafeKw, dbLoadCafeState, dbSaveCafeState, dbLoadKinKw, dbSaveKinKw, dbLoadKinState, dbSaveKinState, dbLoadKinEx, dbSaveKinEx } from "./LittleJuniorWorld.jsx";
+import ChatBot from "./ChatBot.jsx";
 
 /* 이미지 압축 (NaverSchool 자체 정의 · LittleJuniorWorld 의존 제거) */
 function compressImage(file, maxSide = 900, quality = 0.72, mime = "image/jpeg") {
@@ -1298,6 +1299,7 @@ function CafePublishTab() {
 
 function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
   const [tab, setTab] = useState(null);
+  const [chatOpen, setChatOpen] = useState(false);
   const [nickname, setNickname] = useState(nicknameProp || ''); // 접속된 닉네임(작업자)
   const [tutorial, setTutorial] = useState({
     method:        { text: '', fileName: '', date: '' },
@@ -1437,6 +1439,8 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
   return (
     <div className="nsp-overlay" onClick={onClose}>
       <style>{CSS}</style>
+      <button type="button" onClick={(e) => { e.stopPropagation(); setChatOpen(true); }} title="코코 상담소" style={{ position: "fixed", right: 18, bottom: 18, zIndex: 60, cursor: "pointer", width: 58, height: 58, borderRadius: "50%", border: "3px solid #3a3228", background: "#4b8f5f", color: "#fff", fontSize: 26, boxShadow: "0 4px 10px rgba(0,0,0,0.3)" }}>🐣</button>
+      {chatOpen && <ChatBot onClose={() => setChatOpen(false)} />}
       <div className="nsp-panel" onClick={(e) => e.stopPropagation()}>
         <div className="nsp-hd">
           <span className="nsp-badge">🏫</span>
