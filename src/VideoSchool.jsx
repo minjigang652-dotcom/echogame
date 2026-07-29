@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { C, NetContext, PixelHouse, Hero, Panel, PxButton, TitleBar } from "./LittleJuniorWorld.jsx";
+import ChatBot from "./ChatBot.jsx";
 
 /* ======================= 스쿨(네이버/영상) ======================= */
 function School({ wall = "#8fd0d6", roof = "#c95d7b", size = 140 }) {
@@ -130,6 +131,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear }) {
   const [moving, setMoving] = useState(false);
   const [near, setNear] = useState(null);
   const [open, setOpen] = useState(null);
+  const [chatOpen, setChatOpen] = useState(false);
   const keys = useRef({});
   const posRef = useRef(pos);
   const nearRef = useRef(null);
@@ -217,6 +219,8 @@ function SchoolView({ school, onBack, cleared = {}, onClear }) {
   const doneCount = houses.filter((h) => cleared[h.id]).length;
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <button type="button" onClick={() => setChatOpen(true)} title="코코 상담소" style={{ position: "fixed", right: 18, bottom: 18, zIndex: 60, cursor: "pointer", width: 58, height: 58, borderRadius: "50%", border: "3px solid #3a3228", background: "#4b8f5f", color: "#fff", fontSize: 26, boxShadow: "0 4px 10px rgba(0,0,0,0.3)" }}>🐣</button>
+      {chatOpen && <ChatBot onClose={() => setChatOpen(false)} />}
       <TitleBar tipId={school} icon={s.icon} title={s.title} sub="WASD 이동 · 집 근처에서 E · 👑은 보스급, 🔒은 잠긴 퀘스트" onBack={onBack} bg={s.color} fg={C.white} />
       <div style={{ padding: 12, background: C.parch }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
