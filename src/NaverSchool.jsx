@@ -1439,13 +1439,13 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
   return (
     <div className="nsp-overlay" onClick={onClose}>
       <style>{CSS}</style>
-      <button type="button" onClick={(e) => { e.stopPropagation(); setChatOpen(true); }} title="코코 상담소" style={{ position: "fixed", right: 18, bottom: 18, zIndex: 60, cursor: "pointer", width: 58, height: 58, borderRadius: "50%", border: "3px solid #3a3228", background: "#4b8f5f", color: "#fff", fontSize: 26, boxShadow: "0 4px 10px rgba(0,0,0,0.3)" }}>🐣</button>
       {chatOpen && <ChatBot onClose={() => setChatOpen(false)} />}
       <div className="nsp-panel" onClick={(e) => e.stopPropagation()}>
         <div className="nsp-hd">
           <span className="nsp-badge">🏫</span>
           <h1>네이버 스쿨</h1>
           <span className="nsp-sub">· 방을 골라 들어가세요</span>
+          <button type="button" onClick={() => setChatOpen(true)} title="코코 상담소" style={{ marginLeft: "auto", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: "bold", background: "#fff", color: "#2f6b25", border: "2px solid #2f6b25", borderRadius: 8, padding: "5px 11px" }}>🐣 코코</button>
           <button className="nsp-exit" onClick={onClose}>← 나가기</button>
         </div>
 
