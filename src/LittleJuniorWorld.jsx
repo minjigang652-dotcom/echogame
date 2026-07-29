@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v126 · 2026-07-29";
+const APP_VERSION = "v127 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -10534,6 +10534,110 @@ const HQ_ROADMAP = {
 };
 
 /* ======================= 🖥 에코월드 HQ (대시보드) ======================= */
+/* 🎯 미션 상세 큰 창: 좌=내용 추가(리치 에디터·이미지·임시저장 목록), 우=스레드 채팅 */
+function MissionModal({ mkey, sub, questTitle, myName, onSaveNote, onDelNote, onSendChat, onDelChat, onClose }) {
+  const CATS = [["피드백", "#5b8def"], ["아이디어", "#e0913d"], ["정리", "#4b8f5f"]];
+  const [cat, setCat] = useState("피드백");
+  const [chatIn, setChatIn] = useState("");
+  const [drafts, setDrafts] = useState([]);
+  const edRef = useRef(null);
+  const chatEndRef = useRef(null);
+  const dkey = "echotown_mdrafts_" + mkey;
+  useEffect(() => { try { const d = JSON.parse(window.localStorage.getItem(dkey) || "[]"); setDrafts(Array.isArray(d) ? d : []); } catch (e) { setDrafts([]); } }, [dkey]);
+  useEffect(() => { if (chatEndRef.current) chatEndRef.current.scrollIntoView({ block: "end" }); }, [(sub.chat || []).length]);
+  const catColor = (c) => (CATS.find((x) => x[0] === c) || [null, "#888"])[1];
+  const exec = (cmd, val) => { try { document.execCommand(cmd, false, val || null); } catch (e) {} if (edRef.current) edRef.current.focus(); };
+  const insertImage = async (file) => { if (!file) return; try { const url = await compressImage(file, 700, 0.7, "image/jpeg"); exec("insertHTML", `<img src="${url}" style="max-width:100%;border-radius:6px;margin:4px 0;" />`); } catch (e) { window.alert("이미지를 넣지 못했어요"); } };
+  const isEmpty = () => { const h = edRef.current ? edRef.current.innerHTML : ""; return !h || !h.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").trim(); };
+  const saveDrafts = (arr) => { setDrafts(arr); try { window.localStorage.setItem(dkey, JSON.stringify(arr)); } catch (e) {} };
+  const doTemp = () => { if (isEmpty()) { window.alert("내용을 입력해주세요."); return; } saveDrafts([{ id: Date.now(), cat, html: edRef.current.innerHTML, at: Date.now() }, ...drafts]); window.alert("임시저장 목록에 담았어요."); };
+  const loadDraft = (d) => { if (edRef.current) edRef.current.innerHTML = d.html; setCat(d.cat || "피드백"); };
+  const delDraft = (id) => saveDrafts(drafts.filter((d) => d.id !== id));
+  const doSave = () => { if (isEmpty()) { window.alert("내용을 입력해주세요."); return; } onSaveNote({ cat, html: edRef.current.innerHTML }); if (edRef.current) edRef.current.innerHTML = ""; };
+  const tbBtn = (label, fn, title) => (<button type="button" title={title} onMouseDown={(e) => { e.preventDefault(); fn(); }} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, fontWeight: "bold", minWidth: 30, height: 28, border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white, color: C.ink }}>{label}</button>);
+  const notes = sub.notes || [];
+  const chat = sub.chat || [];
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.62)", zIndex: 270, display: "flex", alignItems: "center", justifyContent: "center", padding: 14 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 1000, height: "92vh", background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, display: "flex", flexDirection: "column", overflow: "hidden", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
+        <div style={{ padding: "14px 18px", borderBottom: `3px solid ${C.ink}`, position: "relative", textAlign: "center", flexShrink: 0 }}>
+          <div style={{ fontSize: 22, fontWeight: "bold", wordBreak: "break-word" }}>{sub.t || "(미션)"}</div>
+          <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 3 }}>↳ {questTitle}{sub.who ? ` · 🧑 ${sub.who}` : ""}{sub.due ? ` · 📅 ${sub.due}` : ""}</div>
+          <button type="button" onClick={onClose} style={{ position: "absolute", right: 14, top: 12, cursor: "pointer", background: "none", border: "none", fontSize: 20 }}>✕</button>
+        </div>
+        <div style={{ flex: 1, minHeight: 0, display: "flex", flexWrap: "wrap" }}>
+          <div style={{ flex: "1 1 380px", minWidth: 0, display: "flex", flexDirection: "column", borderRight: `2px solid ${C.parchEdge}`, overflowY: "auto", padding: 14 }}>
+            <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
+              {CATS.map(([lb, col]) => (<button key={lb} type="button" onClick={() => setCat(lb)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, fontWeight: "bold", padding: "6px 12px", borderRadius: 14, border: `2px solid ${cat === lb ? col : C.parchEdge}`, background: cat === lb ? col : C.white, color: cat === lb ? C.white : C.inkSoft }}>{lb}</button>))}
+            </div>
+            <div style={{ display: "flex", gap: 4, marginBottom: 6, flexWrap: "wrap", alignItems: "center" }}>
+              {tbBtn("B", () => exec("bold"), "굵게")}
+              {tbBtn("H", () => exec("formatBlock", "H3"), "제목")}
+              {tbBtn("• 목록", () => exec("insertUnorderedList"), "글머리표")}
+              {tbBtn("― 줄", () => exec("insertHorizontalRule"), "구분선")}
+              <label style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, fontWeight: "bold", height: 28, lineHeight: "24px", padding: "0 10px", border: `2px solid ${C.ink}`, borderRadius: 6, background: "#4b3fb0", color: C.white }}>🖼 이미지
+                <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; insertImage(f); }} />
+              </label>
+            </div>
+            <div ref={edRef} contentEditable suppressContentEditableWarning style={{ minHeight: 160, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 10, background: C.white, fontSize: 13, lineHeight: 1.6, overflowY: "auto", outline: "none" }} />
+            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+              <PxButton tone="wood" onClick={doTemp} style={{ flex: 1, fontSize: 11.5, padding: 9 }}>임시저장</PxButton>
+              <PxButton tone="good" onClick={doSave} style={{ flex: 1, fontSize: 12.5, padding: 9 }}>저장</PxButton>
+              <PxButton tone="ink" onClick={onClose} style={{ flex: 1, fontSize: 11.5, padding: 9 }}>닫기</PxButton>
+            </div>
+            {drafts.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: "bold", color: C.inkSoft, marginBottom: 5 }}>📝 임시저장 목록 ({drafts.length})</div>
+                {drafts.map((d) => (
+                  <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 6, background: "#fff8e8", border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "6px 9px", marginBottom: 5 }}>
+                    <span style={{ fontSize: 9, fontWeight: "bold", color: C.white, background: catColor(d.cat), borderRadius: 8, padding: "2px 7px", flexShrink: 0 }}>{d.cat}</span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 10.5, color: C.inkSoft, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(d.html || "").replace(/<[^>]*>/g, " ").trim().slice(0, 30) || "(빈 내용)"}</span>
+                    <button type="button" onClick={() => loadDraft(d)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10, fontWeight: "bold", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "3px 7px" }}>불러오기</button>
+                    <button type="button" onClick={() => delDraft(d.id)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.danger }}>🗑</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ fontSize: 11, fontWeight: "bold", margin: "14px 0 6px" }}>저장된 내용 ({notes.length})</div>
+            {notes.length === 0 && <div style={{ fontSize: 11, color: C.inkSoft }}>아직 저장된 내용이 없어요.</div>}
+            {notes.slice().sort((a, b) => (b.at || 0) - (a.at || 0)).map((n) => (
+              <div key={n.at} style={{ background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                  <span style={{ fontSize: 9.5, fontWeight: "bold", color: C.white, background: catColor(n.cat), borderRadius: 8, padding: "2px 8px" }}>{n.cat}</span>
+                  <span style={{ fontSize: 9, color: C.inkSoft }}>{n.by} · {new Date(n.at).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" })}</span>
+                  <span style={{ flex: 1 }} />
+                  <button type="button" onClick={() => onDelNote(n.at)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.danger }}>🗑</button>
+                </div>
+                <div style={{ fontSize: 12.5, lineHeight: 1.6, wordBreak: "break-word" }} dangerouslySetInnerHTML={{ __html: n.html || "" }} />
+              </div>
+            ))}
+          </div>
+          <div style={{ flex: "1 1 300px", minWidth: 0, display: "flex", flexDirection: "column", padding: 14 }}>
+            <div style={{ fontWeight: "bold", marginBottom: 8 }}>💬 스레드 <span style={{ fontSize: 10, color: C.inkSoft }}>({chat.length})</span></div>
+            <div style={{ flex: 1, minHeight: 140, overflowY: "auto", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: 10 }}>
+              {chat.length === 0 && <div style={{ fontSize: 11, color: C.inkSoft }}>대화를 시작해보세요.</div>}
+              {chat.slice().sort((a, b) => (a.at || 0) - (b.at || 0)).map((m) => { const mine = m.by === myName; return (
+                <div key={m.at} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", marginBottom: 8 }}>
+                  <span style={{ fontSize: 9, color: C.inkSoft, marginBottom: 2 }}>{m.by} · {new Date(m.at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, maxWidth: "88%" }}>
+                    {mine && <button type="button" onClick={() => onDelChat(m.at)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 9, color: C.inkSoft }}>🗑</button>}
+                    <div style={{ background: mine ? "#4b8f5f" : "#ece7db", color: mine ? C.white : C.ink, borderRadius: 10, padding: "6px 10px", fontSize: 12.5, wordBreak: "break-word", whiteSpace: "pre-wrap" }}>{m.text}</div>
+                  </div>
+                </div>
+              ); })}
+              <div ref={chatEndRef} />
+            </div>
+            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+              <input value={chatIn} onChange={(e) => setChatIn(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && chatIn.trim()) { onSendChat(chatIn.trim()); setChatIn(""); } }} placeholder="메시지 입력" style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5 }} />
+              <PxButton tone="gold" onClick={() => { if (chatIn.trim()) { onSendChat(chatIn.trim()); setChatIn(""); } }} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo, onGoBoard, hqQuests = [], onHQChange, hqRoad = {}, onRoadChange, bossImg = () => "", onBossImg = () => {}, onNotifyUser = () => {} }) {
   const [tab, setTab] = useState("home");
   const [notice, setNotice] = useState("");
@@ -10557,22 +10661,12 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
     setMlogText("");
   };
   const delMinute = (qid, at) => { if (!window.confirm("이 회의록을 삭제할까요?")) return; const q = hqQuests.find((x) => x.id === qid); if (!q) return; onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, minutes: mlogList(q).filter((m) => m.at !== at), ...editStamp() } : x)); };
-  const [missionOpen, setMissionOpen] = useState(null);   // { qid, idx } 미션 상세 드로어
-  const [mnText, setMnText] = useState("");
-  const [mnCat, setMnCat] = useState("피드백");
-  const MN_CATS = [["피드백", "#5b8def"], ["아이디어", "#e0913d"], ["정리", "#4b8f5f"]];
-  const mnDraftKey = (o) => "echotown_mdraft_" + (o ? o.qid + "_" + o.idx : "");
-  const openMission = (qid, idx) => {
-    setMissionOpen({ qid, idx });
-    let d = ""; try { d = window.localStorage.getItem("echotown_mdraft_" + qid + "_" + idx) || ""; } catch (e) {}
-    setMnText(d); setMnCat("피드백");
-  };
-  const addMissionNote = (qid, idx, cat, text) => {
-    if (!text.trim()) { window.alert("내용을 입력해주세요."); return; }
-    onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: (q.subs || []).map((sb, i) => i === idx ? { ...sb, notes: [{ cat, text: text.trim(), at: Date.now(), by: myName || "익명" }, ...(sb.notes || [])] } : sb), ...editStamp() } : q));
-    setMnText(""); try { window.localStorage.removeItem("echotown_mdraft_" + qid + "_" + idx); } catch (e) {}
-  };
-  const delMissionNote = (qid, idx, at) => { if (!window.confirm("이 기록을 삭제할까요?")) return; onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: (q.subs || []).map((sb, i) => i === idx ? { ...sb, notes: (sb.notes || []).filter((n) => n.at !== at) } : sb), ...editStamp() } : q)); };
+  const [missionOpen, setMissionOpen] = useState(null);   // { qid, idx } 미션 상세 큰 창
+  const openMission = (qid, idx) => setMissionOpen({ qid, idx });
+  const saveMissionNote = (qid, idx, entry) => onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: (q.subs || []).map((sb, i) => i === idx ? { ...sb, notes: [{ ...entry, at: Date.now(), by: myName || "익명" }, ...(sb.notes || [])] } : sb), ...editStamp() } : q));
+  const delMissionNote = (qid, idx, at) => onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: (q.subs || []).map((sb, i) => i === idx ? { ...sb, notes: (sb.notes || []).filter((n) => n.at !== at) } : sb), ...editStamp() } : q));
+  const sendMissionChat = (qid, idx, text) => onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: (q.subs || []).map((sb, i) => i === idx ? { ...sb, chat: [...(sb.chat || []), { text, by: myName || "익명", at: Date.now() }] } : sb), ...editStamp() } : q));
+  const delMissionChat = (qid, idx, at) => onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: (q.subs || []).map((sb, i) => i === idx ? { ...sb, chat: (sb.chat || []).filter((c) => c.at !== at) } : sb), ...editStamp() } : q));
   const [qManage, setQManage] = useState(false);   // ⚙️ 퀘스트 관리(삭제·이름·순서)
   const [qActiveOnly, setQActiveOnly] = useState(false);   // ON = 진행중(색 있는) 미션만 표시
   const [catForm, setCatForm] = useState(null);   // 🌍 월드 추가/수정 폼 { mode, i, name, icon } | null
@@ -11156,46 +11250,13 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                   const mq = hqQuests.find((x) => x.id === missionOpen.qid);
                   const sb = mq && (mq.subs || [])[missionOpen.idx];
                   if (!sb) return null;
-                  const notes = sb.notes || [];
-                  const catColor = (cat) => (MN_CATS.find((c) => c[0] === cat) || [null, "#888"])[1];
                   return (
-                    <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(440px, 94vw)", background: C.parch, borderLeft: `4px solid ${C.ink}`, boxShadow: "-6px 0 22px rgba(0,0,0,0.28)", zIndex: 260, padding: 18, overflowY: "auto", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 10, color: C.inkSoft }}>🎯 미션</div>
-                          <b style={{ fontSize: 15, wordBreak: "break-word" }}>{sb.t || "(내용 없음)"}</b>
-                        </div>
-                        <button type="button" onClick={() => setMissionOpen(null)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 18 }}>✕</button>
-                      </div>
-                      <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 12 }}>↳ {mq.title}</div>
-
-                      <div style={{ fontSize: 11.5, fontWeight: "bold", marginBottom: 6 }}>카테고리</div>
-                      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                        {MN_CATS.map(([lb, col]) => (
-                          <button key={lb} type="button" onClick={() => setMnCat(lb)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, fontWeight: "bold", padding: "6px 12px", borderRadius: 14, border: `2px solid ${mnCat === lb ? col : C.parchEdge}`, background: mnCat === lb ? col : C.white, color: mnCat === lb ? C.white : C.inkSoft }}>{lb}</button>
-                        ))}
-                      </div>
-                      <textarea value={mnText} onChange={(e) => setMnText(e.target.value)} placeholder="내용을 입력하세요" rows={5} style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, resize: "vertical", background: C.white }} />
-                      <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-                        <PxButton tone="wood" onClick={() => { try { window.localStorage.setItem("echotown_mdraft_" + missionOpen.qid + "_" + missionOpen.idx, mnText); } catch (e) {} window.alert("임시저장했어요 (이 기기에만 저장 · 다시 열면 이어서 작성)"); }} style={{ flex: 1, fontSize: 11.5, padding: 10 }}>임시저장</PxButton>
-                        <PxButton tone="good" onClick={() => addMissionNote(missionOpen.qid, missionOpen.idx, mnCat, mnText)} style={{ flex: 1, fontSize: 12.5, padding: 10 }}>저장</PxButton>
-                        <PxButton tone="ink" onClick={() => setMissionOpen(null)} style={{ flex: 1, fontSize: 11.5, padding: 10 }}>닫기</PxButton>
-                      </div>
-
-                      <div style={{ fontSize: 11.5, fontWeight: "bold", margin: "16px 0 6px" }}>기록 ({notes.length})</div>
-                      {notes.length === 0 && <div style={{ fontSize: 11, color: C.inkSoft }}>아직 기록이 없어요.</div>}
-                      {notes.slice().sort((a, b) => (b.at || 0) - (a.at || 0)).map((n) => (
-                        <div key={n.at} style={{ background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                            <span style={{ fontSize: 9.5, fontWeight: "bold", color: C.white, background: catColor(n.cat), borderRadius: 8, padding: "2px 8px" }}>{n.cat}</span>
-                            <span style={{ fontSize: 9, color: C.inkSoft }}>{n.by} · {new Date(n.at).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" })}</span>
-                            <span style={{ flex: 1 }} />
-                            <button type="button" onClick={() => delMissionNote(missionOpen.qid, missionOpen.idx, n.at)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.danger }}>🗑</button>
-                          </div>
-                          <div style={{ fontSize: 12.5, lineHeight: 1.55, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{n.text}</div>
-                        </div>
-                      ))}
-                    </div>
+                    <MissionModal mkey={missionOpen.qid + "_" + missionOpen.idx} sub={sb} questTitle={mq.title} myName={myName}
+                      onSaveNote={(entry) => saveMissionNote(missionOpen.qid, missionOpen.idx, entry)}
+                      onDelNote={(at) => { if (window.confirm("이 내용을 삭제할까요?")) delMissionNote(missionOpen.qid, missionOpen.idx, at); }}
+                      onSendChat={(t) => sendMissionChat(missionOpen.qid, missionOpen.idx, t)}
+                      onDelChat={(at) => delMissionChat(missionOpen.qid, missionOpen.idx, at)}
+                      onClose={() => setMissionOpen(null)} />
                   );
                 })()}
                 </>
