@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v120 · 2026-07-29";
+const APP_VERSION = "v121 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2860,7 +2860,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
         });
         /* ⚠️ 새 이벤트를 만들면 반드시 여기에 이름을 넣어야 상대에게 도착해요 */
-        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor", "decorreq", "luck", "hq", "hqroad"].forEach((ev) => {
+        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor", "decorreq", "luck", "hq", "hqroad", "qrev"].forEach((ev) => {
           ch.on("broadcast", { event: ev }, ({ payload }) => {
             if (onChatRef && onChatRef.net) onChatRef.net(ev, payload);
           });
@@ -10532,13 +10532,14 @@ const HQ_ROADMAP = {
 };
 
 /* ======================= 🖥 에코월드 HQ (대시보드) ======================= */
-function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo, onGoBoard, hqQuests = [], onHQChange, hqRoad = {}, onRoadChange, bossImg = () => "", onBossImg = () => {} }) {
+function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo, onGoBoard, hqQuests = [], onHQChange, hqRoad = {}, onRoadChange, bossImg = () => "", onBossImg = () => {}, onNotifyUser = () => {} }) {
   const [tab, setTab] = useState("home");
   const [notice, setNotice] = useState("");
   const [qcat, setQcat] = useState("all");
   const [rcat, setRcat] = useState("core");
   const [qEdit, setQEdit] = useState(null);   // 편집/등록 중인 퀘스트 (null=닫힘)
   const [qView, setQView] = useState(null);   // 🔍 자세히 보기 팝업 (null=닫힘)
+  const [revEditId, setRevEditId] = useState(null);   // 검토자 변경 중인 퀘스트 (관리자 코드 통과 후)
   const [qManage, setQManage] = useState(false);   // ⚙️ 퀘스트 관리(삭제·이름·순서)
   const [qActiveOnly, setQActiveOnly] = useState(false);   // ON = 진행중(색 있는) 미션만 표시
   const [catForm, setCatForm] = useState(null);   // 🌍 월드 추가/수정 폼 { mode, i, name, icon } | null
@@ -10616,19 +10617,23 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const viewDone = mpSelf ? mpDone : ((mpOther && mpOther.mission) || {});
   const viewTodos = mpSelf ? mpTodos : ((mpOther && mpOther.todos) || []);
   const viewNeck = mpSelf ? mpNeck : ((mpOther && mpOther.neck) || []).filter((n) => !n.locked);
-  const blankQuest = () => ({ id: "q" + Date.now(), cat: "core", title: "", star: 2, gold: 0, gem: 0, chapter: "", due: "", subs: [] });
+  const blankQuest = () => ({ id: "q" + Date.now(), cat: "core", title: "", star: 2, gold: 0, gem: 0, chapter: "", due: "", reviewer: "", subs: [] });
   const commitQuest = (q) => {
     const clean = { ...q, star: Number(q.star) || 1, gold: Number(q.gold) || 0, gem: Number(q.gem) || 0, editedBy: myName || "익명", editedAt: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
     const exists = hqQuests.some((x) => x.id === q.id);
+    const prev = exists ? hqQuests.find((x) => x.id === q.id) : null;
     const next = exists ? hqQuests.map((x) => (x.id === q.id ? clean : x)) : [clean, ...hqQuests];
     Promise.resolve(onHQChange && onHQChange(next)).then((r) => {
       setSaveMsg(r && r.ok === false ? "⚠️ 저장 실패: " + (r.msg || "").slice(0, 50) : "✅ 저장됨 · 모두에게 공유");
       setTimeout(() => setSaveMsg(""), 3500);
     });
+    if (clean.reviewer && (!prev || prev.reviewer !== clean.reviewer)) notifyReviewer(clean.reviewer, clean.title);
     setQEdit(null);
   };
   const removeQuest = (id) => { onHQChange && onHQChange(hqQuests.filter((x) => x.id !== id)); setQEdit(null); };
   const editStamp = () => ({ editedBy: myName || "익명", editedAt: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) });
+  const REVIEW_ADMIN_CODE = "dpzhdnjfem123!";
+  const notifyReviewer = (name, title) => { if (name && name !== myName) onNotifyUser(name, `📋 «${title || "퀘스트"}» 퀘스트의 검토자로 지정되었어요`); };
   const toggleSubDone = (qid, idx) => {
     onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: q.subs.map((sb, i) => i === idx ? { ...sb, done: !sbDone(sb) } : sb), ...editStamp() } : q));
   };
@@ -10987,6 +10992,20 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                       <button type="button" onClick={() => window.alert("로드맵 탭에서 새 챕터를 추가해주세요.\n(🗺 로드맵 → ＋ 챕터 추가)")} title="새 챕터 추가" style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "0 11px" }}>＋</button>
                       <input type="date" value={qEdit.due} onChange={(e) => setQEdit({ ...qEdit, due: e.target.value })} style={{ padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11 }} />
                     </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                      <span style={{ fontSize: 12, fontWeight: "bold", flexShrink: 0 }}>🔎 검토자</span>
+                      {qEdit.reviewer ? (
+                        <>
+                          <span style={{ flex: 1, fontSize: 13, fontWeight: "bold" }}>{qEdit.reviewer}</span>
+                          <span style={{ fontSize: 9.5, color: C.inkSoft }}>변경은 상세보기에서 🔒</span>
+                        </>
+                      ) : (
+                        <select value="" onChange={(e) => { if (e.target.value) setQEdit({ ...qEdit, reviewer: e.target.value }); }} style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, background: C.white }}>
+                          <option value="">검토자 선택 (계정 중에서)</option>
+                          {acctNames.map((nm) => (<option key={nm} value={nm}>{nm}</option>))}
+                        </select>
+                      )}
+                    </div>
                     <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>세부 미션 (담당 계정 · 완료 체크는 카드에서)</div>
                     {(qEdit.subs || []).map((sb, i) => (
                       <div key={i} style={{ display: "flex", gap: 5, marginBottom: 5 }}>
@@ -11035,6 +11054,21 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                           {dd && <span style={{ fontSize: 11, fontWeight: "bold", color: C.white, borderRadius: 8, padding: "2px 9px", background: dd.over ? C.danger : dd.today ? "#e0a13d" : dd.days <= 3 ? "#e0663d" : C.good }}>{dd.txt}</span>}
                         </div>
                       )}
+                      {/* 🔎 검토자 (눌러야 보이는 상세 · 변경은 관리자 코드) */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "8px 10px" }}>
+                        <span style={{ fontSize: 12, fontWeight: "bold", flexShrink: 0 }}>🔎 검토자</span>
+                        {revEditId === qv.id ? (
+                          <select autoFocus value={qv.reviewer || ""} onChange={(e) => { const nm = e.target.value; onHQChange && onHQChange(hqQuests.map((x) => x.id === qv.id ? { ...x, reviewer: nm, ...editStamp() } : x)); if (nm && nm !== qv.reviewer) notifyReviewer(nm, qv.title); setRevEditId(null); }} style={{ flex: 1, minWidth: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, background: C.white }}>
+                            <option value="">검토자 없음</option>
+                            {(qv.reviewer && !acctNames.includes(qv.reviewer) ? [qv.reviewer, ...acctNames] : acctNames).map((nm) => (<option key={nm} value={nm}>{nm}</option>))}
+                          </select>
+                        ) : (
+                          <>
+                            <span style={{ flex: 1, fontSize: 13, fontWeight: "bold", color: qv.reviewer ? C.ink : C.inkSoft }}>{qv.reviewer || "지정 안 됨"}</span>
+                            <button type="button" onClick={() => { const code = window.prompt("검토자를 변경하려면 관리자 코드를 입력하세요"); if (code == null) return; if (code !== REVIEW_ADMIN_CODE) { window.alert("관리자 코드가 올바르지 않습니다."); return; } setRevEditId(qv.id); }} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", background: "#4b3fb0", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "5px 10px" }}>🔒 변경</button>
+                          </>
+                        )}
+                      </div>
                       {/* 진행률 크게 */}
                       <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
                         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
@@ -13724,6 +13758,7 @@ function EchoTown() {
       if (!p) return;
       if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "hq" || kind === "hqroad" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); showNotice(`🔔 ${p.from}님이 초인종을 눌렀어요`); pushMsg("dm", { from: p.from, text: "🔔 초인종을 눌렀어요 — 집 앞에 찾아왔어요!" }); }
+      if (kind === "qrev") { showNotice(p.txt || `📋 ${p.by || "누군가"}님이 당신을 검토자로 지정했어요`); pushMsg("dm", { from: p.by || "HQ", text: p.txt || "📋 퀘스트 검토자로 지정되었어요" }); return; }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
       if (kind === "qcallack") {
         if (p.to !== (myName || "나")) return;
@@ -14735,7 +14770,8 @@ function EchoTown() {
           onGo={(mapId) => { setHqOpen(false); setQuestJump({ mapId, qid: null }); setView("project"); }}
           onGoBoard={() => { setHqOpen(false); setView("board"); }}
           bossImg={(cat) => allSprites["hqboss_" + cat] || ""}
-          onBossImg={(cat, dataUrl) => { if (dataUrl) setSprite("hqboss_" + cat, dataUrl); else clearSprite("hqboss_" + cat); }} />
+          onBossImg={(cat, dataUrl) => { if (dataUrl) setSprite("hqboss_" + cat, dataUrl); else clearSprite("hqboss_" + cat); }}
+          onNotifyUser={(name, txt) => { if (netSendEvent) netSendEvent("qrev", { to: name, by: myName || "익명", txt }); showNotice("📨 " + name + "님에게 알림을 보냈어요"); }} />
       )}
 
       {startPop && (
