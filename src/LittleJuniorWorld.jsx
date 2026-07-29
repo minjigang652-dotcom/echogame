@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v143 · 2026-07-29";
+const APP_VERSION = "v144 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -8965,11 +8965,15 @@ function BoardView({ onBack, myName = "", myUid = "", onCommunity }) {
               ))}
               {cells.map((d, i) => {
                 const td = d && isToday(d);
+                const evs = d ? evOf(d) : [];
                 return (
                 <button key={i} disabled={!d} onClick={() => d && setDay(d)} className={d ? "px-btn" : ""}
-                  style={{ aspectRatio: "1/1", background: !d ? "transparent" : day === d ? C.gem : td ? "#ffe9c2" : "#fffdf5", border: d ? `2px solid ${td ? "#e0a13d" : C.ink}` : "none", cursor: d ? "pointer" : "default", position: "relative", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, fontWeight: td ? "bold" : "normal", color: C.ink }}>
-                  {td ? <span style={{ display: "inline-block", border: `2px solid ${C.danger}`, borderRadius: "50%", width: 22, height: 22, lineHeight: "18px" }}>{d}</span> : d}
-                  {d && evOf(d).length > 0 && <span style={{ position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)", width: 5, height: 5, background: C.bankRoof, borderRadius: "50%" }} />}
+                  style={{ minHeight: 62, background: !d ? "transparent" : day === d ? C.gem : td ? "#ffe9c2" : "#fffdf5", border: d ? `2px solid ${td ? "#e0a13d" : C.ink}` : "none", cursor: d ? "pointer" : "default", position: "relative", fontFamily: "var(--game-font, 'DotGothic16', monospace)", color: C.ink, display: "flex", flexDirection: "column", gap: 1, padding: "2px 2px 3px", overflow: "hidden" }}>
+                  <div style={{ textAlign: "center", fontSize: 12, fontWeight: td ? "bold" : "normal", color: i % 7 === 0 ? C.danger : i % 7 === 6 ? "#5b8def" : C.ink }}>{d || ""}</div>
+                  {evs.slice(0, 3).map((e, k) => (
+                    <div key={k} style={{ fontSize: 8.5, lineHeight: 1.3, background: day === d ? "rgba(255,255,255,0.85)" : "#ffe1a8", color: C.ink, borderRadius: 3, padding: "0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e}</div>
+                  ))}
+                  {evs.length > 3 && <div style={{ fontSize: 8, color: day === d ? "#fff" : C.inkSoft, textAlign: "center" }}>+{evs.length - 3}</div>}
                 </button>
                 );
               })}
@@ -11361,6 +11365,9 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 const ymd = (d) => `${y}-${String(mo + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
                 const noticeDays = new Set((notices || []).filter((n) => n.type === "공지" || n.type === "모집").map((n) => n.date));
                 const dueDays = new Set((hqQuests || []).filter((q) => q.due).map((q) => q.due));
+                const evMap = {};
+                (notices || []).filter((n) => n.type === "공지" || n.type === "모집").forEach((n) => { if (n.date) (evMap[n.date] = evMap[n.date] || []).push({ t: n.title || "공지", c: "#e0a13d" }); });
+                (hqQuests || []).filter((q) => q.due).forEach((q) => { (evMap[q.due] = evMap[q.due] || []).push({ t: "📕 " + (q.title || "마감"), c: "#f4c0b4" }); });
                 const cells = [];
                 for (let i = 0; i < first; i++) cells.push(null);
                 for (let d = 1; d <= dim; d++) cells.push(d);
@@ -11373,23 +11380,22 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                       <button type="button" onClick={() => setCalOff(0)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10, color: C.inkSoft, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "2px 7px" }}>오늘</button>
                       <button type="button" onClick={() => setCalOff((v) => v + 1)} style={{ cursor: "pointer", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, fontSize: 13, color: C.inkSoft, padding: "1px 8px" }}>›</button>
                     </div>
-                    <div style={{ maxHeight: 250, overflowY: "auto", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: 8 }}>
+                    <div style={{ maxHeight: 360, overflowY: "auto", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: 8 }}>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 3 }}>
                         {WK.map((w, i) => (<div key={"w" + i} style={{ textAlign: "center", fontSize: 10, fontWeight: "bold", color: i === 0 ? C.danger : i === 6 ? "#5b8def" : C.inkSoft, padding: "2px 0" }}>{w}</div>))}
                         {cells.map((d, i) => {
                           if (d == null) return <div key={"e" + i} />;
-                          const hasNotice = noticeDays.has(ymd(d));
-                          const hasDue = dueDays.has(ymd(d));
                           const td = isToday(d);
+                          const evs = evMap[ymd(d)] || [];
                           return (
                             <button key={"d" + d} type="button" onClick={() => setCalDay(ymd(d))} title="눌러서 크게 보기"
-                              style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", aspectRatio: "1 / 1", minHeight: 30, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1,
+                              style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", minHeight: 58, display: "flex", flexDirection: "column", gap: 1, padding: "2px 2px 3px", overflow: "hidden",
                                 background: td ? "#e0a13d" : C.white, color: td ? C.white : C.ink, border: `2px solid ${td ? C.ink : C.parchEdge}`, borderRadius: 6, fontSize: 11 }}>
-                              <span style={{ fontWeight: td ? "bold" : "normal" }}>{d}</span>
-                              <span style={{ display: "flex", gap: 1, height: 5 }}>
-                                {hasNotice && <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#e0a13d", border: td ? "1px solid #fff" : "none" }} />}
-                                {hasDue && <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.danger, border: td ? "1px solid #fff" : "none" }} />}
-                              </span>
+                              <span style={{ textAlign: "center", fontWeight: td ? "bold" : "normal", color: td ? "#fff" : i % 7 === 0 ? C.danger : i % 7 === 6 ? "#5b8def" : C.ink }}>{d}</span>
+                              {evs.slice(0, 3).map((e, k) => (
+                                <div key={k} style={{ fontSize: 8.5, lineHeight: 1.3, background: td ? "rgba(255,255,255,0.9)" : e.c, color: C.ink, borderRadius: 3, padding: "0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.t}</div>
+                              ))}
+                              {evs.length > 3 && <div style={{ fontSize: 8, color: td ? "#fff" : C.inkSoft, textAlign: "center" }}>+{evs.length - 3}</div>}
                             </button>
                           );
                         })}
