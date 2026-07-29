@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v132 · 2026-07-29";
+const APP_VERSION = "v133 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -10686,6 +10686,10 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const isGM = GM_NAMES.includes(myName);
   const [gmView, setGmView] = useState("quest");   // GM 대시보드 카테고리: world | quest | mission
   const [myDash, setMyDash] = useState("quest");   // 개인 대시보드 카테고리: quest | noti
+  const [bannerHide, setBannerHide] = useState(false);   // 알림 배너 닫힘
+  const pendCount = hqQuests.filter((q) => q.reviewStatus === "pending" && (isGM || q.reviewer === myName)).length;
+  const prevPendRef = useRef(0);
+  useEffect(() => { if (pendCount > prevPendRef.current) setBannerHide(false); prevPendRef.current = pendCount; }, [pendCount]);
   const [qFull, setQFull] = useState(null);   // 전체보기 모달 (퀘스트 id)
   const [mlogDate, setMlogDate] = useState("");   // 회의록 입력 날짜
   const [mlogText, setMlogText] = useState("");   // 회의록 입력 내용
@@ -10857,13 +10861,15 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const notifBoard = (quests, goQuest) => {
     const items = quests.filter((q) => q.reviewStatus === "pending").sort((a, b) => (b.reviewReqAt || 0) - (a.reviewReqAt || 0));
     if (items.length === 0) return <div style={{ fontSize: 12, color: C.inkSoft }}>새 알림이 없어요.</div>;
-    return items.map((q) => (
-      <div key={q.id} onClick={() => goQuest(q)} style={{ cursor: "pointer", background: "#fff3d6", border: "2px solid #e0a13d", borderRadius: 8, padding: "9px 11px", marginBottom: 6 }}>
-        <div style={{ fontSize: 11.5, fontWeight: "bold", color: "#d98a1f" }}>🔔 퀘스트 알림이 도착했습니다!</div>
-        <div style={{ fontSize: 12.5, fontWeight: "bold", marginTop: 3, wordBreak: "break-word" }}>🕐 검토대기 · {q.title}</div>
-        <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 2 }}>검토자: {q.reviewer || "없음"}{q.reviewReqBy ? ` · 요청: ${q.reviewReqBy}` : ""} · 눌러서 퀘스트로 이동</div>
-      </div>
-    ));
+    return items.map((q) => {
+      const ci = (Array.isArray(HQ_CATS) ? HQ_CATS.find((c) => c.id === q.cat) : null) || { name: "", icon: "" };
+      return (
+        <div key={q.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff3d6", border: "2px solid #e0a13d", borderRadius: 8, padding: "9px 11px", marginBottom: 6 }}>
+          <input type="checkbox" onChange={() => approveReview(q)} title="체크하면 검토완료" style={{ flexShrink: 0, cursor: "pointer", width: 16, height: 16 }} />
+          <span onClick={() => goQuest(q)} style={{ flex: 1, minWidth: 0, fontSize: 12.5, cursor: "pointer", wordBreak: "break-word" }}><b style={{ color: "#d98a1f" }}>[검토대기]</b> {ci.icon} {ci.name} - {q.title}</span>
+        </div>
+      );
+    });
   };
   const addSubTo = (qid) => { const t = (window.prompt("추가할 미션을 입력하세요") || "").trim(); if (!t) return; onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: [...(q.subs || []), { t, who: "미지정", done: false, active: false }], ...editStamp() } : q)); };
   const setSubWho = (qid, idx, who) => {
@@ -10981,6 +10987,12 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
       <div style={{ flex: 1, overflow: "auto", padding: "16px", maxWidth: 940, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
         {tab === "home" && (
           <>
+            {myName && pendCount > 0 && !bannerHide && (
+              <div onClick={() => { if (isGM) setGmView("noti"); else setMyDash("noti"); setBannerHide(true); }} style={{ cursor: "pointer", background: "#ffd54a", border: "3px solid #e0a13d", borderRadius: 12, padding: "16px 18px", marginBottom: 12, textAlign: "center", boxShadow: "0 4px 0 #c98a1f" }}>
+                <div style={{ fontSize: 18, fontWeight: "bold", color: "#7a4e00" }}>🔔 퀘스트 알림이 도착했습니다!</div>
+                <div style={{ fontSize: 11, color: "#8a6a2a", marginTop: 5 }}>눌러서 알림 확인 ({pendCount})</div>
+              </div>
+            )}
             {isGM && (() => {
               const inProg = hqQuests.filter((q) => avgOf(q) < 100);
               const allMembers = Array.from(new Set([myName, ...(people || []).map((pp) => pp && pp.name)].filter(Boolean)));
@@ -11297,7 +11309,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                             <input type="checkbox" checked={isD} onChange={() => toggleSubDone(q.id, i)} style={{ flexShrink: 0, cursor: "pointer" }} />
                             <span style={{ flex: 1, minWidth: 0, fontSize: 12, wordBreak: "break-word", textDecoration: isD ? "line-through" : "none", color: isD ? C.inkSoft : C.ink }}>{sb.t || "(내용 없음)"}</span>
                             {sb.due && <span style={{ fontSize: 9.5, color: sdd && sdd.over ? C.danger : C.inkSoft, flexShrink: 0 }}>📅 {sb.due}</span>}
-                            <span style={{ fontSize: 10, color: C.inkSoft, flexShrink: 0 }}>{sb.who ? `🧑 ${sb.who}` : ""}</span>
+                            <span onClick={() => setQEdit({ ...q, subs: (q.subs || []).map((x) => ({ ...x })) })} title="눌러서 담당 지정/수정" style={{ fontSize: 10, flexShrink: 0, cursor: "pointer", color: sb.who ? C.inkSoft : "#4b3fb0", fontWeight: sb.who ? "normal" : "bold", textDecoration: "underline" }}>{sb.who ? `🧑 ${sb.who}` : "＋ 미지정"}</span>
                           </div>
                         );
                       })}
