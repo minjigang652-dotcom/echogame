@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v130 · 2026-07-29";
+const APP_VERSION = "v131 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -10269,6 +10269,21 @@ function HQSidePanel({ myName = "", people = [], questBox = [], hqQuests = [], h
   const [panelW, setPanelW] = useState(() => Math.max(210, Math.min(380, Number(load("panelW", 258)) || 258)));
   const [panelH, setPanelH] = useState(() => Math.max(240, Math.min(1200, Number(load("panelH", 440)) || 440)));
   useEffect(() => { saveAll({ mission: done, todos, huddles, notes, neck, panelW, panelH }); }, [done, todos, huddles, notes, neck, panelW, panelH]);
+  // 🔗 나에게 지정된 세부 미션을 내 할일에 자동 추가 (삭제하면 dismissed에 기록돼 다시 안 생김)
+  useEffect(() => {
+    if (!myName) return;
+    const assigned = [];
+    (hqQuests || []).forEach((q) => (q.subs || []).forEach((sb, i) => { if (sb && sb.who === myName) assigned.push({ src: "m:" + q.id + ":" + i, t: sb.t || "(미션)", done: (sb.done != null ? !!sb.done : (Number(sb.pct) || 0) >= 100) }); }));
+    if (assigned.length === 0) return;
+    setTodos((prev) => {
+      const existing = new Set(prev.filter((x) => x.src).map((x) => x.src));
+      let dismissed = []; try { dismissed = load("todoDismissed", []); } catch (e) {}
+      const dset = new Set(dismissed);
+      const toAdd = assigned.filter((a) => !existing.has(a.src) && !dset.has(a.src));
+      if (toAdd.length === 0) return prev;
+      return [...toAdd.map((a) => ({ t: "[미션] " + a.t, done: a.done, cat: "game", src: a.src })), ...prev];
+    });
+  }, [hqQuests, myName]);
   /* 🔄 HQ 내페이지 탭 등 다른 화면에서 바뀌면 여기도 다시 읽어와요 (실시간 연동) */
   useEffect(() => {
     const onSync = (e) => {
@@ -10417,7 +10432,7 @@ function HQSidePanel({ myName = "", people = [], questBox = [], hqQuests = [], h
                   <input type="checkbox" checked={t.done} disabled={!pSelf} onChange={() => pSelf && setTodos((v) => v.map((x, j) => (j === i ? { ...x, done: !x.done } : x)))} style={{ flexShrink: 0 }} />
                   <span style={{ flex: 1, minWidth: 0, textDecoration: t.done ? "line-through" : "none", color: t.done ? C.inkSoft : C.ink, wordBreak: "break-word" }}>{t.t}</span>
                   {pSelf && <button type="button" onClick={() => { const nt = window.prompt("할 일 수정", t.t); if (nt !== null && nt.trim()) setTodos((v) => v.map((x, j) => j === i ? { ...x, t: nt.trim() } : x)); }} title="수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 10, color: C.inkSoft }}>✏️</button>}
-                  {pSelf && <button type="button" onClick={() => { if (window.confirm("정말로 삭제하시겠습니까?")) setTodos((v) => v.filter((_, j) => j !== i)); }} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.inkSoft }}>✕</button>}
+                  {pSelf && <button type="button" onClick={() => { if (window.confirm("정말로 삭제하시겠습니까?")) { const tt = todos[i]; if (tt && tt.src) { try { const d = load("todoDismissed", []); if (!d.includes(tt.src)) saveAll({ todoDismissed: [...d, tt.src] }); } catch (e) {} } setTodos((v) => v.filter((_, j) => j !== i)); } }} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 11, color: C.inkSoft }}>✕</button>}
                 </div>
               ))}
             </>);
@@ -11842,7 +11857,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                         <input type="checkbox" checked={t.done} disabled={!mpSelf} onChange={() => mpSelf && setMpTodos((v) => v.map((x, j) => (j === i ? { ...x, done: !x.done } : x)))} style={{ flexShrink: 0 }} />
                         <span style={{ flex: 1, minWidth: 0, textDecoration: t.done ? "line-through" : "none", color: t.done ? C.inkSoft : C.ink, wordBreak: "break-word" }}>{t.t}</span>
                         {mpSelf && <button type="button" onClick={() => { const nt = window.prompt("할 일 수정", t.t); if (nt !== null && nt.trim()) setMpTodos((v) => v.map((x, j) => j === i ? { ...x, t: nt.trim() } : x)); }} title="수정" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 12, color: C.inkSoft }}>✏️</button>}
-                        {mpSelf && <button type="button" onClick={() => { if (window.confirm("정말로 삭제하시겠습니까?")) setMpTodos((v) => v.filter((_, j) => j !== i)); }} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: C.inkSoft }}>✕</button>}
+                        {mpSelf && <button type="button" onClick={() => { if (window.confirm("정말로 삭제하시겠습니까?")) { const tt = mpTodos[i]; if (tt && tt.src) { try { const d = mpLoad("todoDismissed", []); if (!d.includes(tt.src)) mpSaveAll({ todoDismissed: [...d, tt.src] }); } catch (e) {} } setMpTodos((v) => v.filter((_, j) => j !== i)); } }} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: C.inkSoft }}>✕</button>}
                       </div>
                     ))}
                   </>);
