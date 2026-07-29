@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v140 · 2026-07-29";
+const APP_VERSION = "v141 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -10568,8 +10568,8 @@ const NAME_ALIAS = { "송현": "성현" };
 const normName = (n) => (n && NAME_ALIAS[n]) || n;
 const isDisabledName = (n) => DISABLED_ACCOUNTS.includes(n) || DISABLED_ACCOUNTS.includes(normName(n));
 /* 🔑 권한 코드 (여기서 값만 바꾸면 됨) · 숙련자=디스코드 로그인 / 초보자=이름 바로 입력 */
-const EXPERT_CODE = "숙련코드1234";
-const NOVICE_CODE = "초보코드1234";
+const EXPERT_CODE = "sksmsditnrfuswk";
+const NOVICE_CODE = "dhknsnfoqjs0";
 const HQ_CATS_DEFAULT = [
   { id: "core", name: "코어 앱", icon: "🟦", color: "#3b82f6" },
   { id: "comm", name: "제품 (이커머스)", icon: "🟧", color: "#f97316" },
