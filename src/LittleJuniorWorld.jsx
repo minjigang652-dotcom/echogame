@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v139 · 2026-07-29";
+const APP_VERSION = "v140 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2498,7 +2498,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2788,6 +2788,23 @@ async function dbSaveCommunity(list) {
     if (r && r.error) return { ok: false, msg: r.error.message || String(r.error) };
     return { ok: true };
   } catch (e) { return { ok: false, msg: (e && e.message) || String(e) }; }
+}
+/* 🌱 초보자(알바) 명단 (notices type="novrole", title=이름) */
+async function dbSaveNovice(name) {
+  try {
+    const s = await getSupa();
+    const cur = await dbLoadNovices();
+    if (cur.includes(name)) return true;
+    const r = await s.from("notices").insert({ type: "novrole", title: name, body: "" });
+    return !(r && r.error);
+  } catch (e) { return false; }
+}
+async function dbLoadNovices() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("title").eq("type", "novrole");
+    return Array.from(new Set(((r && r.data) || []).map((x) => x.title).filter(Boolean)));
+  } catch (e) { return []; }
 }
 async function dbMeetSignal(payload) {
   try {
@@ -13291,6 +13308,7 @@ function EchoTown() {
   const [expertCodeIn, setExpertCodeIn] = useState("");
   const [noviceCodeIn, setNoviceCodeIn] = useState("");
   const [gateErr, setGateErr] = useState("");
+  const [expertOnly, setExpertOnly] = useState(false);   // 초보자 입장 제한 팝업
   const submitGate = () => {
     if (expertCodeIn.trim() && expertCodeIn.trim() === EXPERT_CODE) { setGateRole("expert"); saveJSON("echotown_role", "expert"); setGateErr(""); return; }
     if (noviceCodeIn.trim() && noviceCodeIn.trim() === NOVICE_CODE) { setGateRole("novice"); saveJSON("echotown_role", "novice"); setGateErr(""); return; }
@@ -13382,6 +13400,7 @@ function EchoTown() {
       }
     }
     setMyName(t); setNameOpen(false);
+    if (opts.novice) { try { dbSaveNovice(t); } catch (e) {} setNovices((v) => (v.includes(t) ? v : [...v, t])); }
     saveJSON("echotown_myname", t);
     if (discord && discord.id) saveJSON("echotown_discord_id", discord.id);
     // ① 이 브라우저에 저장된 게 있으면 즉시 복원
@@ -14030,6 +14049,12 @@ function EchoTown() {
   useEffect(() => {
     dbAllPlayers().then(setDbPlayers);
     const iv = setInterval(() => dbAllPlayers().then(setDbPlayers), 60000);
+    return () => clearInterval(iv);
+  }, []);
+  const [novices, setNovices] = useState([]);   // 초보자 명단 (계정 목록에서 제외)
+  useEffect(() => {
+    dbLoadNovices().then(setNovices);
+    const iv = setInterval(() => dbLoadNovices().then(setNovices), 60000);
     return () => clearInterval(iv);
   }, []);
   const [qAccept, setQAccept] = useState({});
@@ -14750,7 +14775,8 @@ function EchoTown() {
   const people = useMemo(() => {
     const online = Object.values(netOthers).map((o) => o.name).filter(Boolean);
     const bad = /[ㄱ-ㅎㅏ-ㅣ]/;
-    const names = Array.from(new Set([...(myName ? [myName] : []), ...online, ...dbPlayers].map(normName))).filter((n) => n && !bad.test(n) && !isDisabledName(n));
+    const novSet = new Set((novices || []).map(normName));
+    const names = Array.from(new Set([...(myName ? [myName] : []), ...online, ...dbPlayers].map(normName))).filter((n) => n && !bad.test(n) && !isDisabledName(n) && !novSet.has(n));
     return names.map((n, i) => ({
       avatar: AVATARS[(n.charCodeAt(0) + n.length) % AVATARS.length],
       name: n,
@@ -14760,7 +14786,7 @@ function EchoTown() {
       stats: { 체력: 70, 마나: 70, 집중: 70, 친화: 70 },
       equipment: ["🎒 인벤토리"], achievements: ["🌱 에코월드 주민"], quests: ["마을 생활"], affiliation: "ECHO WORLD",
     }));
-  }, [netOthers, dbPlayers, myName]);
+  }, [netOthers, dbPlayers, myName, novices]);
 
   const requestWorldSong = (title) => {
     if (gold < 5) return;
@@ -14803,6 +14829,8 @@ function EchoTown() {
   };
 
   const handleEnter = (o) => {
+    const NOVICE_OK = ["luck", "naverschool", "videoschool"];
+    if (gateRole === "novice" && !NOVICE_OK.includes(o.id)) { setExpertOnly(true); return; }
     switch (o.kind) {
       case "center": setView("center"); break;
       case "bank": setView("bank"); break;
@@ -15357,6 +15385,16 @@ function EchoTown() {
               src={`https://www.youtube.com/embed/${ytNow.videoId}?autoplay=1&playsinline=1&rel=0&enablejsapi=1`} style={{ border: 0, display: "block" }} />
           </div>
           {!ytOpen && <div style={{ fontSize: 9.5, color: "#b9a7d6", padding: "0 8px 6px" }}>▴ 를 눌러 펼치면 소리/화면이 보여요</div>}
+        </div>
+      )}
+      {expertOnly && (
+        <div onClick={() => setExpertOnly(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 320, background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 22, textAlign: "center", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
+            <div style={{ fontSize: 34 }}>🔒</div>
+            <div style={{ fontSize: 15, fontWeight: "bold", margin: "10px 0 6px" }}>숙련자만 들어갈 수 있어요</div>
+            <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.6, marginBottom: 14 }}>초보자(알바)는 🍀 초심자의 행운, 📗 네이버스쿨, 🎬 영상스쿨만 이용할 수 있어요.</div>
+            <PxButton tone="gold" onClick={() => setExpertOnly(false)} style={{ width: "100%", padding: 11, fontSize: 13 }}>확인</PxButton>
+          </div>
         </div>
       )}
       {notice && (
