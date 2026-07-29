@@ -9,6 +9,12 @@ function isTyping(e) {
   const tag = (el.tagName || "").toLowerCase();
   return tag === "input" || tag === "textarea" || tag === "select" || el.isContentEditable;
 }
+/* 메시지가 늘어나면 자동으로 맨 아래로 스크롤 */
+function useAutoScroll(dep) {
+  const ref = useRef(null);
+  useEffect(() => { if (ref.current) ref.current.scrollTop = ref.current.scrollHeight; }, [dep]);
+  return ref;
+}
 
 /* ======================= 스쿨(네이버/영상) ======================= */
 function School({ wall = "#8fd0d6", roof = "#c95d7b", size = 140 }) {
@@ -309,6 +315,9 @@ function SchoolView({ school, onBack, cleared = {}, onClear }) {
                     {open.boss && <span style={{ fontSize: 10, border: `2px solid ${C.ink}`, background: "#d9a441", padding: "1px 6px" }}>👑 보스</span>}
                   </div>
                   <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 14, marginBottom: 8 }}>{open.title}</div>
+                  {!open.story && !(open.sections && open.sections.length) && !(open.steps && open.steps.length) && (
+                    <div style={{ background: "#f4f2ea", border: `2px solid ${C.ink}`, padding: 18, fontSize: 13, textAlign: "center", color: C.inkSoft, lineHeight: 1.7, marginBottom: 10 }}>🚧 준비중이에요.<br />이 집의 내용은 곧 채워질 예정입니다!</div>
+                  )}
                   {open.story && (
                     <div style={{ background: "#eef0fb", border: `2px solid ${C.ink}`, padding: 10, fontSize: 12, lineHeight: 1.7, marginBottom: 10 }}>📖 {open.story}</div>
                   )}
