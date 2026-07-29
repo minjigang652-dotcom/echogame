@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { dbLoadNspTut, dbSaveNspTut, dbLoadNspKw, dbSaveNspKw, dbLoadNspUrls, dbSaveNspUrls, dbLoadCafeKw, dbSaveCafeKw, dbLoadCafeState, dbSaveCafeState, dbLoadKinKw, dbSaveKinKw, dbLoadKinState, dbSaveKinState, dbLoadKinEx, dbSaveKinEx, compressImage } from "./LittleJuniorWorld.jsx";
 
 // ============================================================================
 //  NaverSchoolPanel.jsx  —  에코월드 "네이버 스쿨" 패널
