@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v133 · 2026-07-29";
+const APP_VERSION = "v134 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -10786,7 +10786,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const viewDone = mpSelf ? mpDone : ((mpOther && mpOther.mission) || {});
   const viewTodos = mpSelf ? mpTodos : ((mpOther && mpOther.todos) || []);
   const viewNeck = mpSelf ? mpNeck : ((mpOther && mpOther.neck) || []).filter((n) => !n.locked);
-  const blankQuest = () => ({ id: "q" + Date.now(), cat: "core", title: "", star: 2, gold: 0, gem: 0, chapter: "", due: "", assignees: [], reviewer: "", content: "", feedback: "", minutes: "", docs: [], subs: [] });
+  const blankQuest = () => ({ id: "q" + Date.now(), cat: "core", title: "", star: 2, gold: 0, gem: 0, chapter: "", due: "", assignees: [], reviewer: "", content: "", feedback: "", minutes: "", docs: [], reward: { exp: 0, gold: 0, gem: 0, items: [] }, rewardPaid: [], subs: [] });
   const commitQuest = (q) => {
     const clean = { ...q, star: Number(q.star) || 1, gold: Number(q.gold) || 0, gem: Number(q.gem) || 0, editedBy: myName || "익명", editedAt: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
     const exists = hqQuests.some((x) => x.id === q.id);
@@ -10826,6 +10826,8 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const reopenReview = (q) => { onHQChange && onHQChange(hqQuests.map((x) => x.id === q.id ? { ...x, reviewStatus: "", ...editStamp() } : x)); };
   const [histOpen, setHistOpen] = useState(null);   // 📜 히스토리 창 (퀘스트 id)
   const [asgOpenId, setAsgOpenId] = useState(null);   // 담당자 추가 목록 펼친 퀘스트
+  const [rwOpen, setRwOpen] = useState(false);   // 편집 폼 보상 섹션 펼침
+  const [rwItem, setRwItem] = useState("");   // 아이템 입력
   const saveQuestNote = (qid, entry) => onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, notes: [{ ...entry, at: Date.now(), by: myName || "익명" }, ...(x.notes || [])], ...editStamp() } : x));
   const delQuestNote = (qid, at) => { if (!window.confirm("이 내용을 삭제할까요?")) return; onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, notes: (x.notes || []).filter((n) => n.at !== at), ...editStamp() } : x)); };
   const addQuestMinute = (qid, date, text) => onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, minutes: [{ date, text, at: Date.now(), by: myName || "익명" }, ...mlogList(x)], ...editStamp() } : x));
@@ -11287,6 +11289,19 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                           </>
                         )}
                       </div>
+                      {/* 🎁 보상 (상세에서만 보임) */}
+                      {(() => { const r = q.reward || {}; const has = (r.exp || r.gold || r.gem || (r.items && r.items.length)); if (!has) return null; return (
+                        <div style={{ background: "#fff8e8", border: "2px solid #e0a13d", borderRadius: 8, padding: "8px 11px", marginBottom: 12 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 12.5 }}>
+                            <b style={{ color: "#d98a1f" }}>🎁 보상</b>
+                            {r.exp ? <span>⭐ {r.exp}</span> : null}
+                            {r.gold ? <span>🪙 {r.gold}</span> : null}
+                            {r.gem ? <span>💎 {r.gem}</span> : null}
+                            {(r.items || []).map((it, i) => <span key={i}>🏆 {it}</span>)}
+                          </div>
+                          <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 3 }}>검토완료 시 담당자 {asgList(q).length ? asgList(q).join(", ") : "(없음)"}에게 지급{(q.rewardPaid || []).length ? ` · 지급됨: ${q.rewardPaid.join(", ")}` : ""}</div>
+                        </div>
+                      ); })()}
                       {/* 진행률 */}
                       <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
                         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
@@ -11431,6 +11446,37 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                           {acctNames.map((nm) => (<option key={nm} value={nm}>{nm}</option>))}
                         </select>
                       )}
+                    </div>
+                    {/* 🎁 보상 (버튼 눌러야 펼침 · 퀘스트 단위) */}
+                    <div style={{ marginBottom: 10 }}>
+                      <button type="button" onClick={() => setRwOpen((v) => !v)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, fontWeight: "bold", background: rwOpen ? C.ink : "#e0a13d", color: C.white, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "7px 12px" }}>🎁 보상 {rwOpen ? "▲" : "▼"}</button>
+                      {rwOpen && (() => {
+                        const rw = qEdit.reward || { exp: 0, gold: 0, gem: 0, items: [] };
+                        const setRw = (patch) => setQEdit({ ...qEdit, reward: { ...rw, ...patch } });
+                        return (
+                          <div style={{ marginTop: 8, background: "#fff8e8", border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: 10 }}>
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                              {[["exp", "⭐ 경험치"], ["gold", "🪙 골드"], ["gem", "💎 젬"]].map(([k, lb]) => (
+                                <label key={k} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11.5 }}>
+                                  <span style={{ fontWeight: "bold" }}>{lb}</span>
+                                  <input type="number" min="0" value={rw[k] || 0} onChange={(e) => setRw({ [k]: Math.max(0, Number(e.target.value) || 0) })} style={{ width: 60, padding: 5, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11 }} />
+                                </label>
+                              ))}
+                            </div>
+                            <div style={{ fontSize: 11.5, fontWeight: "bold", marginBottom: 4 }}>🏆 아이템</div>
+                            <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 6 }}>
+                              {(rw.items || []).map((it, i) => (
+                                <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 12, padding: "3px 9px" }}>🎁 {it}<button type="button" onClick={() => setRw({ items: rw.items.filter((_, j) => j !== i) })} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 10, color: C.danger }}>✕</button></span>
+                              ))}
+                            </div>
+                            <div style={{ display: "flex", gap: 5 }}>
+                              <input value={rwItem} onChange={(e) => setRwItem(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && rwItem.trim()) { setRw({ items: [...(rw.items || []), rwItem.trim()] }); setRwItem(""); } }} placeholder="아이템 이름 (예: 커피 기프티콘)" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5 }} />
+                              <PxButton tone="wood" onClick={() => { if (rwItem.trim()) { setRw({ items: [...(rw.items || []), rwItem.trim()] }); setRwItem(""); } }} style={{ fontSize: 11, padding: "7px 11px" }}>＋</PxButton>
+                            </div>
+                            <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 6 }}>* 검토완료 시 담당자 모두에게 자동 지급돼요</div>
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>세부 미션 (담당 계정 · 완료 체크는 카드에서)</div>
                     {(qEdit.subs || []).map((sb, i) => (
@@ -13621,6 +13667,23 @@ function EchoTown() {
     });
   };
   useEffect(() => { dbLoadHQ().then((d) => { if (d && Array.isArray(d)) { setHqQuests(d); try { saveJSON("echotown_hq_v1", d); } catch (e) {} } }); }, []);
+  // 🎁 검토완료된 내 담당 퀘스트의 보상을 내 지갑에 1회 지급 (담당자 본인 클라이언트에서)
+  useEffect(() => {
+    if (!myName || !hydratedRef.current) return;
+    const isAsg = (q) => (Array.isArray(q.assignees) ? q.assignees : (q.assignee ? [q.assignee] : [])).includes(myName);
+    const hasRw = (r) => r && ((r.exp || 0) || (r.gold || 0) || (r.gem || 0) || (r.items && r.items.length));
+    const claim = hqQuests.filter((q) => q.reviewStatus === "approved" && isAsg(q) && hasRw(q.reward) && !((q.rewardPaid || []).includes(myName)));
+    if (claim.length === 0) return;
+    let aExp = 0, aGold = 0, aGem = 0; const aItems = [];
+    claim.forEach((q) => { const r = q.reward || {}; aExp += r.exp || 0; aGold += r.gold || 0; aGem += r.gem || 0; (r.items || []).forEach((it) => aItems.push({ name: it, emoji: "🎁", from: "퀘스트 보상" })); });
+    if (aExp) setExp((e) => e + aExp);
+    if (aGold) setGold((g) => g + aGold);
+    if (aGem) { setGems((g) => g + aGem); setLifetime((l) => l + aGem); }
+    if (aItems.length) setThanksInv((v) => [...v, ...aItems]);
+    saveHQ(hqQuests.map((q) => claim.find((c) => c.id === q.id) ? { ...q, rewardPaid: [...(q.rewardPaid || []), myName] } : q));
+    const parts = []; if (aExp) parts.push("⭐" + aExp); if (aGold) parts.push("🪙" + aGold); if (aGem) parts.push("💎" + aGem); if (aItems.length) parts.push("🏆" + aItems.length);
+    showNotice("🎁 퀘스트 보상을 받았어요! " + parts.join(" "));
+  }, [hqQuests, myName]);
   useEffect(() => { dbLoadRoad().then((d) => { if (d && typeof d === "object") { setHqRoad(d); try { saveJSON("echotown_hqroad_v1", d); } catch (e) {} } }); }, []);
   const [hubTab, setHubTab] = useState("home");   // home | quest | msg
   const [startPop, setStartPop] = useState(null);   // 접속 직후 「확인해보세요」 팝업
