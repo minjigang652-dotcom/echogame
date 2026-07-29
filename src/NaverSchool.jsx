@@ -1,5 +1,28 @@
 import React, { useEffect, useRef, useState } from "react";
-import { dbLoadNspTut, dbSaveNspTut, dbLoadNspKw, dbSaveNspKw, dbLoadNspUrls, dbSaveNspUrls, dbLoadCafeKw, dbSaveCafeKw, dbLoadCafeState, dbSaveCafeState, dbLoadKinKw, dbSaveKinKw, dbLoadKinState, dbSaveKinState, dbLoadKinEx, dbSaveKinEx, compressImage } from "./LittleJuniorWorld.jsx";
+import { dbLoadNspTut, dbSaveNspTut, dbLoadNspKw, dbSaveNspKw, dbLoadNspUrls, dbSaveNspUrls, dbLoadCafeKw, dbSaveCafeKw, dbLoadCafeState, dbSaveCafeState, dbLoadKinKw, dbSaveKinKw, dbLoadKinState, dbSaveKinState, dbLoadKinEx, dbSaveKinEx } from "./LittleJuniorWorld.jsx";
+
+/* 이미지 압축 (NaverSchool 자체 정의 · LittleJuniorWorld 의존 제거) */
+function compressImage(file, maxSide = 900, quality = 0.72, mime = "image/jpeg") {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read fail"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("decode fail"));
+      img.onload = () => {
+        let { width: w, height: h } = img;
+        const scale = Math.min(1, maxSide / Math.max(w, h));
+        w = Math.round(w * scale); h = Math.round(h * scale);
+        const cv = document.createElement("canvas");
+        cv.width = w; cv.height = h;
+        cv.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(mime === "image/png" ? cv.toDataURL("image/png") : cv.toDataURL(mime, quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 // ============================================================================
 //  NaverSchoolPanel.jsx  —  에코월드 "네이버 스쿨" 패널
