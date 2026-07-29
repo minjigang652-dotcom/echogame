@@ -10943,7 +10943,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                       style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, marginBottom: 8 }} />
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
                       {HQ_CATS.map((c) => (
-                        <button key={c.id} type="button" onClick={() => setQEdit({ ...qEdit, cat: c.id })} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: qEdit.cat === c.id ? c.color : C.white, color: qEdit.cat === c.id ? C.white : C.ink }}>{c.icon} {c.name}</button>
+                        <button key={c.id} type="button" onClick={() => setQEdit({ ...qEdit, cat: c.id, chapter: "" })} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, padding: "6px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: qEdit.cat === c.id ? c.color : C.white, color: qEdit.cat === c.id ? C.white : C.ink }}>{c.icon} {c.name}</button>
                       ))}
                     </div>
                     <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
@@ -11384,6 +11384,28 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                   )}
                 </div>
               </div>
+
+              {/* 🔥 진행중인 퀘스트 (내가 담당·진행중인 미션이 있는 퀘스트) */}
+              {mpView && (() => {
+                const inProg = (hqQuests || []).filter((q) => (q.subs || []).some((sb) => sb.who === mpView && (sb.active || !sbDone(sb))));
+                return (
+                  <div style={card}>
+                    {hd("🔥", mpSelf ? "진행중인 퀘스트" : `${mpView}님의 진행중 퀘스트`, <span style={{ fontSize: 11, color: C.inkSoft }}>{inProg.length}개</span>)}
+                    {inProg.length === 0 ? (
+                      <div style={{ fontSize: 12, color: C.inkSoft }}>진행중인 퀘스트가 없어요. 미션에 담당으로 지정되면 여기 떠요.</div>
+                    ) : (
+                      <div style={{ display: "flex", gap: 10, overflowX: "auto", padding: "4px 2px 6px" }}>
+                        {inProg.map((q) => { const ci = catInfo(q.cat); return (
+                          <button key={q.id} type="button" onClick={() => setQView(q)} title={q.title}
+                            style={{ flexShrink: 0, width: 76, height: 76, borderRadius: "50%", border: `3px solid ${C.ink}`, background: ci.color, color: C.white, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 7, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 9, fontWeight: "bold", lineHeight: 1.15, textAlign: "center", boxShadow: `0 3px 0 ${C.parchEdge}` }}>
+                            <span style={{ display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", wordBreak: "break-word" }}>{q.title}</span>
+                          </button>
+                        ); })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* 일일 미션 */}
               <div style={card}>
