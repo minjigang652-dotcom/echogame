@@ -1,8 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
-import { dbLoadNspTut, dbSaveNspTut, dbLoadNspKw, dbSaveNspKw, dbLoadNspUrls, dbSaveNspUrls, dbLoadCafeKw, dbSaveCafeKw, dbLoadCafeState, dbSaveCafeState, dbLoadCafeEx, dbSaveCafeEx, dbLoadKinKw, dbSaveKinKw, dbLoadKinState, dbSaveKinState, dbLoadKinEx, dbSaveKinEx , logWork, startWorkStay } from "./LittleJuniorWorld.jsx";
-import ChatBot from "./ChatBot.jsx";
+import React, { useEffect, useState } from "react";
+import { dbLoadCafeEx, dbLoadCafeKw, dbLoadCafeState, dbLoadKinEx, dbLoadKinKw, dbLoadKinState, dbLoadNspKw, dbLoadNspTut, dbLoadNspUrls, dbSaveCafeEx, dbSaveCafeKw, dbSaveCafeState, dbSaveKinEx, dbSaveKinKw, dbSaveKinState, dbSaveNspKw, dbSaveNspTut, dbSaveNspUrls } from "./LittleJuniorWorld.jsx";
 
-/* 이미지 압축 (NaverSchool 자체 정의 · LittleJuniorWorld 의존 제거) */
+/* 이미지 압축 (NaverSchool 자체 정의 · 모놀리식 의존 제거) */
 function compressImage(file, maxSide = 900, quality = 0.72, mime = "image/jpeg") {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -17,6 +16,7 @@ function compressImage(file, maxSide = 900, quality = 0.72, mime = "image/jpeg")
         const cv = document.createElement("canvas");
         cv.width = w; cv.height = h;
         cv.getContext("2d").drawImage(img, 0, 0, w, h);
+        // PNG 은 투명 배경을 유지해요 (건물 이미지에 필요)
         resolve(mime === "image/png" ? cv.toDataURL("image/png") : cv.toDataURL(mime, quality));
       };
       img.src = reader.result;
@@ -25,22 +25,6 @@ function compressImage(file, maxSide = 900, quality = 0.72, mime = "image/jpeg")
   });
 }
 
-// ============================================================================
-//  NaverSchoolPanel.jsx  —  에코월드 "네이버 스쿨" 패널
-//  몰입의 방 기능을 게임 안에 그대로 표시:
-//    ① 네이버키워드(순위)  ② URL(발행 URL 풀)  ③ 카페 최신글  ④ 지식인 최신글
-//
-//  [적용 방법]  src/ 폴더에 이 파일을 넣고, LittleJuniorWorld.jsx 에서:
-//
-//    import NaverSchoolPanel from './NaverSchoolPanel';
-//    const [naverOpen, setNaverOpen] = useState(false);
-//    // 플레이어가 "네이버 스쿨" 건물에 들어가 E를 누를 때 -> setNaverOpen(true)
-//    ...
-//    <NaverSchoolPanel open={naverOpen} onClose={() => setNaverOpen(false)} />
-//
-//  MOIP_API 만 네 몰입의 방 도메인으로 맞춰주면 돼요.
-//  서버 API가 아직 없으면 자동으로 예시(mock) 데이터를 보여줍니다.
-// ============================================================================
 const MOIP_API = 'https://ad.onlychat.co.kr'; // ← 몰입의 방 도메인
 // 카페 발행 시트 바로가기 링크
 const SHEETS = {
@@ -133,7 +117,6 @@ const MOCK = {
 const NSP_ROOMS = [
   { id: 'cafe', icon: '☕', label: '카페 최신글', desc: '답변 요망·완료·캘린더 워크플로우', color: '#3fa07a' },
   { id: 'kw',   icon: '🔗', label: '카페 외부',   desc: '네이버 키워드 순위 추적', color: '#5b8def' },
-  { id: 'tutorial', icon: '📖', label: '튜토리얼', desc: '작성 방법·프롬프트·답변/댓글 사진', color: '#c0563a' },
   { id: 'kinTop', icon: '📊', label: '지식인 상위', desc: '키워드 상위 노출 현황', color: '#e0a13d' },
   { id: 'kin',  icon: '💬', label: '지식인 최신글', desc: '답변 카운터·타이머 워크플로우', color: '#b76bd7' },
   { id: 'yt',   icon: '▶️', label: '유튜브 최신글', desc: '답변 카운터·타이머 워크플로우', color: '#d94f70' },
@@ -306,7 +289,6 @@ function CafeRoom({ crawledLinks = [], nickname = '', onBack }) {
 
   // 링크 상태 변경 (알바/관리자)
   const setLinkStatus = (url, keyword, status) => {
-    try { logWork(nickname, "naverschool", status === 'done' ? "카페 링크 완료" : ("카페 링크 " + status)); } catch (e) {}
     const links = { ...state.links, [url]: { status, at: nowISO(), by: nickname || '익명', keyword } };
     let doneLog = state.doneLog.slice();
     if (status === 'done') {
@@ -672,7 +654,6 @@ function CafeWorkflow({ nickname, setNickname, links }) {
   const assign = (item, statusKey) => {
     if (!(nickname || '').trim()) { setWarnNick(true); return; } // 작업자 이름 없으면 처리 막기
     setWarnNick(false);
-    try { logWork(nickname, "naverschool", "지식인 " + statusKey); } catch (e) {}
     const rec = { ...item, status: statusKey, worker: nickname.trim(), at: new Date().toISOString() };
     setProcessed((a) => [rec, ...a]);
     setPending((a) => a.filter((x) => x.id !== item.id));
@@ -1405,7 +1386,6 @@ function KinWorkflow({ posts: initial }) {
 
   // 답변완료('done') / 답변X('x') 둘 다 카운트 (버튼 1개 = +1)
   const act = (item, kind) => {
-    try { logWork(nickname, "naverschool", "게시글 " + kind); } catch (e) {}
     setPosts((a) => a.filter((x) => x.id !== item.id));
     setProcessed((a) => [{ ...item, kind, at: new Date().toISOString() }, ...a]);
     setStartAt((s) => s || Date.now());
@@ -1705,16 +1685,8 @@ function CafePublishTab() {
 }
 
 function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
-  /* 🕒 체류 기록 — 네이버스쿨에 머무는 동안 5분마다 (근무 기록의 「몇시~몇시」 복원용) */
-  useEffect(() => {
-    const nm = (nicknameProp || '').trim();
-    if (!open || !nm) return;
-    const stop = startWorkStay(nm, 'naverschool');
-    return stop;
-  }, [open, nicknameProp]);
   const [tab, setTab] = useState(null);
   const [nickname, setNickname] = useState(nicknameProp || ''); // 접속된 닉네임(작업자)
-  const [chatOpen, setChatOpen] = useState(false);   // 🐣 코코 상담소
   const [tutorial, setTutorial] = useState({
     method:        { text: '', fileName: '', date: '' },
     promptGreen:   { text: '', fileName: '', date: '' },
@@ -1855,13 +1827,11 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
   return (
     <div className="nsp-overlay" onClick={onClose}>
       <style>{CSS}</style>
-      {chatOpen && <ChatBot onClose={() => setChatOpen(false)} onGo={(room) => { setTab(room); setChatOpen(false); }} />}
       <div className="nsp-panel" onClick={(e) => e.stopPropagation()}>
         <div className="nsp-hd">
           <span className="nsp-badge">🏫</span>
           <h1>네이버 스쿨</h1>
           <span className="nsp-sub">· 방을 골라 들어가세요</span>
-          <button type="button" onClick={() => setChatOpen(true)} title="코코 상담소" style={{ marginLeft: "auto", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: "bold", background: "#fff", color: "#2f6b25", border: "2px solid #2f6b25", borderRadius: 8, padding: "5px 11px" }}>🐣 코코</button>
           <button className="nsp-exit" onClick={onClose}>← 나가기</button>
         </div>
 
@@ -1912,7 +1882,6 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
           )}
           {/* 튜토리얼 방 */}
           {/* 빈 방: 지식인 상위 */}
-          {tab === 'tutorial' && <TutorialTab data={tutorial} setData={setTutorial} />}
           {tab === 'kinTop' && (
             <KinTopRoom crawledLinks={data.kintop || []} nickname={nicknameProp || nickname} onBack={() => setTab(null)} />
           )}
