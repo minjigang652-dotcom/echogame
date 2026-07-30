@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v151 · 2026-07-29";
+const APP_VERSION = "v152 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2498,7 +2498,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "mention").neq("type", "sprpos").neq("type", "cocoqa").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "mention").neq("type", "sprpos").neq("type", "cocoqa").neq("type", "vschool").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2854,6 +2854,23 @@ export async function dbSaveChatbot(obj) {
   try {
     const s = await getSupa();
     const r = await s.from("notices").insert({ type: "cocoqa", title: "cocoqa", body: JSON.stringify(obj || {}) });
+    return !(r && r.error);
+  } catch (e) { return false; }
+}
+/* 🎬 영상스쿨 주제·제출·승인 데이터 (notices type="vschool", 전체 JSON 한 행 · 최신 우선 · 모두 공유) */
+export async function dbLoadVSchool() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("body,created_at").eq("type", "vschool").order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    if (!row || !row.body) return null;
+    return JSON.parse(row.body) || null;
+  } catch (e) { return null; }
+}
+export async function dbSaveVSchool(obj) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "vschool", title: "vschool", body: JSON.stringify(obj || {}) });
     return !(r && r.error);
   } catch (e) { return false; }
 }
@@ -15330,7 +15347,7 @@ function EchoTown() {
           onNote={(qid, v) => setQNotes((n) => ({ ...n, [qid]: v }))}
           onThreadSend={(qid, text) => { const at = Date.now(); setQThreads((t) => ({ ...t, [qid]: [...(t[qid] || []), { who: myName || "나", text, at }].slice(-200) })); if (netSendEvent) netSendEvent("qchat", { qid, who: myName || "나", text, at }); }} />}
         {view === "naverschool" && <NaverSchoolPanel open onClose={backToWorld} nickname={myName} />}
-{view === "videoschool" && <SchoolView school={view} onBack={backToWorld} cleared={schoolDone} onClear={clearSchool} />}
+{view === "videoschool" && <SchoolView school={view} onBack={backToWorld} cleared={schoolDone} onClear={clearSchool} onReward={(n) => awardGold(n)} myName={myName} />}
         {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count, target) => {
           // 같은 닉네임이면 때린 수가 누적돼요
           setBoxScores((s) => {
