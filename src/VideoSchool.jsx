@@ -3,6 +3,10 @@ import { C, NetContext, PixelHouse, Hero, Panel, PxButton, TitleBar } from "./Li
 import { dbLoadVSchool, dbSaveVSchool } from "./LittleJuniorWorld.jsx";
 import ChatBot from "./ChatBot.jsx";
 import { AISelfCheck, polishFeedback, ReviewQueue, QueueButton } from "./AIAssist.jsx";
+import { DEFAULT_PRODUCTS, productReward, SpecBadge, ProductTutorial, SafeZoneDiagram, SourceBelt, KeywordChips, ProductBar, ProductForm } from "./VideoProducts.jsx";
+
+/* 🎬 영상스쿨 제품 편집 관리자 코드 (여기 값만 바꾸면 됨) */
+const VS_ADMIN_PW = "dpzhdnjfem123!";
 
 /* 입력창(input/textarea 등)에 타이핑 중이면 게임 키 조작 무시 */
 function isTyping(e) {
@@ -167,9 +171,18 @@ function StageBadge({ st }) {
 }
 
 /* 🎬 영상스쿨 퀘스트 게시판 (집 하나 = 카테고리 하나) */
-function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, tier = "high" }) {
+function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, tier = "high", product, products = [] }) {
   const topics = (vdata && vdata.topics) || [];
   const me = myName || "익명";
+  const RW = productReward(product);
+  const pid = (product && product.id) || "default";
+  const defPid = (products && products[0] && products[0].id) || pid;
+  /* 기본 상황 리스트 = 시드 포스터 (항상 유지 · 삭제/대체 안 됨) · 플레이어가 만든 포스터가 위에 추가돼요 */
+  const seedTopics = ((product && product.situations) || []).map((s, i) => ({ ...emptyTopic({ tag: s.tag || "주제", title: s.title || "주제", hook: s.hook || "", grad: V_GRADS[i % V_GRADS.length] }, null, "시드"), id: "seed_" + pid + "_" + i, product: pid, seed: true }));
+  const storedTopics = topics.filter((t) => (t.product || defPid) === pid);
+  const displayTopics = (() => { const byId = {}; seedTopics.forEach((t) => { byId[t.id] = t; }); storedTopics.forEach((t) => { byId[t.id] = t; }); return Object.values(byId); })();
+  // 시드에 작업(제출)이 일어나면 그 순간 실제 토픽으로 저장(materialize)
+  const ensure = (tid) => { if (topics.some((t) => t.id === tid)) return topics; const sd = displayTopics.find((t) => t.id === tid); return sd ? [...topics, { ...sd, seed: false }] : topics; };
   /* 🧑 주인공 입력 */
   const [pAge, setPAge] = useState("");
   const [pGender, setPGender] = useState("");
@@ -191,7 +204,7 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
     const t = nextTopics.find((x) => x.id === tid);
     if (t && topicComplete(t) && !t.bonusPaid) {
       const done = nextTopics.map((x) => x.id === tid ? { ...x, bonusPaid: true } : x);
-      commit(done, (gold || 0) + V_REWARD.bonus, `🎉 「${t.title}」 완주! +${gold || 0}G, 완주 보너스 +${V_REWARD.bonus}G`);
+      commit(done, (gold || 0) + RW.bonus, `🎉 「${t.title}」 완주! +${gold || 0}G, 완주 보너스 +${RW.bonus}G`);
     } else {
       commit(nextTopics, gold, msg);
     }
@@ -200,7 +213,7 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
   const addProtagonist = () => {
     if (!pSitu.trim() && !pCore.trim()) { toast("상황이나 코어를 입력해줘"); return; }
     const poster = makePoster({ age: pAge, gender: pGender, situation: pSitu, core: pCore, personality: pPers });
-    const t = emptyTopic(poster, { age: pAge, gender: pGender, situation: pSitu, core: pCore, personality: pPers }, me);
+    const t = { ...emptyTopic(poster, { age: pAge, gender: pGender, situation: pSitu, core: pCore, personality: pPers }, me), product: pid };
     commit([t, ...topics], 0, "🧑 주제 카드가 생성됐어요");
     setPAge(""); setPGender(""); setPSitu(""); setPCore(""); setPPers("");
   };
@@ -210,23 +223,23 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
   const submitStage = (tid, stage, payload) => {
     const cur = (topics.find((x) => x.id === tid) || {})[stage] || {};
     const auto = stage !== "edit" && (tier === "high" || (stage === "script" && cur.hadFeedback));
-    const nt = topics.map((t) => t.id === tid ? { ...t, [stage]: { ...t[stage], ...payload, submitted: true, by: me, approved: auto, status: auto ? "approved" : "pending", feedback: "" } } : t);
-    withComplete(nt, tid, V_REWARD.submit, auto ? `제출 즉시 승인됐어요 · +${V_REWARD.submit}G` : `제출 완료 · 검토 대기 · +${V_REWARD.submit}G`);
+    const nt = ensure(tid).map((t) => t.id === tid ? { ...t, [stage]: { ...t[stage], ...payload, submitted: true, by: me, approved: auto, status: auto ? "approved" : "pending", feedback: "" } } : t);
+    withComplete(nt, tid, RW.submit, auto ? `제출 즉시 승인됐어요 · +${RW.submit}G` : `제출 완료 · 검토 대기 · +${RW.submit}G`);
     setDraftText((d) => ({ ...d, [tid + stage]: "" }));
   };
   const approveStage = (tid, stage) => {
-    const nt = topics.map((t) => t.id === tid ? { ...t, [stage]: { ...t[stage], approved: true, status: "approved", feedback: "" } } : t);
-    withComplete(nt, tid, V_REWARD.approve, `승인 완료 · +${V_REWARD.approve}G`);
+    const nt = ensure(tid).map((t) => t.id === tid ? { ...t, [stage]: { ...t[stage], approved: true, status: "approved", feedback: "" } } : t);
+    withComplete(nt, tid, RW.approve, `승인 완료 · +${RW.approve}G`);
   };
   /* 피드백(수정요청) : 원본 내용은 유지 · 스테이지가 다시 열려요 · 원고는 이후 재제출 시 자동승인 */
   const feedbackStage = (tid, stage, msg) => {
     const m = (msg || "").trim(); if (!m) { toast("피드백 내용을 적어주세요"); return; }
-    const nt = topics.map((t) => t.id === tid ? { ...t, [stage]: { ...t[stage], approved: false, status: "feedback", feedback: m, feedbackBy: me, hadFeedback: true } } : t);
+    const nt = ensure(tid).map((t) => t.id === tid ? { ...t, [stage]: { ...t[stage], approved: false, status: "feedback", feedback: m, feedbackBy: me, hadFeedback: true } } : t);
     commit(nt, 0, "✏️ 피드백을 보냈어요");
     setDraftText((d) => ({ ...d, [tid + stage + "fb"]: "" }));
   };
   const postUpload = (tid, caption, hashtags) => {
-    const nt = topics.map((t) => t.id === tid ? { ...t, upload: { posted: true, caption, hashtags, by: me } } : t);
+    const nt = ensure(tid).map((t) => t.id === tid ? { ...t, upload: { posted: true, caption, hashtags, by: me } } : t);
     withComplete(nt, tid, 0, null);
   };
 
@@ -247,9 +260,9 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
           <input value={pPers} onChange={(e) => setPPers(e.target.value)} placeholder="성격 (예: 귀찮음 많은 게으른 성격)" style={{ ...inp, marginBottom: 8 }} />
           <PxButton tone="good" onClick={addProtagonist} style={{ width: "100%", fontSize: 13, padding: 10 }}>🧑 주제 카드 생성</PxButton>
         </div>
-        <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>🗂 만들어진 주제 {topics.length}개</div>
-        {topics.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 16 }}>아직 주제가 없어요. 위에서 만들어보세요!</div>}
-        {topics.map((t) => (
+        <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>🗂 만들어진 주제 {displayTopics.length}개</div>
+        {displayTopics.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 16 }}>아직 주제가 없어요. 위에서 만들어보세요!</div>}
+        {displayTopics.map((t) => (
           <PosterCard key={t.id} t={t}>
             <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
               {V_STAGES.map(([k, lb]) => <span key={k} style={{ fontSize: 10 }}>{lb} <StageBadge st={t[k]} /></span>)}
@@ -269,7 +282,7 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
   /* 🗂 검토 큐 : 모든 주제의 「승인 대기(pending)」 스테이지를 모아서 스테이지 탭으로 보여줘요 */
   const Q_STAGES = [["script", "📝 원고"], ["source", "🎥 소스"], ["edit", "✂️ 편집"]];
   const queueItems = [];
-  topics.forEach((t) => Q_STAGES.forEach(([sid]) => {
+  displayTopics.forEach((t) => Q_STAGES.forEach(([sid]) => {
     const s = t[sid] || {};
     if (s.submitted && !s.approved && s.status !== "feedback") {
       queueItems.push({ id: t.id + "_" + sid, tab: sid, tid: t.id, stage: sid, title: t.title, content: s.text || s.link, by: s.by });
@@ -300,8 +313,11 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
         {stage === "edit" && "원고+소스가 모두 승인된 주제만 편집을 시작할 수 있어요."}
         {stage === "upload" && "편집이 승인된 주제에 캡션+해시태그를 달아 게시해요."}
       </div>
-      {topics.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 20 }}>주제가 없어요. 🧑 주인공 만들기에서 먼저 만들어주세요!</div>}
-      {topics.map((t) => {
+      {product && stage === "script" && <ProductTutorial product={product} />}
+      {product && stage === "source" && (<><SourceBelt tools={product.sourceTools} /><KeywordChips keywords={product.keywords} /></>)}
+      {product && stage === "edit" && <SafeZoneDiagram editGuide={product.editGuide} />}
+      {displayTopics.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 20 }}>주제가 없어요. 🧑 주인공 만들기에서 먼저 만들어주세요!</div>}
+      {displayTopics.map((t) => {
         const st = t[stage] || {};
         const editLocked = stage === "edit" && !(stDone(t.script) && stDone(t.source));
         const upLocked = stage === "upload" && !stDone(t.edit);
@@ -361,7 +377,7 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
                       placeholder={stage === "script" ? `${V_SPEC.length} 원고를 써주세요` : "파일 설명 + 구글드라이브/업로드 링크"} style={{ ...inp, marginBottom: 6, resize: "vertical" }} />
                     {stage === "script" && <AISelfCheck text={curVal} />}
                     <PxButton tone="good" onClick={() => submitStage(t.id, stage, stage === "script" ? { text: curVal.trim() } : { link: curVal.trim() })} style={{ width: "100%", fontSize: 12, padding: 9 }}>
-                      {status === "feedback" ? "🔁 수정 후 제출하기" : `제출하기 (+${V_REWARD.submit}G)`}
+                      {status === "feedback" ? "🔁 수정 후 제출하기" : `제출하기 (+${RW.submit}G)`}
                     </PxButton>
                   </div>
                 ) : (
@@ -376,7 +392,7 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
                             placeholder="✏️ 수정요청(피드백) 내용 — 적고 「피드백」을 누르면 작성자에게 돌아가요" style={{ ...inp, marginBottom: 6, resize: "vertical" }} />
                           <div style={{ display: "flex", gap: 6 }}>
                             <PxButton tone="wood" onClick={() => setDraftText((d) => ({ ...d, [key + "fb"]: polishFeedback(d[key + "fb"] || "") }))} title="짧게 적어도 AI가 부드럽고 구체적으로 다듬어줘요" style={{ flexShrink: 0, fontSize: 12, padding: 9 }}>✨ 다듬기</PxButton>
-                            <PxButton tone="good" onClick={() => approveStage(t.id, stage)} style={{ flex: 1, fontSize: 12, padding: 9 }}>✅ 승인 (+{V_REWARD.approve}G)</PxButton>
+                            <PxButton tone="good" onClick={() => approveStage(t.id, stage)} style={{ flex: 1, fontSize: 12, padding: 9 }}>✅ 승인 (+{RW.approve}G)</PxButton>
                             <PxButton tone="danger" onClick={() => feedbackStage(t.id, stage, draftText[key + "fb"] || "")} style={{ flex: 1, fontSize: 12, padding: 9 }}>✏️ 피드백</PxButton>
                           </div>
                         </div>
@@ -407,17 +423,40 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
   const [near, setNear] = useState(null);
   const [open, setOpen] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
-  const [vdata, setVData] = useState({ topics: [] });   // 🎬 영상스쿨 주제·제출·승인 (서버 공유)
+  const [vdata, setVData] = useState({ topics: [], products: DEFAULT_PRODUCTS });   // 🎬 영상스쿨 주제·제출·승인 + 제품정의 (서버 공유)
   const [vToast, setVToast] = useState("");
   const vToastFn = (m) => { setVToast(m); setTimeout(() => setVToast(""), 2800); };
   const saveVData = (next) => { dbSaveVSchool(next); };
+  const [selProd, setSelProd] = useState("");        // 선택된 제품 id
+  const [prodAdmin, setProdAdmin] = useState(false); // 제품 편집 관리자 잠금 해제
+  const [formProduct, setFormProduct] = useState(null); // null | {…} 편집중 | "new"
   useEffect(() => {
     if (school !== "videoschool") return;
-    const load = () => dbLoadVSchool().then((d) => { if (d && Array.isArray(d.topics)) setVData(d); }).catch(() => {});
+    const load = () => dbLoadVSchool().then((d) => {
+      if (d && typeof d === "object") {
+        setVData({ topics: Array.isArray(d.topics) ? d.topics : [], products: (Array.isArray(d.products) && d.products.length) ? d.products : DEFAULT_PRODUCTS });
+      }
+    }).catch(() => {});
     load();
     const iv = setInterval(load, 30000);
     return () => clearInterval(iv);
   }, [school]);
+  const vProducts = (vdata.products && vdata.products.length) ? vdata.products : DEFAULT_PRODUCTS;
+  const curProduct = vProducts.find((p) => p.id === selProd) || vProducts[0];
+  useEffect(() => { if (!vProducts.some((p) => p.id === selProd)) setSelProd((vProducts[0] && vProducts[0].id) || ""); }, [vProducts]); // eslint-disable-line
+  const tryProdAdmin = () => { if (prodAdmin) { setFormProduct("new"); return; } const c = window.prompt("🔒 제품 추가/편집은 관리자 코드가 필요해요.\n관리자 코드를 입력하세요:"); if (c != null && c.trim() === VS_ADMIN_PW) { setProdAdmin(true); setFormProduct("new"); } else if (c != null) window.alert("코드가 틀렸어요."); };
+  const saveProduct = (prod) => {
+    const list = vProducts.some((p) => p.id === prod.id) ? vProducts.map((p) => p.id === prod.id ? prod : p) : [...vProducts, prod];
+    const next = { ...vdata, products: list };
+    setVData(next); saveVData(next); setFormProduct(null); setSelProd(prod.id);
+    vToastFn("📦 제품이 저장됐어요");
+  };
+  const deleteProduct = (pid) => {
+    const list = vProducts.filter((p) => p.id !== pid);
+    const next = { ...vdata, products: list.length ? list : DEFAULT_PRODUCTS };
+    setVData(next); saveVData(next); setFormProduct(null); setSelProd("");
+    vToastFn("🗑 제품을 삭제했어요");
+  };
   const keys = useRef({});
   const posRef = useRef(pos);
   const nearRef = useRef(null);
@@ -508,6 +547,13 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
       <TitleBar tipId={school} icon={s.icon} title={s.title} sub="WASD 이동 · 집 근처에서 E · 아무 집이나 자유롭게" onBack={onBack} bg={s.color} fg={C.white}
         right={<PxButton tone="good" onClick={() => setChatOpen(true)} style={{ fontSize: 11, padding: "5px 10px" }}>🐣 코코</PxButton>} />
       <div style={{ padding: 12, background: C.parch }}>
+        {school === "videoschool" && (
+          <>
+            <ProductBar products={vProducts} selectedId={curProduct && curProduct.id} onSelect={setSelProd} isAdmin={prodAdmin} onAdd={tryProdAdmin} onEdit={() => { if (prodAdmin) setFormProduct(curProduct); else tryProdAdmin(); }} />
+            {!prodAdmin && <div style={{ textAlign: "right", marginBottom: 8 }}><button type="button" onClick={tryProdAdmin} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 10.5, color: C.inkSoft, fontFamily: "'DotGothic16', monospace" }}>🔒 관리자 (제품 추가/편집)</button></div>}
+            {curProduct && <div style={{ marginBottom: 8 }}><SpecBadge spec={curProduct.spec} /></div>}
+          </>
+        )}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
           <div style={{ flex: 1, height: 12, background: "#e2d3ab", border: `2px solid ${C.ink}` }}>
             <div style={{ height: "100%", width: `${(doneCount / houses.length) * 100}%`, background: s.color, transition: "width .3s" }} />
@@ -569,7 +615,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
                     <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 13, flex: 1 }}>{open.title}</div>
                     <PxButton tone="ink" onClick={() => setOpen(null)} style={{ fontSize: 12, padding: "6px 12px" }}>닫기</PxButton>
                   </div>
-                  <VideoBoard house={open} vdata={vdata} setVData={setVData} saveVData={saveVData} myName={myName} reward={onReward} toast={vToastFn} tier={tier} />
+                  <VideoBoard house={open} vdata={vdata} setVData={setVData} saveVData={saveVData} myName={myName} reward={onReward} toast={vToastFn} tier={tier} product={curProduct} products={vProducts} />
                 </div>
               ) : (
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -606,6 +652,14 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
             </Panel>
           </div>
         </div>
+      )}
+      {formProduct && (
+        <ProductForm
+          initial={formProduct === "new" ? null : formProduct}
+          onSave={saveProduct}
+          onDelete={deleteProduct}
+          onCancel={() => setFormProduct(null)}
+        />
       )}
     </Panel>
   );
