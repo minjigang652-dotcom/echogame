@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { C, NetContext, PixelHouse, Hero, Panel, PxButton, TitleBar } from "./LittleJuniorWorld.jsx";
-import { dbLoadVSchool, dbSaveVSchool } from "./LittleJuniorWorld.jsx";
+import { dbLoadVSchool, dbSaveVSchool, logWork, startWorkStay } from "./LittleJuniorWorld.jsx";
 import ChatBot from "./ChatBot.jsx";
 import { AISelfCheck, polishFeedback, ReviewQueue, QueueButton } from "./AIAssist.jsx";
 import { DEFAULT_PRODUCTS, productReward, SpecBadge, ProductTutorial, SafeZoneDiagram, SourceBelt, KeywordChips, ProductBar, ProductForm } from "./VideoProducts.jsx";
@@ -216,6 +216,7 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
     const poster = makePoster({ age: pAge, gender: pGender, situation: pSitu, core: pCore, personality: pPers });
     const t = { ...emptyTopic(poster, { age: pAge, gender: pGender, situation: pSitu, core: pCore, personality: pPers }, me), product: pid };
     commit([t, ...topics], 0, "🧑 주제 카드가 생성됐어요");
+    try { logWork(me, "videoschool", "주제 생성"); } catch (e) {}
     setPAge(""); setPGender(""); setPSitu(""); setPCore(""); setPPers("");
   };
 
@@ -226,22 +227,26 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
     const auto = stage !== "edit" && (tier === "high" || (stage === "script" && cur.hadFeedback));
     const nt = ensure(tid).map((t) => t.id === tid ? { ...t, [stage]: { ...t[stage], ...payload, submitted: true, by: me, approved: auto, status: auto ? "approved" : "pending", feedback: "" } } : t);
     withComplete(nt, tid, RW.submit, auto ? `제출 즉시 승인됐어요 · +${RW.submit}G` : `제출 완료 · 검토 대기 · +${RW.submit}G`);
+    try { logWork(me, "videoschool", { script: "원고 제출", source: "소스 제출", edit: "편집 제출" }[stage] || (stage + " 제출")); } catch (e) {}
     setDraftText((d) => ({ ...d, [tid + stage]: "" }));
   };
   const approveStage = (tid, stage) => {
     const nt = ensure(tid).map((t) => t.id === tid ? { ...t, [stage]: { ...t[stage], approved: true, status: "approved", feedback: "" } } : t);
     withComplete(nt, tid, RW.approve, `승인 완료 · +${RW.approve}G`);
+    try { logWork(me, "videoschool", "검토 승인"); } catch (e) {}
   };
   /* 피드백(수정요청) : 원본 내용은 유지 · 스테이지가 다시 열려요 · 원고는 이후 재제출 시 자동승인 */
   const feedbackStage = (tid, stage, msg) => {
     const m = (msg || "").trim(); if (!m) { toast("피드백 내용을 적어주세요"); return; }
     const nt = ensure(tid).map((t) => t.id === tid ? { ...t, [stage]: { ...t[stage], approved: false, status: "feedback", feedback: m, feedbackBy: me, hadFeedback: true } } : t);
     commit(nt, 0, "✏️ 피드백을 보냈어요");
+    try { logWork(me, "videoschool", "피드백 작성"); } catch (e) {}
     setDraftText((d) => ({ ...d, [tid + stage + "fb"]: "" }));
   };
   const postUpload = (tid, caption, hashtags) => {
     const nt = ensure(tid).map((t) => t.id === tid ? { ...t, upload: { posted: true, caption, hashtags, by: me } } : t);
     withComplete(nt, tid, 0, null);
+    try { logWork(me, "videoschool", "업로드 게시"); } catch (e) {}
   };
 
   const inp = { width: "100%", boxSizing: "border-box", padding: 9, border: "1.5px solid #d5e0f0", borderRadius: 9, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, background: C.white };
@@ -529,6 +534,8 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
   /* 📖 STEP0 온보딩 튜토리얼 — 영상스쿨 입장 시 자동 팝업(상품별 최초 1회) + 다시보기 */
   const [tutOpen, setTutOpen] = useState(false);
   const [vsTab, setVsTab] = useState("hero");   // 영상스쿨 플랫 탭: hero|script|source|edit|upload
+  /* 🕒 체류 기록 — 스쿨 화면에 머무는 동안 5분마다 (근무 기록의 「몇시~몇시」 복원용) */
+  useEffect(() => { if (!myName) return; const stop = startWorkStay(myName, school); return stop; }, [myName, school]);
   useEffect(() => {
     if (school !== "videoschool" || !curProduct) return;
     const k = "echotown_vtut_seen_" + curProduct.id;
