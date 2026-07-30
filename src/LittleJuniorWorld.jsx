@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v158 · 2026-07-30";
+const APP_VERSION = "v160 · 2026-07-30";
 
 /* ───────── 📮→🏭 피드백 허브(정제소) 웹훅 ─────────
  * ⚠️ 브라우저 앱이라 시크릿 토큰을 클라이언트에 둘 수 없어요.
@@ -2759,9 +2759,14 @@ async function dbSaveStatusMsg(name, msg) {
 async function dbLoadStatusMsgs() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("title,body,created_at").eq("type", "status").order("created_at", { ascending: false }).limit(300);
+    /* 상태메시지는 매일 오전 4시에 리셋 → 그 이후에 쓴 것만 가져와요 */
+    const since = new Date(dayStartMs()).toISOString();
+    const r = await s.from("notices").select("title,body,created_at").eq("type", "status").gte("created_at", since).order("created_at", { ascending: false }).limit(300);
     const map = {};
-    ((r && r.data) || []).forEach((x) => { const n = x.title; if (!n || map[n] !== undefined) return; map[n] = x.body || ""; });
+    ((r && r.data) || []).forEach((x) => {
+      const n = x.title; if (!n || map[n] !== undefined) return;
+      map[n] = { msg: x.body || "", at: new Date(x.created_at).getTime() };
+    });
     return map;
   } catch (e) { return {}; }
 }
@@ -10552,9 +10557,17 @@ function DrawerBoard({ notes = [], onAdd, onDelete, big = false }) {
   );
 }
 
-/* 🎯 일일미션 리셋 기준 : 아침 6시에 하루가 바뀌어요 (그 지역 시간 기준) */
+/* 🎯 일일미션 리셋 기준 : 오전 4시에 하루가 바뀌어요 (그 지역 시간 기준) */
+/* 🕓 하루 기준 = 오전 4시 (4시가 지나면 새 날 · 일일미션·상태메시지 리셋) */
+const DAY_RESET_HOUR = 4;
+function dayStartMs(now = Date.now()) {
+  const d = new Date(now);
+  const b = new Date(d.getFullYear(), d.getMonth(), d.getDate(), DAY_RESET_HOUR, 0, 0, 0);
+  if (d.getTime() < b.getTime()) b.setDate(b.getDate() - 1);   // 새벽 0~4시는 어제로 취급
+  return b.getTime();
+}
 function missionDayKey() {
-  const d = new Date(Date.now() - 6 * 3600 * 1000);
+  const d = new Date(dayStartMs());
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
@@ -10572,7 +10585,7 @@ function HQSidePanel({ myName = "", people = [], questBox = [], hqQuests = [], h
   const MISSIONS = ["오늘의 병목지점 일기 쓰기", "퀘스트 확인하기", "디스코드 회의 최소 1회 참여하기"];
   const [done, setDone] = useState(() => load("mission", {}));
   const [completed, setCompleted] = useState(() => !!load("missionCompleted", false));
-  useEffect(() => {   // 아침 6시가 지나 날짜가 바뀌면 완료여부만 초기화 (내용은 그대로)
+  useEffect(() => {   // 오전 4시가 지나 날짜가 바뀌면 완료여부만 초기화 (내용은 그대로)
     const dk = missionDayKey();
     if (load("missionDay", "") !== dk) { setDone({}); setCompleted(false); saveAll({ mission: {}, missionCompleted: false, missionDay: dk }); }
   }, []);   // eslint-disable-line
@@ -12619,7 +12632,17 @@ function FriendPanel({ open, onClose, people = [], myName = "", statusMap = {}, 
   const [edit, setEdit] = React.useState(false);
   const [draft, setDraft] = React.useState("");
   const mine = normName(myName || "");
-  React.useEffect(() => { if (open) setDraft(statusMap[mine] || ""); }, [open, mine, statusMap]);
+  /* 상태메시지는 매일 오전 4시 리셋 — 오늘(4시 이후) 것만 보여요 */
+  const dayFrom = dayStartMs();
+  const stOf = (nm) => {
+    const v = statusMap[nm];
+    if (!v) return null;
+    const o2 = typeof v === "string" ? { msg: v, at: 0 } : v;
+    if (!o2.msg || !o2.at || o2.at < dayFrom) return null;
+    return o2;
+  };
+  const hhmm2 = (t) => { const d = new Date(t); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+  React.useEffect(() => { if (open) { const m = stOf(mine); setDraft(m ? m.msg : ""); } }, [open, mine, statusMap]); // eslint-disable-line
   if (!open) return null;
   const list = people.slice().sort((a, b) => {
     if (!!b.online !== !!a.online) return b.online ? 1 : -1;   // 접속자 먼저
@@ -12636,7 +12659,7 @@ function FriendPanel({ open, onClose, people = [], myName = "", statusMap = {}, 
       </div>
       {/* 내 상태메시지 */}
       <div style={{ padding: "8px 11px", borderBottom: `2px dashed ${C.parchEdge}` }}>
-        <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 4 }}>💬 내 상태메시지</div>
+        <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 4 }}>💬 내 상태메시지 <span style={{ opacity: 0.75 }}>· 매일 오전 4시 초기화</span></div>
         {edit ? (
           <div>
             <input value={draft} maxLength={40} autoFocus onChange={(e) => setDraft(e.target.value)}
@@ -12648,8 +12671,9 @@ function FriendPanel({ open, onClose, people = [], myName = "", statusMap = {}, 
             </div>
           </div>
         ) : (
-          <div onClick={() => setEdit(true)} style={{ cursor: "pointer", fontSize: 11.5, color: statusMap[mine] ? C.ink : C.inkSoft, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "5px 7px" }}>
-            {statusMap[mine] || "눌러서 상태메시지를 적어보세요 ✏️"}
+          <div onClick={() => setEdit(true)} style={{ cursor: "pointer", fontSize: 11.5, color: stOf(mine) ? C.ink : C.inkSoft, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "5px 7px", display: "flex", alignItems: "baseline", gap: 5 }}>
+            <span style={{ flex: 1, minWidth: 0 }}>{stOf(mine) ? stOf(mine).msg : "눌러서 상태메시지를 적어보세요 ✏️"}</span>
+            {stOf(mine) && <span style={{ flexShrink: 0, fontSize: 8.5, color: C.inkSoft }}>{hhmm2(stOf(mine).at)}</span>}
           </div>
         )}
       </div>
@@ -12658,7 +12682,7 @@ function FriendPanel({ open, onClose, people = [], myName = "", statusMap = {}, 
         {list.length === 0 && <div style={{ fontSize: 11, color: C.inkSoft, textAlign: "center", padding: 14 }}>아직 주민이 없어요</div>}
         {list.map((p) => {
           const nm = normName(p.name);
-          const st = statusMap[nm] || "";
+          const st = stOf(nm);
           return (
             <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 5px", borderBottom: `1px dashed ${C.parchEdge}` }}>
               <span title={p.online ? "접속 중" : "오프라인"} style={{ flexShrink: 0, width: 11, height: 11, borderRadius: "50%",
@@ -12668,7 +12692,12 @@ function FriendPanel({ open, onClose, people = [], myName = "", statusMap = {}, 
                 <div style={{ fontSize: 11.5, fontWeight: "bold", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {p.name}{p.me ? " (나)" : ""}
                 </div>
-                {st && <div style={{ fontSize: 10, color: C.inkSoft, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{st}</div>}
+                {st && (
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                    <span style={{ fontSize: 10, color: C.inkSoft, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{st.msg}</span>
+                    <span style={{ flexShrink: 0, fontSize: 8.5, color: C.inkSoft, opacity: 0.75 }}>{hhmm2(st.at)}</span>
+                  </div>
+                )}
               </div>
               {p.online && !p.me && onGoTo && (
                 <button type="button" onClick={() => onGoTo(p.name)} title={`${p.name}님에게 찾아가기`}
@@ -15273,7 +15302,7 @@ function EchoTown() {
         return;
       }
       if (kind === "stat") {
-        if (p.name) setStatusMap((m) => ({ ...m, [p.name]: p.msg || "" }));
+        if (p.name) setStatusMap((m) => ({ ...m, [p.name]: { msg: p.msg || "", at: p.at || Date.now() } }));
         return;
       }
       if (kind === "lvl") {
@@ -15468,9 +15497,10 @@ function EchoTown() {
   const saveStatusMsg = (msg) => {
     const nm = normName(myName || "");
     if (!nm) return;
-    setStatusMap((m) => ({ ...m, [nm]: msg }));
+    const at = Date.now();
+    setStatusMap((m) => ({ ...m, [nm]: { msg, at } }));
     dbSaveStatusMsg(nm, msg);
-    if (netSendEvent) netSendEvent("stat", { name: nm, msg });
+    if (netSendEvent) netSendEvent("stat", { name: nm, msg, at });
   };
   const people = useMemo(() => {
     const online = Object.values(netOthers).map((o) => o.name).filter(Boolean);
@@ -16152,7 +16182,7 @@ function EchoTown() {
         </div>
       )}
       <CornerDock
-        questRail={<HQQuestRail quests={hqQuests} myName={myName} cats={(hqRoad && hqRoad.__cats && hqRoad.__cats.length) ? hqRoad.__cats : HQ_CATS_DEFAULT} onOpenWorld={(catId) => { setHqCat(catId); setHqOpen(true); }} />}
+        questRail={!hqOpen && myName ? <HQQuestRail quests={hqQuests} myName={myName} cats={(hqRoad && hqRoad.__cats && hqRoad.__cats.length) ? hqRoad.__cats : HQ_CATS_DEFAULT} onOpenWorld={(catId) => { setHqCat(catId); setHqOpen(true); }} /> : null}
         onSettings={() => setFontOpen(true)}
         msgCount={unreadMsgCount}
         questCount={unreadQuestCount}
