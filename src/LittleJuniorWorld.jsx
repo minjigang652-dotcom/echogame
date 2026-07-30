@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v155 · 2026-07-30";
+const APP_VERSION = "v157 · 2026-07-30";
 
 /* ───────── 📮→🏭 피드백 허브(정제소) 웹훅 ─────────
  * ⚠️ 브라우저 앱이라 시크릿 토큰을 클라이언트에 둘 수 없어요.
@@ -964,7 +964,7 @@ list.push({ id: "jjeop", kind: "small", x: 1820, y: 1210, r: 55, label: "🍴 �
     { id: "reels", label: "📱 릴스방", tint: "#3fa07a", x: 1985, y: 920 },
     { id: "minigame", label: "🎮 미니게임 방", tint: "#8e5a9e", x: 1770, y: 950 },
     { id: "smoke", label: "🚬 흡연의 방", tint: "#7a8b99", x: 1990, y: 1160 },
-    { id: "luck", label: "🕒 근무 기록소", tint: "#3fa07a", x: 1120, y: 970 },
+    { id: "luck", label: "🍀 초심자의 행운", tint: "#3fa07a", x: 1120, y: 970 },
     { id: "lotto", label: "🎟 복권방", tint: "#d94f70", x: 300, y: 470 },
   ];
   smalls.forEach((s) => list.push({ id: s.id, kind: "small", x: s.x, y: s.y, r: 55, label: s.label, tint: s.tint }));
@@ -2425,7 +2425,7 @@ const MY_ID = Math.random().toString(36).slice(2, 10);
 const PLACE_NAME = {
   world: "🏘 마을", center: "🏛 주민센터", house: "🏠 집", sea: "🌊 바다", fishing: "🎣 낚시터",
   petshop: "🐾 형욱이네", bank: "🏦 은행", board: "📋 게시판", thanks: "🙏 감사의 방", heart: "💗 마음의 방",
-  listening: "🎵 리스닝방", reels: "📱 릴스방", minigame: "🎮 미니게임", smoke: "🚬 흡연의 방", luck: "🕒 근무 기록소",
+  listening: "🎵 리스닝방", reels: "📱 릴스방", minigame: "🎮 미니게임", smoke: "🚬 흡연의 방", luck: "🍀 초심자의 행운",
   pool: "🏊 수영장", gym: "💪 헬스장", sandbag: "🥊 샌드백", jjeop: "🍴 쩝쩝박사",
   musinsa: "🛍 무신사", ikea: "🛒 이케아", project: "🗺 보스맵", questdone: "🏆 제단",
   coredict: "📚 코어사전", meeting: "🎥 회의실", naverschool: "📗 네이버스쿨", videoschool: "🎬 영상스쿨", lotto: "🎟 복권방",
@@ -5689,44 +5689,6 @@ function LiarGame({ onClose, onReward, myName = "", people = [], game, onAction 
         </div>
       )}
     </RoomModal>
-  );
-}
-
-/* ======================= 🕒 근무 기록소 (구 🍀 초심자의 행운 건물) =======================
- * 카테고리 버튼(🕒 세션 기록 / 📊 사람별 합계)으로 보고, 관리자 코드를 넣으면 전체 인원이 보여요.
- * 코드 없이 들어오면 본인 기록만 보여요. */
-const WORKROOM_ADMIN_PW = "ckdals987?";
-function WorkRoom({ onBack, bubble, myName = "" }) {
-  const FONT = "var(--game-font, 'DotGothic16', monospace)";
-  const [admin, setAdmin] = React.useState(false);
-  const [pwOpen, setPwOpen] = React.useState(false);
-  const [pw, setPw] = React.useState("");
-  const [pwErr, setPwErr] = React.useState(false);
-  return (
-    <RoomView title="🕒 근무 기록소" icon="🕒" sub="누가 · 몇시부터 몇시까지 · 어떤 업무를 얼마나 했는지" bg="#e9f5ec" roomW={640} roomH={400} furniture={[]} onBack={onBack} paused headerBg="#3fa07a" bubble={bubble} side={
-      <div style={{ padding: 12, fontFamily: FONT, height: "100%", overflow: "auto", boxSizing: "border-box" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-          <span style={{ flex: 1, fontSize: 10.5, fontWeight: "bold", color: admin ? C.good : C.inkSoft }}>{admin ? "🔓 관리자 — 전체 인원" : "🔒 내 기록만 보여요"}</span>
-          {admin
-            ? <PxButton tone="ink" onClick={() => setAdmin(false)} style={{ fontSize: 10, padding: "5px 9px" }}>관리자 해제</PxButton>
-            : <PxButton tone="wood" onClick={() => { setPwOpen(true); setPw(""); setPwErr(false); }} style={{ fontSize: 10, padding: "5px 9px" }}>🔑 관리자</PxButton>}
-        </div>
-        {pwOpen && !admin && (
-          <div style={{ background: C.white, border: `3px solid ${C.ink}`, borderRadius: 10, padding: 10, marginBottom: 10 }}>
-            <div style={{ fontSize: 11.5, fontWeight: "bold", marginBottom: 6 }}>관리자 코드를 입력하세요</div>
-            <input type="password" value={pw} autoFocus onChange={(e) => { setPw(e.target.value); setPwErr(false); }}
-              onKeyDown={(e) => { if (e.key === "Enter") { if (pw === WORKROOM_ADMIN_PW) { setAdmin(true); setPwOpen(false); } else setPwErr(true); } }}
-              style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `3px solid ${pwErr ? C.danger : C.ink}`, fontFamily: FONT, fontSize: 13, background: C.white }} />
-            {pwErr && <div style={{ fontSize: 10.5, color: C.danger, marginTop: 4, fontWeight: "bold" }}>코드가 틀렸어요</div>}
-            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-              <PxButton tone="ink" onClick={() => setPwOpen(false)} style={{ flex: 1, fontSize: 11, padding: 8 }}>취소</PxButton>
-              <PxButton tone="good" onClick={() => { if (pw === WORKROOM_ADMIN_PW) { setAdmin(true); setPwOpen(false); } else setPwErr(true); }} style={{ flex: 1, fontSize: 11, padding: 8 }}>확인</PxButton>
-            </div>
-          </div>
-        )}
-        <WorkReport myName={myName} isAdmin={admin} />
-      </div>
-    } />
   );
 }
 
@@ -15633,7 +15595,7 @@ function EchoTown() {
             else if (win > 0) showNotice(`🎟 복권 당첨! 🪙${win} 골드를 받았어요`);
             else showNotice("🎟 복권 꽝… 다음 기회에!");
           }} />}
-        {view === "luck" && <WorkRoom myName={myName} onBack={backToWorld} bubble={bubble} />}
+        {view === "luck" && <LuckRoom myName={myName} people={people} onBack={backToWorld} bubble={bubble} netSendEvent={netSendEvent} luckData={luckData} onLuckChange={setLuckData} />}
         {view === "levelboard" && <LevelBoard myName={myName} novices={novices} cfg={levelCfg} onSave={saveLevelCfg} onAddNovice={addNovice} onBack={backToWorld} />}
         {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => awardGold(n)} scores={swimScores} onRecord={(nick, time) => { setSwimScores((s) => [...s, { nick, time }]); bump("swim"); dbAddRank("swim", nick, time, null).then(reloadRanks); }} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => { awardGold(4); bump("gym"); }} bubble={bubble} />}
@@ -16426,7 +16388,6 @@ const dur = (m) => (m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60 ? (m % 60) +
 
 function WorkReport({ myName = "", isAdmin = false }) {
   const FONT = "var(--game-font, 'DotGothic16', monospace)";
-  const [cat, setCat] = React.useState("session");   // 🗂 카테고리 : session=세션 기록 / total=사람별 합계
   const [days, setDays] = React.useState(7);
   const [logs, setLogs] = React.useState(null);   // null=로딩
   const [who, setWho] = React.useState("");        // "" = 전체
@@ -16468,12 +16429,6 @@ function WorkReport({ myName = "", isAdmin = false }) {
   return (
     <div>
       <div style={{ ...card }}>
-        <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-          {[["session", "🕒 세션 기록"], ["total", "📊 사람별 합계"]].map(([k, lb]) => (
-            <button key={k} type="button" onClick={() => setCat(k)}
-              style={{ flex: 1, cursor: "pointer", fontFamily: FONT, fontSize: 12, fontWeight: "bold", padding: "8px 0", borderRadius: 10, border: `3px solid ${C.ink}`, background: cat === k ? C.gem : C.white, color: cat === k ? C.white : C.ink }}>{lb}</button>
-          ))}
-        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
           <b style={{ fontSize: 13 }}>🕒 근무 기록</b>
           <span style={{ fontSize: 10.5, color: C.inkSoft }}>{isAdmin ? "관리자 · 전체 인원" : "내 기록만 보여요"}</span>
@@ -16500,29 +16455,6 @@ function WorkReport({ myName = "", isAdmin = false }) {
       ) : shownNames.length === 0 ? (
         <div style={{ ...card, textAlign: "center", fontSize: 12, color: C.inkSoft, lineHeight: 1.8 }}>
           이 기간에 기록이 없어요 📭<br />네이버스쿨·영상스쿨에서 업무를 하면 자동으로 쌓여요.
-        </div>
-      ) : cat === "total" ? (
-        <div style={card}>
-          <div style={{ fontSize: 12.5, fontWeight: "bold", marginBottom: 8 }}>📊 사람별 합계 <span style={{ fontSize: 10.5, color: C.inkSoft, fontWeight: "normal" }}>· 최근 {days === 1 ? "오늘" : days + "일"}</span></div>
-          {shownNames.map((nm) => {
-            const r = report[nm];
-            const maxM = Math.max(...shownNames.map((x) => report[x].minutes || 0), 1);
-            return (
-              <div key={nm} style={{ borderTop: `2px dashed ${C.parchEdge}`, paddingTop: 8, marginTop: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <b style={{ fontSize: 12.5, minWidth: 62 }}>🌱 {nm}</b>
-                  <span style={{ fontSize: 11.5, fontWeight: "bold", color: C.good }}>{dur(r.minutes)}</span>
-                  <span style={{ fontSize: 10.5, color: C.inkSoft }}>· {r.acts}건 · {r.days.length}일 출근</span>
-                </div>
-                <div style={{ height: 10, background: "#efe9d8", border: `2px solid ${C.ink}`, borderRadius: 6, marginTop: 5, overflow: "hidden" }}>
-                  <div style={{ width: Math.round((r.minutes / maxM) * 100) + "%", height: "100%", background: C.good }} />
-                </div>
-              </div>
-            );
-          })}
-          <div style={{ borderTop: `3px solid ${C.ink}`, marginTop: 10, paddingTop: 8, fontSize: 12, fontWeight: "bold", textAlign: "right" }}>
-            전체 합계 {dur(shownNames.reduce((a, n) => a + (report[n].minutes || 0), 0))} · {shownNames.reduce((a, n) => a + (report[n].acts || 0), 0)}건
-          </div>
         </div>
       ) : shownNames.map((nm) => (
         <div key={nm} style={card}>
@@ -16565,6 +16497,7 @@ function LevelBoard({ myName = "", novices = [], cfg, onSave, onAddNovice, onBac
   const levels = (cfg && cfg.levels) || [];
   const assign = (cfg && cfg.assign) || {};
   const [unlocked, setUnlocked] = React.useState(false);
+  const [tab, setTab] = React.useState("level");
   const [codeIn, setCodeIn] = React.useState("");
   const [codeErr, setCodeErr] = React.useState(false);
   const [newName, setNewName] = React.useState("");
@@ -16610,9 +16543,17 @@ function LevelBoard({ myName = "", novices = [], cfg, onSave, onAddNovice, onBac
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "#efe6d2", display: "flex", flexDirection: "column", fontFamily: FONT }}>
-      <TitleBar icon="🎚" title="권한관리소" sub="초보자의 레벨을 정해요 · 숙련자는 레벨 없이 전체 개방" onBack={onBack} bg={C.parch} fg={C.ink} />
+      <TitleBar icon="🎚" title="권한관리소" sub="레벨 관리 · 🕒 근무 기록(몇시~몇시 · 업무 건수)" onBack={onBack} bg={C.parch} fg={C.ink} />
       <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
         <div style={{ maxWidth: 560, margin: "0 auto" }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+            {[["level", "🎚 레벨 관리"], ["work", "🕒 근무 기록"]].map(([k, lb]) => (
+              <button key={k} type="button" onClick={() => setTab(k)}
+                style={{ flex: 1, cursor: "pointer", fontFamily: FONT, fontSize: 12.5, fontWeight: "bold", padding: "9px 0", borderRadius: 10, border: `3px solid ${C.ink}`, background: tab === k ? C.gem : C.white, color: tab === k ? C.white : C.ink }}>{lb}</button>
+            ))}
+          </div>
+          {tab === "work" ? <WorkReport myName={myName} isAdmin={unlocked} /> : (
+          <>
           {!unlocked ? (
             <div style={{ ...card, textAlign: "center" }}>
               <div style={{ fontSize: 34 }}>🔒</div>
@@ -16685,6 +16626,8 @@ function LevelBoard({ myName = "", novices = [], cfg, onSave, onAddNovice, onBac
                 </div>
               </div>
             </>
+          )}
+          </>
           )}
         </div>
       </div>
