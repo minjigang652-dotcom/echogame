@@ -1,0 +1,385 @@
+import React, { useState } from "react";
+
+/* ============================================================================
+ *  🎬 VideoProducts — 제품별 영상스쿨 콘텐츠 (관리자 폼 → 자동 생성)
+ *    React 외 의존성 없음 (자립형 · 순환참조/TDZ 안전). 어디서든 재사용 가능.
+ *
+ *    제품 데이터 모델:
+ *    { id, name, coreRule, impactTip,
+ *      situations:[{tag,title,hook}], scripts:[전문…],
+ *      refTone, refEdit:[…],
+ *      editGuide:{ shorts:{top,bottom,side}, reels:{top,bottom,side} },
+ *      sourceTools:[{name,icon,desc,link}], keywords:{ ko:[], zh:[] … },
+ *      spec:{ length, ratio }, reward:{ submit, approve, bonus } }
+ * ========================================================================== */
+
+const P = { parch: "#f6efdd", edge: "#d8c9a6", ink: "#3a3228", soft: "#8a7f6a", white: "#fffdf6", accent: "#8e5a9e", accent2: "#4b8f5f", warn: "#e0a13d", pink: "#ff8fab", ok: "#4e9a3a", danger: "#c0563a", font: "var(--game-font, 'DotGothic16', monospace)" };
+const btn = (bg, fg = "#fff") => ({ cursor: "pointer", fontFamily: P.font, fontSize: 12, fontWeight: "bold", padding: "7px 11px", borderRadius: 8, border: `2px solid ${P.ink}`, background: bg, color: fg });
+const inp = { width: "100%", boxSizing: "border-box", fontFamily: P.font, fontSize: 12.5, padding: 8, border: `2px solid ${P.ink}`, borderRadius: 8, background: P.white, color: P.ink, resize: "vertical" };
+const lbl = { fontSize: 12, fontWeight: "bold", color: P.ink, margin: "10px 0 4px" };
+const hint = { fontSize: 10.5, color: P.soft, marginBottom: 4, lineHeight: 1.5 };
+
+export const REWARD_DEFAULT = { submit: 2, approve: 2, bonus: 4 };
+export function productReward(p) {
+  const r = (p && p.reward) || {};
+  return { submit: r.submit == null ? REWARD_DEFAULT.submit : r.submit, approve: r.approve == null ? REWARD_DEFAULT.approve : r.approve, bonus: r.bonus == null ? REWARD_DEFAULT.bonus : r.bonus };
+}
+export function emptyProduct() {
+  return { id: "p" + Date.now(), name: "", coreRule: "", impactTip: "", situations: [], scripts: ["", ""], refTone: "", refEdit: [""], editGuide: { shorts: { top: 120, bottom: 320, side: 40 }, reels: { top: 140, bottom: 360, side: 60 } }, sourceTools: [], keywords: { ko: [] }, spec: { length: "30초", ratio: "9:16" }, reward: {} };
+}
+
+export const DEFAULT_PRODUCTS = [{
+  id: "gohum", name: "고음확장기",
+  coreRule: "사랑받고 싶고 인정받고 싶은 마음을 건드리기",
+  impactTip: "노래 한번 배우면 10년은 써먹는 거 알아? — 같은 자극 대사",
+  situations: [
+    { tag: "노래방", title: "노래방만 가면 목이 쉬어요", hook: '"또 삑사리 났어.." 3옥타브의 벽' },
+    { tag: "회식", title: "회식 노래 순서가 공포예요", hook: "마이크만 잡으면 작아지는 나" },
+    { tag: "취미", title: "취미로 시작했다 진심이 됐다", hook: "그날 그 한 곡이 시작이었어요" },
+  ],
+  scripts: [
+    "(예시 원고 1) 나 원래 노래 진짜 못했거든? 근데 딱 하나 바꿨더니 삑사리가 사라졌어. 바로 '이거'. 오늘은 그 얘기를 해볼게. …",
+    "(예시 원고 2) 솔직히 노래학원 3개월 다녀도 안 늘던 내가, 집에서 이거 하나로 반 옥타브 올렸어. 방법은 생각보다 단순해. …",
+  ],
+  refTone: "https://youtube.com/",
+  refEdit: ["https://youtube.com/"],
+  editGuide: { shorts: { top: 120, bottom: 320, side: 40 }, reels: { top: 140, bottom: 360, side: 60 } },
+  sourceTools: [
+    { name: "샤오홍슈", icon: "📕", desc: "중국 레퍼런스 탐색", link: "https://www.xiaohongshu.com" },
+    { name: "도우인", icon: "🎵", desc: "숏폼 트렌드", link: "https://www.douyin.com" },
+    { name: "국내 참고 채널", icon: "📺", desc: "톤·구성 벤치마크", link: "" },
+    { name: "AI 영상 생성", icon: "🤖", desc: "컷/이미지 생성", link: "" },
+    { name: "다운로드 툴", icon: "⬇️", desc: "영상 소스 저장", link: "" },
+  ],
+  keywords: { ko: ["고음 내는 법", "삑사리 교정", "발성 연습", "성대 결절", "노래 잘하는 법"], zh: ["高音技巧", "唱歌方法", "嗓音训练"] },
+  spec: { length: "30초", ratio: "9:16" },
+  reward: { submit: 2, approve: 2, bonus: 4 },
+}];
+
+/* ---------- 🎬 규격 배지 ---------- */
+export function SpecBadge({ spec }) {
+  const s = spec || {};
+  if (!s.length && !s.ratio) return null;
+  return <span style={{ fontSize: 10.5, fontWeight: "bold", color: "#fff", background: P.accent, border: `2px solid ${P.ink}`, borderRadius: 10, padding: "2px 9px" }}>🎬 {[s.length, s.ratio].filter(Boolean).join(" · ")}</span>;
+}
+
+/* ---------- 📖 튜토리얼 (4슬라이드 · 인라인 재열람) ---------- */
+export function ProductTutorial({ product }) {
+  const key = "echotown_vtut_" + ((product && product.id) || "x");
+  const wasSeen = (() => { try { return window.localStorage.getItem(key) === "1"; } catch (e) { return false; } })();
+  const [open, setOpen] = useState(!wasSeen);   // 최초 1회 자동 펼침
+  const [i, setI] = useState(0);
+  React.useEffect(() => { if (!wasSeen) { try { window.localStorage.setItem(key, "1"); } catch (e) {} } }, []); // eslint-disable-line
+  const p = product || {};
+  const slides = [
+    { t: "① 핵심 코어 룰", body: (
+      <div>
+        <div style={{ fontSize: 13, fontWeight: "bold", color: P.accent, lineHeight: 1.6, marginBottom: 8 }}>“{p.coreRule || "핵심 코어 룰을 입력하세요"}”</div>
+        {p.impactTip && <div style={{ fontSize: 12, color: P.ink, background: P.parch, border: `2px solid ${P.edge}`, borderRadius: 8, padding: 9, lineHeight: 1.6 }}>💥 중간 임팩트 팁<br />{p.impactTip}</div>}
+      </div>
+    ) },
+    { t: "② 기본 상황 리스트", body: (
+      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+        {(p.situations || []).length === 0 && <div style={{ fontSize: 12, color: P.soft }}>상황이 아직 없어요.</div>}
+        {(p.situations || []).map((s, k) => (
+          <div key={k} style={{ background: P.white, border: `2px solid ${P.edge}`, borderRadius: 8, padding: 9 }}>
+            <span style={{ fontSize: 10, fontWeight: "bold", color: "#fff", background: P.accent2, borderRadius: 8, padding: "1px 7px" }}>#{s.tag}</span>
+            <div style={{ fontSize: 12.5, fontWeight: "bold", color: P.ink, marginTop: 4 }}>{s.title}</div>
+            <div style={{ fontSize: 11.5, color: P.soft, marginTop: 2 }}>{s.hook}</div>
+          </div>
+        ))}
+      </div>
+    ) },
+    { t: "③ 원고 예시", body: (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {(p.scripts || []).filter(Boolean).length === 0 && <div style={{ fontSize: 12, color: P.soft }}>원고 예시가 아직 없어요.</div>}
+        {(p.scripts || []).filter(Boolean).map((sc, k) => (
+          <div key={k} style={{ fontSize: 11.5, color: P.ink, whiteSpace: "pre-wrap", lineHeight: 1.6, background: P.parch, border: `2px solid ${P.edge}`, borderRadius: 8, padding: 9 }}>✍️ 예시 {k + 1}<br />{sc}</div>
+        ))}
+      </div>
+    ) },
+    { t: "④ 레퍼런스 영상", body: (
+      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+        {p.refTone ? <a href={p.refTone} target="_blank" rel="noreferrer" style={{ ...btn(P.white, P.accent), textDecoration: "none", display: "block", textAlign: "center" }}>🎙 원고 톤 레퍼런스 ↗</a> : <div style={{ fontSize: 12, color: P.soft }}>원고 톤 레퍼런스 미입력</div>}
+        {(p.refEdit || []).filter(Boolean).map((r, k) => (
+          <a key={k} href={r} target="_blank" rel="noreferrer" style={{ ...btn(P.white, P.accent2), textDecoration: "none", display: "block", textAlign: "center" }}>✂️ 편집 스타일 레퍼런스 {k + 1} ↗</a>
+        ))}
+      </div>
+    ) },
+  ];
+  const openTut = () => { setOpen(true); };
+  return (
+    <div style={{ marginBottom: 10, fontFamily: P.font }}>
+      {!open ? (
+        <button type="button" onClick={openTut} style={{ ...btn(P.accent), width: "100%", padding: 10 }}>📖 코어 다시보기 (튜토리얼)</button>
+      ) : (
+        <div style={{ background: P.white, border: `3px solid ${P.ink}`, borderRadius: 12, padding: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+            <b style={{ flex: 1, fontSize: 13, color: P.ink }}>📖 {p.name || "제품"} 코어</b>
+            <button type="button" onClick={() => setOpen(false)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 12, color: P.soft }}>▲ 접기</button>
+          </div>
+          <div style={{ fontSize: 12, fontWeight: "bold", color: P.accent, marginBottom: 8 }}>{slides[i].t}</div>
+          <div style={{ minHeight: 90 }}>{slides[i].body}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12 }}>
+            <button type="button" disabled={i === 0} onClick={() => setI(i - 1)} style={{ ...btn(i === 0 ? "#ddd" : P.white, P.ink), opacity: i === 0 ? 0.5 : 1 }}>◀</button>
+            <div style={{ flex: 1, textAlign: "center", fontSize: 11, color: P.soft }}>{i + 1} / {slides.length}</div>
+            {i < slides.length - 1
+              ? <button type="button" onClick={() => setI(i + 1)} style={btn(P.accent)}>다음 ▶</button>
+              : <button type="button" onClick={() => setOpen(false)} style={btn(P.ok)}>시작하기 ✓</button>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- 📐 편집 세이프존 다이어그램 (접이식) ---------- */
+export function SafeZoneDiagram({ editGuide }) {
+  const [open, setOpen] = useState(false);
+  const [plat, setPlat] = useState("shorts");
+  const g = (editGuide && editGuide[plat]) || { top: 0, bottom: 0, side: 0 };
+  const BW = 132, BH = 234, REF_W = 1080, REF_H = 1920;
+  const top = Math.round((g.top || 0) / REF_H * BH), bot = Math.round((g.bottom || 0) / REF_H * BH), side = Math.round((g.side || 0) / REF_W * BW);
+  const band = { position: "absolute", background: "rgba(255,143,171,0.35)", borderColor: P.pink };
+  return (
+    <div style={{ marginBottom: 10, fontFamily: P.font }}>
+      <button type="button" onClick={() => setOpen((o) => !o)} style={{ ...btn(P.warn), width: "100%", padding: 9 }}>{open ? "▲ 세이프존 가이드 접기" : "📐 편집 세이프존 가이드 펼치기"}</button>
+      {open && (
+        <div style={{ background: P.white, border: `2px solid ${P.edge}`, borderRadius: 10, padding: 12, marginTop: 8 }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+            {["shorts", "reels"].map((pl) => (
+              <button key={pl} type="button" onClick={() => setPlat(pl)} style={btn(plat === pl ? P.accent : P.white, plat === pl ? "#fff" : P.ink)}>{pl === "shorts" ? "▶️ 쇼츠" : "📸 릴스"}</button>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+            <div style={{ position: "relative", width: BW, height: BH, background: "#2a2340", border: `3px solid ${P.ink}`, borderRadius: 10, flexShrink: 0, overflow: "hidden" }}>
+              <div style={{ ...band, top: 0, left: 0, right: 0, height: top, borderBottom: `2px dashed ${P.pink}` }} />
+              <div style={{ ...band, bottom: 0, left: 0, right: 0, height: bot, borderTop: `2px dashed ${P.pink}` }} />
+              <div style={{ ...band, top: 0, bottom: 0, left: 0, width: side, borderRight: `2px dashed ${P.pink}` }} />
+              <div style={{ ...band, top: 0, bottom: 0, right: 0, width: side, borderLeft: `2px dashed ${P.pink}` }} />
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 10, opacity: 0.85 }}>안전 영역</div>
+            </div>
+            <div style={{ fontSize: 12, color: P.ink, lineHeight: 1.9 }}>
+              <div>⬆️ 상단 <b>{g.top}px</b> — 프로필·시간</div>
+              <div>⬇️ 하단 <b>{g.bottom}px</b> — 캡션·버튼</div>
+              <div>↔️ 좌우 <b>{g.side}px</b> — UI 여백</div>
+              <div style={{ fontSize: 10, color: P.soft, marginTop: 6 }}>* 핑크 영역엔 핵심 자막을 넣지 마세요 (기준 {REF_W}×{REF_H})</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- 🎒 소스 찾기 도구 벨트 ---------- */
+export function SourceBelt({ tools = [] }) {
+  const [pick, setPick] = useState(null);
+  if (!tools.length) return null;
+  const cur = pick != null ? tools[pick] : null;
+  return (
+    <div style={{ marginBottom: 10, fontFamily: P.font }}>
+      <div style={{ fontSize: 12, fontWeight: "bold", color: P.ink, marginBottom: 6 }}>🎒 소스 찾기 도구</div>
+      <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "2px 2px 6px" }}>
+        {tools.map((tl, k) => (
+          <button key={k} type="button" onClick={() => setPick(pick === k ? null : k)} title={tl.desc}
+            style={{ flexShrink: 0, width: 70, cursor: "pointer", fontFamily: P.font, background: pick === k ? P.parch : P.white, border: `2px solid ${pick === k ? P.accent : P.ink}`, borderRadius: 10, padding: "8px 4px", textAlign: "center" }}>
+            <div style={{ fontSize: 24, lineHeight: 1 }}>{tl.icon || "🧰"}</div>
+            <div style={{ fontSize: 10, color: P.ink, marginTop: 4, wordBreak: "keep-all" }}>{tl.name}</div>
+          </button>
+        ))}
+      </div>
+      {cur && (
+        <div style={{ background: P.white, border: `2px solid ${P.edge}`, borderRadius: 8, padding: 9, marginTop: 4 }}>
+          <div style={{ fontSize: 12, fontWeight: "bold", color: P.ink }}>{cur.icon} {cur.name}</div>
+          {cur.desc && <div style={{ fontSize: 11, color: P.soft, margin: "3px 0 6px", lineHeight: 1.5 }}>{cur.desc}</div>}
+          {cur.link ? <a href={cur.link} target="_blank" rel="noreferrer" style={{ ...btn(P.accent2), textDecoration: "none", display: "inline-block", fontSize: 11 }}>열기 ↗</a> : <span style={{ fontSize: 10.5, color: P.soft }}>링크 없음</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- 🏷 키워드 칩 (언어별 · 클릭 복사) ---------- */
+const LANG_LABEL = { ko: "🇰🇷 한국어", zh: "🇨🇳 중국어", en: "🇺🇸 영어", ja: "🇯🇵 일본어" };
+export function KeywordChips({ keywords = {} }) {
+  const langs = Object.keys(keywords).filter((l) => (keywords[l] || []).length);
+  const [lang, setLang] = useState(langs[0] || "ko");
+  const [copied, setCopied] = useState("");
+  if (!langs.length) return null;
+  const list = keywords[lang] || [];
+  const copy = (w) => { try { navigator.clipboard.writeText(w); setCopied(w); setTimeout(() => setCopied(""), 1000); } catch (e) {} };
+  return (
+    <div style={{ marginBottom: 10, fontFamily: P.font }}>
+      <div style={{ fontSize: 12, fontWeight: "bold", color: P.ink, marginBottom: 6 }}>🏷 키워드 <span style={{ fontSize: 10, color: P.soft }}>· 눌러서 복사</span></div>
+      {langs.length > 1 && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+          {langs.map((l) => (
+            <button key={l} type="button" onClick={() => setLang(l)} style={{ ...btn(lang === l ? P.accent : P.white, lang === l ? "#fff" : P.ink), fontSize: 11, padding: "5px 9px" }}>{LANG_LABEL[l] || l}</button>
+          ))}
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {list.map((w, k) => (
+          <button key={k} type="button" onClick={() => copy(w)} style={{ cursor: "pointer", fontFamily: P.font, fontSize: 11.5, padding: "5px 10px", borderRadius: 14, border: `2px solid ${P.ink}`, background: copied === w ? P.ok : P.white, color: copied === w ? "#fff" : P.ink }}>{copied === w ? "복사됨 ✓" : w}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- 🧭 제품 선택 바 (+ 관리자 추가/편집) ---------- */
+export function ProductBar({ products = [], selectedId, onSelect, isAdmin, onAdd, onEdit }) {
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 10, fontFamily: P.font }}>
+      {products.map((p) => (
+        <button key={p.id} type="button" onClick={() => onSelect && onSelect(p.id)} style={{ ...btn(selectedId === p.id ? P.accent : P.white, selectedId === p.id ? "#fff" : P.ink) }}>📦 {p.name}</button>
+      ))}
+      {products.length === 0 && <span style={{ fontSize: 11.5, color: P.soft }}>아직 제품이 없어요 · 관리자가 추가할 수 있어요</span>}
+      <span style={{ flex: 1 }} />
+      {isAdmin && selectedId && onEdit && <button type="button" onClick={onEdit} style={btn(P.white, P.ink)}>✏️ 편집</button>}
+      {isAdmin && <button type="button" onClick={onAdd} style={btn(P.ok)}>➕ 제품 추가</button>}
+    </div>
+  );
+}
+
+/* 폼용 리스트 (모듈 레벨 = 렌더 시 재생성 안 됨 · 입력 포커스 유지) */
+function FieldList({ items, render, add, addLabel }) {
+  return (
+    <div>
+      {items.map((it, i) => render(it, i))}
+      <button type="button" onClick={add} style={{ ...btn(P.white, P.ink), fontSize: 11, marginTop: 4 }}>＋ {addLabel}</button>
+    </div>
+  );
+}
+
+/* ---------- 📝 제품 추가/편집 폼 ---------- */
+export function ProductForm({ initial, onSave, onCancel, onDelete }) {
+  const [p, setP] = useState(() => ({ ...emptyProduct(), ...(initial || {}), editGuide: { shorts: { ...(initial && initial.editGuide && initial.editGuide.shorts || { top: 120, bottom: 320, side: 40 }) }, reels: { ...(initial && initial.editGuide && initial.editGuide.reels || { top: 140, bottom: 360, side: 60 }) } }, spec: { ...(initial && initial.spec || { length: "30초", ratio: "9:16" }) }, keywords: { ...(initial && initial.keywords || { ko: [] }) }, reward: { ...(initial && initial.reward || {}) } }));
+  const set = (k, v) => setP((o) => ({ ...o, [k]: v }));
+  const setGuide = (pl, k, v) => setP((o) => ({ ...o, editGuide: { ...o.editGuide, [pl]: { ...o.editGuide[pl], [k]: Number(v) || 0 } } }));
+  const [newLang, setNewLang] = useState("");
+
+  const save = () => {
+    if (!p.name.trim()) { window.alert("제품명을 입력하세요."); return; }
+    const clean = { ...p, name: p.name.trim(), scripts: (p.scripts || []).map((s) => s.trim()).filter(Boolean), refEdit: (p.refEdit || []).map((s) => s.trim()).filter(Boolean), situations: (p.situations || []).filter((s) => (s.title || s.tag || s.hook)) };
+    // reward: 빈칸이면 제거(→ 기본값 사용)
+    const rw = {}; ["submit", "approve", "bonus"].forEach((k) => { if (p.reward && p.reward[k] !== "" && p.reward[k] != null) rw[k] = Number(p.reward[k]); });
+    clean.reward = rw;
+    onSave && onSave(clean);
+  };
+
+  return (
+    <div onClick={onCancel} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 12, fontFamily: P.font }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, maxHeight: "92%", overflow: "auto", background: P.parch, border: `4px solid ${P.ink}`, borderRadius: 14, padding: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+          <b style={{ flex: 1, fontSize: 15, color: P.ink }}>{initial && initial.id ? "✏️ 제품 편집" : "➕ 제품 추가"}</b>
+          <button type="button" onClick={onCancel} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 16 }}>✕</button>
+        </div>
+        <div style={{ ...hint, marginBottom: 10 }}>이 양식을 채우면 그 제품 전용 튜토리얼 + 원고/소스/편집 세트가 자동으로 만들어져요.</div>
+
+        <div style={lbl}>제품명 *</div>
+        <input value={p.name} onChange={(e) => set("name", e.target.value)} placeholder="예: 고음확장기" style={inp} />
+
+        <div style={lbl}>핵심 코어 룰 (한 줄)</div>
+        <input value={p.coreRule} onChange={(e) => set("coreRule", e.target.value)} placeholder='예: 사랑받고 싶고 인정받고 싶은 마음을 건드리기' style={inp} />
+
+        <div style={lbl}>중간 임팩트 팁</div>
+        <input value={p.impactTip} onChange={(e) => set("impactTip", e.target.value)} placeholder="예: 노래 한번 배우면 10년은 써먹는 거 알아?" style={inp} />
+
+        <div style={lbl}>기본 상황 리스트</div>
+        <div style={hint}>태그 / 포스터 제목 / 한 줄 훅 — 원고 작성 탭의 시작 포스터가 돼요</div>
+        <FieldList items={p.situations} addLabel="상황 추가" add={() => set("situations", [...p.situations, { tag: "", title: "", hook: "" }])}
+          render={(s, i) => (
+            <div key={i} style={{ background: P.white, border: `2px solid ${P.edge}`, borderRadius: 8, padding: 8, marginBottom: 6 }}>
+              <div style={{ display: "flex", gap: 6, marginBottom: 5 }}>
+                <input value={s.tag} onChange={(e) => set("situations", p.situations.map((x, j) => j === i ? { ...x, tag: e.target.value } : x))} placeholder="태그" style={{ ...inp, flex: "0 0 90px" }} />
+                <input value={s.title} onChange={(e) => set("situations", p.situations.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} placeholder="포스터 제목" style={{ ...inp, flex: 1 }} />
+                <button type="button" onClick={() => set("situations", p.situations.filter((_, j) => j !== i))} style={{ ...btn(P.white, P.danger), padding: "6px 8px" }}>✕</button>
+              </div>
+              <input value={s.hook} onChange={(e) => set("situations", p.situations.map((x, j) => j === i ? { ...x, hook: e.target.value } : x))} placeholder="한 줄 훅" style={inp} />
+            </div>
+          )} />
+
+        <div style={lbl}>원고 예시 (2개 이상 권장)</div>
+        <FieldList items={p.scripts} addLabel="원고 예시 추가" add={() => set("scripts", [...p.scripts, ""])}
+          render={(sc, i) => (
+            <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+              <textarea value={sc} onChange={(e) => set("scripts", p.scripts.map((x, j) => j === i ? e.target.value : x))} rows={2} placeholder={`원고 예시 ${i + 1} 전문`} style={{ ...inp, flex: 1 }} />
+              <button type="button" onClick={() => set("scripts", p.scripts.filter((_, j) => j !== i))} style={{ ...btn(P.white, P.danger), padding: "6px 8px" }}>✕</button>
+            </div>
+          )} />
+
+        <div style={lbl}>레퍼런스 영상</div>
+        <input value={p.refTone} onChange={(e) => set("refTone", e.target.value)} placeholder="원고 톤 레퍼런스 링크" style={{ ...inp, marginBottom: 6 }} />
+        <FieldList items={p.refEdit} addLabel="편집 레퍼런스 추가" add={() => set("refEdit", [...p.refEdit, ""])}
+          render={(r, i) => (
+            <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+              <input value={r} onChange={(e) => set("refEdit", p.refEdit.map((x, j) => j === i ? e.target.value : x))} placeholder={`편집 스타일 레퍼런스 ${i + 1}`} style={{ ...inp, flex: 1 }} />
+              <button type="button" onClick={() => set("refEdit", p.refEdit.filter((_, j) => j !== i))} style={{ ...btn(P.white, P.danger), padding: "6px 8px" }}>✕</button>
+            </div>
+          )} />
+
+        <div style={lbl}>편집 가이드 (세이프존 px)</div>
+        {["shorts", "reels"].map((pl) => (
+          <div key={pl} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
+            <span style={{ fontSize: 11, width: 44, color: P.soft }}>{pl === "shorts" ? "쇼츠" : "릴스"}</span>
+            {["top", "bottom", "side"].map((k) => (
+              <input key={k} type="number" value={p.editGuide[pl][k]} onChange={(e) => setGuide(pl, k, e.target.value)} placeholder={k} title={k} style={{ ...inp, flex: 1 }} />
+            ))}
+          </div>
+        ))}
+        <div style={hint}>상단 / 하단 / 좌우 안전영역 (기준 1080×1920)</div>
+
+        <div style={lbl}>소스 찾기 도구</div>
+        <FieldList items={p.sourceTools} addLabel="도구 추가" add={() => set("sourceTools", [...p.sourceTools, { name: "", icon: "", desc: "", link: "" }])}
+          render={(tl, i) => (
+            <div key={i} style={{ background: P.white, border: `2px solid ${P.edge}`, borderRadius: 8, padding: 8, marginBottom: 6 }}>
+              <div style={{ display: "flex", gap: 6, marginBottom: 5 }}>
+                <input value={tl.icon} onChange={(e) => set("sourceTools", p.sourceTools.map((x, j) => j === i ? { ...x, icon: e.target.value } : x))} placeholder="🎵" style={{ ...inp, flex: "0 0 54px", textAlign: "center" }} />
+                <input value={tl.name} onChange={(e) => set("sourceTools", p.sourceTools.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="이름" style={{ ...inp, flex: 1 }} />
+                <button type="button" onClick={() => set("sourceTools", p.sourceTools.filter((_, j) => j !== i))} style={{ ...btn(P.white, P.danger), padding: "6px 8px" }}>✕</button>
+              </div>
+              <input value={tl.desc} onChange={(e) => set("sourceTools", p.sourceTools.map((x, j) => j === i ? { ...x, desc: e.target.value } : x))} placeholder="설명" style={{ ...inp, marginBottom: 5 }} />
+              <input value={tl.link} onChange={(e) => set("sourceTools", p.sourceTools.map((x, j) => j === i ? { ...x, link: e.target.value } : x))} placeholder="링크 (선택)" style={inp} />
+            </div>
+          )} />
+
+        <div style={lbl}>키워드 모음집 (언어별)</div>
+        {Object.keys(p.keywords).map((l) => (
+          <div key={l} style={{ marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+              <span style={{ fontSize: 11, fontWeight: "bold", flex: 1, color: P.ink }}>{LANG_LABEL[l] || l}</span>
+              <button type="button" onClick={() => setP((o) => { const kw = { ...o.keywords }; delete kw[l]; return { ...o, keywords: kw }; })} style={{ ...btn(P.white, P.danger), fontSize: 10, padding: "3px 7px" }}>언어 삭제</button>
+            </div>
+            <textarea value={(p.keywords[l] || []).join("\n")} onChange={(e) => setP((o) => ({ ...o, keywords: { ...o.keywords, [l]: e.target.value.split(/\n+/).map((x) => x.trim()).filter(Boolean) } }))} rows={2} placeholder="한 줄에 하나씩" style={inp} />
+          </div>
+        ))}
+        <div style={{ display: "flex", gap: 6 }}>
+          <input value={newLang} onChange={(e) => setNewLang(e.target.value)} placeholder="언어코드 추가 (ko/zh/en/ja)" style={{ ...inp, flex: 1 }} />
+          <button type="button" onClick={() => { const l = newLang.trim(); if (l && !p.keywords[l]) { setP((o) => ({ ...o, keywords: { ...o.keywords, [l]: [] } })); setNewLang(""); } }} style={btn(P.white, P.ink)}>＋ 언어</button>
+        </div>
+
+        <div style={lbl}>영상 규격</div>
+        <div style={{ display: "flex", gap: 6 }}>
+          <input value={p.spec.length} onChange={(e) => setP((o) => ({ ...o, spec: { ...o.spec, length: e.target.value } }))} placeholder="길이 (예: 30초)" style={{ ...inp, flex: 1 }} />
+          <input value={p.spec.ratio} onChange={(e) => setP((o) => ({ ...o, spec: { ...o.spec, ratio: e.target.value } }))} placeholder="비율 (예: 9:16)" style={{ ...inp, flex: 1 }} />
+        </div>
+
+        <div style={lbl}>리워드 정책 (선택 · 비우면 기본값 2/2/보너스4)</div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {[["submit", "제출G"], ["approve", "승인G"], ["bonus", "완주보너스"]].map(([k, ph]) => (
+            <input key={k} type="number" value={p.reward[k] == null ? "" : p.reward[k]} onChange={(e) => setP((o) => ({ ...o, reward: { ...o.reward, [k]: e.target.value } }))} placeholder={ph} style={{ ...inp, flex: 1 }} />
+          ))}
+        </div>
+
+        <div style={{ display: "flex", gap: 6, marginTop: 16 }}>
+          {initial && initial.id && onDelete && <button type="button" onClick={() => { if (window.confirm("이 제품을 삭제할까요? (제출 데이터는 남아있어요)")) onDelete(initial.id); }} style={{ ...btn(P.white, P.danger) }}>🗑 삭제</button>}
+          <span style={{ flex: 1 }} />
+          <button type="button" onClick={onCancel} style={btn(P.white, P.ink)}>취소</button>
+          <button type="button" onClick={save} style={btn(P.ok)}>💾 저장</button>
+        </div>
+      </div>
+    </div>
+  );
+}
