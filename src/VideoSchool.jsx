@@ -171,7 +171,7 @@ function StageBadge({ st }) {
 }
 
 /* 🎬 영상스쿨 퀘스트 게시판 (집 하나 = 카테고리 하나) */
-function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, tier = "high", product, products = [] }) {
+function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, tier = "high", product, products = [], onOpenTutorial }) {
   const topics = (vdata && vdata.topics) || [];
   const me = myName || "익명";
   const RW = productReward(product);
@@ -313,7 +313,7 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
         {stage === "edit" && "원고+소스가 모두 승인된 주제만 편집을 시작할 수 있어요."}
         {stage === "upload" && "편집이 승인된 주제에 캡션+해시태그를 달아 게시해요."}
       </div>
-      {product && stage === "script" && <ProductTutorial product={product} />}
+      {product && stage === "script" && onOpenTutorial && <button type="button" onClick={onOpenTutorial} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", color: "#4f46e5", background: "#e0e2fc", border: "1.5px solid #c3c7f5", borderRadius: 999, padding: "5px 12px", marginBottom: 8 }}>📖 STEP 0 · 코어 / 원고 예시 다시보기</button>}
       {product && stage === "source" && (<><SourceBelt tools={product.sourceTools} /><KeywordChips keywords={product.keywords} /></>)}
       {product && stage === "edit" && <SafeZoneDiagram editGuide={product.editGuide} />}
       {displayTopics.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 20 }}>주제가 없어요. 🧑 주인공 만들기에서 먼저 만들어주세요!</div>}
@@ -477,6 +477,14 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
   }, [school]);
   const vProducts = (vdata.products && vdata.products.length) ? vdata.products : DEFAULT_PRODUCTS;
   const curProduct = vProducts.find((p) => p.id === selProd) || vProducts[0];
+  /* 📖 STEP0 온보딩 튜토리얼 — 영상스쿨 입장 시 자동 팝업(상품별 최초 1회) + 다시보기 */
+  const [tutOpen, setTutOpen] = useState(false);
+  useEffect(() => {
+    if (school !== "videoschool" || !curProduct) return;
+    const k = "echotown_vtut_seen_" + curProduct.id;
+    let seen = false; try { seen = window.localStorage.getItem(k) === "1"; } catch (e) {}
+    if (!seen) { setTutOpen(true); try { window.localStorage.setItem(k, "1"); } catch (e) {} }
+  }, [school, curProduct && curProduct.id]); // eslint-disable-line
   useEffect(() => { if (!vProducts.some((p) => p.id === selProd)) setSelProd((vProducts[0] && vProducts[0].id) || ""); }, [vProducts]); // eslint-disable-line
   const tryProdAdmin = () => { if (prodAdmin) { setFormProduct("new"); return; } const c = window.prompt("🔒 제품 추가/편집은 관리자 코드가 필요해요.\n관리자 코드를 입력하세요:"); if (c != null && c.trim() === VS_ADMIN_PW) { setProdAdmin(true); setFormProduct("new"); } else if (c != null) window.alert("코드가 틀렸어요."); };
   const saveProduct = (prod) => {
@@ -588,6 +596,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
 @keyframes vsPartyPulse{0%,100%{box-shadow:0 0 0 0 rgba(219,39,119,0.35);}50%{box-shadow:0 0 0 6px rgba(219,39,119,0);}}
 `}</style>
       {chatOpen && <ChatBot onClose={() => setChatOpen(false)} />}
+      {school === "videoschool" && <ProductTutorial product={curProduct} open={tutOpen} onClose={() => setTutOpen(false)} />}
       {vToast && <div style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 120, background: C.ink, color: "#ffe680", border: `2px solid ${C.gem}`, borderRadius: 20, padding: "9px 18px", fontSize: 13, fontFamily: "'DotGothic16', monospace", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>{vToast}</div>}
       <TitleBar tipId={school} icon={s.icon} title={s.title} sub="WASD 이동 · 집 근처에서 E · 아무 집이나 자유롭게" onBack={onBack} bg={s.color} fg={C.white}
         right={<div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -604,7 +613,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
           <>
             <ProductBar products={vProducts} selectedId={curProduct && curProduct.id} onSelect={setSelProd} isAdmin={prodAdmin} onAdd={tryProdAdmin} onEdit={() => { if (prodAdmin) setFormProduct(curProduct); else tryProdAdmin(); }} />
             {!prodAdmin && <div style={{ textAlign: "right", marginBottom: 8 }}><button type="button" onClick={tryProdAdmin} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 10.5, color: C.inkSoft, fontFamily: "'DotGothic16', monospace" }}>🔒 관리자 (제품 추가/편집)</button></div>}
-            {curProduct && <div style={{ marginBottom: 8 }}><SpecBadge spec={curProduct.spec} /></div>}
+            {curProduct && <div style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}><SpecBadge spec={curProduct.spec} /><button type="button" onClick={() => setTutOpen(true)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", color: "#4f46e5", background: "#e0e2fc", border: "1.5px solid #c3c7f5", borderRadius: 999, padding: "3px 11px" }}>📖 STEP 0 · 코어 다시보기</button></div>}
           </>
         )}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -668,7 +677,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
                     <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 13, flex: 1 }}>{open.title}</div>
                     <PxButton tone="ink" onClick={() => setOpen(null)} style={{ fontSize: 12, padding: "6px 12px" }}>닫기</PxButton>
                   </div>
-                  <VideoBoard house={open} vdata={vdata} setVData={setVData} saveVData={saveVData} myName={myName} reward={handleReward} toast={vToastFn} tier={tier} product={curProduct} products={vProducts} />
+                  <VideoBoard house={open} vdata={vdata} setVData={setVData} saveVData={saveVData} myName={myName} reward={handleReward} toast={vToastFn} tier={tier} product={curProduct} products={vProducts} onOpenTutorial={() => setTutOpen(true)} />
                 </div>
               ) : (
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
