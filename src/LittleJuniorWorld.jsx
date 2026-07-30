@@ -14323,13 +14323,26 @@ function EchoTown() {
     if (netSendEvent) netSendEvent("lvl", { cfg: clean });
   };
   /* 이름 → 레벨 판정 (미배정=기본 제한레벨 · 단 기존 숙련자코드 사용자는 개방 유지해 잠금 방지) */
+  /* 이름 → 레벨 판정
+     · 숙련자(기존 사용자)는 레벨이 없어요 → null 반환 = 전체 개방
+     · 초보자만 레벨을 가져요 (초보자 명단에 있거나 · 노비스 코드로 들어왔거나 · 관리소에서 배정됐으면 초보자)
+     · 초보자인데 배정이 없으면 기본 = 🌱 성장하는 제작자 */
   const levelForName = (nm) => {
+    const key = normName(nm);
+    const isBeginner = gateRole === "novice"
+      || (novices || []).some((x) => normName(x) === key)
+      || !!(levelCfg.assign && key in levelCfg.assign);
+    if (!isBeginner) return null;
     const levels = levelCfg.levels || [];
     if (!levels.length) return null;
-    const id = levelCfg.assign && levelCfg.assign[normName(nm)];
-    let lv = levels.find((l) => l.id === id);
-    if (!lv) lv = (gateRole === "expert") ? (levels.find((l) => l.access === "full") || levels[0]) : levels[0];
-    return lv || null;
+    const id = levelCfg.assign && levelCfg.assign[key];
+    return levels.find((l) => l.id === id) || levels.find((l) => l.id === "grow") || levels[0] || null;
+  };
+  /* 🌱 관리소에서 초보자를 명단에 추가 */
+  const addNovice = (name) => {
+    const t = (name || "").trim(); if (!t) return;
+    try { dbSaveNovice(t); } catch (e) {}
+    setNovices((v) => (v.map(normName).includes(normName(t)) ? v : [...v, t]));
   };
   const [qAccept, setQAccept] = useState({});
   const qAccRef = useRef({});
@@ -15303,7 +15316,7 @@ function EchoTown() {
             else showNotice("🎟 복권 꽝… 다음 기회에!");
           }} />}
         {view === "luck" && <LuckRoom myName={myName} people={people} onBack={backToWorld} bubble={bubble} netSendEvent={netSendEvent} luckData={luckData} onLuckChange={setLuckData} />}
-        {view === "levelboard" && <LevelBoard myName={myName} people={people} cfg={levelCfg} onSave={saveLevelCfg} onBack={backToWorld} />}
+        {view === "levelboard" && <LevelBoard myName={myName} novices={novices} cfg={levelCfg} onSave={saveLevelCfg} onAddNovice={addNovice} onBack={backToWorld} />}
         {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => awardGold(n)} scores={swimScores} onRecord={(nick, time) => { setSwimScores((s) => [...s, { nick, time }]); bump("swim"); dbAddRank("swim", nick, time, null).then(reloadRanks); }} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => { awardGold(4); bump("gym"); }} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} myName={myName} chat={smokeChat}
@@ -16038,7 +16051,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-function LevelBoard({ myName = "", people = [], cfg, onSave, onBack }) {
+function LevelBoard({ myName = "", novices = [], cfg, onSave, onAddNovice, onBack }) {
   const FONT = "var(--game-font, 'DotGothic16', monospace)";
   const levels = (cfg && cfg.levels) || [];
   const assign = (cfg && cfg.assign) || {};
@@ -16074,9 +16087,13 @@ function LevelBoard({ myName = "", people = [], cfg, onSave, onBack }) {
   };
   const removeAssign = (key) => { const a = { ...assign }; delete a[key]; push({ assign: a }); };
 
-  const countFor = (id) => Object.keys(assign).filter((k) => assign[k] === id).length;
+  const growId = (levels.find((l) => l.id === "grow") || levels[0] || {}).id || "";
   const levelName = (id) => { const l = levels.find((x) => x.id === id); return l ? l.name : "(삭제된 레벨)"; };
-  const knownUnassigned = (people || []).map((p) => p && p.name).filter(Boolean).filter((n) => !(normName(n) in assign));
+  // 관리 대상 = 초보자 명단(novices) ∪ 이미 배정된 사람 — 숙련자(기존 사용자)는 여기 없어요
+  const begNames = Array.from(new Set([...(novices || []).map(normName), ...Object.keys(assign)])).filter(Boolean).sort((a, b) => a.localeCompare(b, "ko"));
+  const levelOf = (key) => (assign[key] || growId);   // 미지정 초보자 = 🌱 성장하는 제작자
+  const countFor = (id) => begNames.filter((k) => levelOf(k) === id).length;
+  const unsetCount = begNames.filter((k) => !(k in assign)).length;
 
   const card = { background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 14, marginBottom: 14 };
   const inp = { fontFamily: FONT, fontSize: 13, padding: "8px 10px", border: `2px solid ${C.ink}`, borderRadius: 8, background: "#fffdf6", color: C.ink, minWidth: 0 };
@@ -16084,7 +16101,7 @@ function LevelBoard({ myName = "", people = [], cfg, onSave, onBack }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "#efe6d2", display: "flex", flexDirection: "column", fontFamily: FONT }}>
-      <TitleBar icon="🎚" title="권한관리소" sub="사람별 레벨을 바꾸면 모두에게 즉시 반영돼요" onBack={onBack} bg={C.parch} fg={C.ink} />
+      <TitleBar icon="🎚" title="권한관리소" sub="초보자의 레벨을 정해요 · 숙련자는 레벨 없이 전체 개방" onBack={onBack} bg={C.parch} fg={C.ink} />
       <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
         <div style={{ maxWidth: 560, margin: "0 auto" }}>
           {!unlocked ? (
@@ -16098,7 +16115,7 @@ function LevelBoard({ myName = "", people = [], cfg, onSave, onBack }) {
               {codeErr && <div style={{ color: C.danger, fontSize: 12, marginBottom: 8 }}>코드가 틀렸어요</div>}
               <PxButton tone="gold" onClick={tryUnlock} style={{ width: "100%", padding: 11, fontSize: 13 }}>확인</PxButton>
               <div style={{ marginTop: 14, textAlign: "left", fontSize: 11.5, color: C.inkSoft, lineHeight: 1.7 }}>
-                지금 레벨 : {levels.map((l) => `${l.name}(${l.access === "full" ? "전체개방" : "제한"}·${countFor(l.id)}명)`).join(" · ")}
+                지금 초보자 : {begNames.length}명 · {levels.map((l) => `${l.name} ${countFor(l.id)}명`).join(" · ")}
               </div>
             </div>
           ) : (
@@ -16122,45 +16139,40 @@ function LevelBoard({ myName = "", people = [], cfg, onSave, onBack }) {
                 </div>
               </div>
 
-              {/* 👥 사람 배정 */}
+              {/* 🌱 초보자 레벨 배정 */}
               <div style={card}>
-                <div style={{ fontSize: 14, fontWeight: "bold", marginBottom: 10 }}>👥 사람 ↔ 레벨 배정</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-                  <input placeholder="이름 입력 (초보자도 가능)" value={newName} onChange={(e) => setNewName(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && newName.trim() && newLevelId) { assignName(newName, newLevelId); setNewName(""); } }} style={{ ...inp, flex: 1 }} />
+                <div style={{ fontSize: 14, fontWeight: "bold", marginBottom: 4 }}>🌱 초보자 레벨</div>
+                <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 10, lineHeight: 1.6 }}>여기 뜨는 사람이 초보자예요 · 숙련자(기존 사용자)는 레벨 없이 전체 개방이라 안 나와요 · 레벨 안 정한 초보자는 자동으로 {levelName(growId)}</div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+                  <input placeholder="초보자 이름 추가" value={newName} onChange={(e) => setNewName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && newName.trim()) { if (onAddNovice) onAddNovice(newName); assignName(newName, newLevelId || growId); setNewName(""); } }} style={{ ...inp, flex: 1 }} />
                   <select value={newLevelId} onChange={(e) => setNewLevelId(e.target.value)} style={sel}>
                     {levels.map((l) => (<option key={l.id} value={l.id}>{l.name}</option>))}
                   </select>
-                  <PxButton tone="good" onClick={() => { if (newName.trim() && newLevelId) { assignName(newName, newLevelId); setNewName(""); } }} style={{ fontSize: 12, padding: "8px 12px" }}>＋ 배정</PxButton>
+                  <PxButton tone="good" onClick={() => { if (newName.trim()) { if (onAddNovice) onAddNovice(newName); assignName(newName, newLevelId || growId); setNewName(""); } }} style={{ fontSize: 12, padding: "8px 12px" }}>＋ 추가</PxButton>
                 </div>
 
-                {knownUnassigned.length > 0 && (
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 5 }}>미배정 접속자 — 누르면 {levels[0] ? levels[0].name : "기본"}으로 배정 (뒤에서 변경 가능)</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {knownUnassigned.map((n) => (
-                        <button key={n} onClick={() => assignName(n, (levels[0] && levels[0].id) || "")} style={{ cursor: "pointer", fontFamily: FONT, fontSize: 12, padding: "5px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: "#fff", color: C.ink }}>＋ {n}</button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {Object.keys(assign).length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 10 }}>아직 배정된 사람이 없어요 · 미배정은 자동으로 {levels[0] ? levels[0].name : "기본 레벨"}이에요</div>}
-                  {Object.keys(assign).map((k) => (
-                    <div key={k} style={{ display: "flex", alignItems: "center", gap: 6, background: "#fffdf6", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "6px 8px", flexWrap: "wrap" }}>
-                      <span style={{ flex: 1, fontSize: 13, fontWeight: "bold", minWidth: 80 }}>👤 {k}{normName(myName) === k ? " (나)" : ""}</span>
-                      <select value={levels.some((l) => l.id === assign[k]) ? assign[k] : ""} onChange={(e) => assignName(k, e.target.value)} style={sel}>
-                        {!levels.some((l) => l.id === assign[k]) && <option value="">(삭제된 레벨)</option>}
-                        {levels.map((l) => (<option key={l.id} value={l.id}>{l.name}</option>))}
-                      </select>
-                      <button onClick={() => removeAssign(k)} title="배정 제거 (기본 레벨로)" style={{ cursor: "pointer", fontFamily: FONT, fontSize: 12, padding: "6px 9px", borderRadius: 8, border: `2px solid ${C.ink}`, background: "#fff", color: C.ink }}>✕</button>
-                    </div>
-                  ))}
+                  {begNames.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 10 }}>아직 초보자가 없어요 · 초보자로 접속하거나 위에서 이름을 추가하면 여기 떠요</div>}
+                  {begNames.map((k) => {
+                    const cur = levelOf(k);
+                    const isDefault = !(k in assign);
+                    return (
+                      <div key={k} style={{ display: "flex", alignItems: "center", gap: 6, background: "#fffdf6", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "6px 8px", flexWrap: "wrap" }}>
+                        <span style={{ flex: 1, fontSize: 13, fontWeight: "bold", minWidth: 80 }}>👤 {k}{normName(myName) === k ? " (나)" : ""}{isDefault && <span style={{ fontSize: 10, color: C.inkSoft, fontWeight: "normal" }}> · 기본</span>}</span>
+                        <select value={levels.some((l) => l.id === cur) ? cur : ""} onChange={(e) => assignName(k, e.target.value)} style={sel}>
+                          {!levels.some((l) => l.id === cur) && <option value="">(삭제된 레벨)</option>}
+                          {levels.map((l) => (<option key={l.id} value={l.id}>{l.name}</option>))}
+                        </select>
+                        {!isDefault && <button onClick={() => removeAssign(k)} title={`기본(${levelName(growId)})으로 되돌리기`} style={{ cursor: "pointer", fontFamily: FONT, fontSize: 12, padding: "6px 9px", borderRadius: 8, border: `2px solid ${C.ink}`, background: "#fff", color: C.ink }}>↩</button>}
+                      </div>
+                    );
+                  })}
                 </div>
                 <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 12, lineHeight: 1.7 }}>
                   · 저장은 자동이에요 — 바꾸는 즉시 서버에 저장되고 접속 중인 모두에게 반영돼요.<br />
-                  · 배정을 지우면 그 사람은 기본 레벨({levels[0] ? levels[0].name : "첫 레벨"})로 돌아가요.
+                  · ↩ 를 누르면 그 초보자는 기본 레벨({levelName(growId)})로 돌아가요.
                 </div>
               </div>
             </>
