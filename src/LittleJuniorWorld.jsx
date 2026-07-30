@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v146 · 2026-07-29";
+const APP_VERSION = "v148 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -10627,7 +10627,7 @@ function parseMentions(text, names) {
 const EXPERT_CODE = "sksmsditnrfuswk";
 const NOVICE_CODE = "dhknsnfoqjs0";
 /* 🏠 위치편집 관리자 코드 (여기 값만 바꾸면 됨) */
-const MAP_ADMIN_CODE = "관리자코드1234";
+const MAP_ADMIN_CODE = "dpzhdnjfem123!";
 const HQ_CATS_DEFAULT = [
   { id: "core", name: "코어 앱", icon: "🟦", color: "#3b82f6" },
   { id: "comm", name: "제품 (이커머스)", icon: "🟧", color: "#f97316" },
@@ -11192,6 +11192,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   /* 미션 완료 여부 · 진행률 = 완료 미션 수 ÷ 전체 미션 수 (예: 5개 중 1개 = 20%) */
   const sbDone = (sb) => (sb && sb.done != null) ? !!sb.done : ((Number(sb && sb.pct) || 0) >= 100);
   const avgOf = (q) => { const s = q.subs || []; return s.length ? Math.round(s.filter(sbDone).length / s.length * 100) : 0; };
+  const toggleSubDone = (qid, idx) => onHQChange && onHQChange(hqQuests.map((q) => q.id === qid ? { ...q, subs: (q.subs || []).map((sb, i) => i === idx ? { ...sb, done: !sbDone(sb) } : sb), ...editStamp() } : q));
   /* 🌍 월드(카테고리) — hqRoad.__cats 로 저장하면 로드맵처럼 모두에게 공유돼요 (없으면 기본값) */
   const HQ_CATS = (hqRoad.__cats && Array.isArray(hqRoad.__cats) && hqRoad.__cats.length) ? hqRoad.__cats : HQ_CATS_DEFAULT;
   const saveCats = (arr) => onRoadChange && onRoadChange({ ...hqRoad, __cats: arr });
