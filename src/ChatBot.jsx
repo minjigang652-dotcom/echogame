@@ -1,4 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
+import { dbLoadChatbot, dbSaveChatbot } from "./LittleJuniorWorld.jsx";
+
+/* 🔑 코코 Q&A 관리자 코드 (여기 값만 바꾸면 됨) */
+const CHATBOT_ADMIN_CODE = "dpzhdnjfem123!";
 
 /* ============================================================================
  *  🐣 코코 — 에코월드 상담봇 (독립 컴포넌트 · 어디에도 의존하지 않음)
@@ -78,6 +82,21 @@ const NAVER_QA = [
   ] },
 ];
 
+/* 🐣 편집 가능한 전체 기본 콘텐츠 (서버에 저장된 게 있으면 그걸 우선 사용) */
+const DEFAULT_CONTENT = { topics: TOPICS, faq: FAQ, naver: NAVER_QA };
+const ROOM_OPTS = [["", "이동 없음"], ["tutorial", "📖 튜토리얼"], ["cafe", "☕ 카페 최신글"], ["kw", "🔗 카페 외부(키워드·URL)"], ["kin", "💬 지식인 최신글"], ["kinTop", "📊 지식인 상위"]];
+function cloneContent(c) {
+  try { return JSON.parse(JSON.stringify(c)); } catch (e) { return { topics: [], faq: [], naver: [] }; }
+}
+function normalizeContent(c) {
+  if (!c || typeof c !== "object") return cloneContent(DEFAULT_CONTENT);
+  return {
+    topics: Array.isArray(c.topics) && c.topics.length ? c.topics : cloneContent(DEFAULT_CONTENT).topics,
+    faq: Array.isArray(c.faq) ? c.faq : [],
+    naver: Array.isArray(c.naver) ? c.naver : [],
+  };
+}
+
 /* 규칙 기반 응답 (키워드 매칭) */
 function ruleAnswer(text) {
   const t = (text || "").toLowerCase();
@@ -115,6 +134,46 @@ export default function ChatBot({ onClose, botName = "코코", onGo }) {
   const [busy, setBusy] = useState(false);
   const [faqOpen, setFaqOpen] = useState(false);
   const [qaCat, setQaCat] = useState(null);   // 네이버 Q&A: null | "cats" | 카테고리 index
+  const [content, setContent] = useState(() => cloneContent(DEFAULT_CONTENT));
+  const [admin, setAdmin] = useState(false);
+  const [editView, setEditView] = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
+  const TOPICS = content.topics, FAQ = content.faq, NAVER_QA = content.naver;   // 렌더는 편집 가능한 콘텐츠 사용
+  useEffect(() => {
+    let alive = true;
+    dbLoadChatbot().then((c) => { if (alive && c) setContent(normalizeContent(c)); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  const saveContent = async (next) => {
+    setContent(next);
+    const ok = await dbSaveChatbot(next);
+    setSaveMsg(ok ? "저장됐어요 · 모두에게 반영돼요 ✓" : "저장 실패 (네트워크 확인)");
+    setTimeout(() => setSaveMsg(""), 2600);
+  };
+  const tryAdmin = () => {
+    if (admin) { setAdmin(false); setEditView(false); return; }
+    const code = window.prompt("🔑 코코 Q&A 편집은 관리자 코드가 필요해요.\n관리자 코드를 입력하세요:");
+    if (code == null) return;
+    if (code.trim() === CHATBOT_ADMIN_CODE) { setAdmin(true); setDraft(cloneContent(content)); setEditView(true); }
+    else window.alert("코드가 올바르지 않아요.");
+  };
+  const [draft, setDraft] = useState(null);
+  const openEditor = () => { setDraft(cloneContent(content)); setEditView(true); };
+  /* 주제 본문 편집 */
+  const setTopicBody = (i, body) => setDraft((d) => ({ ...d, topics: d.topics.map((t, k) => k === i ? [t[0], t[1], body] : t) }));
+  /* FAQ */
+  const setFaq = (i, j, val) => setDraft((d) => ({ ...d, faq: d.faq.map((r, k) => k === i ? (j === 0 ? [val, r[1]] : [r[0], val]) : r) }));
+  const addFaq = () => setDraft((d) => ({ ...d, faq: [...d.faq, ["새 질문", "새 답변"]] }));
+  const delFaq = (i) => setDraft((d) => ({ ...d, faq: d.faq.filter((_, k) => k !== i) }));
+  /* 네이버 Q&A 카테고리 */
+  const setCatField = (ci, field, val) => setDraft((d) => ({ ...d, naver: d.naver.map((c, k) => k === ci ? { ...c, [field]: field === "room" ? (val || null) : val } : c) }));
+  const addCat = () => setDraft((d) => ({ ...d, naver: [...d.naver, { cat: "새 카테고리", room: null, items: [["새 질문", "새 답변"]] }] }));
+  const delCat = (ci) => setDraft((d) => ({ ...d, naver: d.naver.filter((_, k) => k !== ci) }));
+  /* 네이버 Q&A 항목 */
+  const setItem = (ci, ii, j, val) => setDraft((d) => ({ ...d, naver: d.naver.map((c, k) => k !== ci ? c : { ...c, items: c.items.map((it, m) => m === ii ? (j === 0 ? [val, it[1]] : [it[0], val]) : it) }) }));
+  const addItem = (ci) => setDraft((d) => ({ ...d, naver: d.naver.map((c, k) => k === ci ? { ...c, items: [...c.items, ["새 질문", "새 답변"]] } : c) }));
+  const delItem = (ci, ii) => setDraft((d) => ({ ...d, naver: d.naver.map((c, k) => k === ci ? { ...c, items: c.items.filter((_, m) => m !== ii) } : c) }));
+  const saveEditor = async () => { await saveContent(cloneContent(draft)); setEditView(false); };
   const endRef = useRef(null);
   useEffect(() => { if (endRef.current) endRef.current.scrollIntoView({ block: "end" }); }, [msgs, faqOpen, qaCat]);
 
@@ -163,9 +222,76 @@ export default function ChatBot({ onClose, botName = "코코", onGo }) {
             <div style={{ fontSize: 15, fontWeight: "bold" }}>{botName} 상담소</div>
             <div style={{ fontSize: 10, opacity: 0.9 }}>{CHATBOT_API_URL ? "AI 상담 · 무엇이든 물어보세요" : "밝고 친근한 도우미"}</div>
           </div>
+          <button type="button" onClick={tryAdmin} title="관리자 · Q&A 편집" style={{ cursor: "pointer", background: admin ? "#ffd75e" : "rgba(255,255,255,0.2)", border: "none", color: admin ? CB.ink : CB.white, fontSize: 14, borderRadius: 8, width: 30, height: 30 }}>🔑</button>
           <button type="button" onClick={onClose} style={{ cursor: "pointer", background: "rgba(255,255,255,0.2)", border: "none", color: CB.white, fontSize: 16, borderRadius: 8, width: 30, height: 30 }}>✕</button>
         </div>
 
+        {editView && draft ? (
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 14, background: CB.bg }}>
+            <div style={{ fontSize: 13, fontWeight: "bold", color: CB.ink, marginBottom: 4 }}>🔧 코코 Q&A 편집 (관리자)</div>
+            <div style={{ fontSize: 11, color: CB.soft, marginBottom: 12, lineHeight: 1.6 }}>수정·추가·삭제 후 아래 <b>💾 저장</b>을 누르면 서버에 저장되고 모두에게 반영돼요.</div>
+
+            {/* 주제 본문 */}
+            <div style={{ fontSize: 12.5, fontWeight: "bold", color: CB.accent, margin: "10px 0 6px" }}>🎯 주제 버튼 본문</div>
+            {draft.topics.map((t, i) => (
+              <div key={t[0]} style={{ background: CB.white, border: `2px solid ${CB.edge}`, borderRadius: 8, padding: 8, marginBottom: 7 }}>
+                <div style={{ fontSize: 11.5, fontWeight: "bold", color: CB.ink, marginBottom: 4 }}>{t[1]}</div>
+                <textarea value={t[2]} onChange={(e) => setTopicBody(i, e.target.value)} rows={3} style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${CB.edge}`, borderRadius: 6, fontFamily: CB.font, fontSize: 11.5, resize: "vertical", background: CB.white }} />
+              </div>
+            ))}
+
+            {/* FAQ */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "14px 0 6px" }}>
+              <span style={{ fontSize: 12.5, fontWeight: "bold", color: CB.accent, flex: 1 }}>❓ FAQ ({draft.faq.length})</span>
+              <button type="button" onClick={addFaq} style={{ cursor: "pointer", fontFamily: CB.font, fontSize: 11, fontWeight: "bold", background: CB.accent, color: CB.white, border: `2px solid ${CB.ink}`, borderRadius: 8, padding: "4px 9px" }}>＋ 추가</button>
+            </div>
+            {draft.faq.map((r, i) => (
+              <div key={i} style={{ background: CB.white, border: `2px solid ${CB.edge}`, borderRadius: 8, padding: 8, marginBottom: 7 }}>
+                <div style={{ display: "flex", gap: 5, marginBottom: 5 }}>
+                  <input value={r[0]} onChange={(e) => setFaq(i, 0, e.target.value)} placeholder="질문" style={{ flex: 1, minWidth: 0, padding: 6, border: `2px solid ${CB.edge}`, borderRadius: 6, fontFamily: CB.font, fontSize: 11.5 }} />
+                  <button type="button" onClick={() => delFaq(i)} title="삭제" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14, color: CB.danger }}>🗑</button>
+                </div>
+                <textarea value={r[1]} onChange={(e) => setFaq(i, 1, e.target.value)} rows={2} placeholder="답변" style={{ width: "100%", boxSizing: "border-box", padding: 6, border: `2px solid ${CB.edge}`, borderRadius: 6, fontFamily: CB.font, fontSize: 11.5, resize: "vertical" }} />
+              </div>
+            ))}
+
+            {/* 네이버 Q&A */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "14px 0 6px" }}>
+              <span style={{ fontSize: 12.5, fontWeight: "bold", color: CB.accent, flex: 1 }}>📗 네이버 Q&A ({draft.naver.length}개 카테고리)</span>
+              <button type="button" onClick={addCat} style={{ cursor: "pointer", fontFamily: CB.font, fontSize: 11, fontWeight: "bold", background: CB.accent, color: CB.white, border: `2px solid ${CB.ink}`, borderRadius: 8, padding: "4px 9px" }}>＋ 카테고리</button>
+            </div>
+            {draft.naver.map((c, ci) => (
+              <div key={ci} style={{ background: "#eef7ee", border: `2px solid ${CB.ink}`, borderRadius: 8, padding: 8, marginBottom: 10 }}>
+                <div style={{ display: "flex", gap: 5, marginBottom: 6 }}>
+                  <input value={c.cat} onChange={(e) => setCatField(ci, "cat", e.target.value)} placeholder="카테고리 이름" style={{ flex: 1, minWidth: 0, padding: 6, border: `2px solid ${CB.edge}`, borderRadius: 6, fontFamily: CB.font, fontSize: 12, fontWeight: "bold" }} />
+                  <button type="button" onClick={() => delCat(ci)} title="카테고리 삭제" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14, color: CB.danger }}>🗑</button>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 7 }}>
+                  <span style={{ fontSize: 10.5, color: CB.soft }}>이동 방:</span>
+                  <select value={c.room || ""} onChange={(e) => setCatField(ci, "room", e.target.value)} style={{ flex: 1, minWidth: 0, padding: 5, border: `2px solid ${CB.edge}`, borderRadius: 6, fontFamily: CB.font, fontSize: 11 }}>
+                    {ROOM_OPTS.map(([v, lb]) => <option key={v} value={v}>{lb}</option>)}
+                  </select>
+                </div>
+                {c.items.map((it, ii) => (
+                  <div key={ii} style={{ background: CB.white, border: `2px solid ${CB.edge}`, borderRadius: 6, padding: 7, marginBottom: 5 }}>
+                    <div style={{ display: "flex", gap: 5, marginBottom: 4 }}>
+                      <input value={it[0]} onChange={(e) => setItem(ci, ii, 0, e.target.value)} placeholder="질문" style={{ flex: 1, minWidth: 0, padding: 5, border: `2px solid ${CB.edge}`, borderRadius: 6, fontFamily: CB.font, fontSize: 11 }} />
+                      <button type="button" onClick={() => delItem(ci, ii)} title="삭제" style={{ cursor: "pointer", background: "none", border: "none", fontSize: 13, color: CB.danger }}>🗑</button>
+                    </div>
+                    <textarea value={it[1]} onChange={(e) => setItem(ci, ii, 1, e.target.value)} rows={2} placeholder="답변" style={{ width: "100%", boxSizing: "border-box", padding: 5, border: `2px solid ${CB.edge}`, borderRadius: 6, fontFamily: CB.font, fontSize: 11, resize: "vertical" }} />
+                  </div>
+                ))}
+                <button type="button" onClick={() => addItem(ci)} style={{ cursor: "pointer", fontFamily: CB.font, fontSize: 10.5, fontWeight: "bold", background: CB.white, color: CB.accent, border: `2px solid ${CB.accent}`, borderRadius: 8, padding: "4px 9px" }}>＋ 질문 추가</button>
+              </div>
+            ))}
+
+            <div style={{ display: "flex", gap: 6, marginTop: 14, position: "sticky", bottom: 0, background: CB.bg, paddingTop: 8 }}>
+              <button type="button" onClick={saveEditor} style={{ flex: 1, cursor: "pointer", fontFamily: CB.font, fontSize: 13, fontWeight: "bold", background: CB.accent, color: CB.white, border: `2px solid ${CB.ink}`, borderRadius: 8, padding: 11 }}>💾 저장 (모두에게 반영)</button>
+              <button type="button" onClick={() => setEditView(false)} style={{ cursor: "pointer", fontFamily: CB.font, fontSize: 12, background: CB.white, color: CB.ink, border: `2px solid ${CB.ink}`, borderRadius: 8, padding: "11px 14px" }}>취소</button>
+            </div>
+            {saveMsg && <div style={{ fontSize: 11.5, color: CB.accent, fontWeight: "bold", textAlign: "center", marginTop: 8 }}>{saveMsg}</div>}
+          </div>
+        ) : (<>
         {/* 대화 */}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 14 }}>
           {msgs.map((m, i) => (
@@ -220,6 +346,7 @@ export default function ChatBot({ onClose, botName = "코코", onGo }) {
           <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지를 입력하세요" style={{ flex: 1, minWidth: 0, padding: 11, border: `2px solid ${CB.ink}`, borderRadius: 8, fontFamily: CB.font, fontSize: 13, background: CB.white }} />
           <button type="button" onClick={() => send()} disabled={busy} style={{ cursor: "pointer", fontFamily: CB.font, fontSize: 13, fontWeight: "bold", background: CB.accent, color: CB.white, border: `2px solid ${CB.ink}`, borderRadius: 8, padding: "0 16px" }}>전송</button>
         </div>
+        </>)}
       </div>
     </div>
   );
