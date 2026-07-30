@@ -137,7 +137,7 @@ const stDone = (st) => !!(st && st.approved);
 /* 스테이지 상태: none · pending(회색 승인대기) · feedback(핑크 피드백도착) · approved(초록 승인완료)
    ※ 색 구분은 프로덕트 전역 통일 권장 */
 const stStatus = (st) => (st && st.approved) ? "approved" : (st && st.status === "feedback") ? "feedback" : (st && st.submitted) ? "pending" : "none";
-const V_STATUS = { pending: { bg: "#9a94a6", label: "승인 대기중" }, feedback: { bg: "#ff8fab", label: "피드백 도착" }, approved: { bg: C.good, label: "승인 완료" } };
+const V_STATUS = { pending: { bg: "#9a94a6", label: "승인 대기중" }, feedback: { bg: "#ff8fab", label: "피드백 도착" }, approved: { bg: "#4e9a3a", label: "승인 완료" } };
 const topicComplete = (t) => t && stDone(t.script) && stDone(t.source) && stDone(t.edit) && t.upload && t.upload.posted;
 
 /* 주제 카드(포스터) */
