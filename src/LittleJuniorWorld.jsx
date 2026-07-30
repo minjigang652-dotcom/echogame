@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v160 · 2026-07-30";
+const APP_VERSION = "v161 · 2026-07-30";
 
 /* ───────── 📮→🏭 피드백 허브(정제소) 웹훅 ─────────
  * ⚠️ 브라우저 앱이라 시크릿 토큰을 클라이언트에 둘 수 없어요.
@@ -3234,6 +3234,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
             setStatus("접속됨");
             await ch.track({ name: myName });
             sendIv = setInterval(() => {
+              if (typeof document !== "undefined" && document.hidden) return;   // 다른 탭을 보고 있으면 접속으로 세지 않아요
               const p = posRef.current || { x: 0, y: 0 };
               ch.send({ type: "broadcast", event: "pos", payload: (() => {
                 const of = (outfitRef && outfitRef.current) || {};
@@ -3289,7 +3290,13 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
   /* 다른 탭 갔다 오거나 인터넷이 끊겼다 돌아오면 바로 재접속 */
   useEffect(() => {
     const kick = () => setRetry((r) => r + 1);
-    const onVis = () => { if (!document.hidden) kick(); };
+    /* 다른 탭으로 넘어가면 바로 오프라인 처리 · 돌아오면 즉시 다시 접속 */
+    const onVis = () => {
+      if (document.hidden) {
+        const ch = chRef.current;
+        if (ch) { try { ch.send({ type: "broadcast", event: "bye", payload: { id: MY_ID } }); } catch (e) {} }
+      } else kick();
+    };
     window.addEventListener("online", kick);
     document.addEventListener("visibilitychange", onVis);
     return () => { window.removeEventListener("online", kick); document.removeEventListener("visibilitychange", onVis); };
