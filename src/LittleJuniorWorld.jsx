@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v148 · 2026-07-29";
+const APP_VERSION = "v149 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -10850,7 +10850,7 @@ function DocSection({ title, color, html, comments, onSave, onAddComment, onDelC
       </div>
       {editing ? (<>
         <div style={{ display: "flex", gap: 4, marginBottom: 6, flexWrap: "wrap", alignItems: "center" }}>
-          {tbBtn("B", () => exec("bold"), "굵게")}{tbBtn("H", () => exec("formatBlock", "H3"), "제목")}{tbBtn("•", () => exec("insertUnorderedList"), "목록")}{tbBtn("―", () => exec("insertHorizontalRule"), "구분선")}
+          {tbBtn("B", () => exec("bold"), "굵게")}{tbBtn("H", () => exec("formatBlock", "H3"), "제목")}{tbBtn("•", () => exec("insertUnorderedList"), "목록")}{tbBtn("―", () => exec("insertHorizontalRule"), "구분선")}{tbBtn("▸토글", () => exec("insertHTML", `<details open style='border:2px solid ${color};border-radius:8px;padding:6px 10px;margin:8px 0;background:#faf7ef;'><summary style='cursor:pointer;font-weight:bold;color:${color};outline:none;'>토글 제목 (클릭해서 접기/펼치기)</summary><div style='margin-top:6px;'>여기에 내용을 적어주세요</div></details><p><br></p>`), "접기/펼치기 토글")}
           <label style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, fontWeight: "bold", height: 26, lineHeight: "22px", padding: "0 9px", border: `2px solid ${C.ink}`, borderRadius: 6, background: "#4b3fb0", color: C.white }}>🖼<input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; insertImage(f); }} /></label>
         </div>
         <div ref={edRef} contentEditable suppressContentEditableWarning style={{ minHeight: 110, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 10, background: C.white, fontSize: 13, lineHeight: 1.6, overflowY: "auto", outline: "none" }} />
