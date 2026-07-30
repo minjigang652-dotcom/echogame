@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v157 · 2026-07-30";
+const APP_VERSION = "v158 · 2026-07-30";
 
 /* ───────── 📮→🏭 피드백 허브(정제소) 웹훅 ─────────
  * ⚠️ 브라우저 앱이라 시크릿 토큰을 클라이언트에 둘 수 없어요.
@@ -2544,7 +2544,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").not("type", "like", "nsp%").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "novlv").neq("type", "mention").neq("type", "sprpos").neq("type", "cocoqa").neq("type", "novacct").neq("type", "fbitem").neq("type", "fbstat").neq("type", "worklog").neq("type", "vschool").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").not("type", "like", "nsp%").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "novlv").neq("type", "mention").neq("type", "sprpos").neq("type", "cocoqa").neq("type", "novacct").neq("type", "fbitem").neq("type", "fbstat").neq("type", "worklog").neq("type", "status").neq("type", "vschool").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2747,6 +2747,23 @@ async function dbLoadPtags(name) {
     const v = JSON.parse(row.body || "[]");
     return Array.isArray(v) ? v : [];
   } catch (e) { return []; }
+}
+/* 💬 상태메시지 (notices type="status", title=이름, body=메시지 · 이름별 최신 1건) */
+async function dbSaveStatusMsg(name, msg) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "status", title: String(name || ""), body: String(msg || "") });
+    return !(r && r.error);
+  } catch (e) { return false; }
+}
+async function dbLoadStatusMsgs() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("title,body,created_at").eq("type", "status").order("created_at", { ascending: false }).limit(300);
+    const map = {};
+    ((r && r.data) || []).forEach((x) => { const n = x.title; if (!n || map[n] !== undefined) return; map[n] = x.body || ""; });
+    return map;
+  } catch (e) { return {}; }
 }
 async function dbSavePtags(name, tags) {
   try {
@@ -10838,7 +10855,7 @@ function HQQuestRail({ quests = [], cats = [], myName = "", onOpenWorld }) {
   });
   if (!mine || !worlds.length) return null;
   return (
-    <div style={{ position: "fixed", right: 12, top: "50%", transform: "translateY(-50%)", zIndex: 60, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
       {worlds.slice(0, 6).map((w) => (
         <button key={w.id} type="button" onClick={() => onOpenWorld && onOpenWorld(w.id)}
           title={`${w.name} · 내 담당 ${w.total}개${w.open ? ` (진행중 ${w.open})` : " (모두 완료)"} — 누르면 이 월드 퀘스트로`}
@@ -12563,22 +12580,103 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   );
 }
 
-function CornerDock({ onMenu, onProfile, onBag, onGuide, onHub, onHQ, onDict, msgCount, questCount, badgeCount }) {
+function CornerDock({ onMenu, onProfile, onBag, onGuide, onHub, onHQ, onDict, onSettings, msgCount, questCount, badgeCount, questRail = null }) {
+  const [open, setOpen] = React.useState(false);   // 🟡 메뉴 아이콘 토글 (누르면 펼치고 다시 누르면 접힘)
   const box = { display: "flex", gap: 8, background: C.parch, border: `3px solid ${C.ink}`, borderRadius: 14, padding: 7, boxShadow: `0 4px 0 ${C.parchEdge}, 0 8px 18px rgba(0,0,0,0.28)` };
   return (
     <div className="corner-dock" style={{ position: "fixed", right: 12, bottom: 12, zIndex: 62, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
-      {/* 윗줄 : HQ 대시보드 + 알림 허브 — 크게 */}
+      {/* ① 진행중인 퀘스트(월드맵) 아이콘 — 맨 위 */}
+      {questRail}
+      {/* ② 🟡 메뉴 아이콘 + 펼쳐지는 항목들 (왼쪽으로) */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {open && (
+          <div style={{ ...box, gap: 7 }}>
+            <DockBtn icon="🧑" label="내 프로필" bg="linear-gradient(180deg,#6fa8e8,#3a6fb5)" onClick={onProfile} badge={badgeCount} />
+            <DockBtn icon="🎒" label="인벤토리" bg="linear-gradient(180deg,#b98a4e,#7a5230)" onClick={onBag} />
+            <DockBtn icon="📚" label="코어사전" bg="linear-gradient(180deg,#b07a4e,#8a5a3b)" onClick={onDict} />
+            <DockBtn icon="📖" label="안내책자" bg="linear-gradient(180deg,#7bbf8f,#2f7d5e)" onClick={onGuide} />
+            <DockBtn icon="⚙️" label="설정" bg="linear-gradient(180deg,#9aa0ac,#5f6674)" onClick={onSettings} />
+            <DockBtn icon="☰" label="전체메뉴" bg="linear-gradient(180deg,#b6a06a,#7d6a3c)" onClick={onMenu} />
+          </div>
+        )}
+        <div style={box}>
+          <DockBtn pixel label={open ? "닫기" : "메뉴"} bg={C.gem} onClick={() => setOpen((v) => !v)} />
+        </div>
+      </div>
+      {/* ③ HQ · 알림함 — 맨 아래 (크게) */}
       <div style={box}>
         <DockBtn big icon="🖥" label="HQ" bg="linear-gradient(180deg,#7c6cf0,#4b3fb0)" onClick={onHQ} />
         <DockBtn big icon="🔔" label="알림함" bg="linear-gradient(180deg,#e0a13d,#a86e13)" onClick={onHub} badge={(msgCount || 0) + (questCount || 0)} alert={(msgCount || 0) + (questCount || 0) > 0} />
       </div>
-      {/* 아랫줄 */}
-      <div style={{ ...box, gap: 7 }}>
-        <DockBtn pixel label="메뉴" bg={C.gem} onClick={onMenu} />
-        <DockBtn icon="🧑" label="내 프로필" bg="linear-gradient(180deg,#6fa8e8,#3a6fb5)" onClick={onProfile} badge={badgeCount} />
-        <DockBtn icon="🎒" label="인벤토리" bg="linear-gradient(180deg,#b98a4e,#7a5230)" onClick={onBag} />
-        <DockBtn icon="📚" label="코어사전" bg="linear-gradient(180deg,#b07a4e,#8a5a3b)" onClick={onDict} />
-        <DockBtn icon="📖" label="안내책자" bg="linear-gradient(180deg,#7bbf8f,#2f7d5e)" onClick={onGuide} />
+    </div>
+  );
+}
+
+/* ======================= 🧑‍🤝‍🧑 친구 목록 (실시간 · 상태메시지) =======================
+ * 접속한 사람이 위로 · 접속=초록 꽉 찬 원 / 미접속=빈 원 · 상태메시지는 본인만 수정 */
+function FriendPanel({ open, onClose, people = [], myName = "", statusMap = {}, onSaveStatus, onGoTo }) {
+  const FONT = "var(--game-font, 'DotGothic16', monospace)";
+  const [edit, setEdit] = React.useState(false);
+  const [draft, setDraft] = React.useState("");
+  const mine = normName(myName || "");
+  React.useEffect(() => { if (open) setDraft(statusMap[mine] || ""); }, [open, mine, statusMap]);
+  if (!open) return null;
+  const list = people.slice().sort((a, b) => {
+    if (!!b.online !== !!a.online) return b.online ? 1 : -1;   // 접속자 먼저
+    if (a.me !== b.me) return a.me ? -1 : 1;                    // 나를 맨 위
+    return String(a.name).localeCompare(String(b.name), "ko");
+  });
+  const onlineCount = list.filter((p) => p.online).length;
+  return (
+    <div style={{ position: "fixed", right: 12, top: 54, zIndex: 88, width: 250, maxHeight: "72vh", display: "flex", flexDirection: "column",
+      background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, boxShadow: `0 6px 0 ${C.parchEdge}, 0 10px 24px rgba(0,0,0,0.3)`, fontFamily: FONT }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 11px", borderBottom: `3px solid ${C.ink}`, background: C.parchLine, borderRadius: "10px 10px 0 0" }}>
+        <b style={{ fontSize: 13, flex: 1 }}>🧑‍🤝‍🧑 친구 <span style={{ fontSize: 10.5, color: C.good }}>{onlineCount}명 접속</span></b>
+        <button type="button" onClick={onClose} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14, fontFamily: FONT }}>✕</button>
+      </div>
+      {/* 내 상태메시지 */}
+      <div style={{ padding: "8px 11px", borderBottom: `2px dashed ${C.parchEdge}` }}>
+        <div style={{ fontSize: 10, color: C.inkSoft, marginBottom: 4 }}>💬 내 상태메시지</div>
+        {edit ? (
+          <div>
+            <input value={draft} maxLength={40} autoFocus onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { onSaveStatus && onSaveStatus(draft.trim()); setEdit(false); } }}
+              placeholder="예: 원고 쓰는 중 🔥" style={{ width: "100%", boxSizing: "border-box", padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: FONT, fontSize: 11.5, background: C.white }} />
+            <div style={{ display: "flex", gap: 5, marginTop: 5 }}>
+              <PxButton tone="ink" onClick={() => { setEdit(false); setDraft(statusMap[mine] || ""); }} style={{ flex: 1, fontSize: 10, padding: 6 }}>취소</PxButton>
+              <PxButton tone="good" onClick={() => { onSaveStatus && onSaveStatus(draft.trim()); setEdit(false); }} style={{ flex: 1, fontSize: 10, padding: 6 }}>저장</PxButton>
+            </div>
+          </div>
+        ) : (
+          <div onClick={() => setEdit(true)} style={{ cursor: "pointer", fontSize: 11.5, color: statusMap[mine] ? C.ink : C.inkSoft, background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "5px 7px" }}>
+            {statusMap[mine] || "눌러서 상태메시지를 적어보세요 ✏️"}
+          </div>
+        )}
+      </div>
+      {/* 친구 목록 */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "6px 8px" }}>
+        {list.length === 0 && <div style={{ fontSize: 11, color: C.inkSoft, textAlign: "center", padding: 14 }}>아직 주민이 없어요</div>}
+        {list.map((p) => {
+          const nm = normName(p.name);
+          const st = statusMap[nm] || "";
+          return (
+            <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 5px", borderBottom: `1px dashed ${C.parchEdge}` }}>
+              <span title={p.online ? "접속 중" : "오프라인"} style={{ flexShrink: 0, width: 11, height: 11, borderRadius: "50%",
+                background: p.online ? C.good : "transparent", border: `2px solid ${p.online ? C.good : C.inkSoft}`, boxShadow: p.online ? `0 0 6px ${C.good}` : "none" }} />
+              <span style={{ fontSize: 15, flexShrink: 0 }}>{p.avatar}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11.5, fontWeight: "bold", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {p.name}{p.me ? " (나)" : ""}
+                </div>
+                {st && <div style={{ fontSize: 10, color: C.inkSoft, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{st}</div>}
+              </div>
+              {p.online && !p.me && onGoTo && (
+                <button type="button" onClick={() => onGoTo(p.name)} title={`${p.name}님에게 찾아가기`}
+                  style={{ flexShrink: 0, cursor: "pointer", fontFamily: FONT, fontSize: 12, background: C.gem, border: `2px solid ${C.ink}`, borderRadius: 7, padding: "1px 6px" }}>🏃</button>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -14346,6 +14444,9 @@ function EchoTown() {
   const [commOpenPost, setCommOpenPost] = useState(null);   // 멘션 클릭 → 열 커뮤니티 글
   const [pendingHist, setPendingHist] = useState(null);     // 멘션 클릭 → 열 퀘스트 히스토리
   const [hqCat, setHqCat] = useState(null);                 // 🌍 오른쪽 레일에서 고른 월드 → HQ 퀘스트 탭으로
+  /* 🧑‍🤝‍🧑 친구 목록 + 💬 상태메시지 (실시간) */
+  const [friendOpen, setFriendOpen] = useState(false);
+  const [statusMap, setStatusMap] = useState({});
   const goMention = (m) => {
     if (!m) return;
     markMentionRead(m.id);
@@ -14963,7 +15064,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "hq" || kind === "hqroad" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx" || kind === "comm" || kind === "mention" || kind === "lvl") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "hq" || kind === "hqroad" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx" || kind === "comm" || kind === "mention" || kind === "lvl" || kind === "stat") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); showNotice(`🔔 ${p.from}님이 초인종을 눌렀어요`); pushMsg("dm", { from: p.from, text: "🔔 초인종을 눌렀어요 — 집 앞에 찾아왔어요!" }); }
       if (kind === "qrev") { showNotice("🔔 퀘스트 알림이 도착했습니다!", () => setHqOpen(true)); pushMsg("dm", { from: p.by || "HQ", text: p.txt || "🔔 퀘스트 알림" }); return; }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
@@ -15171,6 +15272,10 @@ function EchoTown() {
         setLuckData((v) => { const o = { ...v, [p.name]: p.data }; try { saveJSON("echotown_luck_v1", o); } catch (e) {} return o; });
         return;
       }
+      if (kind === "stat") {
+        if (p.name) setStatusMap((m) => ({ ...m, [p.name]: p.msg || "" }));
+        return;
+      }
       if (kind === "lvl") {
         if (p.cfg && Array.isArray(p.cfg.levels)) {
           const cfg = { levels: p.cfg.levels, assign: p.cfg.assign || {} };
@@ -15358,6 +15463,15 @@ function EchoTown() {
   }, [flushSave]);
 
   const AVATARS = ["🧑", "👩", "🧑‍💻", "👨‍💼", "👩‍🎨", "🧑‍🍳", "👩‍🔬", "🧑‍🎤", "👨‍🌾", "👩‍🏫"];
+  /* 💬 상태메시지 : 처음 들어오면 서버에서 불러오고, 저장하면 접속자 모두에게 즉시 반영 */
+  useEffect(() => { dbLoadStatusMsgs().then((m) => setStatusMap(m && typeof m === "object" ? m : {})); }, []);
+  const saveStatusMsg = (msg) => {
+    const nm = normName(myName || "");
+    if (!nm) return;
+    setStatusMap((m) => ({ ...m, [nm]: msg }));
+    dbSaveStatusMsg(nm, msg);
+    if (netSendEvent) netSendEvent("stat", { name: nm, msg });
+  };
   const people = useMemo(() => {
     const online = Object.values(netOthers).map((o) => o.name).filter(Boolean);
     const bad = /[ㄱ-ㅎㅏ-ㅣ]/;
@@ -15998,11 +16112,18 @@ function EchoTown() {
       {!hqOpen && myName && (
         <HQSidePanel key={"mp" + mpVersion} myName={myName} people={people} questBox={questBox} hqQuests={hqQuests} hqCats={(hqRoad && hqRoad.__cats && hqRoad.__cats.length) ? hqRoad.__cats : HQ_CATS_DEFAULT} onOpenHQ={() => { setHqOpen(true); }} onGold={(n) => { setGold((g) => g + n); setLifetime((l) => l + n); }} />
       )}
-      {/* ⚙️ 설정 (우측 상단 · 아이콘만) */}
-      {myName && (
-        <button type="button" onClick={() => setFontOpen(true)} title="설정" aria-label="설정"
-          style={{ position: "fixed", right: 12, top: 10, zIndex: 90, cursor: "pointer", background: "none", border: "none", padding: 4, fontSize: 24, lineHeight: 1, filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.4))" }}>⚙️</button>
+      {/* 🧑‍🤝‍🧑 친구 (맵 우측 상단 · 누르면 친구목록) */}
+      {myName && view === "world" && (
+        <button type="button" onClick={() => setFriendOpen((v) => !v)} title="친구 목록" aria-label="친구 목록"
+          style={{ position: "fixed", right: 12, top: 10, zIndex: 90, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", display: "flex", alignItems: "center", gap: 5,
+            background: friendOpen ? C.gem : C.parch, border: `3px solid ${C.ink}`, borderRadius: 12, padding: "5px 10px", boxShadow: `0 3px 0 ${C.parchEdge}` }}>
+          <span style={{ fontSize: 16, lineHeight: 1 }}>🧑‍🤝‍🧑</span>
+          <b style={{ fontSize: 11.5 }}>친구</b>
+          <span style={{ fontSize: 10, fontWeight: "bold", color: C.white, background: C.good, border: `2px solid ${C.ink}`, borderRadius: 999, padding: "0 5px" }}>{people.filter((x) => x.online).length}</span>
+        </button>
       )}
+      <FriendPanel open={friendOpen && view === "world"} onClose={() => setFriendOpen(false)} people={people} myName={myName}
+        statusMap={statusMap} onSaveStatus={saveStatusMsg} />
       {fontOpen && (
         <div onClick={() => setFontOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 360, maxHeight: "88%", overflow: "auto", background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
@@ -16031,9 +16152,10 @@ function EchoTown() {
         </div>
       )}
       {!hqOpen && myName && (
-        <HQQuestRail quests={hqQuests} myName={myName} cats={(hqRoad && hqRoad.__cats && hqRoad.__cats.length) ? hqRoad.__cats : HQ_CATS_DEFAULT} onOpenWorld={(catId) => { setHqCat(catId); setHqOpen(true); }} />
       )}
       <CornerDock
+        questRail={<HQQuestRail quests={hqQuests} myName={myName} cats={(hqRoad && hqRoad.__cats && hqRoad.__cats.length) ? hqRoad.__cats : HQ_CATS_DEFAULT} onOpenWorld={(catId) => { setHqCat(catId); setHqOpen(true); }} />}
+        onSettings={() => setFontOpen(true)}
         msgCount={unreadMsgCount}
         questCount={unreadQuestCount}
         onMenu={() => setMenuOpen(true)}
