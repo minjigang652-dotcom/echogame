@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v145 · 2026-07-29";
+const APP_VERSION = "v146 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2498,7 +2498,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "mention").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "mention").neq("type", "sprpos").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2731,6 +2731,23 @@ async function dbSaveSprite(id, dataUrl, by) {
     const s = await getSupa();
     const r = await s.from("notices").insert({ type: "sprite", title: id, body: dataUrl || "" });
     return !(r && r.error);   // supabase 는 예외 대신 error 를 돌려줘요
+  } catch (e) { return false; }
+}
+/* 🏠 건물 위치 전체를 한 행(JSON)으로 저장 — 항상 최신으로 모두가 로드 (type="sprpos") */
+async function dbLoadPositions() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("body,created_at").eq("type", "sprpos").order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    if (!row || !row.body) return null;
+    return JSON.parse(row.body) || null;
+  } catch (e) { return null; }
+}
+async function dbSavePositions(obj) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "sprpos", title: "sprpos", body: JSON.stringify(obj || {}) });
+    return !(r && r.error);
   } catch (e) { return false; }
 }
 /* 🎥 회의록 → 봇 서버가 읽어갈 큐에 저장 (notices 재사용: type="meetlog")
@@ -3080,6 +3097,15 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
   bposRef.current = positions;
   const worldRef = useRef(null);
   const [editMap, setEditMap] = useState(false);
+  const [posUnlocked, setPosUnlocked] = useState(() => { try { return window.localStorage.getItem("echotown_posadmin") === "1"; } catch (e) { return false; } });
+  const tryEditMap = () => {
+    if (editMap) { setEditMap(false); setDrag(null); return; }
+    if (posUnlocked) { setEditMap(true); return; }
+    const code = window.prompt("🔒 위치편집은 관리자 코드가 필요해요.\n관리자 코드를 입력하세요:");
+    if (code == null) return;
+    if (code.trim() === MAP_ADMIN_CODE) { setPosUnlocked(true); try { window.localStorage.setItem("echotown_posadmin", "1"); } catch (e) {} setEditMap(true); }
+    else window.alert("코드가 올바르지 않아요.");
+  };
   const [drag, setDrag] = useState(null);   // { id, x, y }
   const objX = (o) => (bposRef.current[o.id] && bposRef.current[o.id][0] != null) ? bposRef.current[o.id][0] : o.x;
   const objY = (o) => (bposRef.current[o.id] && bposRef.current[o.id][1] != null) ? bposRef.current[o.id][1] : o.y;
@@ -3447,7 +3473,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
 
         {/* HUD 오버레이: 날짜 */}
         <div style={{ position: "absolute", right: 10, top: 10, display: "flex", gap: 8, alignItems: "center" }}>
-          {onMovePos && <button onClick={() => { setEditMap((v) => !v); setDrag(null); }} title="건물을 드래그해 위치를 옮겨요 (모두에게 공유)" style={{ cursor: "pointer", background: editMap ? C.gem : C.ink, color: editMap ? C.ink : C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontWeight: "bold" }}>{editMap ? "✅ 위치편집 끝" : "🏠 위치편집"}</button>}
+          {onMovePos && <button onClick={tryEditMap} title="관리자 코드로 잠금 해제 · 건물을 드래그해 위치를 옮겨요 (모두에게 공유)" style={{ cursor: "pointer", background: editMap ? C.gem : C.ink, color: editMap ? C.ink : C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontWeight: "bold" }}>{editMap ? "✅ 위치편집 끝" : posUnlocked ? "🏠 위치편집" : "🔒 위치편집"}</button>}
           <button onClick={() => setWhoOpen((v) => !v)} title="접속자 보기" style={{ position: "relative", cursor: "pointer", background: netStatus === "접속됨" ? "#2f9e6e" : C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
             👥 {Object.keys(others).length + 1}
             {whoOpen && (
@@ -10600,6 +10626,8 @@ function parseMentions(text, names) {
 /* 🔑 권한 코드 (여기서 값만 바꾸면 됨) · 숙련자=디스코드 로그인 / 초보자=이름 바로 입력 */
 const EXPERT_CODE = "sksmsditnrfuswk";
 const NOVICE_CODE = "dhknsnfoqjs0";
+/* 🏠 위치편집 관리자 코드 (여기 값만 바꾸면 됨) */
+const MAP_ADMIN_CODE = "관리자코드1234";
 const HQ_CATS_DEFAULT = [
   { id: "core", name: "코어 앱", icon: "🟦", color: "#3b82f6" },
   { id: "comm", name: "제품 (이커머스)", icon: "🟧", color: "#f97316" },
@@ -13710,13 +13738,13 @@ function EchoTown() {
       if (Object.keys(scl).length) setSpriteScale((v) => ({ ...scl, ...v }));
       if (Object.keys(pos).length) setSpritePos((v) => ({ ...pos, ...v }));
     });
+    dbLoadPositions().then((all) => { if (all && typeof all === "object" && Object.keys(all).length) { setSpritePos((v) => ({ ...v, ...all })); try { saveJSON("echotown_spritepos_v1", all); } catch (e) {} } });
   }, []);
   /* 🏠 건물 위치 — 모두에게 똑같이 보이도록 공유돼요 */
   const publishPos = (id, x, y) => {
     const p = [Math.round(x), Math.round(y)];
-    setSpritePos((m) => { const o = { ...m, [id]: p }; saveJSON("echotown_spritepos_v1", o); return o; });
+    setSpritePos((m) => { const o = { ...m, [id]: p }; saveJSON("echotown_spritepos_v1", o); dbSavePositions(o); return o; });
     if (netSendEventRef.current) netSendEventRef.current("spr", { id, pos: p, by: myNameRef.current || "익명" });
-    dbSaveSprite(id + "|p", p.join(","), myUid);
   };
   /* 🔍 건물 크기 — 모두에게 똑같이 보이도록 공유돼요 */
   const publishScale = (id, v) => {
