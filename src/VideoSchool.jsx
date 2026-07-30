@@ -2,6 +2,7 @@ import React, { useContext, useState, useEffect, useRef } from "react";
 import { C, NetContext, PixelHouse, Hero, Panel, PxButton, TitleBar } from "./LittleJuniorWorld.jsx";
 import { dbLoadVSchool, dbSaveVSchool } from "./LittleJuniorWorld.jsx";
 import ChatBot from "./ChatBot.jsx";
+import { AISelfCheck, polishFeedback, ReviewQueue, QueueButton } from "./AIAssist.jsx";
 
 /* 입력창(input/textarea 등)에 타이핑 중이면 게임 키 조작 무시 */
 function isTyping(e) {
@@ -177,6 +178,7 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
   const [pPers, setPPers] = useState("");
   const [draftText, setDraftText] = useState({});   // 입력 중 텍스트 (topicId별)
   const [showProt, setShowProt] = useState({});      // 🎭 주인공 설정 토글
+  const [queueOpen, setQueueOpen] = useState(false); // 🗂 검토 큐
 
   const commit = (nextTopics, gold, msg) => {
     const next = { ...vdata, topics: nextTopics };
@@ -264,8 +266,34 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
   const stage = house.id;   // script | source | edit | upload
   const stageLabel = { script: "📝 원고", source: "🎥 소스", edit: "✂️ 편집", upload: "🚀 업로드" }[stage];
 
+  /* 🗂 검토 큐 : 모든 주제의 「승인 대기(pending)」 스테이지를 모아서 스테이지 탭으로 보여줘요 */
+  const Q_STAGES = [["script", "📝 원고"], ["source", "🎥 소스"], ["edit", "✂️ 편집"]];
+  const queueItems = [];
+  topics.forEach((t) => Q_STAGES.forEach(([sid]) => {
+    const s = t[sid] || {};
+    if (s.submitted && !s.approved && s.status !== "feedback") {
+      queueItems.push({ id: t.id + "_" + sid, tab: sid, tid: t.id, stage: sid, title: t.title, content: s.text || s.link, by: s.by });
+    }
+  }));
+  const queueTabs = Q_STAGES.map(([sid, lb]) => ({ id: sid, label: lb, count: queueItems.filter((i) => i.tab === sid).length }));
+
   return (
     <div>
+      {isReviewer && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+          <QueueButton count={queueItems.length} onClick={() => setQueueOpen(true)} label="🗂 검토 큐" />
+        </div>
+      )}
+      {queueOpen && (
+        <ReviewQueue
+          title="🗂 영상 검토 큐"
+          tabs={queueTabs}
+          items={queueItems}
+          onApprove={(it) => approveStage(it.tid, it.stage)}
+          onFeedback={(it, msg) => feedbackStage(it.tid, it.stage, msg)}
+          onClose={() => setQueueOpen(false)}
+        />
+      )}
       <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10, lineHeight: 1.7 }}>
         {stage === "script" && `주제 하나를 골라 ${V_SPEC.length} 원고를 써요. 아무 주제나 바로 시작할 수 있어요.`}
         {stage === "source" && "그 상황에 맞는 영상 소스를 파일/드라이브 링크로 제출해요. 원고를 기다릴 필요 없어요."}
@@ -331,6 +359,7 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
                     )}
                     <textarea value={curVal} onChange={(e) => setDraftText((d) => ({ ...d, [key]: e.target.value }))} rows={stage === "script" ? 3 : 2}
                       placeholder={stage === "script" ? `${V_SPEC.length} 원고를 써주세요` : "파일 설명 + 구글드라이브/업로드 링크"} style={{ ...inp, marginBottom: 6, resize: "vertical" }} />
+                    {stage === "script" && <AISelfCheck text={curVal} />}
                     <PxButton tone="good" onClick={() => submitStage(t.id, stage, stage === "script" ? { text: curVal.trim() } : { link: curVal.trim() })} style={{ width: "100%", fontSize: 12, padding: 9 }}>
                       {status === "feedback" ? "🔁 수정 후 제출하기" : `제출하기 (+${V_REWARD.submit}G)`}
                     </PxButton>
@@ -346,6 +375,7 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
                           <textarea value={draftText[key + "fb"] || ""} onChange={(e) => setDraftText((d) => ({ ...d, [key + "fb"]: e.target.value }))} rows={2}
                             placeholder="✏️ 수정요청(피드백) 내용 — 적고 「피드백」을 누르면 작성자에게 돌아가요" style={{ ...inp, marginBottom: 6, resize: "vertical" }} />
                           <div style={{ display: "flex", gap: 6 }}>
+                            <PxButton tone="wood" onClick={() => setDraftText((d) => ({ ...d, [key + "fb"]: polishFeedback(d[key + "fb"] || "") }))} title="짧게 적어도 AI가 부드럽고 구체적으로 다듬어줘요" style={{ flexShrink: 0, fontSize: 12, padding: 9 }}>✨ 다듬기</PxButton>
                             <PxButton tone="good" onClick={() => approveStage(t.id, stage)} style={{ flex: 1, fontSize: 12, padding: 9 }}>✅ 승인 (+{V_REWARD.approve}G)</PxButton>
                             <PxButton tone="danger" onClick={() => feedbackStage(t.id, stage, draftText[key + "fb"] || "")} style={{ flex: 1, fontSize: 12, padding: 9 }}>✏️ 피드백</PxButton>
                           </div>
