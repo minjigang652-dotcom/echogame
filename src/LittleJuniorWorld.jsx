@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v149 · 2026-07-29";
+const APP_VERSION = "v151 · 2026-07-29";
 
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
@@ -2498,7 +2498,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "mention").neq("type", "sprpos").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "mention").neq("type", "sprpos").neq("type", "cocoqa").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2837,6 +2837,23 @@ async function dbSaveMentions(list) {
   try {
     const s = await getSupa();
     const r = await s.from("notices").insert({ type: "mention", title: "mention", body: JSON.stringify(list || []) });
+    return !(r && r.error);
+  } catch (e) { return false; }
+}
+/* 🐣 코코 Q&A 내용 (notices type="cocoqa", 전체 JSON 한 행 · 최신 우선 · 모두 공유) */
+export async function dbLoadChatbot() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("body,created_at").eq("type", "cocoqa").order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    if (!row || !row.body) return null;
+    return JSON.parse(row.body) || null;
+  } catch (e) { return null; }
+}
+export async function dbSaveChatbot(obj) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "cocoqa", title: "cocoqa", body: JSON.stringify(obj || {}) });
     return !(r && r.error);
   } catch (e) { return false; }
 }
@@ -10322,8 +10339,14 @@ function DrawerBoard({ notes = [], onAdd, onDelete, big = false }) {
   );
 }
 
+/* 🎯 일일미션 리셋 기준 : 아침 6시에 하루가 바뀌어요 (그 지역 시간 기준) */
+function missionDayKey() {
+  const d = new Date(Date.now() - 6 * 3600 * 1000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 /* 🙋 왼쪽 상시 「내 페이지」 패널 */
-function HQSidePanel({ myName = "", people = [], questBox = [], hqQuests = [], hqCats = [], onOpenHQ }) {
+function HQSidePanel({ myName = "", people = [], questBox = [], hqQuests = [], hqCats = [], onOpenHQ, onGold = () => {} }) {
   const sbDone = (sb) => (sb && sb.done != null) ? !!sb.done : ((Number(sb && sb.pct) || 0) >= 100);
   const [open, setOpen] = useState(true);
   const av = (myName || "?").trim().slice(0, 1);
@@ -10333,8 +10356,13 @@ function HQSidePanel({ myName = "", people = [], questBox = [], hqQuests = [], h
   const load = (k, d) => { try { const v = JSON.parse(window.localStorage.getItem(KEY) || "{}"); return v[k] !== undefined ? v[k] : d; } catch (e) { return d; } };
   const saveAll = (patch) => { try { const prev = window.localStorage.getItem(KEY) || "{}"; const merged = JSON.stringify({ ...JSON.parse(prev), ...patch }); if (merged === prev) return; window.localStorage.setItem(KEY, merged); window.dispatchEvent(new CustomEvent("echotown-mypage", { detail: { key: KEY } })); } catch (e) {} };
 
-  const MISSIONS = ["코난놀이 작성 (10분 이내!)", "[B] 채널: 오늘 생긴 병목지점을 어떤 사고로 어떻게 뚫었는지 공유", "진행한 허들: AI 노트 + 투두 정리 후 채널 공유", "허들 활동 시간 공지"];
+  const MISSIONS = ["오늘의 병목지점 일기 쓰기", "퀘스트 확인하기", "디스코드 회의 최소 1회 참여하기"];
   const [done, setDone] = useState(() => load("mission", {}));
+  const [completed, setCompleted] = useState(() => !!load("missionCompleted", false));
+  useEffect(() => {   // 아침 6시가 지나 날짜가 바뀌면 완료여부만 초기화 (내용은 그대로)
+    const dk = missionDayKey();
+    if (load("missionDay", "") !== dk) { setDone({}); setCompleted(false); saveAll({ mission: {}, missionCompleted: false, missionDay: dk }); }
+  }, []);   // eslint-disable-line
   const [todos, setTodos] = useState(() => load("todos", []));
   /* 🧪 내 할일 게임/현실 분리 (베타) · todoBeta on이면 게임/현실 탭, off면 한 목록 · 현실 할일은 남에게 안 보임 */
   const [beta, setBeta] = useState(() => !!load("todoBeta", false));
@@ -10351,7 +10379,7 @@ function HQSidePanel({ myName = "", people = [], questBox = [], hqQuests = [], h
   /* 🪟 패널 창 크기 (계정마다 저장 · 모서리를 끌어서 조절) */
   const [panelW, setPanelW] = useState(() => Math.max(210, Math.min(380, Number(load("panelW", 258)) || 258)));
   const [panelH, setPanelH] = useState(() => Math.max(240, Math.min(1200, Number(load("panelH", 440)) || 440)));
-  useEffect(() => { saveAll({ mission: done, todos, huddles, notes, neck, panelW, panelH }); }, [done, todos, huddles, notes, neck, panelW, panelH]);
+  useEffect(() => { saveAll({ mission: done, todos, huddles, notes, neck, panelW, panelH, missionCompleted: completed }); }, [done, todos, huddles, notes, neck, panelW, panelH, completed]);
   // 🔗 나에게 지정된 세부 미션을 내 할일에 자동 추가 (삭제하면 dismissed에 기록돼 다시 안 생김)
   useEffect(() => {
     if (!myName) return;
@@ -10372,7 +10400,7 @@ function HQSidePanel({ myName = "", people = [], questBox = [], hqQuests = [], h
     const onSync = (e) => {
       if (e && e.detail && e.detail.key && e.detail.key !== KEY) return;
       setDone(load("mission", {})); setTodos(load("todos", [])); setNotes(load("notes", [])); setNeck(load("neck", []));
-      setBeta(!!load("todoBeta", false));
+      setBeta(!!load("todoBeta", false)); setCompleted(!!load("missionCompleted", false));
     };
     window.addEventListener("echotown-mypage", onSync);
     return () => window.removeEventListener("echotown-mypage", onSync);
@@ -10478,7 +10506,18 @@ function HQSidePanel({ myName = "", people = [], questBox = [], hqQuests = [], h
 
         {/* 일일 미션 */}
         <div style={cardBox}>
-          {cardH("🎯", pSelf ? "일일 미션" : `${pView}님의 미션`, <span style={{ fontSize: 10, color: C.inkSoft }}>{vDoneN}/{MISSIONS.length} · +10🪙</span>)}
+          {cardH("🎯", pSelf ? "일일 미션" : `${pView}님의 미션`, (
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 10, color: C.inkSoft }}>{vDoneN}/{MISSIONS.length} · +100🪙</span>
+              {pSelf && (
+                <button type="button" onClick={() => {
+                  if (completed) { window.alert("오늘의 일일미션을 이미 완료했습니다"); return; }
+                  if (!MISSIONS.every((_, i) => !!done[i])) { window.alert("일일미션을 전부 완료해주세요"); return; }
+                  setCompleted(true); saveAll({ missionCompleted: true }); onGold(100); window.alert("🎉 일일미션 완료! +100골드");
+                }} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 9.5, fontWeight: "bold", padding: "3px 9px", borderRadius: 10, border: `2px solid ${C.ink}`, background: completed ? "#cfe4d6" : (MISSIONS.every((_, i) => !!done[i]) ? "#ffd75e" : C.white), color: C.ink }}>{completed ? "✅ 완료됨" : "완료"}</button>
+              )}
+            </span>
+          ))}
           {MISSIONS.map((m, i) => (
             <label key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 10.5, marginBottom: 6, cursor: pSelf ? "pointer" : "default", lineHeight: 1.5 }}>
               <input type="checkbox" checked={!!vDone[i]} disabled={!pSelf} onChange={() => pSelf && setDone((d) => ({ ...d, [i]: !d[i] }))} style={{ marginTop: 1, flexShrink: 0 }} />
@@ -10955,7 +10994,7 @@ function HistoryModal({ quest, myName, editingBy, onSaveDoc, onAddComment, onDel
   );
 }
 
-function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo, onGoBoard, hqQuests = [], onHQChange, hqRoad = {}, onRoadChange, bossImg = () => "", onBossImg = () => {}, onNotifyUser = () => {}, mentions = [], onGoMention = () => {}, openHistId = null, onHistOpened = () => {}, expertNames = [], onMention = () => {} }) {
+function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo, onGoBoard, hqQuests = [], onHQChange, hqRoad = {}, onRoadChange, bossImg = () => "", onBossImg = () => {}, onNotifyUser = () => {}, mentions = [], onGoMention = () => {}, openHistId = null, onHistOpened = () => {}, expertNames = [], onMention = () => {}, onGold = () => {} }) {
   const [tab, setTab] = useState("home");
   const [notice, setNotice] = useState("");
   const [qcat, setQcat] = useState("all");
@@ -11015,8 +11054,13 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const MP_KEY = "echotown_mypage_" + (myName || "guest");
   const mpLoad = (k, d) => { try { const v = JSON.parse(window.localStorage.getItem(MP_KEY) || "{}"); return v[k] !== undefined ? v[k] : d; } catch (e) { return d; } };
   const mpSaveAll = (patch) => { try { const prev = window.localStorage.getItem(MP_KEY) || "{}"; const merged = JSON.stringify({ ...JSON.parse(prev), ...patch }); if (merged === prev) return; window.localStorage.setItem(MP_KEY, merged); window.dispatchEvent(new CustomEvent("echotown-mypage", { detail: { key: MP_KEY } })); } catch (e) {} };
-  const MP_MISSIONS = ["코난놀이 작성 (10분 이내!)", "[B] 채널: 오늘 생긴 병목지점을 어떤 사고로 어떻게 뚫었는지 공유", "진행한 허들: AI 노트 + 투두 정리 후 채널 공유", "허들 활동 시간 공지"];
+  const MP_MISSIONS = ["오늘의 병목지점 일기 쓰기", "퀘스트 확인하기", "디스코드 회의 최소 1회 참여하기"];
   const [mpDone, setMpDone] = useState(() => mpLoad("mission", {}));
+  const [mpCompleted, setMpCompleted] = useState(() => !!mpLoad("missionCompleted", false));
+  useEffect(() => {   // 아침 6시 리셋 (완료여부만)
+    const dk = missionDayKey();
+    if (mpLoad("missionDay", "") !== dk) { setMpDone({}); setMpCompleted(false); mpSaveAll({ mission: {}, missionCompleted: false, missionDay: dk }); }
+  }, []);   // eslint-disable-line
   const [mpTodos, setMpTodos] = useState(() => mpLoad("todos", []));
   /* 🧪 내 할일 게임/현실 분리 (베타) — 좌측 패널과 같은 값을 공유 */
   const [mpBeta, setMpBeta] = useState(() => !!mpLoad("todoBeta", false));
@@ -11029,13 +11073,13 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
   const [mpNeck, setMpNeck] = useState(() => mpLoad("neck", []));
   const [mpNkPoint, setMpNkPoint] = useState("");
   const [mpNkAction, setMpNkAction] = useState("");
-  useEffect(() => { mpSaveAll({ mission: mpDone, todos: mpTodos, huddles: mpHuddles, notes: mpNotes, neck: mpNeck }); }, [mpDone, mpTodos, mpHuddles, mpNotes, mpNeck]);
+  useEffect(() => { mpSaveAll({ mission: mpDone, todos: mpTodos, huddles: mpHuddles, notes: mpNotes, neck: mpNeck, missionCompleted: mpCompleted }); }, [mpDone, mpTodos, mpHuddles, mpNotes, mpNeck, mpCompleted]);
   /* 🔄 좌측 🙋 패널 등에서 바뀌면 여기도 다시 읽어와요 (실시간 연동) */
   useEffect(() => {
     const onSync = (e) => {
       if (e && e.detail && e.detail.key && e.detail.key !== MP_KEY) return;
       setMpDone(mpLoad("mission", {})); setMpTodos(mpLoad("todos", [])); setMpNotes(mpLoad("notes", [])); setMpNeck(mpLoad("neck", []));
-      setMpBeta(!!mpLoad("todoBeta", false));
+      setMpBeta(!!mpLoad("todoBeta", false)); setMpCompleted(!!mpLoad("missionCompleted", false));
     };
     window.addEventListener("echotown-mypage", onSync);
     return () => window.removeEventListener("echotown-mypage", onSync);
@@ -12185,7 +12229,18 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
 
               {/* 일일 미션 */}
               <div style={card}>
-                {hd("🎯", mpSelf ? "일일 미션" : `${mpView}님의 일일 미션`, <span style={{ fontSize: 11, color: C.inkSoft }}>{viewDoneN}/{MP_MISSIONS.length} · +10🪙</span>)}
+                {hd("🎯", mpSelf ? "일일 미션" : `${mpView}님의 일일 미션`, (
+                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 11, color: C.inkSoft }}>{viewDoneN}/{MP_MISSIONS.length} · +100🪙</span>
+                    {mpSelf && (
+                      <button type="button" onClick={() => {
+                        if (mpCompleted) { window.alert("오늘의 일일미션을 이미 완료했습니다"); return; }
+                        if (!MP_MISSIONS.every((_, i) => !!mpDone[i])) { window.alert("일일미션을 전부 완료해주세요"); return; }
+                        setMpCompleted(true); mpSaveAll({ missionCompleted: true }); onGold(100); window.alert("🎉 일일미션 완료! +100골드");
+                      }} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5, fontWeight: "bold", padding: "4px 11px", borderRadius: 10, border: `2px solid ${C.ink}`, background: mpCompleted ? "#cfe4d6" : (MP_MISSIONS.every((_, i) => !!mpDone[i]) ? "#ffd75e" : C.white), color: C.ink }}>{mpCompleted ? "✅ 완료됨" : "완료"}</button>
+                    )}
+                  </span>
+                ))}
                 {MP_MISSIONS.map((m, i) => (
                   <label key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12.5, marginBottom: 8, cursor: mpSelf ? "pointer" : "default", lineHeight: 1.5 }}>
                     <input type="checkbox" checked={!!viewDone[i]} disabled={!mpSelf} onChange={() => mpSelf && setMpDone((d) => ({ ...d, [i]: !d[i] }))} style={{ marginTop: 2, flexShrink: 0 }} />
@@ -12519,6 +12574,7 @@ function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSe
   const [err, setErr] = useState(null);
   const [urlFor, setUrlFor] = useState(null);
   const [url, setUrl] = useState("");
+  const [openRows, setOpenRows] = useState({});   // 행별 크기·누끼 자세히 펼침
   const fileRef = useRef(null);
   const pendingRef = useRef(null);
 
@@ -12610,8 +12666,11 @@ function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSe
                 {userSprites[s.id] && <PxButton tone="ink" onClick={() => onClear(s.id)} style={{ fontSize: 10, padding: "5px 7px" }}>↩</PxButton>}
               </div>
 
-              {/* 🔍 건물 크기 — 그림이 없어도 조절할 수 있어요 */}
-              {onSetScale && (
+              <button type="button" onClick={() => setOpenRows((v) => ({ ...v, [s.id]: !v[s.id] }))} style={{ width: "100%", marginTop: 7, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", background: openRows[s.id] ? "#eef4f7" : C.white, color: C.inkSoft, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "5px 9px", textAlign: "left" }}>
+                {openRows[s.id] ? "▾ 크기·누끼 접기" : "▸ 🔍 크기 · ✂️ 누끼 자세히"}
+              </button>
+
+              {openRows[s.id] && onSetScale && (
                 <div style={{ marginTop: 8, background: "#eef4f7", border: `2px solid ${C.ink}`, borderRadius: 6, padding: "7px 9px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 12, fontWeight: "bold", whiteSpace: "nowrap" }}>🔍 크기</span>
@@ -12631,7 +12690,7 @@ function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSe
                 </div>
               )}
 
-              {cur && (
+              {openRows[s.id] && cur && (
                 <div style={{ marginTop: 8, background: "#f7efdc", border: `2px solid ${C.ink}`, borderRadius: 6, padding: "7px 9px" }}>
                   <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: "bold", cursor: "pointer" }}>
                     <input type="checkbox" checked={cut} onChange={(e) => onSetCut(s.id, { cut: e.target.checked })} style={{ width: 16, height: 16, cursor: "pointer" }} />
@@ -15554,7 +15613,7 @@ function EchoTown() {
         <div onClick={() => { const a = noticeActRef.current; setNotice(null); if (a) a(); }} style={{ position: "fixed", left: "50%", top: 16, transform: "translateX(-50%)", zIndex: 150, cursor: noticeActRef.current ? "pointer" : "default", background: C.ink, color: C.white, border: `3px solid ${C.gem}`, borderRadius: 10, padding: "10px 18px", fontSize: 13, fontFamily: "var(--game-font, 'DotGothic16', monospace)", boxShadow: "0 6px 16px rgba(0,0,0,0.4)" }}>{notice}</div>
       )}
       {!hqOpen && myName && (
-        <HQSidePanel key={"mp" + mpVersion} myName={myName} people={people} questBox={questBox} hqQuests={hqQuests} hqCats={(hqRoad && hqRoad.__cats && hqRoad.__cats.length) ? hqRoad.__cats : HQ_CATS_DEFAULT} onOpenHQ={() => { setHqOpen(true); }} />
+        <HQSidePanel key={"mp" + mpVersion} myName={myName} people={people} questBox={questBox} hqQuests={hqQuests} hqCats={(hqRoad && hqRoad.__cats && hqRoad.__cats.length) ? hqRoad.__cats : HQ_CATS_DEFAULT} onOpenHQ={() => { setHqOpen(true); }} onGold={(n) => { setGold((g) => g + n); setLifetime((l) => l + n); }} />
       )}
       {/* ⚙️ 설정 (우측 상단 · 아이콘만) */}
       {myName && (
@@ -15614,7 +15673,8 @@ function EchoTown() {
           onGoBoard={() => { setHqOpen(false); setView("board"); }}
           bossImg={(cat) => allSprites["hqboss_" + cat] || ""}
           onBossImg={(cat, dataUrl) => { if (dataUrl) setSprite("hqboss_" + cat, dataUrl); else clearSprite("hqboss_" + cat); }}
-          onNotifyUser={(name, txt) => { if (netSendEvent) netSendEvent("qrev", { to: name, by: myName || "익명", txt }); showNotice("📨 " + name + "님에게 알림을 보냈어요"); }} />
+          onNotifyUser={(name, txt) => { if (netSendEvent) netSendEvent("qrev", { to: name, by: myName || "익명", txt }); showNotice("📨 " + name + "님에게 알림을 보냈어요"); }}
+          onGold={(n) => { setGold((g) => g + n); setLifetime((l) => l + n); }} />
       )}
 
       {startPop && (
