@@ -8822,11 +8822,17 @@ function BoardView({ onBack, myName = "", myUid = "", onCommunity }) {
     dbAddNotice(wType, wTitle.trim(), wBody.trim(), myUid).then((row) => {
       setWTitle(""); setWBody(""); setWOpen(false);
       if (row && row.id != null) {
-        setDbList((v) => [{ id: "db" + row.id, rawId: row.id, uid: row.uid || null, type: row.type, title: row.title, body: row.body || "", date: new Date(row.created_at || Date.now()).toISOString().slice(0, 10) }, ...v.filter((x) => x.rawId !== row.id)]);
+        const optimistic = { id: "db" + row.id, rawId: row.id, uid: row.uid || null, type: row.type, title: row.title, body: row.body || "", date: new Date(row.created_at || Date.now()).toISOString().slice(0, 10) };
+        setDbList((v) => [optimistic, ...v.filter((x) => x.rawId !== row.id)]);
+        // ⏱ 서버 반영 지연(read-after-write) 대비: 즉시 reload 하지 않고, 2초 뒤 새로고침하되
+        //    방금 올린 글이 아직 서버 목록에 없으면 그대로 유지해서 사라지지 않게 함
+        setTimeout(() => dbNotices().then((r) => {
+          const list = r || [];
+          setDbList(list.some((x) => x.rawId === row.id) ? list : [optimistic, ...list]);
+        }).catch(() => {}), 2000);
       } else {
         window.alert("⚠️ 서버에 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
       }
-      reload();
     });
   };
   const [tab, setTab] = useState("notice");
@@ -10699,9 +10705,9 @@ function parseMentions(text, names) {
 const EXPERT_CODE = "sksmsditnrfuswk";
 const NOVICE_CODE = "dhknsnfoqjs0";
 /* 🏠 위치편집 관리자 코드 (여기 값만 바꾸면 됨) */
-const MAP_ADMIN_CODE = "dpzhdnjfem123!";
+const MAP_ADMIN_CODE = "ckdals987?";
 /* 🎚 권한관리소 관리자 코드 (여기 값만 바꾸면 됨) */
-const LEVEL_ADMIN_CODE = "dpzhdnjfem123!";
+const LEVEL_ADMIN_CODE = "ckdals987?";
 /* 🎚 권한 레벨 기본값 (관리소에서 추가/삭제·배정 가능 · access: "restricted"=제한, "full"=전체개방) */
 const DEFAULT_LEVELS = [
   { id: "grow",   name: "🌱 성장하는 제작자", access: "restricted" },
@@ -11183,7 +11189,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
     r.readAsDataURL(file);
   };
   const delQDoc = (qid, idx) => { if (!window.confirm("이 문서를 삭제할까요?")) return; onHQChange && onHQChange(hqQuests.map((x) => x.id === qid ? { ...x, docs: (x.docs || []).filter((_, j) => j !== idx), ...editStamp() } : x)); };
-  const REVIEW_ADMIN_CODE = "dpzhdnjfem123!";
+  const REVIEW_ADMIN_CODE = "ckdals987?";
   const notifyReviewer = (name, title) => { if (name && name !== myName) onNotifyUser(name, `📋 «${title || "퀘스트"}» 퀘스트의 검토자로 지정되었어요`); };
   const requestReview = (q) => {
     if (avgOf(q) < 100) { window.alert("미션을 먼저 클리어해주세요!\n(모든 미션을 완료해서 100%가 되어야 검토요청할 수 있어요)"); return; }
@@ -15758,7 +15764,7 @@ function EchoTown() {
           mentions={mentions} onGoMention={goMention} openHistId={pendingHist} onHistOpened={() => setPendingHist(null)}
           expertNames={(people || []).map((p) => p && normName(p.name)).filter(Boolean)}
           onMention={(names, refId, refTitle, snippet) => notifyMention(names, "history", refId, refTitle, snippet)}
-          onPostNotice={(t) => { dbAddNotice("공지", t, `${myName || "익명"}님의 공지`, myUid).then(() => loadNotices()); showNotice("📢 공지를 등록했어요"); }}
+          onPostNotice={(t) => { dbAddNotice("공지", t, `${myName || "익명"}님의 공지`, myUid).then(() => setTimeout(loadNotices, 2000)); showNotice("📢 공지를 등록했어요"); }}
           onGo={(mapId) => { setHqOpen(false); setQuestJump({ mapId, qid: null }); setView("project"); }}
           onGoBoard={() => { setHqOpen(false); setView("board"); }}
           bossImg={(cat) => allSprites["hqboss_" + cat] || ""}
