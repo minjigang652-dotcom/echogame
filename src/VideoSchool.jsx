@@ -115,7 +115,7 @@ function CopyBox({ sec }) {
 /* 🎬 영상스쿨 리워드 (제품별 override 가능하도록 상수로 분리) */
 const V_REWARD = { submit: 2, approve: 2, bonus: 4 };
 const V_SPEC = { length: "30초 숏츠" };
-const V_GRADS = [["hsl(258,62%,30%)", "hsl(298,55%,18%)"], ["hsl(280,62%,30%)", "hsl(320,55%,18%)"], ["hsl(300,62%,30%)", "hsl(340,55%,18%)"], ["hsl(250,62%,30%)", "hsl(210,55%,18%)"], ["hsl(320,62%,30%)", "hsl(360,55%,18%)"], ["hsl(268,62%,30%)", "hsl(308,55%,18%)"], ["hsl(335,62%,30%)", "hsl(15,55%,18%)"], ["hsl(262,62%,30%)", "hsl(302,55%,18%)"]];
+const V_GRADS = [["hsl(258,72%,87%)", "hsl(288,66%,79%)"], ["hsl(280,72%,88%)", "hsl(310,64%,80%)"], ["hsl(300,70%,89%)", "hsl(330,62%,81%)"], ["hsl(250,72%,88%)", "hsl(215,68%,82%)"], ["hsl(320,72%,89%)", "hsl(350,64%,82%)"], ["hsl(268,72%,88%)", "hsl(298,66%,80%)"], ["hsl(335,72%,89%)", "hsl(10,66%,84%)"], ["hsl(262,72%,88%)", "hsl(292,66%,80%)"]];
 const V_STAGES = [["script", "📝 원고"], ["source", "🎥 소스"], ["edit", "✂️ 편집"]];
 function makePoster(p) {
   const situ = (p.situation || "").trim();
@@ -244,7 +244,7 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
     withComplete(nt, tid, 0, null);
   };
 
-  const inp = { width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, background: C.white };
+  const inp = { width: "100%", boxSizing: "border-box", padding: 9, border: "1.5px solid #d5e0f0", borderRadius: 9, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, background: C.white };
 
   /* ── 🧑 주인공 만들기 ── */
   if (house.id === "hero") {
@@ -254,7 +254,7 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
     return (
       <div>
         <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 12, lineHeight: 1.75 }}>🐣 새 영상 주제가 필요할 때 여기서 주인공을 직접 만들어보세요. 타겟·상황·성격을 적으면 AI가 원고 작성 탭에 쓸 포스터를 바로 만들어줘요 — <b>승인 없이 바로 추가돼요.</b></div>
-        <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 12, padding: 14, marginBottom: 14 }}>
+        <div style={{ background: C.white, border: "1.5px solid #d5e0f0", boxShadow: "0 2px 10px rgba(90,110,150,0.10)", borderRadius: 14, padding: 16, marginBottom: 14 }}>
           <div style={{ fontSize: 13, fontWeight: "bold", marginBottom: 4 }}>📇 주인공 설정</div>
           <div style={{ fontSize: 11, color: C.inkSoft, lineHeight: 1.6, marginBottom: 6 }}>아래를 채우면 원고 작성 탭 포스터 목록에 새 카드가 즉시 생겨요. 기존 8개 주제는 그대로 남아있고, 여기서 만든 건 추가되는 방식이에요.</div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -406,12 +406,12 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
             const g = t.grad || ["#ddd", "#bbb"];
             const s = stStatus(t[stage]);
             return (
-              <div key={t.id} className="vs-poster" onClick={() => setSelTopic(t.id)} style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 12, overflow: "hidden", position: "relative", minHeight: 152, background: `linear-gradient(160deg, ${g[0]}, ${g[1]})`, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+              <div key={t.id} className="vs-poster" onClick={() => setSelTopic(t.id)} style={{ cursor: "pointer", border: "1.5px solid rgba(255,255,255,0.6)", borderRadius: 14, overflow: "hidden", position: "relative", minHeight: 152, background: `linear-gradient(160deg, ${g[0]}, ${g[1]})`, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
                 <div style={{ position: "absolute", top: 8, left: 8, fontSize: 14, opacity: 0.9 }}>🖼</div>
                 {s !== "none" && <div style={{ position: "absolute", top: 8, right: 8, fontSize: 13 }}>{s === "approved" ? "👑" : s === "feedback" ? "📝" : "⏳"}</div>}
-                <div style={{ padding: 10, background: "linear-gradient(to top, rgba(0,0,0,0.4), transparent)" }}>
+                <div style={{ padding: 10, background: "linear-gradient(to top, rgba(255,255,255,0.55), transparent)" }}>
                   <span style={{ display: "inline-block", fontSize: 9, fontWeight: "bold", background: "rgba(255,255,255,0.9)", color: C.ink, borderRadius: 8, padding: "1px 7px", marginBottom: 4 }}>{t.tag}</span>
-                  <div style={{ fontSize: 12.5, fontWeight: "bold", color: "#fff", lineHeight: 1.35, textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>{t.title}</div>
+                  <div style={{ fontSize: 12.5, fontWeight: "bold", color: C.ink, lineHeight: 1.35, textShadow: "0 1px 2px rgba(255,255,255,0.5)" }}>{t.title}</div>
                 </div>
               </div>
             );
@@ -423,13 +423,13 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
             const g = t.grad || ["#ddd", "#bbb"];
             const rs = rowStatus(t);
             return (
-              <div key={t.id} onClick={() => setSelTopic(t.id)} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: "9px 11px", marginBottom: 8 }}>
-                <div style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 8, background: `linear-gradient(160deg, ${g[0]}, ${g[1]})`, border: `2px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>{stageIcon}</div>
+              <div key={t.id} onClick={() => setSelTopic(t.id)} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10, background: C.white, border: "1.5px solid #d5e0f0", boxShadow: "0 2px 8px rgba(90,110,150,0.08)", borderRadius: 12, padding: "10px 12px", marginBottom: 8 }}>
+                <div style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 9, background: `linear-gradient(160deg, ${g[0]}, ${g[1]})`, border: "1.5px solid rgba(255,255,255,0.7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>{stageIcon}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12.5, fontWeight: "bold", color: C.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.title}</div>
                   <div style={{ fontSize: 11, color: C.inkSoft, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.tag} · {t.hook}</div>
                 </div>
-                <span style={{ flexShrink: 0, fontSize: 10, fontWeight: "bold", background: rs.bg, color: rs.fg, border: `1.5px solid ${C.ink}`, borderRadius: 8, padding: "2px 8px", whiteSpace: "nowrap" }}>{rs.label}</span>
+                <span style={{ flexShrink: 0, fontSize: 10, fontWeight: "bold", background: rs.bg, color: rs.fg, borderRadius: 8, padding: "3px 9px", whiteSpace: "nowrap" }}>{rs.label}</span>
               </div>
             );
           })}
@@ -438,11 +438,11 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
 
       {selT && (
         <div onClick={() => setSelTopic(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 95, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "88vh", overflowY: "auto", background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "88vh", overflowY: "auto", background: C.white, border: "1.5px solid #d5e0f0", boxShadow: "0 20px 50px rgba(40,60,100,0.35)", borderRadius: 16 }}>
             <div style={{ background: `linear-gradient(135deg, ${(selT.grad || ["#ddd", "#bbb"])[0]}, ${(selT.grad || ["#ddd", "#bbb"])[1]})`, padding: "12px 44px 12px 14px", position: "relative" }}>
               <div style={{ display: "inline-block", fontSize: 10, fontWeight: "bold", background: "rgba(255,255,255,0.85)", color: C.ink, borderRadius: 10, padding: "1px 8px", marginBottom: 5 }}>#{selT.tag}</div>
-              <div style={{ fontSize: 14, fontWeight: "bold", color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.4)" }}>{selT.title}</div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.9)", marginTop: 3, lineHeight: 1.5, textShadow: "0 1px 2px rgba(0,0,0,0.35)" }}>{selT.hook}</div>
+              <div style={{ fontSize: 14, fontWeight: "bold", color: C.ink }}>{selT.title}</div>
+              <div style={{ fontSize: 11, color: C.ink, opacity: 0.7, marginTop: 3, lineHeight: 1.5 }}>{selT.hook}</div>
               <button type="button" onClick={() => setSelTopic(null)} style={{ position: "absolute", top: 10, right: 10, cursor: "pointer", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 11, fontWeight: "bold", padding: "3px 8px", fontFamily: "'DotGothic16', monospace" }}>닫기</button>
             </div>
             <div style={{ padding: 14 }}>
@@ -634,7 +634,9 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
 
   const doneCount = houses.filter((h) => cleared[h.id]).length;
   return (
-    <Panel style={{ padding: 0, overflow: "hidden" }}>
+    <div style={school === "videoschool" ? { position: "fixed", inset: 0, zIndex: 60, overflowY: "auto", WebkitOverflowScrolling: "touch", background: "#e9f3fc" } : undefined}>
+    <div style={school === "videoschool" ? { maxWidth: 1040, margin: "0 auto", minHeight: "100%" } : undefined}>
+    <Panel style={{ padding: 0, overflow: "hidden", ...(school === "videoschool" ? { border: "none", boxShadow: "none", background: "transparent", borderRadius: 0 } : {}) }}>
       <style>{`
 .vs-poster{box-shadow:0 6px 16px rgba(20,14,60,0.18);transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease;}
 .vs-poster:hover{transform:translateY(-4px);box-shadow:0 12px 26px rgba(20,14,60,0.28),0 0 0 3px #e0e2fc,0 0 22px -4px #4f46e5;}
@@ -649,7 +651,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
       {chatOpen && <ChatBot onClose={() => setChatOpen(false)} />}
       {school === "videoschool" && <ProductTutorial product={curProduct} open={tutOpen} onClose={() => setTutOpen(false)} />}
       {vToast && <div style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 120, background: C.ink, color: "#ffe680", border: `2px solid ${C.gem}`, borderRadius: 20, padding: "9px 18px", fontSize: 13, fontFamily: "'DotGothic16', monospace", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>{vToast}</div>}
-      <TitleBar tipId={school} icon={s.icon} title={s.title} sub={school === "videoschool" ? `${(curProduct && curProduct.name) || "제품"} · 프리랜서 퀘스트 보드` : "WASD 이동 · 집 근처에서 E · 아무 집이나 자유롭게"} onBack={onBack} bg={s.color} fg={C.white}
+      <TitleBar tipId={school} icon={s.icon} title={s.title} sub={school === "videoschool" ? `${(curProduct && curProduct.name) || "제품"} · 프리랜서 퀘스트 보드` : "WASD 이동 · 집 근처에서 E · 아무 집이나 자유롭게"} onBack={onBack} bg={school === "videoschool" ? "#ffffff" : s.color} fg={school === "videoschool" ? C.ink : C.white}
         right={<div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {school === "videoschool" && (
             <span className={goldPulse ? "vs-goldpill pulse" : "vs-goldpill"} style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: "bold", color: "#a86b00", background: "#fff3d6", border: "2px solid #a86b00", borderRadius: 999, padding: "3px 10px" }}>
@@ -662,7 +664,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
           )}
           <PxButton tone="good" onClick={() => setChatOpen(true)} style={{ fontSize: 11, padding: "5px 10px" }}>🐣 코코</PxButton>
         </div>} />
-      <div style={{ padding: 12, background: C.parch }}>
+      <div style={{ padding: school === "videoschool" ? "16px 14px 40px" : 12, background: school === "videoschool" ? "#e9f3fc" : C.parch }}>
         {school === "videoschool" && (
           <>
             <ProductBar products={vProducts} selectedId={curProduct && curProduct.id} onSelect={setSelProd} isAdmin={prodAdmin} onAdd={tryProdAdmin} onEdit={() => { if (prodAdmin) setFormProduct(curProduct); else tryProdAdmin(); }} />
@@ -679,7 +681,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
               {[["hero", "주인공 만들기"], ["script", "원고 작성"], ["source", "영상 소스 찾기"], ["edit", "영상 편집"], ["upload", "업로드"]].map(([id, label]) => {
                 const on = vsTab === id;
                 return (
-                  <button key={id} type="button" onClick={() => setVsTab(id)} style={{ flex: "1 1 0", minWidth: 96, cursor: "pointer", fontFamily: "'DotGothic16', monospace", background: on ? "#4f46e5" : C.white, color: on ? "#fff" : C.ink, border: `2px solid ${on ? "#4f46e5" : C.ink}`, borderRadius: 10, padding: "8px 6px", textAlign: "center", boxShadow: on ? "0 3px 0 0 #3730a3" : "0 3px 0 0 " + C.parchEdge }}>
+                  <button key={id} type="button" onClick={() => setVsTab(id)} style={{ flex: "1 1 0", minWidth: 96, cursor: "pointer", fontFamily: "'DotGothic16', monospace", background: on ? "#4f46e5" : "#ffffff", color: on ? "#fff" : "#4a5568", border: `2px solid ${on ? "#4f46e5" : "#d5e0f0"}`, borderRadius: 12, padding: "8px 6px", textAlign: "center", boxShadow: on ? "0 4px 12px rgba(79,70,229,0.28)" : "0 2px 6px rgba(90,110,150,0.10)" }}>
                     <div style={{ fontSize: 9, opacity: on ? 0.85 : 0.5, fontWeight: "bold", letterSpacing: 1 }}>STEP</div>
                     <div style={{ fontSize: 12, fontWeight: "bold", whiteSpace: "nowrap" }}>{label}</div>
                   </button>
@@ -800,6 +802,8 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
         />
       )}
     </Panel>
+    </div>
+    </div>
   );
 }
 
