@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { dbLoadNspTut, dbSaveNspTut, dbLoadNspKw, dbSaveNspKw, dbLoadNspUrls, dbSaveNspUrls, dbLoadCafeKw, dbSaveCafeKw, dbLoadCafeState, dbSaveCafeState, dbLoadCafeEx, dbSaveCafeEx, dbLoadKinKw, dbSaveKinKw, dbLoadKinState, dbSaveKinState, dbLoadKinEx, dbSaveKinEx } from "./LittleJuniorWorld.jsx";
+import { dbLoadNspTut, dbSaveNspTut, dbLoadNspKw, dbSaveNspKw, dbLoadNspUrls, dbSaveNspUrls, dbLoadCafeKw, dbSaveCafeKw, dbLoadCafeState, dbSaveCafeState, dbLoadCafeEx, dbSaveCafeEx, dbLoadKinKw, dbSaveKinKw, dbLoadKinState, dbSaveKinState, dbLoadKinEx, dbSaveKinEx , logWork, startWorkStay } from "./LittleJuniorWorld.jsx";
 import ChatBot from "./ChatBot.jsx";
 
 /* 이미지 압축 (NaverSchool 자체 정의 · LittleJuniorWorld 의존 제거) */
@@ -308,6 +308,7 @@ function CafeRoom({ crawledLinks = [], nickname = '' }) {
 
   // 링크 상태 변경 (알바/관리자)
   const setLinkStatus = (url, keyword, status) => {
+    try { logWork(nickname, "naverschool", status === 'done' ? "카페 링크 완료" : ("카페 링크 " + status)); } catch (e) {}
     const links = { ...state.links, [url]: { status, at: nowISO(), by: nickname || '익명', keyword } };
     let doneLog = state.doneLog.slice();
     if (status === 'done') {
@@ -654,6 +655,7 @@ function CafeWorkflow({ nickname, setNickname, links }) {
     if (!(nickname || '').trim()) { setWarnNick(true); return; } // 작업자 이름 없으면 처리 막기
     setWarnNick(false);
     const rec = { ...item, status: statusKey, worker: nickname.trim(), at: new Date().toISOString() };
+    try { logWork(nickname, "naverschool", "지식인 " + statusKey); } catch (e) {}
     setProcessed((a) => [rec, ...a]);
     setPending((a) => a.filter((x) => x.id !== item.id));
     if (COUNTED.includes(statusKey)) {          // 답변완료/가입대기/등업요망만 카운트
@@ -1072,6 +1074,7 @@ function KinWorkflow({ posts: initial }) {
 
   // 답변완료('done') / 답변X('x') 둘 다 카운트 (버튼 1개 = +1)
   const act = (item, kind) => {
+    try { logWork(nickname, "naverschool", "게시글 " + kind); } catch (e) {}
     setPosts((a) => a.filter((x) => x.id !== item.id));
     setProcessed((a) => [{ ...item, kind, at: new Date().toISOString() }, ...a]);
     setStartAt((s) => s || Date.now());
@@ -1374,6 +1377,13 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
   const [tab, setTab] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [nickname, setNickname] = useState(nicknameProp || ''); // 접속된 닉네임(작업자)
+  /* 🕒 체류 기록 — 네이버스쿨에 머무는 동안 5분마다 (근무 기록의 「몇시~몇시」 복원용) */
+  useEffect(() => {
+    const nm = (nicknameProp || nickname || '').trim();
+    if (!open || !nm) return;
+    const stop = startWorkStay(nm, 'naverschool');
+    return stop;
+  }, [open, nicknameProp, nickname]);
   const [tutorial, setTutorial] = useState({
     method:        { text: '', fileName: '', date: '' },
     promptGreen:   { text: '', fileName: '', date: '' },
