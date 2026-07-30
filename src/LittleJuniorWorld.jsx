@@ -15426,7 +15426,7 @@ function EchoTown() {
           onNote={(qid, v) => setQNotes((n) => ({ ...n, [qid]: v }))}
           onThreadSend={(qid, text) => { const at = Date.now(); setQThreads((t) => ({ ...t, [qid]: [...(t[qid] || []), { who: myName || "나", text, at }].slice(-200) })); if (netSendEvent) netSendEvent("qchat", { qid, who: myName || "나", text, at }); }} />}
         {view === "naverschool" && <NaverSchoolPanel open onClose={backToWorld} nickname={myName} />}
-{view === "videoschool" && <SchoolView school={view} onBack={backToWorld} cleared={schoolDone} onClear={clearSchool} onReward={(n) => awardGold(n)} myName={myName} />}
+{view === "videoschool" && <SchoolView school={view} onBack={backToWorld} cleared={schoolDone} onClear={clearSchool} onReward={(n) => awardGold(n)} myName={myName} tier={(() => { const l = levelForName(myName); return (!l || l.access === "full") ? "high" : "low"; })()} />}
         {view === "sandbag" && <SandbagView myName={myName} onBack={backToWorld} scores={boxScores} onEnd={(nick, count, target) => {
           // 같은 닉네임이면 때린 수가 누적돼요
           setBoxScores((s) => {
