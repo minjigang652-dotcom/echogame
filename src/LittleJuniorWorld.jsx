@@ -2536,7 +2536,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "nspyt").neq("type", "nspytkw").neq("type", "nspytex").neq("type", "nspcafeex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "novlv").neq("type", "mention").neq("type", "sprpos").neq("type", "cocoqa").neq("type", "novacct").neq("type", "vschool").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "nspyt").neq("type", "nspytkw").neq("type", "nspytex").neq("type", "nspcafeex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "novlv").neq("type", "mention").neq("type", "sprpos").neq("type", "cocoqa").neq("type", "novacct").neq("type", "fbitem").neq("type", "fbstat").neq("type", "worklog").neq("type", "vschool").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2888,6 +2888,85 @@ async function dbNovAcctCreate(id, pw, name) {
     const r = await s.from("notices").insert({ type: "novacct", title: id, body: JSON.stringify({ pw: String(pw), name: name || id }) });
     return !(r && r.error);
   } catch (e) { return false; }
+}
+/* 📮 피드백 영속 저장 (notices type="fbitem", title=external_id(=row.id), body=JSON row)
+ *    허브가 external_id 로 상태를 되돌려줄 수 있게 서버에도 남겨요 */
+async function dbSaveFbItem(row) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "fbitem", title: String(row && row.id), body: JSON.stringify(row || {}) });
+    return !(r && r.error);
+  } catch (e) { return false; }
+}
+async function dbLoadFbItems() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("title,body").eq("type", "fbitem").order("created_at", { ascending: false }).limit(60);
+    const out = [];
+    ((r && r.data) || []).forEach((x) => { try { const o = JSON.parse(x.body || "null"); if (o && o.id != null) out.push(o); } catch (e) {} });
+    return out;
+  } catch (e) { return []; }
+}
+/* 🏭→📮 허브가 되돌려준 상태 (notices type="fbstat", title=external_id, body=JSON {status,by,at}) · 최신 우선 */
+async function dbLoadFbStatus() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("title,body,created_at").eq("type", "fbstat").order("created_at", { ascending: false }).limit(200);
+    const map = {};
+    ((r && r.data) || []).forEach((x) => {
+      const id = String(x.title || ""); if (!id || map[id]) return;   // 최신 1건만
+      let o = {}; try { o = JSON.parse(x.body || "{}"); } catch (e) {}
+      map[id] = { status: o.status === "done" ? "done" : "open", by: o.by || "허브", at: o.at || x.created_at };
+    });
+    return map;
+  } catch (e) { return {}; }
+}
+/* 🕒 근무 기록 (notices type="worklog", title=이름, body=JSON {name,school,task,n,kind,at})
+ *   kind: "act"=업무 1건 / "stay"=체류 하트비트(5분마다) — 두 개를 합쳐 세션(몇시~몇시)을 복원해요 */
+export async function dbLogWork(entry) {
+  try {
+    const nm = String((entry && entry.name) || "").trim();
+    if (!nm) return false;
+    const row = {
+      name: nm,
+      school: (entry && entry.school) || "",
+      task: (entry && entry.task) || "",
+      n: Number((entry && entry.n) || 1) || 1,
+      kind: (entry && entry.kind) === "stay" ? "stay" : "act",
+      at: new Date().toISOString(),
+    };
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "worklog", title: nm, body: JSON.stringify(row) });
+    return !(r && r.error);
+  } catch (e) { return false; }
+}
+export async function dbLoadWorkLogs(days = 14) {
+  try {
+    const s = await getSupa();
+    const since = new Date(Date.now() - days * 86400000).toISOString();
+    const r = await s.from("notices").select("title,body,created_at").eq("type", "worklog").gte("created_at", since).order("created_at", { ascending: false }).limit(4000);
+    const out = [];
+    ((r && r.data) || []).forEach((x) => {
+      try {
+        const o = JSON.parse(x.body || "null");
+        if (o && o.name) out.push({ ...o, at: o.at || x.created_at });
+      } catch (e) {}
+    });
+    return out;
+  } catch (e) { return []; }
+}
+/* 업무 1건 기록 — 실패해도 앱 흐름을 막지 않아요 (fire & forget) */
+export function logWork(name, school, task, n) {
+  try { if (name) dbLogWork({ name, school, task, n: n || 1, kind: "act" }); } catch (e) {}
+}
+/* 체류 하트비트 시작 — 스쿨 화면에 있는 동안 5분마다 기록. 반환값을 호출하면 멈춤 */
+export function startWorkStay(name, school) {
+  if (!name) return () => {};
+  let stopped = false;
+  const ping = () => { if (!stopped && (typeof document === "undefined" || !document.hidden)) { try { dbLogWork({ name, school, task: "", kind: "stay" }); } catch (e) {} } };
+  ping();
+  const t = setInterval(ping, 5 * 60 * 1000);
+  return () => { stopped = true; clearInterval(t); };
 }
 /* 🎚 권한 레벨 설정 (notices type="novlv", body=JSON { levels:[{id,name,access}], assign:{name:levelId} } · 최신 1행) */
 async function dbLoadLevels() {
@@ -9762,6 +9841,7 @@ function FeedbackBody({ onDone, myName = "", myUid = "", list = [], onSend, onDe
               <div style={{ fontSize: 12.5, lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word", textDecoration: f.done ? "line-through" : "none", color: f.done ? C.inkSoft : C.ink }}>{f.text}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 7, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 10, color: C.inkSoft }}>{f.by === "익명" ? "🕶" : "✍️"} {f.by} · {f.at}</span>
+                {f.kind && <span style={{ fontSize: 9, background: C.white, border: `1px solid ${C.ink}`, borderRadius: 8, padding: "0 5px" }}>{{ bug: "🐛 버그", feature: "✨ 기능", design: "🎨 디자인", etc: "💬 기타" }[f.kind] || "💬 기타"}</span>}
                 {mine && <span style={{ fontSize: 9, background: C.gem, border: `1px solid ${C.ink}`, borderRadius: 8, padding: "0 5px" }}>내 글</span>}
                 <label style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5, cursor: "pointer", fontSize: 11, fontWeight: "bold", color: f.done ? C.good : C.inkSoft }}>
                   <input type="checkbox" checked={!!f.done} onChange={(e) => onCheck && onCheck(f.id, e.target.checked)} style={{ width: 15, height: 15, cursor: "pointer" }} />
@@ -9770,7 +9850,7 @@ function FeedbackBody({ onDone, myName = "", myUid = "", list = [], onSend, onDe
                 {mine && <button type="button" onClick={() => { if (window.confirm("내 피드백을 삭제할까요?")) onDelete && onDelete(f.id); }}
                   title="삭제" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: C.inkSoft }}>🗑</button>}
               </div>
-              {f.done && f.doneBy && <div style={{ fontSize: 9.5, color: C.good, marginTop: 3 }}>✓ {f.doneBy} 님이 확인함</div>}
+              {f.done && f.doneBy && <div style={{ fontSize: 9.5, color: C.good, marginTop: 3 }}>{f.fromHub ? "🏭 피드백 허브에서 처리 완료" : `✓ ${f.doneBy} 님이 확인함`}</div>}
             </div>
           );
         })}
@@ -14536,6 +14616,7 @@ function EchoTown() {
       at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
     setFeedback((v) => [row, ...v].slice(0, 60));
     if (netSendEvent) netSendEvent("fb", { row });
+    try { dbSaveFbItem(row); } catch (e) {}   // 서버에도 남겨요 (허브 역방향 상태 갱신 대상)
     // 📮→🏭 허브로 비동기 전송 (실패해도 앱 흐름 안 막음 · 작성자 클라이언트에서만 1회)
     try {
       sendFeedbackToHub({
@@ -14575,6 +14656,32 @@ function EchoTown() {
       });
     } catch (e) {}
   };
+  /* 🏭→📮 역방향 수신 : 허브가 되돌려준 상태(done/open)를 앱에 반영
+   *   허브 콜백 → Edge Function(feedback-status) → notices(type="fbstat") → 여기서 읽어 화면에 적용
+   *   진입 시 1회 + 60초마다 폴링 (허브에서 처리하면 1분 안에 ✅ 로 바뀌어요) */
+  useEffect(() => {
+    let alive = true;
+    const pull = async () => {
+      try {
+        const [items, stat] = await Promise.all([dbLoadFbItems(), dbLoadFbStatus()]);
+        if (!alive) return;
+        setFeedback((v) => {
+          const byId = {};
+          v.forEach((x) => { byId[String(x.id)] = x; });
+          items.forEach((it) => { const k = String(it.id); if (!byId[k]) byId[k] = it; });   // 서버에만 있는 것도 합쳐요
+          Object.keys(stat).forEach((k) => {                                                 // 허브 상태가 최종 권한
+            const cur = byId[k]; if (!cur) return;
+            const done = stat[k].status === "done";
+            if (!!cur.done !== done) byId[k] = { ...cur, done, doneBy: done ? (stat[k].by || "허브") : null, fromHub: true };
+          });
+          return Object.values(byId).sort((a, b) => Number(b.id) - Number(a.id)).slice(0, 60);
+        });
+      } catch (e) {}
+    };
+    pull();
+    const t = setInterval(pull, 60000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
 
   /* 🗺 보스맵 퀘스트 — 저장 + 접속자 모두와 공유 */
   const [bossMaps, setBossMaps] = useState(() => mergeMaps(BOSS_MAPS_INIT, loadJSON(BOSSMAP_KEY, null)));
@@ -16202,11 +16309,165 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+/* 🕒 근무 기록 리포트 — 활동 로그 + 체류 하트비트를 합쳐 「몇시~몇시 · 무슨 업무 몇 건」으로 복원
+ *   isAdmin=true : 전체 인원 / false : 본인(myName) 기록만
+ *   세션 규칙 : 같은 사람의 기록을 시간순으로 보고 30분 이상 공백이면 다른 세션으로 나눠요 */
+const WORK_GAP_MS = 30 * 60 * 1000;      // 세션을 끊는 공백
+const WORK_MIN_MIN = 5;                  // 기록이 1건뿐인 세션은 5분으로 계산
+const SCHOOL_LABEL = { videoschool: "영상스쿨", naverschool: "네이버스쿨" };
+
+function buildWorkSessions(logs) {
+  /* logs: [{name,school,task,n,kind,at}] → { byName: { 이름: { days: [{day, sessions:[], actCount, minutes}] , minutes, actCount } } } */
+  const byName = {};
+  const sorted = logs.slice().sort((a, b) => new Date(a.at) - new Date(b.at));
+  sorted.forEach((l) => {
+    const nm = l.name;
+    const t = new Date(l.at).getTime();
+    if (!isFinite(t)) return;
+    const day = new Date(t).toLocaleDateString("sv-SE");   // YYYY-MM-DD (로컬 기준)
+    if (!byName[nm]) byName[nm] = { dayMap: {} };
+    const D = byName[nm].dayMap;
+    if (!D[day]) D[day] = [];
+    const arr = D[day];
+    const last = arr[arr.length - 1];
+    if (last && t - last.endT <= WORK_GAP_MS) {
+      last.endT = t;
+      if (l.kind === "act") { last.acts.push(l); }
+      if (l.school) last.schools[l.school] = (last.schools[l.school] || 0) + (l.kind === "act" ? 1 : 0);
+    } else {
+      arr.push({ startT: t, endT: t, acts: l.kind === "act" ? [l] : [], schools: l.school ? { [l.school]: l.kind === "act" ? 1 : 0 } : {} });
+    }
+  });
+  const out = {};
+  Object.keys(byName).forEach((nm) => {
+    const days = Object.keys(byName[nm].dayMap).sort((a, b) => (a < b ? 1 : -1)).map((day) => {
+      const sessions = byName[nm].dayMap[day].map((s) => {
+        const mins = Math.max(WORK_MIN_MIN, Math.round((s.endT - s.startT) / 60000));
+        const taskMap = {};
+        s.acts.forEach((a) => { const k = (SCHOOL_LABEL[a.school] || a.school || "기타") + "|" + (a.task || "작업"); taskMap[k] = (taskMap[k] || 0) + (Number(a.n) || 1); });
+        return { startT: s.startT, endT: s.endT, minutes: mins, acts: s.acts.length, taskMap, schools: Object.keys(s.schools) };
+      });
+      return { day, sessions, minutes: sessions.reduce((a, b) => a + b.minutes, 0), acts: sessions.reduce((a, b) => a + b.acts, 0) };
+    });
+    out[nm] = { days, minutes: days.reduce((a, b) => a + b.minutes, 0), acts: days.reduce((a, b) => a + b.acts, 0) };
+  });
+  return out;
+}
+const hhmm = (t) => new Date(t).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+const dur = (m) => (m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60 ? (m % 60) + "분" : ""}`.trim() : `${m}분`);
+
+function WorkReport({ myName = "", isAdmin = false }) {
+  const FONT = "var(--game-font, 'DotGothic16', monospace)";
+  const [days, setDays] = React.useState(7);
+  const [logs, setLogs] = React.useState(null);   // null=로딩
+  const [who, setWho] = React.useState("");        // "" = 전체
+  const [busy, setBusy] = React.useState(false);
+
+  const load = React.useCallback(async () => {
+    setBusy(true);
+    const l = await dbLoadWorkLogs(days);
+    setLogs(Array.isArray(l) ? l : []);
+    setBusy(false);
+  }, [days]);
+  React.useEffect(() => { load(); }, [load]);
+
+  const mine = normName(myName || "");
+  const visible = (logs || []).filter((l) => (isAdmin ? true : normName(l.name) === mine));
+  const report = buildWorkSessions(visible);
+  const names = Object.keys(report).sort((a, b) => (report[b].minutes || 0) - (report[a].minutes || 0));
+  const shownNames = who ? names.filter((n) => n === who) : names;
+
+  const exportCsv = () => {
+    const rows = [["이름", "날짜", "시작", "종료", "근무(분)", "스쿨", "업무건수", "업무내역"]];
+    names.forEach((nm) => report[nm].days.forEach((d) => d.sessions.forEach((s) => {
+      const detail = Object.keys(s.taskMap).map((k) => k.split("|")[1] + " " + s.taskMap[k] + "건").join(" / ");
+      rows.push([nm, d.day, hhmm(s.startT), hhmm(s.endT), s.minutes, s.schools.map((x) => SCHOOL_LABEL[x] || x).join(","), s.acts, detail]);
+    })));
+    const csv = "\uFEFF" + rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    try {
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `근무기록_${new Date().toLocaleDateString("sv-SE")}.csv`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    } catch (e) { window.alert("내보내기에 실패했어요."); }
+  };
+
+  const card = { background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 14, marginBottom: 14 };
+  const chip = (on) => ({ cursor: "pointer", fontFamily: FONT, fontSize: 11.5, fontWeight: "bold", padding: "5px 11px", borderRadius: 12, border: `2px solid ${C.ink}`, background: on ? C.gem : C.white, color: on ? C.white : C.ink });
+
+  return (
+    <div>
+      <div style={{ ...card }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+          <b style={{ fontSize: 13 }}>🕒 근무 기록</b>
+          <span style={{ fontSize: 10.5, color: C.inkSoft }}>{isAdmin ? "관리자 · 전체 인원" : "내 기록만 보여요"}</span>
+          <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+            {[[1, "오늘"], [7, "7일"], [30, "30일"]].map(([d, lb]) => (
+              <button key={d} type="button" onClick={() => setDays(d)} style={chip(days === d)}>{lb}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <PxButton tone="wood" onClick={load} style={{ fontSize: 11.5, padding: "6px 10px" }}>{busy ? "불러오는 중…" : "🔄 새로고침"}</PxButton>
+          {isAdmin && <PxButton tone="gold" onClick={exportCsv} style={{ fontSize: 11.5, padding: "6px 10px" }}>📤 CSV 내보내기</PxButton>}
+        </div>
+        {isAdmin && names.length > 1 && (
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 9 }}>
+            <button type="button" onClick={() => setWho("")} style={chip(!who)}>전체</button>
+            {names.map((n) => <button key={n} type="button" onClick={() => setWho(n)} style={chip(who === n)}>{n}</button>)}
+          </div>
+        )}
+      </div>
+
+      {logs === null ? (
+        <div style={{ ...card, textAlign: "center", fontSize: 12, color: C.inkSoft }}>불러오는 중…</div>
+      ) : shownNames.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", fontSize: 12, color: C.inkSoft, lineHeight: 1.8 }}>
+          이 기간에 기록이 없어요 📭<br />네이버스쿨·영상스쿨에서 업무를 하면 자동으로 쌓여요.
+        </div>
+      ) : shownNames.map((nm) => (
+        <div key={nm} style={card}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+            <b style={{ fontSize: 13.5 }}>🌱 {nm}</b>
+            <span style={{ fontSize: 11, fontWeight: "bold", color: C.good, background: "#eef6ef", border: `2px solid ${C.ink}`, borderRadius: 10, padding: "1px 8px" }}>합계 {dur(report[nm].minutes)}</span>
+            <span style={{ fontSize: 11, color: C.inkSoft }}>· 총 {report[nm].acts}건</span>
+          </div>
+          {report[nm].days.map((d) => (
+            <div key={d.day} style={{ borderTop: `2px dashed ${C.parchEdge}`, paddingTop: 8, marginTop: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5, flexWrap: "wrap" }}>
+                <b style={{ fontSize: 12 }}>📅 {d.day}</b>
+                <span style={{ fontSize: 11, color: C.good, fontWeight: "bold" }}>{dur(d.minutes)}</span>
+                <span style={{ fontSize: 10.5, color: C.inkSoft }}>· {d.acts}건</span>
+              </div>
+              {d.sessions.map((s, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "#fbf7ea", border: `2px solid ${C.parchEdge}`, borderRadius: 8, padding: "7px 9px", marginBottom: 5 }}>
+                  <span style={{ fontSize: 11.5, fontWeight: "bold", whiteSpace: "nowrap" }}>{hhmm(s.startT)} ~ {hhmm(s.endT)}</span>
+                  <span style={{ fontSize: 11, color: C.good, fontWeight: "bold", whiteSpace: "nowrap" }}>{dur(s.minutes)}</span>
+                  <span style={{ fontSize: 11, color: C.inkSoft, flex: 1, minWidth: 0, lineHeight: 1.6 }}>
+                    {Object.keys(s.taskMap).length === 0
+                      ? "체류만 기록됨"
+                      : Object.keys(s.taskMap).map((k) => `${k.split("|")[0]} ${k.split("|")[1]} ${s.taskMap[k]}건`).join(" · ")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      ))}
+      <div style={{ fontSize: 10.5, color: C.inkSoft, textAlign: "center", lineHeight: 1.8, paddingBottom: 10 }}>
+        업무를 제출·완료할 때마다 자동 기록되고, 스쿨 화면에 머무는 동안 5분마다 체류가 기록돼요.<br />30분 이상 아무 기록이 없으면 다른 세션으로 나뉘어요.
+      </div>
+    </div>
+  );
+}
+
 function LevelBoard({ myName = "", novices = [], cfg, onSave, onAddNovice, onBack }) {
   const FONT = "var(--game-font, 'DotGothic16', monospace)";
   const levels = (cfg && cfg.levels) || [];
   const assign = (cfg && cfg.assign) || {};
   const [unlocked, setUnlocked] = React.useState(false);
+  const [tab, setTab] = React.useState("level");
   const [codeIn, setCodeIn] = React.useState("");
   const [codeErr, setCodeErr] = React.useState(false);
   const [newName, setNewName] = React.useState("");
@@ -16252,9 +16513,17 @@ function LevelBoard({ myName = "", novices = [], cfg, onSave, onAddNovice, onBac
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "#efe6d2", display: "flex", flexDirection: "column", fontFamily: FONT }}>
-      <TitleBar icon="🎚" title="권한관리소" sub="초보자의 레벨을 정해요 · 숙련자는 레벨 없이 전체 개방" onBack={onBack} bg={C.parch} fg={C.ink} />
+      <TitleBar icon="🎚" title="권한관리소" sub="레벨 관리 · 🕒 근무 기록(몇시~몇시 · 업무 건수)" onBack={onBack} bg={C.parch} fg={C.ink} />
       <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
         <div style={{ maxWidth: 560, margin: "0 auto" }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+            {[["level", "🎚 레벨 관리"], ["work", "🕒 근무 기록"]].map(([k, lb]) => (
+              <button key={k} type="button" onClick={() => setTab(k)}
+                style={{ flex: 1, cursor: "pointer", fontFamily: FONT, fontSize: 12.5, fontWeight: "bold", padding: "9px 0", borderRadius: 10, border: `3px solid ${C.ink}`, background: tab === k ? C.gem : C.white, color: tab === k ? C.white : C.ink }}>{lb}</button>
+            ))}
+          </div>
+          {tab === "work" ? <WorkReport myName={myName} isAdmin={unlocked} /> : (
+          <>
           {!unlocked ? (
             <div style={{ ...card, textAlign: "center" }}>
               <div style={{ fontSize: 34 }}>🔒</div>
@@ -16327,6 +16596,8 @@ function LevelBoard({ myName = "", novices = [], cfg, onSave, onAddNovice, onBac
                 </div>
               </div>
             </>
+          )}
+          </>
           )}
         </div>
       </div>
