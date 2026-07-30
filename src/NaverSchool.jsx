@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { dbLoadNspTut, dbSaveNspTut, dbLoadNspKw, dbSaveNspKw, dbLoadNspUrls, dbSaveNspUrls, dbLoadCafeKw, dbSaveCafeKw, dbLoadCafeState, dbSaveCafeState, dbLoadKinKw, dbSaveKinKw, dbLoadKinState, dbSaveKinState, dbLoadKinEx, dbSaveKinEx } from "./LittleJuniorWorld.jsx";
+import { dbLoadNspTut, dbSaveNspTut, dbLoadNspKw, dbSaveNspKw, dbLoadNspUrls, dbSaveNspUrls, dbLoadCafeKw, dbSaveCafeKw, dbLoadCafeState, dbSaveCafeState, dbLoadCafeEx, dbSaveCafeEx, dbLoadKinKw, dbSaveKinKw, dbLoadKinState, dbSaveKinState, dbLoadKinEx, dbSaveKinEx } from "./LittleJuniorWorld.jsx";
 import ChatBot from "./ChatBot.jsx";
 
 /* 이미지 압축 (NaverSchool 자체 정의 · LittleJuniorWorld 의존 제거) */
@@ -121,6 +121,7 @@ const MOCK = {
     { id: 'k11', title: '발성 좋아지는 습관 뭐가 있을까요?',      date: '2026-07-27', url: '#' },
     { id: 'k12', title: '목 통증이랑 목소리 변화 같이 오는데요',  date: '2026-07-27', url: '#' },
   ],
+  yt: [],
   // 답변 요망: 키워드별로 수집한 카페 링크
   cafeLinks: [
     { id: 'c1', keyword: '그린레이 효과',   title: '그린레이 드셔보신 분 후기 부탁드려요',   url: 'https://cafe.naver.com/sample/1' },
@@ -136,7 +137,7 @@ const NSP_ROOMS = [
   { id: 'kw',   icon: '🔗', label: '카페 외부',   desc: '네이버 키워드 순위 추적', color: '#5b8def' },
   { id: 'kinTop', icon: '📊', label: '지식인 상위', desc: '준비 중이에요', color: '#e0a13d', soon: true },
   { id: 'kin',  icon: '💬', label: '지식인 최신글', desc: '답변 카운터·타이머 워크플로우', color: '#b76bd7' },
-  { id: 'yt',   icon: '▶️', label: '유튜브 최신글', desc: '준비 중이에요', color: '#d94f70', soon: true },
+  { id: 'yt',   icon: '▶️', label: '유튜브 최신글', desc: '답변 카운터·타이머 워크플로우', color: '#d94f70' },
 ];
 // ---- 답변 예시 등록 (링크 + 이미지) : 카페/지식인 탭에서 재사용 -------------
 // 지금은 화면(메모리)에만 저장돼요. 서버에 영구 저장하려면 addLink/onImages 에서
@@ -285,13 +286,20 @@ function CafeRoom({ crawledLinks = [], nickname = '' }) {
   const [calDay, setCalDay] = useState(null);
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
   const [timer, setTimer] = useState({ phase: 'idle', start: 0, count: 0 }); // 1시간 목표 40개
+  const [exposts, setExposts] = useState([]);          // 📚 예시(튜토리얼) 게시판 [{id,title,body,at,by}]
+  const [exOpen, setExOpen] = useState(false);
+  const [exWrite, setExWrite] = useState(false);
+  const [exTitle, setExTitle] = useState(''); const [exBody, setExBody] = useState('');
+  const [exView, setExView] = useState(null);
 
   const saveProducts = (list) => { setProducts(list); dbSaveCafeKw(list); };
   const saveState = (st) => { setState(st); dbSaveCafeState(st); };
+  const saveExposts = (list) => { setExposts(list); dbSaveCafeEx(list); };
 
   useEffect(() => {
     dbLoadCafeKw().then((d) => { if (Array.isArray(d)) setProducts(d); });
     dbLoadCafeState().then((d) => { if (d && typeof d === 'object') setState({ links: d.links || {}, doneLog: d.doneLog || [] }); });
+    dbLoadCafeEx().then((d) => { if (Array.isArray(d)) setExposts(d); });
   }, []);
   useEffect(() => { if (products.length && !products.some((p) => p.id === prodFilter)) setProdFilter(products[0].id); }, [products]); // eslint-disable-line
 
@@ -339,6 +347,7 @@ function CafeRoom({ crawledLinks = [], nickname = '' }) {
           {products.length === 0 && <span className="cafe-hint">⚙️ 설정에서 제품·키워드를 등록하세요</span>}
         </div>
         <div className="cafe-actions">
+          <button className="nsp-iconbtn" title="예시 (튜토리얼 게시판)" onClick={() => setExOpen(true)}>📚 예시</button>
           <button className="nsp-iconbtn" title="답변 (상태별 링크)" onClick={() => setAnsOpen(true)}>💬 답변</button>
           <button className="nsp-iconbtn" title="설정 (관리자)" onClick={() => setAdminOpen(true)}>⚙️</button>
           <button className="nsp-iconbtn" title="캘린더" onClick={() => setCalOpen(true)}>📅</button>
@@ -547,6 +556,70 @@ function CafeRoom({ crawledLinks = [], nickname = '' }) {
           </div>
         );
       })()}
+
+      {/* 📚 예시 (튜토리얼 게시판 — 관리자 글쓰기, 모두 열람) */}
+      {exOpen && (
+        <div className="nsp-modal-bg" onClick={() => { setExOpen(false); setExWrite(false); setExView(null); }}>
+          <div className="nsp-modal" onClick={(e) => e.stopPropagation()}>
+            {exView ? (
+              <>
+                <div className="nsp-modal-h">📄 {exView.title}</div>
+                <div className="kin-ex-meta">✍️ {exView.by} · {(exView.at || '').slice(0, 10)}</div>
+                <div className="kin-ex-body">{exView.body}</div>
+                <div className="nsp-modal-btns"><button className="nsp-btn" onClick={() => setExView(null)}>← 목록</button></div>
+              </>
+            ) : exWrite ? (
+              <>
+                {!admin ? (
+                  <>
+                    <div className="nsp-modal-h">🔑 관리자 확인</div>
+                    <div className="nsp-modal-sub">글쓰기는 관리자만 가능해요</div>
+                    <input className="nsp-modal-input" type="password" autoFocus value={pw}
+                      onChange={(e) => { setPw(e.target.value); setPwErr(false); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { if (pw === CAFE_ADMIN_PW) setAdmin(true); else setPwErr(true); } }} />
+                    {pwErr && <div className="nsp-modal-err">비밀번호가 틀렸어요</div>}
+                    <div className="nsp-modal-btns">
+                      <button className="nsp-btn ghost" onClick={() => setExWrite(false)}>취소</button>
+                      <button className="nsp-btn" onClick={() => { if (pw === CAFE_ADMIN_PW) setAdmin(true); else setPwErr(true); }}>확인</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="nsp-modal-h">✍️ 튜토리얼 글쓰기</div>
+                    <input className="nsp-modal-input" placeholder="제목" value={exTitle} onChange={(e) => setExTitle(e.target.value)} />
+                    <textarea className="nsp-modal-ta" style={{ height: 180, marginTop: 8 }} placeholder="내용을 입력하세요" value={exBody} onChange={(e) => setExBody(e.target.value)} />
+                    <div className="nsp-modal-btns">
+                      <button className="nsp-btn ghost" onClick={() => { setExWrite(false); setExTitle(''); setExBody(''); }}>취소</button>
+                      <button className="nsp-btn" onClick={() => {
+                        if (!exTitle.trim() || !exBody.trim()) return;
+                        saveExposts([{ id: 'e' + Date.now(), title: exTitle.trim(), body: exBody.trim(), at: nowISO(), by: nickname || '관리자' }, ...exposts].slice(0, 200));
+                        setExTitle(''); setExBody(''); setExWrite(false);
+                      }}>등록</button>
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="nsp-modal-h">📚 예시 · 튜토리얼 게시판</div>
+                <div className="nsp-modal-sub">모두가 볼 수 있어요 · 글쓰기는 관리자만</div>
+                <button className="nsp-btn" style={{ width: '100%', marginBottom: 10 }} onClick={() => setExWrite(true)}>✍️ 등록</button>
+                <div className="kin-ex-list">
+                  {exposts.length === 0 && <div className="nsp-modal-empty">아직 등록된 글이 없어요</div>}
+                  {exposts.map((p) => (
+                    <button key={p.id} className="kin-ex-item" onClick={() => setExView(p)}>
+                      <span className="kin-ex-title">{p.title}</span>
+                      <span className="kin-ex-sub">✍️ {p.by} · {(p.at || '').slice(0, 10)}</span>
+                      {admin && <span className="kin-ex-del" onClick={(e) => { e.stopPropagation(); saveExposts(exposts.filter((x) => x.id !== p.id)); }}>🗑</span>}
+                    </button>
+                  ))}
+                </div>
+                <div className="nsp-modal-btns"><button className="nsp-btn" onClick={() => setExOpen(false)}>닫기</button></div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -723,7 +796,7 @@ function CafeWorkflow({ nickname, setNickname, links }) {
 // ---- 지식인 최신글: 답변 카운터 + 1시간 50개 타이머 + 답변완료/답변X 분리 ----
 /* ======================= 💬 지식인 최신글 방 ======================= */
 const KIN_ADMIN_PW = 'ckdals987?';
-function KinRoom({ crawledLinks = [], nickname = '' }) {
+function KinRoom({ crawledLinks = [], nickname = '', pfx = 'kin' }) {
   const [products, setProducts] = useState([]);
   const [state, setState] = useState({ links: {} });   // { url: { status:'done'|'fail', at, by, keyword } }
   const [exposts, setExposts] = useState([]);          // 예시 게시판 [{id,title,body,at,by}]
@@ -742,15 +815,15 @@ function KinRoom({ crawledLinks = [], nickname = '' }) {
   const [timer, setTimer] = useState({ phase: 'idle', start: 0, count: 0 });
   const GOAL = 50;
 
-  const saveProducts = (list) => { setProducts(list); dbSaveKinKw(list); };
-  const saveState = (st) => { setState(st); dbSaveKinState(st); };
-  const saveExposts = (list) => { setExposts(list); dbSaveKinEx(list); };
+  const saveProducts = (list) => { setProducts(list); dbSaveKinKw(list, pfx); };
+  const saveState = (st) => { setState(st); dbSaveKinState(st, pfx); };
+  const saveExposts = (list) => { setExposts(list); dbSaveKinEx(list, pfx); };
 
   useEffect(() => {
-    dbLoadKinKw().then((d) => { if (Array.isArray(d)) setProducts(d); });
-    dbLoadKinState().then((d) => { if (d && typeof d === 'object') setState({ links: d.links || {} }); });
-    dbLoadKinEx().then((d) => { if (Array.isArray(d)) setExposts(d); });
-  }, []);
+    dbLoadKinKw(pfx).then((d) => { if (Array.isArray(d)) setProducts(d); });
+    dbLoadKinState(pfx).then((d) => { if (d && typeof d === 'object') setState({ links: d.links || {} }); });
+    dbLoadKinEx(pfx).then((d) => { if (Array.isArray(d)) setExposts(d); });
+  }, [pfx]);
   useEffect(() => { if (products.length && !products.some((p) => p.id === prodFilter)) setProdFilter(products[0].id); }, [products]); // eslint-disable-line
 
   const nowISO = () => new Date().toISOString();
@@ -1311,7 +1384,7 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
     imgGreen: [], imgBoy: [],
     imgCommentGreen: [], imgCommentBoy: [],
   });
-  const [data, setData] = useState({ keywords: [], urls: [], cafe: [], kin: [], cafeLinks: [] });
+  const [data, setData] = useState({ keywords: [], urls: [], cafe: [], kin: [], yt: [], cafeLinks: [] });
   /* 🔗 카페 외부: 관리자 제품·키워드 설정 (서버 저장) */
   const [kwProducts, setKwProducts] = useState([]);   // [{ id, name, keywords:[{id,word}] }]
   const [kwAdmin, setKwAdmin] = useState(false);
@@ -1347,15 +1420,16 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
     setLoading(true);
     try {
       const j = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error(); return r.json(); };
-      const [kw, urls, cafe, kin, clinks] = await Promise.all([
+      const [kw, urls, cafe, kin, yt, clinks] = await Promise.all([
         j(`${MOIP_API}/api/echo/keywords`),
         j(`${MOIP_API}/api/echo/urls`),
         j(`${MOIP_API}/api/echo/posts?source=cafe`),
         j(`${MOIP_API}/api/echo/posts?source=kin`),
+        j(`${MOIP_API}/api/echo/posts?source=youtube`).catch(() => ({ items: [] })),
         j(`${MOIP_API}/api/echo/cafe-links`),
       ]);
       const pick = (x) => x.items || x;
-      setData({ keywords: pick(kw), urls: pick(urls), cafe: pick(cafe), kin: pick(kin), cafeLinks: pick(clinks) });
+      setData({ keywords: pick(kw), urls: pick(urls), cafe: pick(cafe), kin: pick(kin), yt: pick(yt), cafeLinks: pick(clinks) });
       setUpdatedAt(kw.updatedAt || '');
       setUsingMock(false);
     } catch (e) {
@@ -1498,10 +1572,8 @@ function NaverSchoolPanel({ open, onClose, nickname: nicknameProp }) {
           {tab === 'kinTop' && (
             <div className="nsp-soon"><div className="nsp-soon-ic">📊</div><div className="nsp-soon-t">지식인 상위</div><div className="nsp-soon-d">아직 준비 중이에요 · 곧 채워질 예정입니다</div></div>
           )}
-          {/* 빈 방: 유튜브 최신글 */}
-          {tab === 'yt' && (
-            <div className="nsp-soon"><div className="nsp-soon-ic">▶️</div><div className="nsp-soon-t">유튜브 최신글</div><div className="nsp-soon-d">아직 준비 중이에요 · 곧 채워질 예정입니다</div></div>
-          )}
+          {/* ▶️ 유튜브 최신글 (지식인 최신글과 동일 워크플로우 · 별도 저장) */}
+          {tab === 'yt' && <KinRoom crawledLinks={data.yt || []} nickname={nicknameProp || nickname} pfx="yt" />}
           {/* ① 카페 외부 (네이버 키워드) */}
           {tab === 'kw' && (() => {
             // 관리자가 등록한 제품·키워드를, 크롤링 결과(data.keywords)와 매칭해 표를 만들어요
