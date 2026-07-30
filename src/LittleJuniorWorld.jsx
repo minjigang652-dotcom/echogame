@@ -124,13 +124,7 @@ const RENT_HOUSES = [
   { id: "r4", name: "치앙마이 리버뷰", rent: 90, roof: "#d76b96", roofDk: "#b24d78", wall: "#f6d8e5" },
 ];
 
-const ANNOUNCEMENTS = [
-  { id: "a1", type: "이벤트", title: "에코월드 사전예약자 공지", date: "2026-07-10", body: "에코월드 사전예약에 참여해주신 모든 분들께 감사드립니다! 사전예약자에게는 오픈 첫날 스타 젬 100개와 한정 스킨이 지급됩니다. 입주 일정과 웰컴 혜택은 순차적으로 안내드릴 예정이니 조금만 기다려주세요 🌱" },
-  { id: "a2", type: "이벤트", title: "치앙마이 한 달 살기 신청", date: "2026-07-12", body: "강 건너 치앙마이 하우스 렌트 신청을 받습니다. 렌트비는 스타 젬으로 결제되며, 리버뷰 동은 조기 마감될 수 있습니다." },
-  { id: "a3", type: "공지", title: "감사의 방 리뉴얼", date: "2026-07-18", body: "감사의 방 선반에 신규 상품(향초, 꽃다발)이 입고되었습니다. 감사 칠판에 포스트잇도 자유롭게 붙여주세요." },
-  { id: "a4", type: "공지", title: "에코월드 입주준비중", date: "2026-07-20", body: "현재 에코월드은 막바지 입주 준비 중입니다. 마을 곳곳의 건물과 편의시설을 정비하고 있어요. 더 편안하고 즐거운 마을에서 만나뵐 수 있도록 열심히 꾸미는 중이니, 곧 활짝 열릴 에코월드을 기대해주세요! 🏡✨" },
-  { id: "a5", type: "공지", title: "월말 결산 & 정산 안내", date: "2026-07-28", body: "7월 31일 월말 결산이 있습니다. 중앙은행에서 보유 젬을 확인하고 정산(환전)을 진행해 주세요." },
-];
+const ANNOUNCEMENTS = [];
 
 const CAL_EVENTS = {
   "2026-07-10": ["10:00 전체 회의"],
@@ -8828,7 +8822,7 @@ function BoardView({ onBack, myName = "", myUid = "", onCommunity }) {
     dbAddNotice(wType, wTitle.trim(), wBody.trim(), myUid).then((row) => {
       setWTitle(""); setWBody(""); setWOpen(false);
       if (row && row.id != null) {
-        setDbList((v) => [{ id: "db" + row.id, rawId: row.id, uid: null, type: row.type, title: row.title, body: row.body || "", date: new Date(row.created_at || Date.now()).toISOString().slice(0, 10) }, ...v.filter((x) => x.rawId !== row.id)]);
+        setDbList((v) => [{ id: "db" + row.id, rawId: row.id, uid: row.uid || null, type: row.type, title: row.title, body: row.body || "", date: new Date(row.created_at || Date.now()).toISOString().slice(0, 10) }, ...v.filter((x) => x.rawId !== row.id)]);
       } else {
         window.alert("⚠️ 서버에 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
       }
@@ -8982,7 +8976,7 @@ function BoardView({ onBack, myName = "", myUid = "", onCommunity }) {
 
         {tab === "notice" && (() => {
           const srv = dbList.filter((n) => n.type !== "모집" && n.type !== "업데이트" && !String(n.title || "").startsWith("[파티모집]"));
-          const ordered = [...srv].sort((a, b) => { const ia = nOrder.indexOf(a.rawId), ib = nOrder.indexOf(b.rawId); if (ia === -1 && ib === -1) return 0; if (ia === -1) return 1; if (ib === -1) return -1; return ia - ib; });
+          const ordered = [...srv].sort((a, b) => { const ia = nOrder.indexOf(a.rawId), ib = nOrder.indexOf(b.rawId); if (ia === -1 && ib === -1) return 0; if (ia === -1) return -1; if (ib === -1) return 1; return ia - ib; });
           const shown = [...ordered, ...ANNOUNCEMENTS];
           const moveNotice = (i, d) => { const arr = ordered.map((n) => n.rawId); const j = i + d; if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; saveNOrder(arr); };
           return (
@@ -9000,11 +8994,11 @@ function BoardView({ onBack, myName = "", myUid = "", onCommunity }) {
                   </div>
                   <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 2 }}>{a.date} · 눌러서 열기</div>
                 </button>
-                {a.rawId && myUid && a.uid === myUid && (
-                  <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                    <span style={{ flex: 1, fontSize: 10, color: C.good, alignSelf: "center", fontWeight: "bold" }}>✍️ 내가 쓴 글</span>
+                {a.rawId && (
+                  <div style={{ display: "flex", gap: 6, marginTop: 8, alignItems: "center" }}>
+                    <span style={{ flex: 1 }} />
                     <PxButton tone="wood" onClick={() => setEdit({ id: a.rawId, title: a.title, body: a.body || "" })} style={{ fontSize: 10, padding: "4px 8px" }}>✏️ 수정</PxButton>
-                    <PxButton tone="danger" onClick={() => { if (window.confirm("정말로 삭제하시겠습니까?")) dbDelNotice(a.rawId).then(reload); }} style={{ fontSize: 10, padding: "4px 8px" }}>🗑</PxButton>
+                    <PxButton tone="danger" onClick={() => { if (window.confirm("이 공지를 삭제할까요? (모두에게서 사라져요)")) dbDelNotice(a.rawId).then(reload); }} style={{ fontSize: 10, padding: "4px 8px" }}>🗑 삭제</PxButton>
                   </div>
                 )}
               </div>
@@ -14275,10 +14269,10 @@ function EchoTown() {
     return next;
   });
   const [dbNoticeList, setDbNoticeList] = useState([]);
+  const loadNotices = () => dbNotices().then((r) => setDbNoticeList(r || []));
   useEffect(() => {
-    const load = () => dbNotices().then((r) => setDbNoticeList(r || []));
-    load();
-    const iv = setInterval(load, 90000);
+    loadNotices();
+    const iv = setInterval(loadNotices, 90000);
     return () => clearInterval(iv);
   }, []);
   const allNotices = useMemo(() => {
@@ -15764,7 +15758,7 @@ function EchoTown() {
           mentions={mentions} onGoMention={goMention} openHistId={pendingHist} onHistOpened={() => setPendingHist(null)}
           expertNames={(people || []).map((p) => p && normName(p.name)).filter(Boolean)}
           onMention={(names, refId, refTitle, snippet) => notifyMention(names, "history", refId, refTitle, snippet)}
-          onPostNotice={(t) => { dbAddNotice("공지", t, `${myName || "익명"}님의 공지`, myUid); showNotice("📢 공지를 등록했어요"); }}
+          onPostNotice={(t) => { dbAddNotice("공지", t, `${myName || "익명"}님의 공지`, myUid).then(() => loadNotices()); showNotice("📢 공지를 등록했어요"); }}
           onGo={(mapId) => { setHqOpen(false); setQuestJump({ mapId, qid: null }); setView("project"); }}
           onGoBoard={() => { setHqOpen(false); setView("board"); }}
           bossImg={(cat) => allSprites["hqboss_" + cat] || ""}
