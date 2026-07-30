@@ -115,7 +115,7 @@ function CopyBox({ sec }) {
 /* 🎬 영상스쿨 리워드 (제품별 override 가능하도록 상수로 분리) */
 const V_REWARD = { submit: 2, approve: 2, bonus: 4 };
 const V_SPEC = { length: "30초 숏츠" };
-const V_GRADS = [["#ffd6a5", "#ff8fab"], ["#a0e8af", "#57cc99"], ["#a5c8ff", "#7b8cff"], ["#e0b0ff", "#b088ff"], ["#ffe08a", "#ffb347"], ["#b5ead7", "#8fd0a0"]];
+const V_GRADS = [["hsl(258,62%,30%)", "hsl(298,55%,18%)"], ["hsl(280,62%,30%)", "hsl(320,55%,18%)"], ["hsl(300,62%,30%)", "hsl(340,55%,18%)"], ["hsl(250,62%,30%)", "hsl(210,55%,18%)"], ["hsl(320,62%,30%)", "hsl(360,55%,18%)"], ["hsl(268,62%,30%)", "hsl(308,55%,18%)"], ["hsl(335,62%,30%)", "hsl(15,55%,18%)"], ["hsl(262,62%,30%)", "hsl(302,55%,18%)"]];
 const V_STAGES = [["script", "📝 원고"], ["source", "🎥 소스"], ["edit", "✂️ 편집"]];
 function makePoster(p) {
   const situ = (p.situation || "").trim();
@@ -192,6 +192,7 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
   const [draftText, setDraftText] = useState({});   // 입력 중 텍스트 (topicId별)
   const [showProt, setShowProt] = useState({});      // 🎭 주인공 설정 토글
   const [queueOpen, setQueueOpen] = useState(false); // 🗂 검토 큐
+  const [selTopic, setSelTopic] = useState(null);    // 클릭해서 연 주제(에디터 모달)
 
   const commit = (nextTopics, gold, msg) => {
     const next = { ...vdata, topics: nextTopics };
@@ -247,18 +248,33 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
 
   /* ── 🧑 주인공 만들기 ── */
   if (house.id === "hero") {
+    const CORE_CHIPS = ["사랑받고 싶고 인정받고 싶은 마음", "자존감 회복", "반전 매력 어필", "숨은 재능 발견"];
+    const labelS = { fontSize: 11, fontWeight: "bold", color: C.inkSoft, margin: "8px 0 4px" };
+    const chipS = (on) => ({ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", background: on ? "#4f46e5" : "#eef0fb", color: on ? "#fff" : "#4b3fb0", border: `1.5px solid ${on ? "#4f46e5" : "#c3c7f5"}`, borderRadius: 999, padding: "4px 10px" });
     return (
       <div>
-        <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10, lineHeight: 1.7 }}>타겟·상황·코어·성격을 입력하면 <b>원고 작성용 주제 카드</b>가 즉석에서 만들어져요. 승인 없이 <b>무제한</b>으로 추가할 수 있어요.</div>
-        <div style={{ background: "#f7f2ff", border: `2px solid ${C.ink}`, borderRadius: 10, padding: 11, marginBottom: 14 }}>
-          <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-            <input value={pAge} onChange={(e) => setPAge(e.target.value)} placeholder="나이 (예: 20대)" style={{ ...inp, flex: 1 }} />
-            <input value={pGender} onChange={(e) => setPGender(e.target.value)} placeholder="성별" style={{ ...inp, flex: 1 }} />
+        <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 12, lineHeight: 1.75 }}>🐣 새 영상 주제가 필요할 때 여기서 주인공을 직접 만들어보세요. 타겟·상황·성격을 적으면 AI가 원고 작성 탭에 쓸 포스터를 바로 만들어줘요 — <b>승인 없이 바로 추가돼요.</b></div>
+        <div style={{ background: C.white, border: `2px solid ${C.ink}`, borderRadius: 12, padding: 14, marginBottom: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: "bold", marginBottom: 4 }}>📇 주인공 설정</div>
+          <div style={{ fontSize: 11, color: C.inkSoft, lineHeight: 1.6, marginBottom: 6 }}>아래를 채우면 원고 작성 탭 포스터 목록에 새 카드가 즉시 생겨요. 기존 8개 주제는 그대로 남아있고, 여기서 만든 건 추가되는 방식이에요.</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <div style={labelS}>나이대</div>
+              <select value={pAge} onChange={(e) => setPAge(e.target.value)} style={{ ...inp, cursor: "pointer" }}>{["", "10대", "20대", "30대", "40대 이상"].map((o) => <option key={o} value={o}>{o || "선택"}</option>)}</select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={labelS}>성별</div>
+              <select value={pGender} onChange={(e) => setPGender(e.target.value)} style={{ ...inp, cursor: "pointer" }}>{["", "남", "여", "무관"].map((o) => <option key={o} value={o}>{o || "선택"}</option>)}</select>
+            </div>
           </div>
-          <textarea value={pSitu} onChange={(e) => setPSitu(e.target.value)} rows={2} placeholder="구체적 상황·심정 (예: 자취 첫날, 뭘 사야 할지 막막함)" style={{ ...inp, marginBottom: 6, resize: "vertical" }} />
-          <input value={pCore} onChange={(e) => setPCore(e.target.value)} placeholder="공략할 코어 (예: 자취 필수템)" style={{ ...inp, marginBottom: 6 }} />
-          <input value={pPers} onChange={(e) => setPPers(e.target.value)} placeholder="성격 (예: 귀찮음 많은 게으른 성격)" style={{ ...inp, marginBottom: 8 }} />
-          <PxButton tone="good" onClick={addProtagonist} style={{ width: "100%", fontSize: 13, padding: 10 }}>🧑 주제 카드 생성</PxButton>
+          <div style={labelS}>구체적 상황과 심정</div>
+          <textarea value={pSitu} onChange={(e) => setPSitu(e.target.value)} rows={2} placeholder="예: 소개팅 자리에서 노래방 갔는데 다 같이 조용해질까봐 무서운 상황" style={{ ...inp, resize: "vertical" }} />
+          <div style={labelS}>공략할 코어 (심정)</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>{CORE_CHIPS.map((c) => <button key={c} type="button" onClick={() => setPCore(c)} style={chipS(pCore === c)}>{c}</button>)}</div>
+          <input value={pCore} onChange={(e) => setPCore(e.target.value)} placeholder="예: 사랑받고 싶고 인정받고 싶은 마음" style={inp} />
+          <div style={labelS}>성격/성향</div>
+          <input value={pPers} onChange={(e) => setPPers(e.target.value)} placeholder="예: 소심함, 낯가림, 허세 있음" style={inp} />
+          <PxButton tone="good" onClick={addProtagonist} style={{ width: "100%", fontSize: 13, padding: 11, marginTop: 10 }}>🤖 AI로 포스터 만들기</PxButton>
         </div>
         <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>🗂 만들어진 주제 {displayTopics.length}개</div>
         {displayTopics.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 16 }}>아직 주제가 없어요. 위에서 만들어보세요!</div>}
@@ -275,9 +291,16 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
     );
   }
 
-  /* ── 📝 원고 / 🎥 소스 / ✂️ 편집 / 🚀 업로드 게시판 ── */
+  /* ── 📝 원고 / 🎥 소스 / ✂️ 편집 / 🚀 업로드 게시판 (플랫 탭) ── */
   const stage = house.id;   // script | source | edit | upload
   const stageLabel = { script: "📝 원고", source: "🎥 소스", edit: "✂️ 편집", upload: "🚀 업로드" }[stage];
+  const stageDesc = {
+    script: "📇 아래 포스터를 눌러서 주제를 골라보세요 — 그 사람이 되었다고 생각하고 원고(후크+스토리)를 써보세요. 포스터 왼쪽 위 🖼 아이콘으로 사진도 넣을 수 있어요.",
+    source: "📹 주제만 봐도 바로 찾을 수 있어요 — 원고를 기다릴 필요 없이 아무 주제나 골라서 영상 소스를 제출하세요. 파일로 제출하면 편집 탭에 자동으로 소스가 연결돼요.",
+    edit: "✂️ 소스가 준비된 주제를 편집하세요 — 음악 추가, 컷 편집까지 끝나면 완성본 링크를 제출.",
+    upload: "🚀 편집까지 끝난 주제를 캡션·해시태그 달아서 업로드하세요. (실제 SNS 업로드 연동 전이라 게시 화면까지만 시뮬레이션해요)",
+  }[stage];
+  const stageIcon = { script: "📝", source: "🎥", edit: "✂️", upload: "🚀" }[stage];
 
   /* 🗂 검토 큐 : 모든 주제의 「승인 대기(pending)」 스테이지를 모아서 스테이지 탭으로 보여줘요 */
   const Q_STAGES = [["script", "📝 원고"], ["source", "🎥 소스"], ["edit", "✂️ 편집"]];
@@ -290,124 +313,150 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
   }));
   const queueTabs = Q_STAGES.map(([sid, lb]) => ({ id: sid, label: lb, count: queueItems.filter((i) => i.tab === sid).length }));
 
+  /* 리스트 행 상태 배지 */
+  const rowStatus = (t) => {
+    if (stage === "upload") { if (!stDone(t.edit)) return { label: "편집 대기중", bg: "#eeeaf0", fg: "#8a7f6a" }; if (t.upload && t.upload.posted) return { label: "👑 게시됨", bg: "#e6f4ea", fg: "#4e9a3a" }; return { label: "업로드 가능", bg: "#e0e2fc", fg: "#4f46e5" }; }
+    if (stage === "edit" && !(stDone(t.script) && stDone(t.source))) return { label: "🔒 소스 승인 대기", bg: "#eeeaf0", fg: "#8a7f6a" };
+    const s = stStatus(t[stage]);
+    if (s === "none") return { label: stage === "edit" ? "편집 시작" : "대기중", bg: "#e0e2fc", fg: "#4f46e5" };
+    const info = V_STATUS[s]; return { label: info.label, bg: info.bg, fg: info.fg };
+  };
+
+  /* 에디터(모달 내부) — 제출 · 피드백 · 승인 */
+  const renderEditor = (t) => {
+    const st = t[stage] || {};
+    const key = t.id + stage;
+    const status = stStatus(st);
+    const curVal = draftText[key] != null ? draftText[key] : (st.text || st.link || "");
+    if (stage === "upload") {
+      if (!stDone(t.edit)) return <div style={{ fontSize: 11.5, color: C.inkSoft, background: "#f4f2ea", border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: 8 }}>🔒 편집 승인 후 업로드할 수 있어요</div>;
+      if (t.upload && t.upload.posted) return (
+        <div><StageBadge st={{ approved: true }} /><div style={{ fontSize: 12, marginTop: 6, whiteSpace: "pre-wrap" }}>📝 {t.upload.caption}</div><div style={{ fontSize: 11, color: "#4f46e5", marginTop: 3 }}>{t.upload.hashtags}</div><div style={{ fontSize: 10, color: C.inkSoft, marginTop: 3 }}>게시: {t.upload.by}</div></div>
+      );
+      return (
+        <div>
+          <textarea value={draftText[key] || ""} onChange={(e) => setDraftText((d) => ({ ...d, [key]: e.target.value }))} rows={2} placeholder="캡션" style={{ ...inp, marginBottom: 6, resize: "vertical" }} />
+          <input value={draftText[key + "h"] || ""} onChange={(e) => setDraftText((d) => ({ ...d, [key + "h"]: e.target.value }))} placeholder="#해시태그 #모아서" style={{ ...inp, marginBottom: 6 }} />
+          <PxButton tone="gold" onClick={() => { postUpload(t.id, (draftText[key] || "").trim(), (draftText[key + "h"] || "").trim()); setSelTopic(null); }} style={{ width: "100%", fontSize: 12, padding: 9 }}>🚀 게시하기</PxButton>
+        </div>
+      );
+    }
+    if (stage === "edit" && !(stDone(t.script) && stDone(t.source))) return <div style={{ fontSize: 11.5, color: C.inkSoft, background: "#f4f2ea", border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: 8 }}>🔒 원고·소스가 모두 승인되면 편집을 시작할 수 있어요</div>;
+    return (
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: "bold", flex: 1 }}>{stageLabel}</span>
+          <StageBadge st={st} />
+        </div>
+        {(status === "none" || status === "feedback") ? (
+          <div>
+            {status === "feedback" && (
+              <div style={{ background: "#ffe1ec", border: "1.5px solid #ffb8d2", borderRadius: 8, padding: 8, fontSize: 11.5, lineHeight: 1.6, marginBottom: 6, color: "#9d174d" }}>
+                📝 <b>파티장 피드백</b>{st.feedbackBy ? ` · ${st.feedbackBy}` : ""}<br /><span style={{ color: C.ink, whiteSpace: "pre-wrap" }}>{st.feedback}</span>
+              </div>
+            )}
+            {stage === "script" && <div style={{ display: "inline-block", fontSize: 10, fontWeight: "bold", color: "#4f46e5", background: "#e0e2fc", border: "1.5px solid #cdd0f7", borderRadius: 999, padding: "2px 9px", marginBottom: 6 }}>⏱️ 완성 영상은 {(product && product.spec && product.spec.length) || V_SPEC.length} 내외로</div>}
+            <textarea value={curVal} onChange={(e) => setDraftText((d) => ({ ...d, [key]: e.target.value }))} rows={stage === "script" ? 5 : 3} placeholder={stage === "script" ? `${V_SPEC.length} 원고를 써주세요` : "파일 설명 + 구글드라이브/업로드 링크"} style={{ ...inp, marginBottom: 6, resize: "vertical" }} />
+            {stage === "script" && <AISelfCheck text={curVal} />}
+            <PxButton tone="good" onClick={() => { submitStage(t.id, stage, stage === "script" ? { text: curVal.trim() } : { link: curVal.trim() }); setSelTopic(null); }} style={{ width: "100%", fontSize: 12, padding: 9 }}>{status === "feedback" ? "수정 후 제출하기" : "제출하고 골드 받기"}</PxButton>
+          </div>
+        ) : (
+          <div>
+            <div style={{ background: "#f4f2ea", border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: 8, fontSize: 12, whiteSpace: "pre-wrap", wordBreak: "break-word", lineHeight: 1.6 }}>{st.text || st.link}</div>
+            <div style={{ fontSize: 10, color: C.inkSoft, margin: "4px 0 6px" }}>제출: {st.by}</div>
+            {status === "pending" && (isReviewer ? (
+              <div>
+                <textarea value={draftText[key + "fb"] || ""} onChange={(e) => setDraftText((d) => ({ ...d, [key + "fb"]: e.target.value }))} rows={2} placeholder="✏️ 수정요청(피드백) 내용 — 적고 「피드백」을 누르면 작성자에게 돌아가요" style={{ ...inp, marginBottom: 6, resize: "vertical" }} />
+                <div style={{ display: "flex", gap: 6 }}>
+                  <PxButton tone="wood" onClick={() => setDraftText((d) => ({ ...d, [key + "fb"]: polishFeedback(d[key + "fb"] || "") }))} title="짧게 적어도 AI가 부드럽고 구체적으로 다듬어줘요" style={{ flexShrink: 0, fontSize: 12, padding: 9 }}>✨ 다듬기</PxButton>
+                  <PxButton tone="good" onClick={() => { approveStage(t.id, stage); setSelTopic(null); }} style={{ flex: 1, fontSize: 12, padding: 9 }}>✅ 승인 (+{RW.approve}G)</PxButton>
+                  <PxButton tone="danger" onClick={() => { feedbackStage(t.id, stage, draftText[key + "fb"] || ""); setSelTopic(null); }} style={{ flex: 1, fontSize: 12, padding: 9 }}>✏️ 피드백</PxButton>
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: 11, color: C.inkSoft, background: "#f0eee6", border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: 8, textAlign: "center" }}>🕓 파티장(🔥 숙련된 제작자)의 검토를 기다리는 중이에요</div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const selT = displayTopics.find((t) => t.id === selTopic);
+
   return (
     <div>
       {isReviewer && (
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
-          <QueueButton count={queueItems.length} onClick={() => setQueueOpen(true)} label="🗂 검토 큐" />
+          <QueueButton count={queueItems.length} onClick={() => setQueueOpen(true)} label="🎀 파티장 검토사항" />
         </div>
       )}
       {queueOpen && (
-        <ReviewQueue
-          title="🗂 영상 검토 큐"
-          tabs={queueTabs}
-          items={queueItems}
-          onApprove={(it) => approveStage(it.tid, it.stage)}
-          onFeedback={(it, msg) => feedbackStage(it.tid, it.stage, msg)}
-          onClose={() => setQueueOpen(false)}
-        />
+        <ReviewQueue title="🎀 파티장 검토사항" tabs={queueTabs} items={queueItems} onApprove={(it) => approveStage(it.tid, it.stage)} onFeedback={(it, msg) => feedbackStage(it.tid, it.stage, msg)} onClose={() => setQueueOpen(false)} />
       )}
-      <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10, lineHeight: 1.7 }}>
-        {stage === "script" && `주제 하나를 골라 ${V_SPEC.length} 원고를 써요. 아무 주제나 바로 시작할 수 있어요.`}
-        {stage === "source" && "그 상황에 맞는 영상 소스를 파일/드라이브 링크로 제출해요. 원고를 기다릴 필요 없어요."}
-        {stage === "edit" && "원고+소스가 모두 승인된 주제만 편집을 시작할 수 있어요."}
-        {stage === "upload" && "편집이 승인된 주제에 캡션+해시태그를 달아 게시해요."}
-      </div>
-      {product && stage === "script" && onOpenTutorial && <button type="button" onClick={onOpenTutorial} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", color: "#4f46e5", background: "#e0e2fc", border: "1.5px solid #c3c7f5", borderRadius: 999, padding: "5px 12px", marginBottom: 8 }}>📖 STEP 0 · 코어 / 원고 예시 다시보기</button>}
+      <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10, lineHeight: 1.7 }}>{stageDesc}</div>
+      {product && stage === "script" && onOpenTutorial && <button type="button" onClick={onOpenTutorial} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", color: "#4f46e5", background: "#e0e2fc", border: "1.5px solid #c3c7f5", borderRadius: 999, padding: "5px 12px", marginBottom: 10 }}>📖 STEP 0 · 코어 / 원고 예시 다시보기</button>}
       {product && stage === "source" && (<><SourceBelt tools={product.sourceTools} /><KeywordChips keywords={product.keywords} /></>)}
       {product && stage === "edit" && <SafeZoneDiagram editGuide={product.editGuide} />}
       {displayTopics.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 20 }}>주제가 없어요. 🧑 주인공 만들기에서 먼저 만들어주세요!</div>}
-      {displayTopics.map((t) => {
-        const st = t[stage] || {};
-        const editLocked = stage === "edit" && !(stDone(t.script) && stDone(t.source));
-        const upLocked = stage === "upload" && !stDone(t.edit);
-        const key = t.id + stage;
-        const status = stStatus(st);
-        const curVal = draftText[key] != null ? draftText[key] : (st.text || st.link || "");
-        return (
-          <PosterCard key={t.id} t={t}>
-            {/* 🎭 주인공 설정 토글 */}
-            {t.protagonist && (
-              <div style={{ marginBottom: 8 }}>
-                <button type="button" onClick={() => setShowProt((s) => ({ ...s, [t.id]: !s[t.id] }))} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, background: "none", border: "none", color: "#8e5a9e", fontWeight: "bold" }}>🎭 주인공 설정 {showProt[t.id] ? "▲" : "▼"}</button>
-                {showProt[t.id] && (
-                  <div style={{ background: "#f7f2ff", border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: 8, fontSize: 11, lineHeight: 1.7, marginTop: 4 }}>
-                    나이 {t.protagonist.age || "-"} · 성별 {t.protagonist.gender || "-"}<br />상황: {t.protagonist.situation || "-"}<br />코어: {t.protagonist.core || "-"}<br />성격: {t.protagonist.personality || "-"}
-                  </div>
-                )}
-              </div>
-            )}
 
-            {/* 업로드 스테이지 */}
-            {stage === "upload" ? (
-              upLocked ? (
-                <div style={{ fontSize: 11.5, color: C.inkSoft, background: "#f4f2ea", border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: 8 }}>🔒 편집 승인 후 업로드할 수 있어요</div>
-              ) : t.upload.posted ? (
-                <div>
-                  <StageBadge st={{ approved: true }} />
-                  <div style={{ fontSize: 12, marginTop: 6, whiteSpace: "pre-wrap" }}>📝 {t.upload.caption}</div>
-                  <div style={{ fontSize: 11, color: "#8e5a9e", marginTop: 3 }}>{t.upload.hashtags}</div>
-                  <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 3 }}>게시: {t.upload.by}</div>
+      {stage === "script" ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+          {displayTopics.map((t) => {
+            const g = t.grad || ["#ddd", "#bbb"];
+            const s = stStatus(t[stage]);
+            return (
+              <div key={t.id} className="vs-poster" onClick={() => setSelTopic(t.id)} style={{ cursor: "pointer", border: `2px solid ${C.ink}`, borderRadius: 12, overflow: "hidden", position: "relative", minHeight: 152, background: `linear-gradient(160deg, ${g[0]}, ${g[1]})`, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+                <div style={{ position: "absolute", top: 8, left: 8, fontSize: 14, opacity: 0.9 }}>🖼</div>
+                {s !== "none" && <div style={{ position: "absolute", top: 8, right: 8, fontSize: 13 }}>{s === "approved" ? "👑" : s === "feedback" ? "📝" : "⏳"}</div>}
+                <div style={{ padding: 10, background: "linear-gradient(to top, rgba(0,0,0,0.4), transparent)" }}>
+                  <span style={{ display: "inline-block", fontSize: 9, fontWeight: "bold", background: "rgba(255,255,255,0.9)", color: C.ink, borderRadius: 8, padding: "1px 7px", marginBottom: 4 }}>{t.tag}</span>
+                  <div style={{ fontSize: 12.5, fontWeight: "bold", color: "#fff", lineHeight: 1.35, textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>{t.title}</div>
                 </div>
-              ) : (
-                <div>
-                  <textarea value={draftText[key] || ""} onChange={(e) => setDraftText((d) => ({ ...d, [key]: e.target.value }))} rows={2} placeholder="캡션" style={{ ...inp, marginBottom: 6, resize: "vertical" }} />
-                  <input value={draftText[key + "h"] || ""} onChange={(e) => setDraftText((d) => ({ ...d, [key + "h"]: e.target.value }))} placeholder="#해시태그 #모아서" style={{ ...inp, marginBottom: 6 }} />
-                  <PxButton tone="gold" onClick={() => postUpload(t.id, (draftText[key] || "").trim(), (draftText[key + "h"] || "").trim())} style={{ width: "100%", fontSize: 12, padding: 9 }}>🚀 게시하기</PxButton>
-                </div>
-              )
-            ) : editLocked ? (
-              <div style={{ fontSize: 11.5, color: C.inkSoft, background: "#f4f2ea", border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: 8 }}>🔒 원고·소스가 모두 승인되면 편집을 시작할 수 있어요</div>
-            ) : (
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                  <span style={{ fontSize: 11, fontWeight: "bold", flex: 1 }}>{stageLabel}</span>
-                  <StageBadge st={st} />
-                </div>
-
-                {(status === "none" || status === "feedback") ? (
-                  /* 입력 가능 : 최초 제출 · 또는 피드백 받고 수정 후 재제출 (원본 내용 유지) */
-                  <div>
-                    {status === "feedback" && (
-                      <div style={{ background: "#ffe1ec", border: "1.5px solid #ffb8d2", borderRadius: 8, padding: 8, fontSize: 11.5, lineHeight: 1.6, marginBottom: 6, color: "#9d174d" }}>
-                        📝 <b>파티장 피드백</b>{st.feedbackBy ? ` · ${st.feedbackBy}` : ""}<br /><span style={{ color: C.ink, whiteSpace: "pre-wrap" }}>{st.feedback}</span>
-                      </div>
-                    )}
-                    {stage === "script" && <div style={{ display: "inline-block", fontSize: 10, fontWeight: "bold", color: "#4f46e5", background: "#e0e2fc", border: "1.5px solid #cdd0f7", borderRadius: 999, padding: "2px 9px", marginBottom: 6 }}>⏱️ 완성 영상은 {(product && product.spec && product.spec.length) || V_SPEC.length} 내외로</div>}
-                    <textarea value={curVal} onChange={(e) => setDraftText((d) => ({ ...d, [key]: e.target.value }))} rows={stage === "script" ? 3 : 2}
-                      placeholder={stage === "script" ? `${V_SPEC.length} 원고를 써주세요` : "파일 설명 + 구글드라이브/업로드 링크"} style={{ ...inp, marginBottom: 6, resize: "vertical" }} />
-                    {stage === "script" && <AISelfCheck text={curVal} />}
-                    <PxButton tone="good" onClick={() => submitStage(t.id, stage, stage === "script" ? { text: curVal.trim() } : { link: curVal.trim() })} style={{ width: "100%", fontSize: 12, padding: 9 }}>
-                      {status === "feedback" ? "수정 후 제출하기" : "제출하고 골드 받기"}
-                    </PxButton>
-                  </div>
-                ) : (
-                  /* 승인대기중 · 승인완료 : 입력 잠금 · 내용은 계속 보여요 */
-                  <div>
-                    <div style={{ background: "#f4f2ea", border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: 8, fontSize: 12, whiteSpace: "pre-wrap", wordBreak: "break-word", lineHeight: 1.6 }}>{st.text || st.link}</div>
-                    <div style={{ fontSize: 10, color: C.inkSoft, margin: "4px 0 6px" }}>제출: {st.by}</div>
-                    {status === "pending" && (
-                      isReviewer ? (
-                        <div>
-                          <textarea value={draftText[key + "fb"] || ""} onChange={(e) => setDraftText((d) => ({ ...d, [key + "fb"]: e.target.value }))} rows={2}
-                            placeholder="✏️ 수정요청(피드백) 내용 — 적고 「피드백」을 누르면 작성자에게 돌아가요" style={{ ...inp, marginBottom: 6, resize: "vertical" }} />
-                          <div style={{ display: "flex", gap: 6 }}>
-                            <PxButton tone="wood" onClick={() => setDraftText((d) => ({ ...d, [key + "fb"]: polishFeedback(d[key + "fb"] || "") }))} title="짧게 적어도 AI가 부드럽고 구체적으로 다듬어줘요" style={{ flexShrink: 0, fontSize: 12, padding: 9 }}>✨ 다듬기</PxButton>
-                            <PxButton tone="good" onClick={() => approveStage(t.id, stage)} style={{ flex: 1, fontSize: 12, padding: 9 }}>✅ 승인 (+{RW.approve}G)</PxButton>
-                            <PxButton tone="danger" onClick={() => feedbackStage(t.id, stage, draftText[key + "fb"] || "")} style={{ flex: 1, fontSize: 12, padding: 9 }}>✏️ 피드백</PxButton>
-                          </div>
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: 11, color: C.inkSoft, background: "#f0eee6", border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: 8, textAlign: "center" }}>🕓 파티장(🔥 숙련된 제작자)의 검토를 기다리는 중이에요</div>
-                      )
-                    )}
-                  </div>
-                )}
               </div>
-            )}
-          </PosterCard>
-        );
-      })}
+            );
+          })}
+        </div>
+      ) : (
+        <div>
+          {displayTopics.map((t) => {
+            const g = t.grad || ["#ddd", "#bbb"];
+            const rs = rowStatus(t);
+            return (
+              <div key={t.id} onClick={() => setSelTopic(t.id)} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 10, padding: "9px 11px", marginBottom: 8 }}>
+                <div style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 8, background: `linear-gradient(160deg, ${g[0]}, ${g[1]})`, border: `2px solid ${C.ink}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>{stageIcon}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: "bold", color: C.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.title}</div>
+                  <div style={{ fontSize: 11, color: C.inkSoft, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.tag} · {t.hook}</div>
+                </div>
+                <span style={{ flexShrink: 0, fontSize: 10, fontWeight: "bold", background: rs.bg, color: rs.fg, border: `1.5px solid ${C.ink}`, borderRadius: 8, padding: "2px 8px", whiteSpace: "nowrap" }}>{rs.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {selT && (
+        <div onClick={() => setSelTopic(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 95, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "88vh", overflowY: "auto", background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12 }}>
+            <div style={{ background: `linear-gradient(135deg, ${(selT.grad || ["#ddd", "#bbb"])[0]}, ${(selT.grad || ["#ddd", "#bbb"])[1]})`, padding: "12px 44px 12px 14px", position: "relative" }}>
+              <div style={{ display: "inline-block", fontSize: 10, fontWeight: "bold", background: "rgba(255,255,255,0.85)", color: C.ink, borderRadius: 10, padding: "1px 8px", marginBottom: 5 }}>#{selT.tag}</div>
+              <div style={{ fontSize: 14, fontWeight: "bold", color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.4)" }}>{selT.title}</div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.9)", marginTop: 3, lineHeight: 1.5, textShadow: "0 1px 2px rgba(0,0,0,0.35)" }}>{selT.hook}</div>
+              <button type="button" onClick={() => setSelTopic(null)} style={{ position: "absolute", top: 10, right: 10, cursor: "pointer", background: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, fontSize: 11, fontWeight: "bold", padding: "3px 8px", fontFamily: "'DotGothic16', monospace" }}>닫기</button>
+            </div>
+            <div style={{ padding: 14 }}>
+              {selT.protagonist && (
+                <div style={{ marginBottom: 8 }}>
+                  <button type="button" onClick={() => setShowProt((sp) => ({ ...sp, [selT.id]: !sp[selT.id] }))} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, background: "none", border: "none", color: "#4f46e5", fontWeight: "bold" }}>🎭 주인공 설정 {showProt[selT.id] ? "▲" : "▼"}</button>
+                  {showProt[selT.id] && <div style={{ background: "#f7f2ff", border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: 8, fontSize: 11, lineHeight: 1.7, marginTop: 4 }}>나이 {selT.protagonist.age || "-"} · 성별 {selT.protagonist.gender || "-"}<br />상황: {selT.protagonist.situation || "-"}<br />코어: {selT.protagonist.core || "-"}<br />성격: {selT.protagonist.personality || "-"}</div>}
+                </div>
+              )}
+              {renderEditor(selT)}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -479,6 +528,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
   const curProduct = vProducts.find((p) => p.id === selProd) || vProducts[0];
   /* 📖 STEP0 온보딩 튜토리얼 — 영상스쿨 입장 시 자동 팝업(상품별 최초 1회) + 다시보기 */
   const [tutOpen, setTutOpen] = useState(false);
+  const [vsTab, setVsTab] = useState("hero");   // 영상스쿨 플랫 탭: hero|script|source|edit|upload
   useEffect(() => {
     if (school !== "videoschool" || !curProduct) return;
     const k = "echotown_vtut_seen_" + curProduct.id;
@@ -514,6 +564,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
   useEffect(() => {
     const down = (e) => {
       if (isTyping(e)) return;
+      if (school === "videoschool") return;   // 영상스쿨은 맵이 아니라 플랫 탭 보드 — 이동/E 비활성
       const raw = e.key.toLowerCase();
       if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d", "e"].includes(raw)) e.preventDefault();
       if (openRef.current) return;
@@ -598,13 +649,16 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
       {chatOpen && <ChatBot onClose={() => setChatOpen(false)} />}
       {school === "videoschool" && <ProductTutorial product={curProduct} open={tutOpen} onClose={() => setTutOpen(false)} />}
       {vToast && <div style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 120, background: C.ink, color: "#ffe680", border: `2px solid ${C.gem}`, borderRadius: 20, padding: "9px 18px", fontSize: 13, fontFamily: "'DotGothic16', monospace", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>{vToast}</div>}
-      <TitleBar tipId={school} icon={s.icon} title={s.title} sub="WASD 이동 · 집 근처에서 E · 아무 집이나 자유롭게" onBack={onBack} bg={s.color} fg={C.white}
+      <TitleBar tipId={school} icon={s.icon} title={s.title} sub={school === "videoschool" ? `${(curProduct && curProduct.name) || "제품"} · 프리랜서 퀘스트 보드` : "WASD 이동 · 집 근처에서 E · 아무 집이나 자유롭게"} onBack={onBack} bg={s.color} fg={C.white}
         right={<div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {school === "videoschool" && (
             <span className={goldPulse ? "vs-goldpill pulse" : "vs-goldpill"} style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: "bold", color: "#a86b00", background: "#fff3d6", border: "2px solid #a86b00", borderRadius: 999, padding: "3px 10px" }}>
               🪙 {earnedG}G
               {goldFx.map((fx) => <span key={fx.id} className="vs-goldfloat">✨ +{fx.n}G</span>)}
             </span>
+          )}
+          {school === "videoschool" && (
+            <span style={{ fontSize: 11, fontWeight: "bold", color: C.ink, background: C.white, border: `2px solid ${C.ink}`, borderRadius: 999, padding: "3px 10px", whiteSpace: "nowrap" }}>{tier === "high" ? "🔥 숙련된 제작자" : "🌱 성장하는 제작자"}</span>
           )}
           <PxButton tone="good" onClick={() => setChatOpen(true)} style={{ fontSize: 11, padding: "5px 10px" }}>🐣 코코</PxButton>
         </div>} />
@@ -616,6 +670,26 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
             {curProduct && <div style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}><SpecBadge spec={curProduct.spec} /><button type="button" onClick={() => setTutOpen(true)} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, fontWeight: "bold", color: "#4f46e5", background: "#e0e2fc", border: "1.5px solid #c3c7f5", borderRadius: 999, padding: "3px 11px" }}>📖 STEP 0 · 코어 다시보기</button></div>}
           </>
         )}
+        {school === "videoschool" ? (
+          <>
+            <div style={{ fontFamily: "'DotGothic16', monospace", fontSize: 16, fontWeight: "bold", color: C.ink, lineHeight: 1.5, marginBottom: 6 }}>오늘 하고 싶은 퀘스트부터 골라서 진행하세요</div>
+            <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.75, marginBottom: 10 }}>4개 탭은 순서가 아니라 각자 독립된 작업이에요 — 원고만 몰아서 쓰고 싶으면 원고 탭에서 계속, 편집이 밀렸으면 편집 탭부터. 주제 하나당 퀘스트 하나, 제출하면 골드 +{productReward(curProduct).submit}G.</div>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: "bold", color: "#4f46e5", background: "#e0e2fc", border: "1.5px solid #cdd0f7", borderRadius: 999, padding: "4px 12px", marginBottom: 12 }}>⏱️ 완성 영상은 {(curProduct && curProduct.spec && curProduct.spec.length) || "30초"} 내외로</div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 14, overflowX: "auto", paddingBottom: 2 }}>
+              {[["hero", "주인공 만들기"], ["script", "원고 작성"], ["source", "영상 소스 찾기"], ["edit", "영상 편집"], ["upload", "업로드"]].map(([id, label]) => {
+                const on = vsTab === id;
+                return (
+                  <button key={id} type="button" onClick={() => setVsTab(id)} style={{ flex: "1 1 0", minWidth: 96, cursor: "pointer", fontFamily: "'DotGothic16', monospace", background: on ? "#4f46e5" : C.white, color: on ? "#fff" : C.ink, border: `2px solid ${on ? "#4f46e5" : C.ink}`, borderRadius: 10, padding: "8px 6px", textAlign: "center", boxShadow: on ? "0 3px 0 0 #3730a3" : "0 3px 0 0 " + C.parchEdge }}>
+                    <div style={{ fontSize: 9, opacity: on ? 0.85 : 0.5, fontWeight: "bold", letterSpacing: 1 }}>STEP</div>
+                    <div style={{ fontSize: 12, fontWeight: "bold", whiteSpace: "nowrap" }}>{label}</div>
+                  </button>
+                );
+              })}
+            </div>
+            <VideoBoard house={{ id: vsTab }} vdata={vdata} setVData={setVData} saveVData={saveVData} myName={myName} reward={handleReward} toast={vToastFn} tier={tier} product={curProduct} products={vProducts} onOpenTutorial={() => setTutOpen(true)} />
+          </>
+        ) : (
+        <>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
           <div style={{ flex: 1, height: 12, background: "#e2d3ab", border: `2px solid ${C.ink}` }}>
             <div style={{ height: "100%", width: `${(doneCount / houses.length) * 100}%`, background: s.color, transition: "width .3s" }} />
@@ -665,6 +739,8 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
             <div className="enter-prompt" style={{ position: "absolute", left: "50%", bottom: 10, transform: "translateX(-50%)", background: C.ink, color: C.white, border: `2px solid ${C.gem}`, padding: "5px 12px", fontSize: 12, zIndex: 6 }}>E · 퀘스트 확인</div>
           )}
         </div>
+        </>
+        )}
       </div>
 
       {open && (
