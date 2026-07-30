@@ -904,6 +904,7 @@ list.push({ id: "jjeop", kind: "small", x: 1820, y: 1210, r: 55, label: "🍴 �
   list.push({ id: "bank", kind: "bank", x: 1000, y: 640, r: 65, label: "🏦 중앙은행" });
   list.push({ id: "board", kind: "board", x: 1585, y: 700, r: 60, label: "📋 게시판" });
   list.push({ id: "community", kind: "small", x: 1745, y: 700, r: 58, label: "💬 커뮤니티", tint: "#4b8f5f" });
+  list.push({ id: "levelboard", kind: "small", x: 1905, y: 845, r: 56, label: "🎚 권한관리소", tint: "#7a5cff" });
   // 대형건물(상단)
   const bigPos = { cs: [1300, 330] };
   BIG_BUILDINGS.forEach((b) => { const p = bigPos[b.id] || [1300, 400]; list.push({ id: b.id, kind: "big", x: p[0], y: p[1], r: 75, label: `${b.icon} ${b.name}`, meta: b }); });
@@ -2384,7 +2385,7 @@ const PLACE_NAME = {
   musinsa: "🛍 무신사", ikea: "🛒 이케아", project: "🗺 보스맵", questdone: "🏆 제단",
   coredict: "📚 코어사전", meeting: "🎥 회의실", naverschool: "📗 네이버스쿨", videoschool: "🎬 영상스쿨", lotto: "🎟 복권방",
   rent: "🏝 렌트하우스", big: "🏢 회사", alba: "💼 알바", gate: "🚧 검문소",
-  community: "💬 커뮤니티",
+  community: "💬 커뮤니티", levelboard: "🎚 권한관리소",
 };
 const placeLabel = (v) => PLACE_NAME[v || "world"] || "🏢 건물 안";
 
@@ -2498,7 +2499,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "nspyt").neq("type", "nspytkw").neq("type", "nspytex").neq("type", "nspcafeex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "mention").neq("type", "sprpos").neq("type", "cocoqa").neq("type", "vschool").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "nspyt").neq("type", "nspytkw").neq("type", "nspytex").neq("type", "nspcafeex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "novlv").neq("type", "mention").neq("type", "sprpos").neq("type", "cocoqa").neq("type", "vschool").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2833,6 +2834,17 @@ async function dbLoadNovices() {
     return Array.from(new Set(((r && r.data) || []).map((x) => x.title).filter(Boolean)));
   } catch (e) { return []; }
 }
+/* 🎚 권한 레벨 설정 (notices type="novlv", body=JSON { levels:[{id,name,access}], assign:{name:levelId} } · 최신 1행) */
+async function dbLoadLevels() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("body").eq("type", "novlv").order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0]; return row ? JSON.parse(row.body || "null") : null;
+  } catch (e) { return null; }
+}
+async function dbSaveLevels(cfg) {
+  try { const s = await getSupa(); const r = await s.from("notices").insert({ type: "novlv", title: "novlv", body: JSON.stringify(cfg || {}) }); return !(r && r.error); } catch (e) { return false; }
+}
 /* 💬 @멘션 알림 (notices type="mention", body=JSON 리스트 · 최신 우선) */
 async function dbLoadMentions() {
   try {
@@ -2974,7 +2986,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
         });
         /* ⚠️ 새 이벤트를 만들면 반드시 여기에 이름을 넣어야 상대에게 도착해요 */
-        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor", "decorreq", "luck", "hq", "hqroad", "qrev", "comm", "mention"].forEach((ev) => {
+        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor", "decorreq", "luck", "hq", "hqroad", "qrev", "comm", "mention", "lvl"].forEach((ev) => {
           ch.on("broadcast", { event: ev }, ({ payload }) => {
             if (onChatRef && onChatRef.net) onChatRef.net(ev, payload);
           });
@@ -10694,6 +10706,15 @@ const EXPERT_CODE = "sksmsditnrfuswk";
 const NOVICE_CODE = "dhknsnfoqjs0";
 /* 🏠 위치편집 관리자 코드 (여기 값만 바꾸면 됨) */
 const MAP_ADMIN_CODE = "dpzhdnjfem123!";
+/* 🎚 권한관리소 관리자 코드 (여기 값만 바꾸면 됨) */
+const LEVEL_ADMIN_CODE = "dpzhdnjfem123!";
+/* 🎚 권한 레벨 기본값 (관리소에서 추가/삭제·배정 가능 · access: "restricted"=제한, "full"=전체개방) */
+const DEFAULT_LEVELS = [
+  { id: "grow",   name: "🌱 성장하는 제작자", access: "restricted" },
+  { id: "expert", name: "🔥 숙련된 제작자",   access: "full" },
+];
+/* 🌱 제한 레벨이 들어갈 수 있는 건물 (권한관리소는 관리 위해 항상 개방) */
+const RESTRICTED_OK = ["luck", "naverschool", "videoschool", "levelboard"];
 const HQ_CATS_DEFAULT = [
   { id: "core", name: "코어 앱", icon: "🟦", color: "#3b82f6" },
   { id: "comm", name: "제품 (이커머스)", icon: "🟧", color: "#f97316" },
@@ -14283,6 +14304,33 @@ function EchoTown() {
     const iv = setInterval(() => dbLoadNovices().then(setNovices), 60000);
     return () => clearInterval(iv);
   }, []);
+  /* 🎚 권한 레벨 설정 (서버 저장 · 모두 공유) */
+  const [levelCfg, setLevelCfg] = useState(() => {
+    const d = loadJSON("echotown_levels_v1", null);
+    return d && Array.isArray(d.levels) ? { levels: d.levels, assign: d.assign || {} } : { levels: DEFAULT_LEVELS, assign: {} };
+  });
+  useEffect(() => {
+    const apply = (d) => { if (d && Array.isArray(d.levels)) { const cfg = { levels: d.levels, assign: d.assign || {} }; setLevelCfg(cfg); try { saveJSON("echotown_levels_v1", cfg); } catch (e) {} } };
+    dbLoadLevels().then(apply);
+    const iv = setInterval(() => dbLoadLevels().then(apply), 60000);
+    return () => clearInterval(iv);
+  }, []);
+  const saveLevelCfg = (cfg) => {
+    const clean = { levels: cfg.levels || [], assign: cfg.assign || {} };
+    setLevelCfg(clean);
+    try { saveJSON("echotown_levels_v1", clean); } catch (e) {}
+    dbSaveLevels(clean);
+    if (netSendEvent) netSendEvent("lvl", { cfg: clean });
+  };
+  /* 이름 → 레벨 판정 (미배정=기본 제한레벨 · 단 기존 숙련자코드 사용자는 개방 유지해 잠금 방지) */
+  const levelForName = (nm) => {
+    const levels = levelCfg.levels || [];
+    if (!levels.length) return null;
+    const id = levelCfg.assign && levelCfg.assign[normName(nm)];
+    let lv = levels.find((l) => l.id === id);
+    if (!lv) lv = (gateRole === "expert") ? (levels.find((l) => l.access === "full") || levels[0]) : levels[0];
+    return lv || null;
+  };
   const [qAccept, setQAccept] = useState({});
   const qAccRef = useRef({});
   const qThRef = useRef({});
@@ -14622,7 +14670,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "hq" || kind === "hqroad" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx" || kind === "comm" || kind === "mention") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "hq" || kind === "hqroad" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx" || kind === "comm" || kind === "mention" || kind === "lvl") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); showNotice(`🔔 ${p.from}님이 초인종을 눌렀어요`); pushMsg("dm", { from: p.from, text: "🔔 초인종을 눌렀어요 — 집 앞에 찾아왔어요!" }); }
       if (kind === "qrev") { showNotice("🔔 퀘스트 알림이 도착했습니다!", () => setHqOpen(true)); pushMsg("dm", { from: p.by || "HQ", text: p.txt || "🔔 퀘스트 알림" }); return; }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
@@ -14828,6 +14876,13 @@ function EchoTown() {
       if (kind === "luck") {
         if (!p.name || !p.data) return;
         setLuckData((v) => { const o = { ...v, [p.name]: p.data }; try { saveJSON("echotown_luck_v1", o); } catch (e) {} return o; });
+        return;
+      }
+      if (kind === "lvl") {
+        if (p.cfg && Array.isArray(p.cfg.levels)) {
+          const cfg = { levels: p.cfg.levels, assign: p.cfg.assign || {} };
+          setLevelCfg(cfg); try { saveJSON("echotown_levels_v1", cfg); } catch (e) {}
+        }
         return;
       }
       if (kind === "watch") {
@@ -15068,8 +15123,8 @@ function EchoTown() {
   };
 
   const handleEnter = (o) => {
-    const NOVICE_OK = ["luck", "naverschool", "videoschool"];
-    if (gateRole === "novice" && !NOVICE_OK.includes(o.id)) { setExpertOnly(true); return; }
+    const myLv = levelForName(myName);
+    if (myLv && myLv.access !== "full" && !RESTRICTED_OK.includes(o.id)) { setExpertOnly(true); return; }
     switch (o.kind) {
       case "center": setView("center"); break;
       case "bank": setView("bank"); break;
@@ -15248,6 +15303,7 @@ function EchoTown() {
             else showNotice("🎟 복권 꽝… 다음 기회에!");
           }} />}
         {view === "luck" && <LuckRoom myName={myName} people={people} onBack={backToWorld} bubble={bubble} netSendEvent={netSendEvent} luckData={luckData} onLuckChange={setLuckData} />}
+        {view === "levelboard" && <LevelBoard myName={myName} people={people} cfg={levelCfg} onSave={saveLevelCfg} onBack={backToWorld} />}
         {view === "pool" && <PoolView myName={myName} onBack={backToWorld} onReward={(n) => awardGold(n)} scores={swimScores} onRecord={(nick, time) => { setSwimScores((s) => [...s, { nick, time }]); bump("swim"); dbAddRank("swim", nick, time, null).then(reloadRanks); }} bubble={bubble} />}
         {view === "gym" && <GymView onBack={backToWorld} onWork={() => { awardGold(4); bump("gym"); }} bubble={bubble} />}
         {view === "smoke" && <SmokeView onBack={backToWorld} bubble={bubble} myName={myName} chat={smokeChat}
@@ -15630,8 +15686,8 @@ function EchoTown() {
         <div onClick={() => setExpertOnly(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 320, background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 22, textAlign: "center", fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
             <div style={{ fontSize: 34 }}>🔒</div>
-            <div style={{ fontSize: 15, fontWeight: "bold", margin: "10px 0 6px" }}>숙련자만 들어갈 수 있어요</div>
-            <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.6, marginBottom: 14 }}>초보자(알바)는 🍀 초심자의 행운, 📗 네이버스쿨, 🎬 영상스쿨만 이용할 수 있어요.</div>
+            <div style={{ fontSize: 15, fontWeight: "bold", margin: "10px 0 6px" }}>🔥 숙련된 제작자만 들어갈 수 있어요</div>
+            <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.6, marginBottom: 14 }}>🌱 성장하는 제작자는 🍀 초심자의 행운, 📗 네이버스쿨, 🎬 영상스쿨만 이용할 수 있어요.</div>
             <PxButton tone="gold" onClick={() => setExpertOnly(false)} style={{ width: "100%", padding: 11, fontSize: 13 }}>확인</PxButton>
           </div>
         </div>
@@ -15980,6 +16036,139 @@ class ErrorBoundary extends React.Component {
       </div>
     );
   }
+}
+
+function LevelBoard({ myName = "", people = [], cfg, onSave, onBack }) {
+  const FONT = "var(--game-font, 'DotGothic16', monospace)";
+  const levels = (cfg && cfg.levels) || [];
+  const assign = (cfg && cfg.assign) || {};
+  const [unlocked, setUnlocked] = React.useState(false);
+  const [codeIn, setCodeIn] = React.useState("");
+  const [codeErr, setCodeErr] = React.useState(false);
+  const [newName, setNewName] = React.useState("");
+  const [newLevelId, setNewLevelId] = React.useState((levels[0] && levels[0].id) || "");
+  const [newLvName, setNewLvName] = React.useState("");
+  const [newLvAccess, setNewLvAccess] = React.useState("restricted");
+
+  const tryUnlock = () => { if (codeIn.trim() === LEVEL_ADMIN_CODE) { setUnlocked(true); setCodeErr(false); } else setCodeErr(true); };
+  const push = (next) => onSave && onSave({ levels: next.levels || levels, assign: next.assign || assign });
+
+  const renameLevel = (id, name) => push({ levels: levels.map((l) => (l.id === id ? { ...l, name } : l)) });
+  const flipAccess = (id) => push({ levels: levels.map((l) => (l.id === id ? { ...l, access: l.access === "full" ? "restricted" : "full" } : l)) });
+  const delLevel = (id) => {
+    if (levels.length <= 1) return;
+    if (!window.confirm("이 레벨을 삭제할까요? 이 레벨이었던 사람은 기본(첫) 레벨로 돌아가요.")) return;
+    const nextLevels = levels.filter((l) => l.id !== id);
+    const nextAssign = {}; Object.keys(assign).forEach((k) => { if (assign[k] !== id) nextAssign[k] = assign[k]; });
+    push({ levels: nextLevels, assign: nextAssign });
+  };
+  const addLevel = () => {
+    const nm = newLvName.trim(); if (!nm) return;
+    const id = "lv" + Date.now();
+    push({ levels: [...levels, { id, name: nm, access: newLvAccess }] });
+    setNewLvName(""); setNewLvAccess("restricted");
+  };
+  const assignName = (nm, levelId) => {
+    const key = normName((nm || "").trim()); if (!key) return;
+    push({ assign: { ...assign, [key]: levelId } });
+  };
+  const removeAssign = (key) => { const a = { ...assign }; delete a[key]; push({ assign: a }); };
+
+  const countFor = (id) => Object.keys(assign).filter((k) => assign[k] === id).length;
+  const levelName = (id) => { const l = levels.find((x) => x.id === id); return l ? l.name : "(삭제된 레벨)"; };
+  const knownUnassigned = (people || []).map((p) => p && p.name).filter(Boolean).filter((n) => !(normName(n) in assign));
+
+  const card = { background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, padding: 14, marginBottom: 14 };
+  const inp = { fontFamily: FONT, fontSize: 13, padding: "8px 10px", border: `2px solid ${C.ink}`, borderRadius: 8, background: "#fffdf6", color: C.ink, minWidth: 0 };
+  const sel = { ...inp, cursor: "pointer" };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "#efe6d2", display: "flex", flexDirection: "column", fontFamily: FONT }}>
+      <TitleBar icon="🎚" title="권한관리소" sub="사람별 레벨을 바꾸면 모두에게 즉시 반영돼요" onBack={onBack} bg={C.parch} fg={C.ink} />
+      <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
+        <div style={{ maxWidth: 560, margin: "0 auto" }}>
+          {!unlocked ? (
+            <div style={{ ...card, textAlign: "center" }}>
+              <div style={{ fontSize: 34 }}>🔒</div>
+              <div style={{ fontSize: 15, fontWeight: "bold", margin: "8px 0 4px" }}>관리자 코드를 입력하세요</div>
+              <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 12 }}>레벨을 바꾸는 건 관리자만 할 수 있어요</div>
+              <input type="password" autoFocus value={codeIn} style={{ ...inp, width: "100%", textAlign: "center", marginBottom: 8 }}
+                onChange={(e) => { setCodeIn(e.target.value); setCodeErr(false); }}
+                onKeyDown={(e) => { if (e.key === "Enter") tryUnlock(); }} />
+              {codeErr && <div style={{ color: C.danger, fontSize: 12, marginBottom: 8 }}>코드가 틀렸어요</div>}
+              <PxButton tone="gold" onClick={tryUnlock} style={{ width: "100%", padding: 11, fontSize: 13 }}>확인</PxButton>
+              <div style={{ marginTop: 14, textAlign: "left", fontSize: 11.5, color: C.inkSoft, lineHeight: 1.7 }}>
+                지금 레벨 : {levels.map((l) => `${l.name}(${l.access === "full" ? "전체개방" : "제한"}·${countFor(l.id)}명)`).join(" · ")}
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* 🎚 레벨 목록 */}
+              <div style={card}>
+                <div style={{ fontSize: 14, fontWeight: "bold", marginBottom: 10 }}>🎚 레벨 <span style={{ fontSize: 11, color: C.inkSoft }}>· 제한 = 초심자의 행운·네이버스쿨·영상스쿨만 · 전체개방 = 모든 건물</span></div>
+                {levels.map((l) => (
+                  <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+                    <input value={l.name} onChange={(e) => renameLevel(l.id, e.target.value)} style={{ ...inp, flex: 1 }} />
+                    <button onClick={() => flipAccess(l.id)} title="접근 권한 전환" style={{ cursor: "pointer", fontFamily: FONT, fontSize: 11.5, fontWeight: "bold", padding: "7px 10px", borderRadius: 8, border: `2px solid ${C.ink}`, background: l.access === "full" ? "#c0563a" : "#3fa07a", color: C.white }}>{l.access === "full" ? "🔓 전체개방" : "🔒 제한"}</button>
+                    <span style={{ fontSize: 11, color: C.inkSoft, minWidth: 44, textAlign: "center" }}>{countFor(l.id)}명</span>
+                    <button onClick={() => delLevel(l.id)} disabled={levels.length <= 1} title="레벨 삭제" style={{ cursor: levels.length <= 1 ? "default" : "pointer", fontFamily: FONT, fontSize: 12, padding: "7px 9px", borderRadius: 8, border: `2px solid ${C.ink}`, background: levels.length <= 1 ? "#d8cdb2" : "#fff", color: C.ink, opacity: levels.length <= 1 ? 0.5 : 1 }}>🗑</button>
+                  </div>
+                ))}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                  <input placeholder="새 레벨 이름 (예: 🌿 중급 제작자)" value={newLvName} onChange={(e) => setNewLvName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") addLevel(); }} style={{ ...inp, flex: 1 }} />
+                  <button onClick={() => setNewLvAccess((a) => (a === "full" ? "restricted" : "full"))} style={{ cursor: "pointer", fontFamily: FONT, fontSize: 11.5, fontWeight: "bold", padding: "7px 10px", borderRadius: 8, border: `2px solid ${C.ink}`, background: newLvAccess === "full" ? "#c0563a" : "#3fa07a", color: C.white }}>{newLvAccess === "full" ? "🔓 전체개방" : "🔒 제한"}</button>
+                  <PxButton tone="good" onClick={addLevel} style={{ fontSize: 12, padding: "8px 12px" }}>＋ 레벨</PxButton>
+                </div>
+              </div>
+
+              {/* 👥 사람 배정 */}
+              <div style={card}>
+                <div style={{ fontSize: 14, fontWeight: "bold", marginBottom: 10 }}>👥 사람 ↔ 레벨 배정</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+                  <input placeholder="이름 입력 (초보자도 가능)" value={newName} onChange={(e) => setNewName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && newName.trim() && newLevelId) { assignName(newName, newLevelId); setNewName(""); } }} style={{ ...inp, flex: 1 }} />
+                  <select value={newLevelId} onChange={(e) => setNewLevelId(e.target.value)} style={sel}>
+                    {levels.map((l) => (<option key={l.id} value={l.id}>{l.name}</option>))}
+                  </select>
+                  <PxButton tone="good" onClick={() => { if (newName.trim() && newLevelId) { assignName(newName, newLevelId); setNewName(""); } }} style={{ fontSize: 12, padding: "8px 12px" }}>＋ 배정</PxButton>
+                </div>
+
+                {knownUnassigned.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 5 }}>미배정 접속자 — 누르면 {levels[0] ? levels[0].name : "기본"}으로 배정 (뒤에서 변경 가능)</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {knownUnassigned.map((n) => (
+                        <button key={n} onClick={() => assignName(n, (levels[0] && levels[0].id) || "")} style={{ cursor: "pointer", fontFamily: FONT, fontSize: 12, padding: "5px 10px", borderRadius: 14, border: `2px solid ${C.ink}`, background: "#fff", color: C.ink }}>＋ {n}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {Object.keys(assign).length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 10 }}>아직 배정된 사람이 없어요 · 미배정은 자동으로 {levels[0] ? levels[0].name : "기본 레벨"}이에요</div>}
+                  {Object.keys(assign).map((k) => (
+                    <div key={k} style={{ display: "flex", alignItems: "center", gap: 6, background: "#fffdf6", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "6px 8px", flexWrap: "wrap" }}>
+                      <span style={{ flex: 1, fontSize: 13, fontWeight: "bold", minWidth: 80 }}>👤 {k}{normName(myName) === k ? " (나)" : ""}</span>
+                      <select value={levels.some((l) => l.id === assign[k]) ? assign[k] : ""} onChange={(e) => assignName(k, e.target.value)} style={sel}>
+                        {!levels.some((l) => l.id === assign[k]) && <option value="">(삭제된 레벨)</option>}
+                        {levels.map((l) => (<option key={l.id} value={l.id}>{l.name}</option>))}
+                      </select>
+                      <button onClick={() => removeAssign(k)} title="배정 제거 (기본 레벨로)" style={{ cursor: "pointer", fontFamily: FONT, fontSize: 12, padding: "6px 9px", borderRadius: 8, border: `2px solid ${C.ink}`, background: "#fff", color: C.ink }}>✕</button>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 12, lineHeight: 1.7 }}>
+                  · 저장은 자동이에요 — 바꾸는 즉시 서버에 저장되고 접속 중인 모두에게 반영돼요.<br />
+                  · 배정을 지우면 그 사람은 기본 레벨({levels[0] ? levels[0].name : "첫 레벨"})로 돌아가요.
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
