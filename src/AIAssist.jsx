@@ -15,8 +15,8 @@ import React, { useState, useMemo } from "react";
 
 const A = {
   parch: "#f5ecd7", edge: "#d8c9a6", ink: "#3a3228", soft: "#8a7f6a", white: "#fffdf6",
-  ok: "#4e9a3a", warn: "#e0a13d", pink: "#ff8fab", pinkBg: "#ffe6ee", pinkInk: "#a83a5b",
-  accent: "#4b8f5f", font: "var(--game-font, 'DotGothic16', monospace)",
+  ok: "#4e9a3a", warn: "#e0a13d", pink: "#ffb8d2", pinkBg: "#ffe1ec", pinkInk: "#9d174d",
+  accent: "#4f46e5", accentSoft: "#e0e2fc", accentDeep: "#3730a3", font: "var(--game-font, 'DotGothic16', monospace)",
 };
 const btn = (bg, fg = "#fff") => ({ cursor: "pointer", fontFamily: A.font, fontSize: 12, fontWeight: "bold", padding: "8px 12px", borderRadius: 8, border: `2px solid ${A.ink}`, background: bg, color: fg });
 const inp = { width: "100%", boxSizing: "border-box", fontFamily: A.font, fontSize: 12.5, padding: 8, border: `2px solid ${A.ink}`, borderRadius: 8, background: A.white, color: A.ink, resize: "vertical" };
@@ -113,10 +113,10 @@ export function FeedbackPolisher({ initial = "", onApply, placeholder = "짧게 
 /* ============================ 4-3 · 검토 큐 ============================ */
 export function QueueButton({ count = 0, onClick, label = "🗂 검토 큐" }) {
   return (
-    <button type="button" onClick={onClick} style={{ position: "relative", cursor: "pointer", fontFamily: A.font, fontSize: 12, fontWeight: "bold", padding: "8px 14px", borderRadius: 10, border: `2px solid ${A.ink}`, background: A.pinkBg, color: A.pinkInk, animation: count > 0 ? "aiq-pulse 1.6s ease-in-out infinite" : "none" }}>
-      <style>{"@keyframes aiq-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,143,171,0)}50%{box-shadow:0 0 0 5px rgba(255,143,171,0.4)}}"}</style>
+    <button type="button" onClick={onClick} style={{ position: "relative", cursor: "pointer", fontFamily: A.font, fontSize: 12, fontWeight: 800, padding: "8px 14px", borderRadius: 10, border: `2px solid ${A.pink}`, background: A.pinkBg, color: A.pinkInk, animation: count > 0 ? "aiq-pulse 1.6s ease-in-out infinite" : "none" }}>
+      <style>{"@keyframes aiq-pulse{0%,100%{box-shadow:0 0 0 0 rgba(219,39,119,0.35)}50%{box-shadow:0 0 0 6px rgba(219,39,119,0)}}"}</style>
       {label}
-      {count > 0 && <span style={{ marginLeft: 6, fontSize: 10, background: A.pink, color: "#fff", borderRadius: 10, padding: "1px 7px", border: `2px solid ${A.ink}` }}>{count}</span>}
+      {count > 0 && <span style={{ marginLeft: 6, fontSize: 10, background: A.pinkInk, color: "#fff", borderRadius: 10, padding: "1px 7px", border: `2px solid ${A.ink}` }}>{count}</span>}
     </button>
   );
 }
