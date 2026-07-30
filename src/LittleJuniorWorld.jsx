@@ -10824,17 +10824,32 @@ function HQSidePanel({ myName = "", people = [], questBox = [], hqQuests = [], h
   );
 }
 
-/* 🔸 오른쪽 진행중 퀘스트 아이콘 레일 (아이콘 랜덤) */
-const RAIL_ICONS = ["🚀", "🎨", "📦", "🛠", "🧪", "📊", "🎯", "🏗", "💡", "🔍"];
-function HQQuestRail({ quests = [], onOpenHQ }) {
-  const items = quests.slice(0, 5).map((q, i) => ({ ...q, ic: RAIL_ICONS[(q.id.charCodeAt(q.id.length - 1) + i) % RAIL_ICONS.length] }));
-  if (!items.length) return null;
+/* 🔸 오른쪽 레일 — 내가 담당(참여)중인 월드맵 아이콘 · 누르면 그 월드 퀘스트 페이지로 */
+function HQQuestRail({ quests = [], cats = [], myName = "", onOpenWorld }) {
+  const mine = normName(myName || "");
+  const isAsg = (q) => (Array.isArray(q.assignees) ? q.assignees : (q.assignee ? [q.assignee] : [])).map(normName).includes(mine);
+  /* 담당 퀘스트가 있는 월드만 · 진행중(미완료) 건수 표시 */
+  const worlds = [];
+  (cats || []).forEach((c) => {
+    const mineQs = (quests || []).filter((q) => q.cat === c.id && isAsg(q));
+    if (!mineQs.length) return;
+    const open = mineQs.filter((q) => q.reviewStatus !== "approved").length;
+    worlds.push({ ...c, total: mineQs.length, open });
+  });
+  if (!mine || !worlds.length) return null;
   return (
     <div style={{ position: "fixed", right: 12, top: "50%", transform: "translateY(-50%)", zIndex: 60, display: "flex", flexDirection: "column", gap: 10 }}>
-      {items.map((q) => (
-        <button key={q.id} type="button" onClick={onOpenHQ} title={q.title}
-          style={{ width: 52, height: 52, borderRadius: 14, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)",
-            background: C.parch, border: `3px solid ${C.ink}`, boxShadow: `0 3px 0 ${C.parchEdge}`, fontSize: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>{q.ic}</button>
+      {worlds.slice(0, 6).map((w) => (
+        <button key={w.id} type="button" onClick={() => onOpenWorld && onOpenWorld(w.id)}
+          title={`${w.name} · 내 담당 ${w.total}개${w.open ? ` (진행중 ${w.open})` : " (모두 완료)"} — 누르면 이 월드 퀘스트로`}
+          style={{ position: "relative", width: 52, height: 52, borderRadius: 14, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)",
+            background: C.parch, border: `3px solid ${w.color || C.ink}`, boxShadow: `0 3px 0 ${C.parchEdge}`, fontSize: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {w.icon || "🌍"}
+          {w.open > 0 && (
+            <span style={{ position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, borderRadius: 9, background: C.danger, color: C.white,
+              border: `2px solid ${C.ink}`, fontSize: 10, fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{w.open}</span>
+          )}
+        </button>
       ))}
     </div>
   );
@@ -11199,10 +11214,10 @@ function HistoryModal({ quest, myName, editingBy, onSaveDoc, onAddComment, onDel
   );
 }
 
-function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo, onGoBoard, hqQuests = [], onHQChange, hqRoad = {}, onRoadChange, bossImg = () => "", onBossImg = () => {}, onNotifyUser = () => {}, mentions = [], onGoMention = () => {}, openHistId = null, onHistOpened = () => {}, expertNames = [], onMention = () => {}, onGold = () => {} }) {
-  const [tab, setTab] = useState("home");
+function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo, onGoBoard, hqQuests = [], onHQChange, hqRoad = {}, onRoadChange, bossImg = () => "", onBossImg = () => {}, onNotifyUser = () => {}, mentions = [], onGoMention = () => {}, openHistId = null, onHistOpened = () => {}, expertNames = [], onMention = () => {}, onGold = () => {}, initialCat = null, onInitialCatUsed = () => {} }) {
+  const [tab, setTab] = useState(initialCat ? "quest" : "home");
   const [notice, setNotice] = useState("");
-  const [qcat, setQcat] = useState("all");
+  const [qcat, setQcat] = useState(initialCat || "all");
   const [rcat, setRcat] = useState("core");
   const [qEdit, setQEdit] = useState(null);   // 편집/등록 중인 퀘스트 (null=닫힘)
   const [qView, setQView] = useState(null);   // 🔍 자세히 보기 팝업 (null=닫힘)
@@ -11493,6 +11508,11 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
     "✉️ 안 읽은 메세지": unreadMsgCount,
   };
 
+  /* 🌍 오른쪽 레일에서 월드를 눌러 들어온 경우 → 그 월드 퀘스트 페이지로 */
+  useEffect(() => {
+    if (!initialCat) return;
+    setTab("quest"); setQcat(initialCat); onInitialCatUsed();
+  }, [initialCat]); // eslint-disable-line
   const TAB = [["home", "🏠 홈"], ["road", "🗺 로드맵"], ["quest", "📋 퀘스트"], ["doc", "📄 문서"], ["me", "🙋 내 페이지"]];
   const soon = (t) => (
     <div style={{ textAlign: "center", padding: "60px 20px", color: C.inkSoft }}>
@@ -14325,6 +14345,7 @@ function EchoTown() {
   const markMentionRead = (id) => setMentions((prev) => { const next = (prev || []).map((m) => m.id === id ? { ...m, read: true } : m); try { saveJSON("echotown_mention_v1", next); } catch (e) {} if (netSendEventRef.current) netSendEventRef.current("mention", { list: next }); dbSaveMentions(next); return next; });
   const [commOpenPost, setCommOpenPost] = useState(null);   // 멘션 클릭 → 열 커뮤니티 글
   const [pendingHist, setPendingHist] = useState(null);     // 멘션 클릭 → 열 퀘스트 히스토리
+  const [hqCat, setHqCat] = useState(null);                 // 🌍 오른쪽 레일에서 고른 월드 → HQ 퀘스트 탭으로
   const goMention = (m) => {
     if (!m) return;
     markMentionRead(m.id);
@@ -16010,7 +16031,7 @@ function EchoTown() {
         </div>
       )}
       {!hqOpen && myName && (
-        <HQQuestRail quests={hqQuests} onOpenHQ={() => { setHqOpen(true); }} />
+        <HQQuestRail quests={hqQuests} myName={myName} cats={(hqRoad && hqRoad.__cats && hqRoad.__cats.length) ? hqRoad.__cats : HQ_CATS_DEFAULT} onOpenWorld={(catId) => { setHqCat(catId); setHqOpen(true); }} />
       )}
       <CornerDock
         msgCount={unreadMsgCount}
@@ -16028,6 +16049,7 @@ function EchoTown() {
           notices={allNotices} bossMaps={bossMaps} bossCleared={bossCleared} qAccept={qAccept} questBox={questBox} unreadMsgCount={unreadMsgCount}
           hqQuests={hqQuests} onHQChange={saveHQ} hqRoad={hqRoad} onRoadChange={saveRoad}
           mentions={mentions} onGoMention={goMention} openHistId={pendingHist} onHistOpened={() => setPendingHist(null)}
+          initialCat={hqCat} onInitialCatUsed={() => setHqCat(null)}
           expertNames={(people || []).map((p) => p && normName(p.name)).filter(Boolean)}
           onMention={(names, refId, refTitle, snippet) => notifyMention(names, "history", refId, refTitle, snippet)}
           onPostNotice={(t) => { dbAddNotice("공지", t, `${myName || "익명"}님의 공지`, myUid).then(() => setTimeout(loadNotices, 2000)); showNotice("📢 공지를 등록했어요"); }}
