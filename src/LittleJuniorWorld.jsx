@@ -16151,8 +16151,6 @@ function EchoTown() {
           </div>
         </div>
       )}
-      {!hqOpen && myName && (
-      )}
       <CornerDock
         questRail={<HQQuestRail quests={hqQuests} myName={myName} cats={(hqRoad && hqRoad.__cats && hqRoad.__cats.length) ? hqRoad.__cats : HQ_CATS_DEFAULT} onOpenWorld={(catId) => { setHqCat(catId); setHqOpen(true); }} />}
         onSettings={() => setFontOpen(true)}
