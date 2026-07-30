@@ -13,7 +13,7 @@ import React, { useState } from "react";
  *      spec:{ length, ratio }, reward:{ submit, approve, bonus } }
  * ========================================================================== */
 
-const P = { parch: "#f6efdd", edge: "#d8c9a6", ink: "#3a3228", soft: "#8a7f6a", white: "#fffdf6", accent: "#8e5a9e", accent2: "#4b8f5f", warn: "#e0a13d", pink: "#ff8fab", ok: "#4e9a3a", danger: "#c0563a", font: "var(--game-font, 'DotGothic16', monospace)" };
+const P = { parch: "#f6efdd", edge: "#d8c9a6", ink: "#3a3228", soft: "#8a7f6a", white: "#fffdf6", accent: "#4f46e5", accentSoft: "#e0e2fc", accentDeep: "#3730a3", accent2: "#4f46e5", warn: "#e0a13d", pink: "#ffb8d2", pinkBg: "#ffe1ec", pinkInk: "#9d174d", gold: "#f0a900", goldDeep: "#a86b00", goldSoft: "#fff3d6", ok: "#4e9a3a", danger: "#c0563a", font: "var(--game-font, 'DotGothic16', monospace)" };
 const btn = (bg, fg = "#fff") => ({ cursor: "pointer", fontFamily: P.font, fontSize: 12, fontWeight: "bold", padding: "7px 11px", borderRadius: 8, border: `2px solid ${P.ink}`, background: bg, color: fg });
 const inp = { width: "100%", boxSizing: "border-box", fontFamily: P.font, fontSize: 12.5, padding: 8, border: `2px solid ${P.ink}`, borderRadius: 8, background: P.white, color: P.ink, resize: "vertical" };
 const lbl = { fontSize: 12, fontWeight: "bold", color: P.ink, margin: "10px 0 4px" };
@@ -140,7 +140,7 @@ export function SafeZoneDiagram({ editGuide }) {
   const g = (editGuide && editGuide[plat]) || { top: 0, bottom: 0, side: 0 };
   const BW = 132, BH = 234, REF_W = 1080, REF_H = 1920;
   const top = Math.round((g.top || 0) / REF_H * BH), bot = Math.round((g.bottom || 0) / REF_H * BH), side = Math.round((g.side || 0) / REF_W * BW);
-  const band = { position: "absolute", background: "rgba(255,143,171,0.35)", borderColor: P.pink };
+  const band = { position: "absolute", background: "rgba(192,86,58,0.24)", borderColor: P.danger };
   return (
     <div style={{ marginBottom: 10, fontFamily: P.font }}>
       <button type="button" onClick={() => setOpen((o) => !o)} style={{ ...btn(P.warn), width: "100%", padding: 9 }}>{open ? "▲ 세이프존 가이드 접기" : "📐 편집 세이프존 가이드 펼치기"}</button>
@@ -153,10 +153,10 @@ export function SafeZoneDiagram({ editGuide }) {
           </div>
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
             <div style={{ position: "relative", width: BW, height: BH, background: "#2a2340", border: `3px solid ${P.ink}`, borderRadius: 10, flexShrink: 0, overflow: "hidden" }}>
-              <div style={{ ...band, top: 0, left: 0, right: 0, height: top, borderBottom: `2px dashed ${P.pink}` }} />
-              <div style={{ ...band, bottom: 0, left: 0, right: 0, height: bot, borderTop: `2px dashed ${P.pink}` }} />
-              <div style={{ ...band, top: 0, bottom: 0, left: 0, width: side, borderRight: `2px dashed ${P.pink}` }} />
-              <div style={{ ...band, top: 0, bottom: 0, right: 0, width: side, borderLeft: `2px dashed ${P.pink}` }} />
+              <div style={{ ...band, top: 0, left: 0, right: 0, height: top, borderBottom: `2px dashed ${P.danger}` }} />
+              <div style={{ ...band, bottom: 0, left: 0, right: 0, height: bot, borderTop: `2px dashed ${P.danger}` }} />
+              <div style={{ ...band, top: 0, bottom: 0, left: 0, width: side, borderRight: `2px dashed ${P.danger}` }} />
+              <div style={{ ...band, top: 0, bottom: 0, right: 0, width: side, borderLeft: `2px dashed ${P.danger}` }} />
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 10, opacity: 0.85 }}>안전 영역</div>
             </div>
             <div style={{ fontSize: 12, color: P.ink, lineHeight: 1.9 }}>
