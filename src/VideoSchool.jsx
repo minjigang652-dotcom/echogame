@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { C, NetContext, PixelHouse, Hero, Panel, PxButton, TitleBar } from "./LittleJuniorWorld.jsx";
+import { dbLoadVSchool, dbSaveVSchool } from "./LittleJuniorWorld.jsx";
 import ChatBot from "./ChatBot.jsx";
 
 /* 입력창(input/textarea 등)에 타이핑 중이면 게임 키 조작 무시 */
@@ -47,55 +48,11 @@ const SCHOOLS = {
   videoschool: {
     title: "영상스쿨", icon: "🎬", color: "#8e5a9e", grass: "#a8c8e8", road: "#e6dff2",
     quests: [
-      { id: "v1", title: "제품 소개", cat: "기획", roof: "#e4a04f", wall: "#fff3e0",
-        story: "좋은 제품 영상은 '기능 나열'이 아니라 '이걸 쓰면 내 삶이 어떻게 좋아지는지'를 보여준다.",
-        sections: [
-          { icon: "🎯", label: "핵심 메시지", text: "이 제품이 해결하는 '단 하나의 문제'를 한 문장으로 정한다." },
-          { icon: "✨", label: "구성 포인트", text: "문제 공감 → 제품 등장 → 사용 장면 → 전후 비교 → 한 줄 정리" },
-          { icon: "📝", label: "정리 프롬프트", text: "이 제품의 매력 포인트 3가지를 초보자도 이해되게 짧게 정리해줘." },
-        ] },
-      { id: "v2", title: "가이드라인 작성", cat: "기획", roof: "#7fbfe0", wall: "#eaf6ff",
-        story: "가이드라인이 있으면 누가 만들어도 톤이 흔들리지 않는다. 브랜드의 '기준표'를 만드는 단계.",
-        sections: [
-          { icon: "📐", label: "정할 것", text: "톤앤매너 / 자막 스타일 / 색·폰트 / 인트로·아웃트로 규칙" },
-          { icon: "🧩", label: "작성 틀", text: "① 해도 되는 것 ② 하면 안 되는 것 ③ 예시 이미지·영상" },
-          { icon: "📝", label: "정리 프롬프트", text: "우리 채널의 영상 가이드라인 초안을 항목별로 만들어줘. 주제: [입력]" },
-        ] },
-      { id: "v3", title: "레퍼런스 전달", cat: "리서치", roof: "#e07b8a", wall: "#ffeef0",
-        story: "레퍼런스는 '느낌'이 아니라 '구조'로 전달해야 한다. 왜 좋은지까지 적어줘야 팀이 재현한다.",
-        sections: [
-          { icon: "🔍", label: "고르는 기준", text: "끝까지 본 비율이 좋아 보이는 영상, 우리 주제와 겹치는 영상 위주." },
-          { icon: "🗂", label: "전달 양식", text: "링크 + 왜 좋은지 3줄 + 우리에게 적용할 포인트 1줄" },
-          { icon: "📝", label: "정리 프롬프트", text: "이 레퍼런스 영상의 잘된 점과 우리에게 적용할 포인트를 정리해줘." },
-        ] },
-      { id: "v4", title: "원고 작성", cat: "기획", roof: "#8fd0a0", wall: "#eefaf0",
-        story: "원고는 기억이 아니라 기록에서 나온다. 후크가 3초 안에 꽂혀야 끝까지 본다.",
-        sections: [
-          { icon: "✍️", label: "대본 구조", text: "후크 → 문제 제기 → 사례 → 해결 → 한 줄 정리" },
-          { icon: "⏱", label: "체크", text: "첫 문장이 3초 안에 궁금증을 만드는가? 문장은 짧은가?" },
-          { icon: "📝", label: "원고 프롬프트", text: "아래 주제로 60초 숏폼 대본을 써줘. 후크는 3초 안에, 문장은 짧게. 주제: [입력]" },
-        ] },
-      { id: "v5", title: "영상소스찾기", cat: "리서치", roof: "#b48fd9", wall: "#f3ecff",
-        story: "필요한 컷을 미리 정리해두면 편집 시간이 반으로 준다. B롤·효과음·음악을 목록으로 모은다.",
-        sections: [
-          { icon: "🎞", label: "모을 소스", text: "B롤 영상 / 효과음 / 배경음악 / 폰트·자막 템플릿" },
-          { icon: "📁", label: "정리법", text: "장면별 폴더로 나누고, 저작권(무료/출처표기) 여부를 함께 적는다." },
-          { icon: "📝", label: "정리 프롬프트", text: "이 주제 영상에 어울리는 B롤·효과음 아이디어를 장면별로 제안해줘." },
-        ] },
-      { id: "v6", title: "영상편집", cat: "실행", roof: "#e0b04f", wall: "#fff6da",
-        story: "편집은 '빼는 기술'이다. 지루한 1초를 자르는 감각이 완성도를 만든다.",
-        sections: [
-          { icon: "✂️", label: "편집 순서", text: "컷 편집(군더더기 제거) → 자막 → 효과음·음악 → 색보정 → 검수" },
-          { icon: "🎚", label: "리듬 팁", text: "말이 끊기는 지점, 늘어지는 지점을 먼저 자른다. 후크는 특히 빠르게." },
-          { icon: "📝", label: "정리 프롬프트", text: "이 영상에서 늘어질 수 있는 구간과 컷 편집 포인트를 짚어줘." },
-        ] },
-      { id: "v7", title: "업로드", cat: "실행", boss: true, roof: "#d9a441", wall: "#fff6da",
-        story: "업로드는 끝이 아니라 시작이다. 제목·썸네일·설명이 조회수의 문을 연다.",
-        sections: [
-          { icon: "👑", label: "미션", text: "기획 → 가이드라인 → 레퍼런스 → 원고 → 소스 → 편집 → 업로드까지 완주한 영상 1편" },
-          { icon: "🖼", label: "발행 체크", text: "제목(키워드 앞쪽) / 썸네일(3초 안에 읽힘) / 설명·태그 / 공개 시간" },
-          { icon: "📝", label: "피드백 프롬프트", text: "이 영상의 제목·썸네일 문구를 클릭하고 싶게 3가지 버전으로 제안해줘." },
-        ] },
+      { id: "hero", title: "주인공 만들기", cat: "기획", roof: "#e07b8a", wall: "#ffeef0" },
+      { id: "script", title: "원고 작성", cat: "기획", roof: "#8fd0a0", wall: "#eefaf0" },
+      { id: "source", title: "영상 소스 찾기", cat: "리서치", roof: "#b48fd9", wall: "#f3ecff" },
+      { id: "edit", title: "영상 편집", cat: "실행", roof: "#e0b04f", wall: "#fff6da" },
+      { id: "upload", title: "업로드", cat: "실행", boss: true, roof: "#d9a441", wall: "#fff6da" },
     ],
   },
 };
@@ -150,7 +107,222 @@ function CopyBox({ sec }) {
     </div>
   );
 }
-function SchoolView({ school, onBack, cleared = {}, onClear }) {
+/* 🎬 영상스쿨 리워드 (제품별 override 가능하도록 상수로 분리) */
+const V_REWARD = { submit: 2, approve: 2, bonus: 4 };
+const V_SPEC = { length: "30초 숏츠" };
+const V_GRADS = [["#ffd6a5", "#ff8fab"], ["#a0e8af", "#57cc99"], ["#a5c8ff", "#7b8cff"], ["#e0b0ff", "#b088ff"], ["#ffe08a", "#ffb347"], ["#b5ead7", "#8fd0a0"]];
+const V_STAGES = [["script", "📝 원고"], ["source", "🎥 소스"], ["edit", "✂️ 편집"]];
+function makePoster(p) {
+  const situ = (p.situation || "").trim();
+  const tag = (situ.split(/[ ,·\n]/)[0] || p.core || "주제").slice(0, 8);
+  const who = [p.age && `${p.age}`, p.gender].filter(Boolean).join(" ");
+  const title = situ ? situ.slice(0, 40) : (p.core || "새 주제");
+  const hook = `${who ? who + "의 " : ""}${situ || "이런 상황"}${p.personality ? ` · ${p.personality}` : ""}`.slice(0, 60);
+  const grad = V_GRADS[Math.floor(Math.random() * V_GRADS.length)];
+  return { tag, title, hook, grad };
+}
+function emptyTopic(poster, protagonist, by) {
+  return {
+    id: "vt" + Date.now() + Math.floor(Math.random() * 1000),
+    tag: poster.tag, title: poster.title, hook: poster.hook, grad: poster.grad,
+    protagonist: protagonist || null, by: by || "익명",
+    script: { submitted: false, text: "", by: "", approved: false },
+    source: { submitted: false, link: "", by: "", approved: false },
+    edit: { submitted: false, link: "", by: "", approved: false },
+    upload: { posted: false, caption: "", hashtags: "", by: "" },
+    bonusPaid: false,
+  };
+}
+const stDone = (st) => !!(st && st.approved);
+const topicComplete = (t) => t && stDone(t.script) && stDone(t.source) && stDone(t.edit) && t.upload && t.upload.posted;
+
+/* 주제 카드(포스터) */
+function PosterCard({ t, children }) {
+  const g = t.grad || ["#ddd", "#bbb"];
+  return (
+    <div style={{ border: `2px solid ${C.ink}`, borderRadius: 10, overflow: "hidden", marginBottom: 10, background: C.white }}>
+      <div style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})`, padding: "10px 12px" }}>
+        <div style={{ display: "inline-block", fontSize: 10, fontWeight: "bold", background: "rgba(255,255,255,0.85)", color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 10, padding: "1px 8px", marginBottom: 5 }}>#{t.tag}</div>
+        <div style={{ fontSize: 14, fontWeight: "bold", color: C.ink, lineHeight: 1.4 }}>{t.title}</div>
+        <div style={{ fontSize: 11, color: "#3a3228", opacity: 0.8, marginTop: 3, lineHeight: 1.5 }}>{t.hook}</div>
+      </div>
+      <div style={{ padding: 10 }}>{children}</div>
+    </div>
+  );
+}
+
+/* 스테이지 상태 뱃지 */
+function StageBadge({ st }) {
+  if (!st) return null;
+  const [bg, tx] = st.approved ? [C.good, "승인완료"] : st.submitted ? ["#e0a13d", "제출됨·검토중"] : ["#bbb", "대기"];
+  return <span style={{ fontSize: 10, fontWeight: "bold", color: "#fff", background: bg, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "1px 7px" }}>{tx}</span>;
+}
+
+/* 🎬 영상스쿨 퀘스트 게시판 (집 하나 = 카테고리 하나) */
+function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast }) {
+  const topics = (vdata && vdata.topics) || [];
+  const me = myName || "익명";
+  /* 🧑 주인공 입력 */
+  const [pAge, setPAge] = useState("");
+  const [pGender, setPGender] = useState("");
+  const [pSitu, setPSitu] = useState("");
+  const [pCore, setPCore] = useState("");
+  const [pPers, setPPers] = useState("");
+  const [draftText, setDraftText] = useState({});   // 입력 중 텍스트 (topicId별)
+  const [showProt, setShowProt] = useState({});      // 🎭 주인공 설정 토글
+
+  const commit = (nextTopics, gold, msg) => {
+    const next = { ...vdata, topics: nextTopics };
+    setVData(next); saveVData(next);
+    if (gold) reward(gold);
+    if (msg) toast(msg);
+  };
+  const withComplete = (nextTopics, tid, gold, msg) => {
+    // 스테이지 반영 후, 그 주제가 방금 완주됐으면 보너스 지급
+    const t = nextTopics.find((x) => x.id === tid);
+    if (t && topicComplete(t) && !t.bonusPaid) {
+      const done = nextTopics.map((x) => x.id === tid ? { ...x, bonusPaid: true } : x);
+      commit(done, (gold || 0) + V_REWARD.bonus, `🎉 「${t.title}」 완주! +${gold || 0}G, 완주 보너스 +${V_REWARD.bonus}G`);
+    } else {
+      commit(nextTopics, gold, msg);
+    }
+  };
+
+  const addProtagonist = () => {
+    if (!pSitu.trim() && !pCore.trim()) { toast("상황이나 코어를 입력해줘"); return; }
+    const poster = makePoster({ age: pAge, gender: pGender, situation: pSitu, core: pCore, personality: pPers });
+    const t = emptyTopic(poster, { age: pAge, gender: pGender, situation: pSitu, core: pCore, personality: pPers }, me);
+    commit([t, ...topics], 0, "🧑 주제 카드가 생성됐어요");
+    setPAge(""); setPGender(""); setPSitu(""); setPCore(""); setPPers("");
+  };
+
+  const submitStage = (tid, stage, payload) => {
+    const nt = topics.map((t) => t.id === tid ? { ...t, [stage]: { ...t[stage], ...payload, submitted: true, by: me } } : t);
+    withComplete(nt, tid, V_REWARD.submit, `제출 완료 · +${V_REWARD.submit}G`);
+    setDraftText((d) => ({ ...d, [tid + stage]: "" }));
+  };
+  const approveStage = (tid, stage) => {
+    const nt = topics.map((t) => t.id === tid ? { ...t, [stage]: { ...t[stage], approved: true } } : t);
+    withComplete(nt, tid, V_REWARD.approve, `승인 완료 · +${V_REWARD.approve}G`);
+  };
+  const postUpload = (tid, caption, hashtags) => {
+    const nt = topics.map((t) => t.id === tid ? { ...t, upload: { posted: true, caption, hashtags, by: me } } : t);
+    withComplete(nt, tid, 0, null);
+  };
+
+  const inp = { width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "'DotGothic16', monospace", fontSize: 12.5, background: C.white };
+
+  /* ── 🧑 주인공 만들기 ── */
+  if (house.id === "hero") {
+    return (
+      <div>
+        <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10, lineHeight: 1.7 }}>타겟·상황·코어·성격을 입력하면 <b>원고 작성용 주제 카드</b>가 즉석에서 만들어져요. 승인 없이 <b>무제한</b>으로 추가할 수 있어요.</div>
+        <div style={{ background: "#f7f2ff", border: `2px solid ${C.ink}`, borderRadius: 10, padding: 11, marginBottom: 14 }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+            <input value={pAge} onChange={(e) => setPAge(e.target.value)} placeholder="나이 (예: 20대)" style={{ ...inp, flex: 1 }} />
+            <input value={pGender} onChange={(e) => setPGender(e.target.value)} placeholder="성별" style={{ ...inp, flex: 1 }} />
+          </div>
+          <textarea value={pSitu} onChange={(e) => setPSitu(e.target.value)} rows={2} placeholder="구체적 상황·심정 (예: 자취 첫날, 뭘 사야 할지 막막함)" style={{ ...inp, marginBottom: 6, resize: "vertical" }} />
+          <input value={pCore} onChange={(e) => setPCore(e.target.value)} placeholder="공략할 코어 (예: 자취 필수템)" style={{ ...inp, marginBottom: 6 }} />
+          <input value={pPers} onChange={(e) => setPPers(e.target.value)} placeholder="성격 (예: 귀찮음 많은 게으른 성격)" style={{ ...inp, marginBottom: 8 }} />
+          <PxButton tone="good" onClick={addProtagonist} style={{ width: "100%", fontSize: 13, padding: 10 }}>🧑 주제 카드 생성</PxButton>
+        </div>
+        <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>🗂 만들어진 주제 {topics.length}개</div>
+        {topics.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 16 }}>아직 주제가 없어요. 위에서 만들어보세요!</div>}
+        {topics.map((t) => (
+          <PosterCard key={t.id} t={t}>
+            <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
+              {V_STAGES.map(([k, lb]) => <span key={k} style={{ fontSize: 10 }}>{lb} <StageBadge st={t[k]} /></span>)}
+              <span style={{ fontSize: 10 }}>🚀 {t.upload && t.upload.posted ? "게시됨" : "대기"}</span>
+            </div>
+            <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 5 }}>만든 사람: {t.by}</div>
+          </PosterCard>
+        ))}
+      </div>
+    );
+  }
+
+  /* ── 📝 원고 / 🎥 소스 / ✂️ 편집 / 🚀 업로드 게시판 ── */
+  const stage = house.id;   // script | source | edit | upload
+  const stageLabel = { script: "📝 원고", source: "🎥 소스", edit: "✂️ 편집", upload: "🚀 업로드" }[stage];
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 10, lineHeight: 1.7 }}>
+        {stage === "script" && `주제 하나를 골라 ${V_SPEC.length} 원고를 써요. 아무 주제나 바로 시작할 수 있어요.`}
+        {stage === "source" && "그 상황에 맞는 영상 소스를 파일/드라이브 링크로 제출해요. 원고를 기다릴 필요 없어요."}
+        {stage === "edit" && "원고+소스가 모두 승인된 주제만 편집을 시작할 수 있어요."}
+        {stage === "upload" && "편집이 승인된 주제에 캡션+해시태그를 달아 게시해요."}
+      </div>
+      {topics.length === 0 && <div style={{ fontSize: 12, color: C.inkSoft, textAlign: "center", padding: 20 }}>주제가 없어요. 🧑 주인공 만들기에서 먼저 만들어주세요!</div>}
+      {topics.map((t) => {
+        const st = t[stage] || {};
+        const editLocked = stage === "edit" && !(stDone(t.script) && stDone(t.source));
+        const upLocked = stage === "upload" && !stDone(t.edit);
+        const key = t.id + stage;
+        return (
+          <PosterCard key={t.id} t={t}>
+            {/* 🎭 주인공 설정 토글 */}
+            {t.protagonist && (
+              <div style={{ marginBottom: 8 }}>
+                <button type="button" onClick={() => setShowProt((s) => ({ ...s, [t.id]: !s[t.id] }))} style={{ cursor: "pointer", fontFamily: "'DotGothic16', monospace", fontSize: 11, background: "none", border: "none", color: "#8e5a9e", fontWeight: "bold" }}>🎭 주인공 설정 {showProt[t.id] ? "▲" : "▼"}</button>
+                {showProt[t.id] && (
+                  <div style={{ background: "#f7f2ff", border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: 8, fontSize: 11, lineHeight: 1.7, marginTop: 4 }}>
+                    나이 {t.protagonist.age || "-"} · 성별 {t.protagonist.gender || "-"}<br />상황: {t.protagonist.situation || "-"}<br />코어: {t.protagonist.core || "-"}<br />성격: {t.protagonist.personality || "-"}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 업로드 스테이지 */}
+            {stage === "upload" ? (
+              upLocked ? (
+                <div style={{ fontSize: 11.5, color: C.inkSoft, background: "#f4f2ea", border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: 8 }}>🔒 편집 승인 후 업로드할 수 있어요</div>
+              ) : t.upload.posted ? (
+                <div>
+                  <StageBadge st={{ approved: true }} />
+                  <div style={{ fontSize: 12, marginTop: 6, whiteSpace: "pre-wrap" }}>📝 {t.upload.caption}</div>
+                  <div style={{ fontSize: 11, color: "#8e5a9e", marginTop: 3 }}>{t.upload.hashtags}</div>
+                  <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 3 }}>게시: {t.upload.by}</div>
+                </div>
+              ) : (
+                <div>
+                  <textarea value={draftText[key] || ""} onChange={(e) => setDraftText((d) => ({ ...d, [key]: e.target.value }))} rows={2} placeholder="캡션" style={{ ...inp, marginBottom: 6, resize: "vertical" }} />
+                  <input value={draftText[key + "h"] || ""} onChange={(e) => setDraftText((d) => ({ ...d, [key + "h"]: e.target.value }))} placeholder="#해시태그 #모아서" style={{ ...inp, marginBottom: 6 }} />
+                  <PxButton tone="gold" onClick={() => postUpload(t.id, (draftText[key] || "").trim(), (draftText[key + "h"] || "").trim())} style={{ width: "100%", fontSize: 12, padding: 9 }}>🚀 게시하기</PxButton>
+                </div>
+              )
+            ) : editLocked ? (
+              <div style={{ fontSize: 11.5, color: C.inkSoft, background: "#f4f2ea", border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: 8 }}>🔒 원고·소스가 모두 승인되면 편집을 시작할 수 있어요</div>
+            ) : (
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: "bold", flex: 1 }}>{stageLabel}</span>
+                  <StageBadge st={st} />
+                </div>
+                {!st.submitted ? (
+                  <div>
+                    <textarea value={draftText[key] || ""} onChange={(e) => setDraftText((d) => ({ ...d, [key]: e.target.value }))} rows={stage === "script" ? 3 : 2}
+                      placeholder={stage === "script" ? `${V_SPEC.length} 원고를 써주세요` : "파일 설명 + 구글드라이브/업로드 링크"} style={{ ...inp, marginBottom: 6, resize: "vertical" }} />
+                    <PxButton tone="good" onClick={() => submitStage(t.id, stage, stage === "script" ? { text: (draftText[key] || "").trim() } : { link: (draftText[key] || "").trim() })} style={{ width: "100%", fontSize: 12, padding: 9 }}>제출하기 (+{V_REWARD.submit}G)</PxButton>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ background: "#f4f2ea", border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: 8, fontSize: 12, whiteSpace: "pre-wrap", wordBreak: "break-word", lineHeight: 1.6 }}>{st.text || st.link}</div>
+                    <div style={{ fontSize: 10, color: C.inkSoft, margin: "4px 0 6px" }}>제출: {st.by}</div>
+                    {!st.approved && <PxButton tone="blue" onClick={() => approveStage(t.id, stage)} style={{ width: "100%", fontSize: 12, padding: 9 }}>✅ 승인 (+{V_REWARD.approve}G)</PxButton>}
+                  </div>
+                )}
+              </div>
+            )}
+          </PosterCard>
+        );
+      })}
+    </div>
+  );
+}
+
+function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}, myName = "" }) {
   const net = useContext(NetContext) || {};
   const meNet = net.me || {};
   const s = SCHOOLS[school];
@@ -162,6 +334,17 @@ function SchoolView({ school, onBack, cleared = {}, onClear }) {
   const [near, setNear] = useState(null);
   const [open, setOpen] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [vdata, setVData] = useState({ topics: [] });   // 🎬 영상스쿨 주제·제출·승인 (서버 공유)
+  const [vToast, setVToast] = useState("");
+  const vToastFn = (m) => { setVToast(m); setTimeout(() => setVToast(""), 2800); };
+  const saveVData = (next) => { dbSaveVSchool(next); };
+  useEffect(() => {
+    if (school !== "videoschool") return;
+    const load = () => dbLoadVSchool().then((d) => { if (d && Array.isArray(d.topics)) setVData(d); }).catch(() => {});
+    load();
+    const iv = setInterval(load, 30000);
+    return () => clearInterval(iv);
+  }, [school]);
   const keys = useRef({});
   const posRef = useRef(pos);
   const nearRef = useRef(null);
@@ -248,6 +431,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear }) {
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
       {chatOpen && <ChatBot onClose={() => setChatOpen(false)} />}
+      {vToast && <div style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 120, background: C.ink, color: "#ffe680", border: `2px solid ${C.gem}`, borderRadius: 20, padding: "9px 18px", fontSize: 13, fontFamily: "'DotGothic16', monospace", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>{vToast}</div>}
       <TitleBar tipId={school} icon={s.icon} title={s.title} sub="WASD 이동 · 집 근처에서 E · 아무 집이나 자유롭게" onBack={onBack} bg={s.color} fg={C.white}
         right={<PxButton tone="good" onClick={() => setChatOpen(true)} style={{ fontSize: 11, padding: "5px 10px" }}>🐣 코코</PxButton>} />
       <div style={{ padding: 12, background: C.parch }}>
@@ -306,6 +490,15 @@ function SchoolView({ school, onBack, cleared = {}, onClear }) {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90, padding: 12 }} onClick={() => setOpen(null)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 720, maxHeight: "90vh", overflow: "auto" }}>
             <Panel style={{ padding: 14 }}>
+              {school === "videoschool" ? (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 13, flex: 1 }}>{open.title}</div>
+                    <PxButton tone="ink" onClick={() => setOpen(null)} style={{ fontSize: 12, padding: "6px 12px" }}>닫기</PxButton>
+                  </div>
+                  <VideoBoard house={open} vdata={vdata} setVData={setVData} saveVData={saveVData} myName={myName} reward={onReward} toast={vToastFn} />
+                </div>
+              ) : (
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ flex: "1 1 320px", minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
@@ -336,6 +529,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear }) {
                   <QuestAssistant questTitle={open.title} />
                 </div>
               </div>
+              )}
             </Panel>
           </div>
         </div>
