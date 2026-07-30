@@ -2498,7 +2498,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "mention").neq("type", "sprpos").neq("type", "cocoqa").neq("type", "vschool").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "nspyt").neq("type", "nspytkw").neq("type", "nspytex").neq("type", "nspcafeex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "mention").neq("type", "sprpos").neq("type", "cocoqa").neq("type", "vschool").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2555,32 +2555,32 @@ export async function dbSaveNspTut(key, slot) {
 /* 📱 릴스방 영상 서버 저장 (notices 재사용: type="reeldata", 전체 맵을 최신 1행에) */
 /* 🔗 카페 외부(네이버 키워드) — 관리자 제품·키워드 설정 서버 저장 (notices type=nspkw) */
 /* 💬 지식인 최신글 — 제품·키워드(nspkinkw) · 링크상태(nspkin) · 예시게시판(nspkinex) */
-export async function dbLoadKinKw() {
+export async function dbLoadKinKw(pfx = "kin") {
   try { const s = await getSupa();
-    const r = await s.from("notices").select("body").eq("type", "nspkinkw").order("created_at", { ascending: false }).limit(1);
+    const r = await s.from("notices").select("body").eq("type", "nsp" + pfx + "kw").order("created_at", { ascending: false }).limit(1);
     const row = r && r.data && r.data[0]; return row ? JSON.parse(row.body || "null") : null;
   } catch (e) { return null; }
 }
-export async function dbSaveKinKw(products) {
-  try { const s = await getSupa(); const r = await s.from("notices").insert({ type: "nspkinkw", title: "nspkinkw", body: JSON.stringify(products || []) }); return !(r && r.error); } catch (e) { return false; }
+export async function dbSaveKinKw(products, pfx = "kin") {
+  try { const s = await getSupa(); const r = await s.from("notices").insert({ type: "nsp" + pfx + "kw", title: "nsp" + pfx + "kw", body: JSON.stringify(products || []) }); return !(r && r.error); } catch (e) { return false; }
 }
-export async function dbLoadKinState() {
+export async function dbLoadKinState(pfx = "kin") {
   try { const s = await getSupa();
-    const r = await s.from("notices").select("body").eq("type", "nspkin").order("created_at", { ascending: false }).limit(1);
+    const r = await s.from("notices").select("body").eq("type", "nsp" + pfx).order("created_at", { ascending: false }).limit(1);
     const row = r && r.data && r.data[0]; return row ? JSON.parse(row.body || "null") : null;
   } catch (e) { return null; }
 }
-export async function dbSaveKinState(state) {
-  try { const s = await getSupa(); const r = await s.from("notices").insert({ type: "nspkin", title: "nspkin", body: JSON.stringify(state || {}) }); return !(r && r.error); } catch (e) { return false; }
+export async function dbSaveKinState(state, pfx = "kin") {
+  try { const s = await getSupa(); const r = await s.from("notices").insert({ type: "nsp" + pfx, title: "nsp" + pfx, body: JSON.stringify(state || {}) }); return !(r && r.error); } catch (e) { return false; }
 }
-export async function dbLoadKinEx() {
+export async function dbLoadKinEx(pfx = "kin") {
   try { const s = await getSupa();
-    const r = await s.from("notices").select("body").eq("type", "nspkinex").order("created_at", { ascending: false }).limit(1);
+    const r = await s.from("notices").select("body").eq("type", "nsp" + pfx + "ex").order("created_at", { ascending: false }).limit(1);
     const row = r && r.data && r.data[0]; return row ? JSON.parse(row.body || "null") : null;
   } catch (e) { return null; }
 }
-export async function dbSaveKinEx(posts) {
-  try { const s = await getSupa(); const r = await s.from("notices").insert({ type: "nspkinex", title: "nspkinex", body: JSON.stringify(posts || []) }); return !(r && r.error); } catch (e) { return false; }
+export async function dbSaveKinEx(posts, pfx = "kin") {
+  try { const s = await getSupa(); const r = await s.from("notices").insert({ type: "nsp" + pfx + "ex", title: "nsp" + pfx + "ex", body: JSON.stringify(posts || []) }); return !(r && r.error); } catch (e) { return false; }
 }
 /* ☕ 카페 최신글 — 관리자 제품·키워드 설정 (notices type=nspcafekw) */
 export async function dbLoadCafeKw() {
@@ -2615,6 +2615,16 @@ export async function dbSaveCafeState(state) {
     const r = await s.from("notices").insert({ type: "nspcafe", title: "nspcafe", body: JSON.stringify(state || {}) });
     return !(r && r.error);
   } catch (e) { return false; }
+}
+/* ☕ 카페 최신글 — 📚 예시(튜토리얼) 게시판 (notices type=nspcafeex) */
+export async function dbLoadCafeEx() {
+  try { const s = await getSupa();
+    const r = await s.from("notices").select("body").eq("type", "nspcafeex").order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0]; return row ? JSON.parse(row.body || "null") : null;
+  } catch (e) { return null; }
+}
+export async function dbSaveCafeEx(posts) {
+  try { const s = await getSupa(); const r = await s.from("notices").insert({ type: "nspcafeex", title: "nspcafeex", body: JSON.stringify(posts || []) }); return !(r && r.error); } catch (e) { return false; }
 }
 export async function dbLoadNspKw() {
   try {
