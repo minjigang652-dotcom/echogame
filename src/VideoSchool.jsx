@@ -126,14 +126,18 @@ function emptyTopic(poster, protagonist, by) {
     id: "vt" + Date.now() + Math.floor(Math.random() * 1000),
     tag: poster.tag, title: poster.title, hook: poster.hook, grad: poster.grad,
     protagonist: protagonist || null, by: by || "익명",
-    script: { submitted: false, text: "", by: "", approved: false },
-    source: { submitted: false, link: "", by: "", approved: false },
-    edit: { submitted: false, link: "", by: "", approved: false },
+    script: { submitted: false, text: "", by: "", approved: false, status: "", feedback: "", hadFeedback: false },
+    source: { submitted: false, link: "", by: "", approved: false, status: "", feedback: "", hadFeedback: false },
+    edit: { submitted: false, link: "", by: "", approved: false, status: "", feedback: "", hadFeedback: false },
     upload: { posted: false, caption: "", hashtags: "", by: "" },
     bonusPaid: false,
   };
 }
 const stDone = (st) => !!(st && st.approved);
+/* 스테이지 상태: none · pending(회색 승인대기) · feedback(핑크 피드백도착) · approved(초록 승인완료)
+   ※ 색 구분은 프로덕트 전역 통일 권장 */
+const stStatus = (st) => (st && st.approved) ? "approved" : (st && st.status === "feedback") ? "feedback" : (st && st.submitted) ? "pending" : "none";
+const V_STATUS = { pending: { bg: "#9a94a6", label: "승인 대기중" }, feedback: { bg: "#ff8fab", label: "피드백 도착" }, approved: { bg: C.good, label: "승인 완료" } };
 const topicComplete = (t) => t && stDone(t.script) && stDone(t.source) && stDone(t.edit) && t.upload && t.upload.posted;
 
 /* 주제 카드(포스터) */
@@ -151,15 +155,18 @@ function PosterCard({ t, children }) {
   );
 }
 
-/* 스테이지 상태 뱃지 */
+/* 스테이지 상태 뱃지 (회색 대기 · 핑크 피드백 · 초록 승인) */
 function StageBadge({ st }) {
   if (!st) return null;
-  const [bg, tx] = st.approved ? [C.good, "승인완료"] : st.submitted ? ["#e0a13d", "제출됨·검토중"] : ["#bbb", "대기"];
-  return <span style={{ fontSize: 10, fontWeight: "bold", color: "#fff", background: bg, border: `2px solid ${C.ink}`, borderRadius: 8, padding: "1px 7px" }}>{tx}</span>;
+  const s = stStatus(st);
+  const base = { fontSize: 10, fontWeight: "bold", color: "#fff", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "1px 7px" };
+  if (s === "none") return <span style={{ ...base, background: "#bbb" }}>대기</span>;
+  const info = V_STATUS[s];
+  return <span style={{ ...base, background: info.bg }}>{info.label}</span>;
 }
 
 /* 🎬 영상스쿨 퀘스트 게시판 (집 하나 = 카테고리 하나) */
-function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast }) {
+function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, tier = "high" }) {
   const topics = (vdata && vdata.topics) || [];
   const me = myName || "익명";
   /* 🧑 주인공 입력 */
@@ -196,14 +203,25 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast }
     setPAge(""); setPGender(""); setPSitu(""); setPCore(""); setPPers("");
   };
 
+  const isReviewer = tier === "high";   // 🔥 숙련된 제작자(파티장)만 승인·피드백 가능
+  /* 제출 : 편집은 항상 검토 · 원고/소스는 높은 티어면 자동승인 · 원고는 피드백 1회 후 재제출도 자동승인 */
   const submitStage = (tid, stage, payload) => {
-    const nt = topics.map((t) => t.id === tid ? { ...t, [stage]: { ...t[stage], ...payload, submitted: true, by: me } } : t);
-    withComplete(nt, tid, V_REWARD.submit, `제출 완료 · +${V_REWARD.submit}G`);
+    const cur = (topics.find((x) => x.id === tid) || {})[stage] || {};
+    const auto = stage !== "edit" && (tier === "high" || (stage === "script" && cur.hadFeedback));
+    const nt = topics.map((t) => t.id === tid ? { ...t, [stage]: { ...t[stage], ...payload, submitted: true, by: me, approved: auto, status: auto ? "approved" : "pending", feedback: "" } } : t);
+    withComplete(nt, tid, V_REWARD.submit, auto ? `제출 즉시 승인됐어요 · +${V_REWARD.submit}G` : `제출 완료 · 검토 대기 · +${V_REWARD.submit}G`);
     setDraftText((d) => ({ ...d, [tid + stage]: "" }));
   };
   const approveStage = (tid, stage) => {
-    const nt = topics.map((t) => t.id === tid ? { ...t, [stage]: { ...t[stage], approved: true } } : t);
+    const nt = topics.map((t) => t.id === tid ? { ...t, [stage]: { ...t[stage], approved: true, status: "approved", feedback: "" } } : t);
     withComplete(nt, tid, V_REWARD.approve, `승인 완료 · +${V_REWARD.approve}G`);
+  };
+  /* 피드백(수정요청) : 원본 내용은 유지 · 스테이지가 다시 열려요 · 원고는 이후 재제출 시 자동승인 */
+  const feedbackStage = (tid, stage, msg) => {
+    const m = (msg || "").trim(); if (!m) { toast("피드백 내용을 적어주세요"); return; }
+    const nt = topics.map((t) => t.id === tid ? { ...t, [stage]: { ...t[stage], approved: false, status: "feedback", feedback: m, feedbackBy: me, hadFeedback: true } } : t);
+    commit(nt, 0, "✏️ 피드백을 보냈어요");
+    setDraftText((d) => ({ ...d, [tid + stage + "fb"]: "" }));
   };
   const postUpload = (tid, caption, hashtags) => {
     const nt = topics.map((t) => t.id === tid ? { ...t, upload: { posted: true, caption, hashtags, by: me } } : t);
@@ -260,6 +278,8 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast }
         const editLocked = stage === "edit" && !(stDone(t.script) && stDone(t.source));
         const upLocked = stage === "upload" && !stDone(t.edit);
         const key = t.id + stage;
+        const status = stStatus(st);
+        const curVal = draftText[key] != null ? draftText[key] : (st.text || st.link || "");
         return (
           <PosterCard key={t.id} t={t}>
             {/* 🎭 주인공 설정 토글 */}
@@ -300,17 +320,40 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast }
                   <span style={{ fontSize: 11, fontWeight: "bold", flex: 1 }}>{stageLabel}</span>
                   <StageBadge st={st} />
                 </div>
-                {!st.submitted ? (
+
+                {(status === "none" || status === "feedback") ? (
+                  /* 입력 가능 : 최초 제출 · 또는 피드백 받고 수정 후 재제출 (원본 내용 유지) */
                   <div>
-                    <textarea value={draftText[key] || ""} onChange={(e) => setDraftText((d) => ({ ...d, [key]: e.target.value }))} rows={stage === "script" ? 3 : 2}
+                    {status === "feedback" && (
+                      <div style={{ background: "#ffe6ee", border: "2px solid #ff8fab", borderRadius: 6, padding: 8, fontSize: 11.5, lineHeight: 1.6, marginBottom: 6, color: "#a83a5b" }}>
+                        ✏️ 피드백{st.feedbackBy ? ` · ${st.feedbackBy}` : ""}<br /><span style={{ color: C.ink, whiteSpace: "pre-wrap" }}>{st.feedback}</span>
+                      </div>
+                    )}
+                    <textarea value={curVal} onChange={(e) => setDraftText((d) => ({ ...d, [key]: e.target.value }))} rows={stage === "script" ? 3 : 2}
                       placeholder={stage === "script" ? `${V_SPEC.length} 원고를 써주세요` : "파일 설명 + 구글드라이브/업로드 링크"} style={{ ...inp, marginBottom: 6, resize: "vertical" }} />
-                    <PxButton tone="good" onClick={() => submitStage(t.id, stage, stage === "script" ? { text: (draftText[key] || "").trim() } : { link: (draftText[key] || "").trim() })} style={{ width: "100%", fontSize: 12, padding: 9 }}>제출하기 (+{V_REWARD.submit}G)</PxButton>
+                    <PxButton tone="good" onClick={() => submitStage(t.id, stage, stage === "script" ? { text: curVal.trim() } : { link: curVal.trim() })} style={{ width: "100%", fontSize: 12, padding: 9 }}>
+                      {status === "feedback" ? "🔁 수정 후 제출하기" : `제출하기 (+${V_REWARD.submit}G)`}
+                    </PxButton>
                   </div>
                 ) : (
+                  /* 승인대기중 · 승인완료 : 입력 잠금 · 내용은 계속 보여요 */
                   <div>
                     <div style={{ background: "#f4f2ea", border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: 8, fontSize: 12, whiteSpace: "pre-wrap", wordBreak: "break-word", lineHeight: 1.6 }}>{st.text || st.link}</div>
                     <div style={{ fontSize: 10, color: C.inkSoft, margin: "4px 0 6px" }}>제출: {st.by}</div>
-                    {!st.approved && <PxButton tone="blue" onClick={() => approveStage(t.id, stage)} style={{ width: "100%", fontSize: 12, padding: 9 }}>✅ 승인 (+{V_REWARD.approve}G)</PxButton>}
+                    {status === "pending" && (
+                      isReviewer ? (
+                        <div>
+                          <textarea value={draftText[key + "fb"] || ""} onChange={(e) => setDraftText((d) => ({ ...d, [key + "fb"]: e.target.value }))} rows={2}
+                            placeholder="✏️ 수정요청(피드백) 내용 — 적고 「피드백」을 누르면 작성자에게 돌아가요" style={{ ...inp, marginBottom: 6, resize: "vertical" }} />
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <PxButton tone="good" onClick={() => approveStage(t.id, stage)} style={{ flex: 1, fontSize: 12, padding: 9 }}>✅ 승인 (+{V_REWARD.approve}G)</PxButton>
+                            <PxButton tone="danger" onClick={() => feedbackStage(t.id, stage, draftText[key + "fb"] || "")} style={{ flex: 1, fontSize: 12, padding: 9 }}>✏️ 피드백</PxButton>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 11, color: C.inkSoft, background: "#f0eee6", border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: 8, textAlign: "center" }}>🕓 파티장(🔥 숙련된 제작자)의 검토를 기다리는 중이에요</div>
+                      )
+                    )}
                   </div>
                 )}
               </div>
@@ -322,7 +365,7 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast }
   );
 }
 
-function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}, myName = "" }) {
+function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}, myName = "", tier = "high" }) {
   const net = useContext(NetContext) || {};
   const meNet = net.me || {};
   const s = SCHOOLS[school];
@@ -496,7 +539,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
                     <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 13, flex: 1 }}>{open.title}</div>
                     <PxButton tone="ink" onClick={() => setOpen(null)} style={{ fontSize: 12, padding: "6px 12px" }}>닫기</PxButton>
                   </div>
-                  <VideoBoard house={open} vdata={vdata} setVData={setVData} saveVData={saveVData} myName={myName} reward={onReward} toast={vToastFn} />
+                  <VideoBoard house={open} vdata={vdata} setVData={setVData} saveVData={saveVData} myName={myName} reward={onReward} toast={vToastFn} tier={tier} />
                 </div>
               ) : (
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
