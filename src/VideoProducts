@@ -30,19 +30,24 @@ export function emptyProduct() {
 
 export const DEFAULT_PRODUCTS = [{
   id: "gohum", name: "고음확장기",
-  coreRule: "사랑받고 싶고 인정받고 싶은 마음을 건드리기",
-  impactTip: "노래 한번 배우면 10년은 써먹는 거 알아? — 같은 자극 대사",
+  coreRule: "사랑받고 싶고 인정받고 싶은 마음을 건들이기 — 타겟의 상상 속에서, 노래를 통해 이성에게(또는 주변 사람들에게) 어필하는 그 순간에 집중하세요.",
+  impactTip: "영상 중간에 이런 자극도 넣어보세요 — “노래 한번 배우면 10년은 써먹는거 알아?” 같은 자존감 자극 대사나, 멋진 노래를 불렀을 때 주변 반응(“우와~” 같은 것)을 구체적으로 묘사하면 몰입도가 올라가요.",
   situations: [
-    { tag: "노래방", title: "노래방만 가면 목이 쉬어요", hook: '"또 삑사리 났어.." 3옥타브의 벽' },
-    { tag: "회식", title: "회식 노래 순서가 공포예요", hook: "마이크만 잡으면 작아지는 나" },
-    { tag: "취미", title: "취미로 시작했다 진심이 됐다", hook: "그날 그 한 곡이 시작이었어요" },
+    { tag: "학교", title: "학교 장기자랑 인생역전", hook: "소심했던 반에서 그냥 있는 애1이었는데, 담임쌤 추천으로 장기자랑 무대에 서고 나서 인생이 바뀐 이야기." },
+    { tag: "행사", title: "행사 무대에서 다들 놀란 순간", hook: "행사 사회자가 갑자기 노래 시켰는데 예상 밖으로 잘 불러서 다들 놀라는 상황." },
+    { tag: "노래방", title: "노래방에서 고음 실패 걱정", hook: "친구들이랑 노래방 왔는데 하이라이트 고음에서 삑사리 날까봐 마이크 잡기가 두려운 순간." },
+    { tag: "회식", title: "회식 자리에서 노래 시킴", hook: "팀장님이 갑자기 한 곡 시켜서, 부담스럽지만 결국 무대에 서게 되는 회식 자리." },
+    { tag: "버스킹", title: "버스킹 구경하다가 즉흥 참여", hook: "길거리 버스킹 구경하다가 얼떨결에 마이크를 넘겨받고 노래하게 되는 순간." },
+    { tag: "코노", title: "코인노래방, 옆방이 구경하러 옴", hook: "코인노래방에서 부르는데 옆방 사람들이 궁금해서 구경하러 오는 민망하지만 뿌듯한 순간." },
+    { tag: "술집", title: "술자리에서 한 곡 뽑을 때", hook: "술자리 분위기가 무르익고, 누군가 노래 한 곡 하라고 할 때의 그 부담과 짜릿함." },
+    { tag: "결혼식", title: "축가 망칠까봐 불안한 신랑·신부", hook: "결혼식 축가, 고음에서 삑사리 나면 평생 놀림거리 — 그 공포를 극복하고 완창하는 이야기." },
   ],
   scripts: [
-    "(예시 원고 1) 나 원래 노래 진짜 못했거든? 근데 딱 하나 바꿨더니 삑사리가 사라졌어. 바로 '이거'. 오늘은 그 얘기를 해볼게. …",
-    "(예시 원고 2) 솔직히 노래학원 3개월 다녀도 안 늘던 내가, 집에서 이거 하나로 반 옥타브 올렸어. 방법은 생각보다 단순해. …",
+    "① 수학여행 인생역전\n수학여행에서 노래 불렀다가 인생역전.\n나 진짜 소심하고 반에 그냥 있는 애1 이었는데 담임쌤 추천으로 장기자랑 올라갔다가 진짜 바로 인생역전 됨..\n애들 다 계속 물어보고 여자애들도 연락오고. 노래 잘 부르는게 그렇게 큰가??\n나 그냥 이주동안 형이 쓰는 기구 몰래 쓴게 다인데.. 암튼 아직도 안믿긴다ㅋㅋㅋ\n다들 꼭 노래 연습해서 장기자랑 서봐..! 기구 뭔지 궁금하면 댓글로 따로 알려줄게",
+    "② 썸녀 통화 노래\n썸녀 -> 여친 만들어준 노래 들어볼사람.\n썸녀랑 전화하는데 이상형이 노래 잘부르는 사람이라고 노래 불러달라는거야.\n근데 나 진짜 음치ㅜ 음색도 별로임. 그래서 일주일만 기다려달라 하고 미친듯이 검색하고 다님.\n인터넷에서 본 방법으로 딱 일주일 연습했더니 와.. 노래 실력 완전 늘었음 음색도 너무 좋아졌어.\n일주일 연습으로 되나? 싶은데 내가 그 증거야.. 여친 됐다니 아 너무 행복하다ㅎㅎ\n혹시 방법 알고 싶으면 댓글 달아줘",
   ],
-  refTone: "https://youtube.com/",
-  refEdit: ["https://youtube.com/"],
+  refTone: "https://www.instagram.com/p/DYADwGhAKl4/?igsh=NmxobzltbXcxMXJk",
+  refEdit: ["https://www.instagram.com/p/DZB8B6AAE0y/?igsh=MWQxMnFiaWhmdXpzbg%3D%3D"],
   editGuide: { shorts: { top: 120, bottom: 320, side: 40 }, reels: { top: 140, bottom: 360, side: 60 } },
   sourceTools: [
     { name: "샤오홍슈", icon: "📕", desc: "중국 레퍼런스 탐색", link: "https://www.xiaohongshu.com" },
@@ -63,72 +68,83 @@ export function SpecBadge({ spec }) {
   return <span style={{ fontSize: 10.5, fontWeight: "bold", color: "#fff", background: P.accent, border: `2px solid ${P.ink}`, borderRadius: 10, padding: "2px 9px" }}>🎬 {[s.length, s.ratio].filter(Boolean).join(" · ")}</span>;
 }
 
-/* ---------- 📖 튜토리얼 (4슬라이드 · 인라인 재열람) ---------- */
-export function ProductTutorial({ product }) {
-  const key = "echotown_vtut_" + ((product && product.id) || "x");
-  const wasSeen = (() => { try { return window.localStorage.getItem(key) === "1"; } catch (e) { return false; } })();
-  const [open, setOpen] = useState(!wasSeen);   // 최초 1회 자동 펼침
+/* ---------- 📖 튜토리얼 (4슬라이드 · 전체화면 팝업 · STEP0 온보딩) ---------- */
+export function ProductTutorial({ product, open = false, onClose = () => {} }) {
   const [i, setI] = useState(0);
-  React.useEffect(() => { if (!wasSeen) { try { window.localStorage.setItem(key, "1"); } catch (e) {} } }, []); // eslint-disable-line
+  React.useEffect(() => { if (open) setI(0); }, [open]);
+  if (!open) return null;
   const p = product || {};
+  const situations = p.situations || [];
+  const scripts = (p.scripts || []).filter(Boolean);
+  const refs = [];
+  if (p.refTone) refs.push({ label: "레퍼런스 영상 1", sub: "원고 톤 참고용", url: p.refTone });
+  (p.refEdit || []).filter(Boolean).forEach((u) => refs.push({ label: "레퍼런스 영상 " + (refs.length + 1), sub: "편집할 때 참고 (세이프존 가이드 관련)", url: u }));
+  const box = { borderRadius: 12, padding: 12, fontSize: 12.5, lineHeight: 1.65 };
+  const desc = { fontSize: 13, color: "#5a5570", lineHeight: 1.7 };
   const slides = [
-    { t: "① 핵심 코어 룰", body: (
+    { eyebrow: "STEP 0 · 영상 코어 확인하기", title: "영상 만들기 전에, 코어부터 확인해요", body: (
       <div>
-        <div style={{ fontSize: 13, fontWeight: "bold", color: P.accent, lineHeight: 1.6, marginBottom: 8 }}>“{p.coreRule || "핵심 코어 룰을 입력하세요"}”</div>
-        {p.impactTip && <div style={{ fontSize: 12, color: P.ink, background: P.parch, border: `2px solid ${P.edge}`, borderRadius: 8, padding: 9, lineHeight: 1.6 }}>💥 중간 임팩트 팁<br />{p.impactTip}</div>}
+        <div style={desc}>모든 영상은 이야기도, 상황도 자유롭게 각색해도 괜찮아요. 딱 하나, 아래 <b style={{ color: P.ink }}>코어(핵심 룰)</b>만은 꼭 지켜주세요. 이 코어에 각자의 진짜 경험을 녹이는 게 이 프로젝트의 포인트예요.</div>
+        <div style={{ ...box, marginTop: 14, background: "#eef0fb", color: "#3b3560", fontWeight: 700, fontSize: 13 }}>💡 {p.coreRule || "핵심 코어 룰을 입력하세요"}</div>
       </div>
     ) },
-    { t: "② 기본 상황 리스트", body: (
-      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-        {(p.situations || []).length === 0 && <div style={{ fontSize: 12, color: P.soft }}>상황이 아직 없어요.</div>}
-        {(p.situations || []).map((s, k) => (
-          <div key={k} style={{ background: P.white, border: `2px solid ${P.edge}`, borderRadius: 8, padding: 9 }}>
-            <span style={{ fontSize: 10, fontWeight: "bold", color: "#fff", background: P.accent2, borderRadius: 8, padding: "1px 7px" }}>#{s.tag}</span>
-            <div style={{ fontSize: 12.5, fontWeight: "bold", color: P.ink, marginTop: 4 }}>{s.title}</div>
-            <div style={{ fontSize: 11.5, color: P.soft, marginTop: 2 }}>{s.hook}</div>
-          </div>
-        ))}
+    { eyebrow: "STEP 0 · " + (situations.length || 8) + "가지 상황", title: "이런 상황들 속에서 이야기를 골라보세요", body: (
+      <div>
+        <div style={desc}>아래 {situations.length}개 상황이 실제로 검증된 소재예요. 원고 탭 포스터도 이 상황들로 되어 있어요.</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, margin: "12px 0" }}>
+          {situations.map((s, k) => <span key={k} style={{ background: "#eef0fb", color: "#4b3fb0", borderRadius: 999, padding: "5px 12px", fontSize: 12, fontWeight: 700 }}>{s.tag}</span>)}
+        </div>
+        {p.impactTip && <div style={{ ...box, background: "#fff7d6", color: "#6b5a1a" }}>🎤 {p.impactTip}</div>}
       </div>
     ) },
-    { t: "③ 원고 예시", body: (
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {(p.scripts || []).filter(Boolean).length === 0 && <div style={{ fontSize: 12, color: P.soft }}>원고 예시가 아직 없어요.</div>}
-        {(p.scripts || []).filter(Boolean).map((sc, k) => (
-          <div key={k} style={{ fontSize: 11.5, color: P.ink, whiteSpace: "pre-wrap", lineHeight: 1.6, background: P.parch, border: `2px solid ${P.edge}`, borderRadius: 8, padding: 9 }}>✍️ 예시 {k + 1}<br />{sc}</div>
-        ))}
+    { eyebrow: "STEP 0 · 원고 예시", title: "실제로 이런 톤으로 쓰면 돼요", body: (
+      <div>
+        <div style={desc}>아래는 참고용 원고 예시예요. 이 톤과 구조(경험담처럼 → 반전 → 궁금증 유발)를 참고해서, 본인 이야기처럼 각색해보세요.</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+          {scripts.length === 0 && <div style={{ fontSize: 12, color: P.soft }}>원고 예시가 아직 없어요.</div>}
+          {scripts.map((sc, k) => { const lines = String(sc).split("\n"); const head = lines[0]; const rest = lines.slice(1).join("\n"); return (
+            <div key={k} style={{ ...box, background: "#f4f3fb", color: "#3a3550", whiteSpace: "pre-wrap" }}>
+              <b style={{ color: P.ink, fontSize: 13 }}>{head}</b>{rest ? <><br />{rest}</> : null}
+            </div>
+          ); })}
+        </div>
       </div>
     ) },
-    { t: "④ 레퍼런스 영상", body: (
-      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-        {p.refTone ? <a href={p.refTone} target="_blank" rel="noreferrer" style={{ ...btn(P.white, P.accent), textDecoration: "none", display: "block", textAlign: "center" }}>🎙 원고 톤 레퍼런스 ↗</a> : <div style={{ fontSize: 12, color: P.soft }}>원고 톤 레퍼런스 미입력</div>}
-        {(p.refEdit || []).filter(Boolean).map((r, k) => (
-          <a key={k} href={r} target="_blank" rel="noreferrer" style={{ ...btn(P.white, P.accent2), textDecoration: "none", display: "block", textAlign: "center" }}>✂️ 편집 스타일 레퍼런스 {k + 1} ↗</a>
-        ))}
+    { eyebrow: "STEP 0 · 레퍼런스 영상", title: "참고할 레퍼런스 영상이에요", body: (
+      <div>
+        <div style={desc}>원고 톤은 첫 번째 영상을, 편집 스타일(세이프존 등)은 두 번째 영상을 참고하세요.</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+          {refs.length === 0 && <div style={{ fontSize: 12, color: P.soft }}>레퍼런스 영상이 아직 없어요.</div>}
+          {refs.map((r, k) => (
+            <a key={k} href={r.url} target="_blank" rel="noreferrer" style={{ ...box, background: "#f1f0fb", textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 20 }}>📸</span>
+              <span><b style={{ color: P.ink, fontSize: 13 }}>{r.label}</b><br /><span style={{ color: P.soft, fontSize: 11.5 }}>{r.sub}</span></span>
+            </a>
+          ))}
+        </div>
       </div>
     ) },
   ];
-  const openTut = () => { setOpen(true); };
+  const s = slides[i];
+  const isLast = i === slides.length - 1;
+  const ghost = { cursor: "pointer", fontFamily: P.font, background: "#fff", border: "1.5px solid #d8d5e5", color: "#6a6580", borderRadius: 10, padding: "9px 15px", fontSize: 12.5, fontWeight: 700 };
   return (
-    <div style={{ marginBottom: 10, fontFamily: P.font }}>
-      {!open ? (
-        <button type="button" onClick={openTut} style={{ ...btn(P.accent), width: "100%", padding: 10 }}>📖 코어 다시보기 (튜토리얼)</button>
-      ) : (
-        <div style={{ background: P.white, border: `3px solid ${P.ink}`, borderRadius: 12, padding: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
-            <b style={{ flex: 1, fontSize: 13, color: P.ink }}>📖 {p.name || "제품"} 코어</b>
-            <button type="button" onClick={() => setOpen(false)} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 12, color: P.soft }}>▲ 접기</button>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(20,14,40,0.55)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, fontFamily: P.font }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 18, maxWidth: 440, width: "100%", padding: 24, boxSizing: "border-box", boxShadow: "0 24px 60px rgba(0,0,0,0.35)", maxHeight: "88vh", overflowY: "auto" }}>
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.3, color: P.accent, marginBottom: 6 }}>{s.eyebrow}</div>
+        <div style={{ fontSize: 19, fontWeight: 900, color: "#2a2540", lineHeight: 1.35, marginBottom: 12 }}>{s.title}</div>
+        <div style={{ minHeight: 110 }}>{s.body}</div>
+        <div style={{ display: "flex", alignItems: "center", marginTop: 18, gap: 8 }}>
+          <div style={{ flex: 1, display: "flex", gap: 5, alignItems: "center" }}>
+            {slides.map((_, k) => <span key={k} style={{ width: k === i ? 18 : 7, height: 7, borderRadius: 999, background: k === i ? P.accent : "#d5d2e5", transition: "all .2s" }} />)}
           </div>
-          <div style={{ fontSize: 12, fontWeight: "bold", color: P.accent, marginBottom: 8 }}>{slides[i].t}</div>
-          <div style={{ minHeight: 90 }}>{slides[i].body}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12 }}>
-            <button type="button" disabled={i === 0} onClick={() => setI(i - 1)} style={{ ...btn(i === 0 ? "#ddd" : P.white, P.ink), opacity: i === 0 ? 0.5 : 1 }}>◀</button>
-            <div style={{ flex: 1, textAlign: "center", fontSize: 11, color: P.soft }}>{i + 1} / {slides.length}</div>
-            {i < slides.length - 1
-              ? <button type="button" onClick={() => setI(i + 1)} style={btn(P.accent)}>다음 ▶</button>
-              : <button type="button" onClick={() => setOpen(false)} style={btn(P.ok)}>시작하기 ✓</button>}
-          </div>
+          <button type="button" onClick={onClose} style={ghost}>건너뛰기</button>
+          {i > 0 && <button type="button" onClick={() => setI(i - 1)} style={ghost}>이전</button>}
+          {isLast
+            ? <button type="button" onClick={onClose} style={{ cursor: "pointer", fontFamily: P.font, background: P.ok, color: "#fff", border: "none", borderRadius: 10, padding: "9px 16px", fontSize: 12.5, fontWeight: 800 }}>확인 완료, 시작하기!</button>
+            : <button type="button" onClick={() => setI(i + 1)} style={{ cursor: "pointer", fontFamily: P.font, background: P.accent, color: "#fff", border: "none", borderRadius: 10, padding: "9px 18px", fontSize: 12.5, fontWeight: 800 }}>다음</button>}
         </div>
-      )}
+      </div>
     </div>
   );
 }
