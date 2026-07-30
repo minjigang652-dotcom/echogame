@@ -54,15 +54,23 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v152 · 2026-07-29";
+const APP_VERSION = "v153 · 2026-07-30";
 
 /* ───────── 📮→🏭 피드백 허브(정제소) 웹훅 ─────────
  * ⚠️ 브라우저 앱이라 시크릿 토큰을 클라이언트에 둘 수 없어요.
- *    → 인앱 피드백은 "릴레이 URL"(Supabase Edge Function 등)로만 보내고,
- *      허브용 Bearer 토큰은 릴레이(서버) 쪽 시크릿(INGEST_TOKEN)에 보관합니다.
- *    릴레이 URL은 비밀이 아니라 공개돼도 됩니다 → 환경변수 VITE_FEEDBACK_RELAY_URL 로 주입.
+ *    → 인앱 피드백은 아래 "릴레이 URL"(Supabase Edge Function)로만 보내고,
+ *      허브용 Bearer 토큰은 릴레이(서버) 쪽 시크릿(FB_INGEST_TOKEN)에 보관합니다.
+ *    이 URL은 비밀이 아니라 공개돼도 안전해요 (위 SUPA_URL·publishable 키와 같은 성격).
+ *    ↓ 여기 값만 바꾸면 됨 (환경변수 VITE_FEEDBACK_RELAY_URL 가 있으면 그게 우선)
  */
-const FEEDBACK_RELAY_URL = (() => { try { return (import.meta && import.meta.env && import.meta.env.VITE_FEEDBACK_RELAY_URL) || ""; } catch (e) { return ""; } })();
+const FEEDBACK_RELAY_URL_FIXED = "https://fbemzeslbvweojmgvohv.supabase.co/functions/v1/feedback-relay";
+const FEEDBACK_RELAY_URL = (() => {
+  try {
+    const v = import.meta && import.meta.env && import.meta.env.VITE_FEEDBACK_RELAY_URL;
+    if (v) return v;
+  } catch (e) {}
+  return FEEDBACK_RELAY_URL_FIXED;
+})();
 
 /* 최근 오류 스냅샷 링버퍼 (payload.logs 용, 개인정보 없음) */
 const __ECO_ERRLOG = [];
@@ -2536,7 +2544,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "nspyt").neq("type", "nspytkw").neq("type", "nspytex").neq("type", "nspcafeex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "novlv").neq("type", "mention").neq("type", "sprpos").neq("type", "cocoqa").neq("type", "novacct").neq("type", "fbitem").neq("type", "fbstat").neq("type", "worklog").neq("type", "vschool").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "nspyt").neq("type", "nspytkw").neq("type", "nspytex").neq("type", "nspcafeex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "novlv").neq("type", "mention").neq("type", "sprpos").neq("type", "cocoqa").neq("type", "novacct").neq("type", "fbitem").neq("type", "fbstat").neq("type", "worklog").neq("type", "vschool").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2547,7 +2555,7 @@ async function dbNotices() {
 async function dbSprites() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("title,body,uid,created_at").eq("type", "sprite").order("created_at", { ascending: false }).limit(80);
+    const r = await s.from("notices").select("title,body,created_at").eq("type", "sprite").order("created_at", { ascending: false }).limit(80);
     const out = {}, seen = new Set();
     ((r && r.data) || []).forEach((n) => {
       if (!n.title || seen.has(n.title)) return;   // 가장 최근 것만 사용
