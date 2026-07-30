@@ -142,14 +142,14 @@ const stDone = (st) => !!(st && st.approved);
 /* 스테이지 상태: none · pending(회색 승인대기) · feedback(핑크 피드백도착) · approved(초록 승인완료)
    ※ 색 구분은 프로덕트 전역 통일 권장 */
 const stStatus = (st) => (st && st.approved) ? "approved" : (st && st.status === "feedback") ? "feedback" : (st && st.submitted) ? "pending" : "none";
-const V_STATUS = { pending: { bg: "#9a94a6", label: "승인 대기중" }, feedback: { bg: "#ff8fab", label: "피드백 도착" }, approved: { bg: "#4e9a3a", label: "승인 완료" } };
+const V_STATUS = { pending: { bg: "#eeeaf0", fg: "#8a7f6a", label: "⏳ 승인대기중" }, feedback: { bg: "#ffe1ec", fg: "#9d174d", label: "📝 피드백 도착" }, approved: { bg: "#e6f4ea", fg: "#4e9a3a", label: "👑 승인 완료" } };
 const topicComplete = (t) => t && stDone(t.script) && stDone(t.source) && stDone(t.edit) && t.upload && t.upload.posted;
 
 /* 주제 카드(포스터) */
-function PosterCard({ t, children }) {
+function PosterCard({ t, children, selected = false }) {
   const g = t.grad || ["#ddd", "#bbb"];
   return (
-    <div style={{ border: `2px solid ${C.ink}`, borderRadius: 10, overflow: "hidden", marginBottom: 10, background: C.white }}>
+    <div className={"vs-poster" + (selected ? " selected" : "")} style={{ border: `2px solid ${C.ink}`, borderRadius: 10, overflow: "hidden", marginBottom: 10, background: C.white }}>
       <div style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})`, padding: "10px 12px" }}>
         <div style={{ display: "inline-block", fontSize: 10, fontWeight: "bold", background: "rgba(255,255,255,0.85)", color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 10, padding: "1px 8px", marginBottom: 5 }}>#{t.tag}</div>
         <div style={{ fontSize: 14, fontWeight: "bold", color: C.ink, lineHeight: 1.4 }}>{t.title}</div>
@@ -164,10 +164,10 @@ function PosterCard({ t, children }) {
 function StageBadge({ st }) {
   if (!st) return null;
   const s = stStatus(st);
-  const base = { fontSize: 10, fontWeight: "bold", color: "#fff", border: `2px solid ${C.ink}`, borderRadius: 8, padding: "1px 7px" };
-  if (s === "none") return <span style={{ ...base, background: "#bbb" }}>대기</span>;
+  const base = { fontSize: 10, fontWeight: "bold", border: `1.5px solid ${C.ink}`, borderRadius: 8, padding: "1px 7px", display: "inline-block" };
+  if (s === "none") return <span style={{ ...base, background: "#eeeaf0", color: "#8a7f6a" }}>대기</span>;
   const info = V_STATUS[s];
-  return <span style={{ ...base, background: info.bg }}>{info.label}</span>;
+  return <span style={{ ...base, background: info.bg, color: info.fg }}>{info.label}</span>;
 }
 
 /* 🎬 영상스쿨 퀘스트 게시판 (집 하나 = 카테고리 하나) */
@@ -369,15 +369,16 @@ function VideoBoard({ house, vdata, setVData, saveVData, myName, reward, toast, 
                   /* 입력 가능 : 최초 제출 · 또는 피드백 받고 수정 후 재제출 (원본 내용 유지) */
                   <div>
                     {status === "feedback" && (
-                      <div style={{ background: "#ffe6ee", border: "2px solid #ff8fab", borderRadius: 6, padding: 8, fontSize: 11.5, lineHeight: 1.6, marginBottom: 6, color: "#a83a5b" }}>
-                        ✏️ 피드백{st.feedbackBy ? ` · ${st.feedbackBy}` : ""}<br /><span style={{ color: C.ink, whiteSpace: "pre-wrap" }}>{st.feedback}</span>
+                      <div style={{ background: "#ffe1ec", border: "1.5px solid #ffb8d2", borderRadius: 8, padding: 8, fontSize: 11.5, lineHeight: 1.6, marginBottom: 6, color: "#9d174d" }}>
+                        📝 <b>파티장 피드백</b>{st.feedbackBy ? ` · ${st.feedbackBy}` : ""}<br /><span style={{ color: C.ink, whiteSpace: "pre-wrap" }}>{st.feedback}</span>
                       </div>
                     )}
+                    {stage === "script" && <div style={{ display: "inline-block", fontSize: 10, fontWeight: "bold", color: "#4f46e5", background: "#e0e2fc", border: "1.5px solid #cdd0f7", borderRadius: 999, padding: "2px 9px", marginBottom: 6 }}>⏱️ 완성 영상은 {(product && product.spec && product.spec.length) || V_SPEC.length} 내외로</div>}
                     <textarea value={curVal} onChange={(e) => setDraftText((d) => ({ ...d, [key]: e.target.value }))} rows={stage === "script" ? 3 : 2}
                       placeholder={stage === "script" ? `${V_SPEC.length} 원고를 써주세요` : "파일 설명 + 구글드라이브/업로드 링크"} style={{ ...inp, marginBottom: 6, resize: "vertical" }} />
                     {stage === "script" && <AISelfCheck text={curVal} />}
                     <PxButton tone="good" onClick={() => submitStage(t.id, stage, stage === "script" ? { text: curVal.trim() } : { link: curVal.trim() })} style={{ width: "100%", fontSize: 12, padding: 9 }}>
-                      {status === "feedback" ? "🔁 수정 후 제출하기" : `제출하기 (+${RW.submit}G)`}
+                      {status === "feedback" ? "수정 후 제출하기" : "제출하고 골드 받기"}
                     </PxButton>
                   </div>
                 ) : (
@@ -427,6 +428,39 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
   const [vToast, setVToast] = useState("");
   const vToastFn = (m) => { setVToast(m); setTimeout(() => setVToast(""), 2800); };
   const saveVData = (next) => { dbSaveVSchool(next); };
+  /* 💰 골드 획득 이펙트 — 하단 토스트 대신 상단 골드칩 옆 "+NG" 말풍선 통통 + 숫자 펄스 + 부드러운 2음 코인 사운드 */
+  const [earnedG, setEarnedG] = useState(0);
+  const [goldFx, setGoldFx] = useState([]);
+  const [goldPulse, setGoldPulse] = useState(false);
+  const goldFxId = useRef(0);
+  const audioRef = useRef(null);
+  const playCoin = () => {
+    try {
+      if (!audioRef.current) audioRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      const ac = audioRef.current; if (ac.state === "suspended") ac.resume();
+      [1320, 1760].forEach((f, i) => {
+        const t0 = ac.currentTime + i * 0.075;
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.type = "sine"; o.frequency.setValueAtTime(f, t0);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.08, t0 + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
+        o.connect(g); g.connect(ac.destination); o.start(t0); o.stop(t0 + 0.24);
+      });
+    } catch (e) {}
+  };
+  const handleReward = (g) => {
+    onReward(g);
+    if (g > 0) {
+      setEarnedG((e) => e + g);
+      const id = ++goldFxId.current;
+      setGoldFx((f) => [...f, { id, n: g }]);
+      setTimeout(() => setGoldFx((f) => f.filter((x) => x.id !== id)), 1300);
+      setGoldPulse(false);
+      requestAnimationFrame(() => { setGoldPulse(true); setTimeout(() => setGoldPulse(false), 600); });
+      playCoin();
+    }
+  };
   const [selProd, setSelProd] = useState("");        // 선택된 제품 id
   const [prodAdmin, setProdAdmin] = useState(false); // 제품 편집 관리자 잠금 해제
   const [formProduct, setFormProduct] = useState(null); // null | {…} 편집중 | "new"
@@ -542,10 +576,29 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
   const doneCount = houses.filter((h) => cleared[h.id]).length;
   return (
     <Panel style={{ padding: 0, overflow: "hidden" }}>
+      <style>{`
+.vs-poster{box-shadow:0 6px 16px rgba(20,14,60,0.18);transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease;}
+.vs-poster:hover{transform:translateY(-4px);box-shadow:0 12px 26px rgba(20,14,60,0.28),0 0 0 3px #e0e2fc,0 0 22px -4px #4f46e5;}
+.vs-poster.selected{border-color:#f0a900 !important;box-shadow:0 0 0 3px #fff3d6;}
+.vs-goldpill.pulse{animation:vsGoldPulse .55s ease;}
+@keyframes vsGoldPulse{0%{transform:scale(1);}35%{transform:scale(1.22);}100%{transform:scale(1);}}
+.vs-goldfloat{position:absolute;left:50%;top:-2px;pointer-events:none;z-index:200;color:#a86b00;font-weight:900;font-size:15px;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.15);animation:vsGoldFloat 1.3s ease forwards;}
+@keyframes vsGoldFloat{0%{opacity:0;transform:translate(-50%,4px) scale(.7);}18%{opacity:1;transform:translate(-50%,-12px) scale(1.12);}75%{opacity:1;transform:translate(-50%,-32px) scale(1);}100%{opacity:0;transform:translate(-50%,-66px) scale(.96);}}
+.vs-queue.has-pending{animation:vsPartyPulse 1.6s ease-in-out infinite;}
+@keyframes vsPartyPulse{0%,100%{box-shadow:0 0 0 0 rgba(219,39,119,0.35);}50%{box-shadow:0 0 0 6px rgba(219,39,119,0);}}
+`}</style>
       {chatOpen && <ChatBot onClose={() => setChatOpen(false)} />}
       {vToast && <div style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 120, background: C.ink, color: "#ffe680", border: `2px solid ${C.gem}`, borderRadius: 20, padding: "9px 18px", fontSize: 13, fontFamily: "'DotGothic16', monospace", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>{vToast}</div>}
       <TitleBar tipId={school} icon={s.icon} title={s.title} sub="WASD 이동 · 집 근처에서 E · 아무 집이나 자유롭게" onBack={onBack} bg={s.color} fg={C.white}
-        right={<PxButton tone="good" onClick={() => setChatOpen(true)} style={{ fontSize: 11, padding: "5px 10px" }}>🐣 코코</PxButton>} />
+        right={<div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {school === "videoschool" && (
+            <span className={goldPulse ? "vs-goldpill pulse" : "vs-goldpill"} style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: "bold", color: "#a86b00", background: "#fff3d6", border: "2px solid #a86b00", borderRadius: 999, padding: "3px 10px" }}>
+              🪙 {earnedG}G
+              {goldFx.map((fx) => <span key={fx.id} className="vs-goldfloat">✨ +{fx.n}G</span>)}
+            </span>
+          )}
+          <PxButton tone="good" onClick={() => setChatOpen(true)} style={{ fontSize: 11, padding: "5px 10px" }}>🐣 코코</PxButton>
+        </div>} />
       <div style={{ padding: 12, background: C.parch }}>
         {school === "videoschool" && (
           <>
@@ -615,7 +668,7 @@ function SchoolView({ school, onBack, cleared = {}, onClear, onReward = () => {}
                     <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 13, flex: 1 }}>{open.title}</div>
                     <PxButton tone="ink" onClick={() => setOpen(null)} style={{ fontSize: 12, padding: "6px 12px" }}>닫기</PxButton>
                   </div>
-                  <VideoBoard house={open} vdata={vdata} setVData={setVData} saveVData={saveVData} myName={myName} reward={onReward} toast={vToastFn} tier={tier} product={curProduct} products={vProducts} />
+                  <VideoBoard house={open} vdata={vdata} setVData={setVData} saveVData={saveVData} myName={myName} reward={handleReward} toast={vToastFn} tier={tier} product={curProduct} products={vProducts} />
                 </div>
               ) : (
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
