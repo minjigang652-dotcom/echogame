@@ -56,6 +56,49 @@ const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
 const APP_VERSION = "v152 · 2026-07-29";
 
+/* ───────── 📮→🏭 피드백 허브(정제소) 웹훅 ─────────
+ * ⚠️ 브라우저 앱이라 시크릿 토큰을 클라이언트에 둘 수 없어요.
+ *    → 인앱 피드백은 "릴레이 URL"(Supabase Edge Function 등)로만 보내고,
+ *      허브용 Bearer 토큰은 릴레이(서버) 쪽 시크릿(INGEST_TOKEN)에 보관합니다.
+ *    릴레이 URL은 비밀이 아니라 공개돼도 됩니다 → 환경변수 VITE_FEEDBACK_RELAY_URL 로 주입.
+ */
+const FEEDBACK_RELAY_URL = (() => { try { return (import.meta && import.meta.env && import.meta.env.VITE_FEEDBACK_RELAY_URL) || ""; } catch (e) { return ""; } })();
+
+/* 최근 오류 스냅샷 링버퍼 (payload.logs 용, 개인정보 없음) */
+const __ECO_ERRLOG = [];
+function __ecoPushErr(s) { try { __ECO_ERRLOG.push(new Date().toISOString().slice(11, 19) + " " + String(s).slice(0, 400)); while (__ECO_ERRLOG.length > 20) __ECO_ERRLOG.shift(); } catch (e) {} }
+function recentErrLogs() { try { return __ECO_ERRLOG.slice(-10).join("\n").slice(0, 8000); } catch (e) { return ""; } }
+if (typeof window !== "undefined" && !window.__ecoErrHooked) {
+  window.__ecoErrHooked = true;
+  try {
+    window.addEventListener("error", (e) => __ecoPushErr("error: " + ((e && e.message) || "") + (e && e.filename ? " @" + e.filename + ":" + (e.lineno || "") : "")));
+    window.addEventListener("unhandledrejection", (e) => __ecoPushErr("promise: " + (((e && e.reason) && (e.reason.message || e.reason)) || "")));
+    const _ce = console.error; console.error = function () { try { __ecoPushErr("console.error: " + Array.prototype.map.call(arguments, String).join(" ")); } catch (e2) {} return _ce.apply(this, arguments); };
+  } catch (e) {}
+}
+
+/* 릴레이로 비동기 전송 · 실패 시 백오프 재시도(최대 3회) · 앱 흐름을 막지 않음
+ * 응답 규약: 2xx=성공 / 400=스키마오류(재시도X) / 401·403=인증(재시도X) / 5xx·네트워크=재시도
+ * (source, external_id) 멱등 → 같은 피드백을 다시 보내도 허브가 중복 생성하지 않아요 */
+async function sendFeedbackToHub(payload) {
+  if (!FEEDBACK_RELAY_URL) { if (typeof window !== "undefined" && window.__ecoRelayWarned !== true) { window.__ecoRelayWarned = true; console.warn("[feedback→hub] VITE_FEEDBACK_RELAY_URL 미설정 — 전송 생략"); } return; }
+  if (!payload || !payload.external_id || !payload.text) return;   // 필수: external_id, text
+  const body = JSON.stringify(payload);
+  const delays = [400, 1200, 3000];
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      const res = await fetch(FEEDBACK_RELAY_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true });
+      if (res.ok) return;                       // 200 {ok:true,result:created|updated}
+      if (res.status === 400) { console.error("[feedback→hub] 스키마 오류(400) — 재시도 안 함:", await res.text().catch(() => "")); return; }
+      if (res.status === 401 || res.status === 403) { console.error("[feedback→hub] 인증 오류(" + res.status + ") — 릴레이의 INGEST_TOKEN 확인 필요"); return; }
+      // 그 외(5xx 등) → 재시도
+    } catch (e) { /* 네트워크 오류 → 재시도 */ }
+    if (attempt < delays.length) await new Promise((r) => setTimeout(r, delays[attempt]));
+  }
+  console.error("[feedback→hub] 전송 최종 실패 — 포기 (허브가 external_id로 멱등 처리하므로 재전송돼도 안전)");
+}
+
+
 /* -------------------------- 데이터 --------------------------- */
 // 대형건물: 퀘스트 보유. 반복(업무) 퀘스트는 하루 1회, 다음 날 초기화.
 const BIG_BUILDINGS = [
@@ -2493,7 +2536,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "nspyt").neq("type", "nspytkw").neq("type", "nspytex").neq("type", "nspcafeex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "novlv").neq("type", "mention").neq("type", "sprpos").neq("type", "cocoqa").neq("type", "vschool").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,uid,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").neq("type", "nsptut").neq("type", "nspkw").neq("type", "nspurl").neq("type", "nspcafekw").neq("type", "nspcafe").neq("type", "nspkinkw").neq("type", "nspkin").neq("type", "nspkinex").neq("type", "nspyt").neq("type", "nspytkw").neq("type", "nspytex").neq("type", "nspcafeex").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "novlv").neq("type", "mention").neq("type", "sprpos").neq("type", "cocoqa").neq("type", "novacct").neq("type", "vschool").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2827,6 +2870,24 @@ async function dbLoadNovices() {
     const r = await s.from("notices").select("title").eq("type", "novrole");
     return Array.from(new Set(((r && r.data) || []).map((x) => x.title).filter(Boolean)));
   } catch (e) { return []; }
+}
+/* 🔑 초보자(알바) 계정 : 아이디+비밀번호 로그인 (notices type="novacct", title=아이디, body=JSON {pw,name}) */
+async function dbNovAcctGet(id) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("title,body").eq("type", "novacct").eq("title", id).order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    if (!row) return null;
+    try { const o = JSON.parse(row.body || "{}"); return { id: row.title, pw: o.pw != null ? String(o.pw) : String(row.body || ""), name: o.name || row.title }; }
+    catch (e) { return { id: row.title, pw: String(row.body || ""), name: row.title }; }
+  } catch (e) { return null; }
+}
+async function dbNovAcctCreate(id, pw, name) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "novacct", title: id, body: JSON.stringify({ pw: String(pw), name: name || id }) });
+    return !(r && r.error);
+  } catch (e) { return false; }
 }
 /* 🎚 권한 레벨 설정 (notices type="novlv", body=JSON { levels:[{id,name,access}], assign:{name:levelId} } · 최신 1행) */
 async function dbLoadLevels() {
@@ -9638,14 +9699,16 @@ function InventoryBody({ gems, outfit, ownedClothes, ikeaOwned, houseSkin, vehic
 function FeedbackBody({ onDone, myName = "", myUid = "", list = [], onSend, onDelete, onCheck }) {
   const [text, setText] = useState("");
   const [anon, setAnon] = useState(false);
+  const [kind, setKind] = useState("bug");
   const [sent, setSent] = useState(false);
   const [filter, setFilter] = useState("all");
   const submit = () => {
     const t = text.trim(); if (!t) return;
-    onSend && onSend(t, anon);
+    onSend && onSend(t, anon, kind);
     setText(""); setSent(true);
     setTimeout(() => setSent(false), 1600);
   };
+  const KINDS = [["bug", "🐛 버그"], ["feature", "✨ 기능"], ["design", "🎨 디자인"], ["etc", "💬 기타"]];
   const shown = list.filter((f) => filter === "all" || (filter === "todo" ? !f.done : !!f.done));
   const doneCount = list.filter((f) => f.done).length;
 
@@ -9654,6 +9717,12 @@ function FeedbackBody({ onDone, myName = "", myUid = "", list = [], onSend, onDe
       <div style={{ fontSize: 12, color: C.inkSoft, marginBottom: 8, lineHeight: 1.7 }}>
         개선 아이디어나 버그를 알려주세요.<br />
         <b>올린 글은 마을 주민 모두에게 보여요.</b>
+      </div>
+      <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
+        {KINDS.map(([k, lb]) => (
+          <button key={k} type="button" onClick={() => setKind(k)}
+            style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, fontWeight: "bold", padding: "5px 11px", borderRadius: 12, border: `2px solid ${C.ink}`, background: kind === k ? C.gem : C.white, color: kind === k ? C.white : C.ink }}>{lb}</button>
+        ))}
       </div>
       <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="예: 회의실 초대장이 안 보여요" rows={3}
         style={{ width: "100%", boxSizing: "border-box", border: `3px solid ${C.ink}`, padding: 9, fontSize: 13, background: C.white, fontFamily: "var(--game-font, 'DotGothic16', monospace)", resize: "vertical" }} />
@@ -13540,6 +13609,13 @@ function EchoTown() {
   /* 디스코드에서 돌아왔는지 확인 — 돌아왔으면 이름칸을 닉네임으로 채워줘요 */
   const [nameErr, setNameErr] = useState("");
   const [nameChecking, setNameChecking] = useState(false);
+  /* 🔑 초보자(알바) 아이디+비밀번호 계정 */
+  const [novMode, setNovMode] = useState("signup");   // signup | login
+  const [novId, setNovId] = useState("");
+  const [novPw, setNovPw] = useState("");
+  const [novPw2, setNovPw2] = useState("");
+  const [novBusy, setNovBusy] = useState(false);
+  const [novErr, setNovErr] = useState("");
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -13548,7 +13624,14 @@ function EchoTown() {
         try { window.history.replaceState({}, "", window.location.pathname); } catch (e) {}
       }
       if (!alive) return;
-      if (!u) { setDiscord(null); return; }   // 로그인 안 됨 → 디스코드 버튼 화면
+      if (!u) {
+        setDiscord(null);
+        // 🔑 초보자(아이디 계정)는 같은 기기에서 저장된 이름으로 자동 시작 (remember me)
+        const savedName = loadJSON("echotown_myname", "");
+        const savedRole = loadJSON("echotown_role", "");
+        if (savedName && savedRole === "novice") { confirmName(savedName, { novice: true }); }
+        return;   // 로그인 안 됨 → 디스코드 버튼 화면 (또는 초보자 로그인)
+      }
       setDiscord(u);
       // 이 디스코드로 이미 이름을 정한 적이 있으면 → 그 이름으로 자동 시작
       const map = await dbNameMap();
@@ -13658,6 +13741,38 @@ function EchoTown() {
     });
   };
   /* 자동 로그인은 하지 않아요. 디스코드 세션이 있으면 위 useEffect 가 매칭표로 이름을 찾아 시작합니다. */
+  /* 🔑 초보자(알바) 아이디+비밀번호 — 회원가입 / 로그인 */
+  const noviceSignup = async () => {
+    const id = novId.trim();
+    if (id.length < 2) { setNovErr("아이디는 2글자 이상으로 정해줘"); return; }
+    if (isDisabledName(id)) { setNovErr("사용할 수 없는 아이디예요."); return; }
+    if (novPw.length < 2) { setNovErr("비밀번호는 2자 이상으로 정해줘"); return; }
+    if (novPw !== novPw2) { setNovErr("비밀번호 확인이 서로 달라요"); return; }
+    setNovBusy(true); setNovErr("");
+    const exist = await dbNovAcctGet(id);
+    if (exist) { setNovBusy(false); setNovErr("이미 있는 아이디예요. 로그인하거나 다른 아이디를 써줘"); return; }
+    const map = await dbNameMap();
+    if (map && map.byName && map.byName[id]) { setNovBusy(false); setNovErr("이미 사용 중인 이름이에요. 다른 아이디를 써줘"); return; }
+    const ok = await dbNovAcctCreate(id, novPw, id);
+    setNovBusy(false);
+    if (!ok) { setNovErr("가입에 실패했어요. 잠시 뒤 다시 시도해줘"); return; }
+    try { saveJSON("echotown_novid", id); } catch (e) {}
+    setNovPw(""); setNovPw2("");
+    confirmName(id, { novice: true });
+  };
+  const noviceLogin = async () => {
+    const id = novId.trim();
+    if (!id) { setNovErr("아이디를 입력해줘"); return; }
+    if (!novPw) { setNovErr("비밀번호를 입력해줘"); return; }
+    setNovBusy(true); setNovErr("");
+    const acct = await dbNovAcctGet(id);
+    setNovBusy(false);
+    if (!acct) { setNovErr("없는 아이디예요. 먼저 회원가입을 해줘"); return; }
+    if (String(acct.pw) !== novPw) { setNovErr("비밀번호가 틀렸어요"); return; }
+    try { saveJSON("echotown_novid", id); } catch (e) {}
+    setNovPw(""); setNovPw2("");
+    confirmName(acct.name || id, { novice: true });
+  };
   const forgetName = async () => {
     try { window.localStorage.removeItem("echotown_myname"); } catch (e) {}
     try { window.localStorage.removeItem("echotown_discord_id"); } catch (e) {}
@@ -14415,12 +14530,29 @@ function EchoTown() {
     if (!u) { u = "u" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); saveJSON("echotown_uid", u); }
     return u;
   }, []);
-  const addFeedback = (text, anon) => {
-    const row = { id: Date.now() + Math.random(), text, by: anon ? "익명" : (myName || "익명"), uid: myUid, done: false, doneBy: null,
+  const addFeedback = (text, anon, kind) => {
+    const k = ["bug", "feature", "design", "etc"].includes(kind) ? kind : "etc";
+    const row = { id: Date.now() + Math.random(), text, kind: k, by: anon ? "익명" : (myName || "익명"), uid: myUid, done: false, doneBy: null,
       at: new Date().toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
     setFeedback((v) => [row, ...v].slice(0, 60));
     if (netSendEvent) netSendEvent("fb", { row });
-
+    // 📮→🏭 허브로 비동기 전송 (실패해도 앱 흐름 안 막음 · 작성자 클라이언트에서만 1회)
+    try {
+      sendFeedbackToHub({
+        source: "echoworld-hq",
+        external_id: String(row.id),
+        kind: k,
+        text: String(text || ""),
+        author: row.by,
+        screen: (typeof view === "string" ? view : ""),
+        app_version: APP_VERSION,
+        viewport: (typeof window !== "undefined") ? (window.innerWidth + "x" + window.innerHeight) : "",
+        user_agent: (typeof navigator !== "undefined") ? navigator.userAgent : "",
+        logs: recentErrLogs(),
+        status: "open",
+        created_at: new Date().toISOString(),
+      });
+    } catch (e) {}
   };
   const delFeedback = (id) => {
     setFeedback((v) => v.filter((x) => !(x.id === id && x.uid === myUid)));
@@ -14430,6 +14562,18 @@ function EchoTown() {
     const by = done ? (myName || "익명") : null;
     setFeedback((v) => v.map((x) => (x.id === id ? { ...x, done, doneBy: by } : x)));
     if (netSendEvent) netSendEvent("fb", { check: { id, done, by } });
+    // 🏭 상태 동기화: 인앱에서 확인/해제하면 허브에도 (source, external_id) 멱등 업데이트
+    try {
+      const f = fbRef.current.find((x) => x.id === id);
+      if (f) sendFeedbackToHub({
+        source: "echoworld-hq",
+        external_id: String(f.id),
+        kind: ["bug", "feature", "design", "etc"].includes(f.kind) ? f.kind : "etc",
+        text: String(f.text || ""),
+        author: f.by,
+        status: done ? "done" : "open",
+      });
+    } catch (e) {}
   };
 
   /* 🗺 보스맵 퀘스트 — 저장 + 접속자 모두와 공유 */
@@ -15478,12 +15622,19 @@ function EchoTown() {
                 </>
               ) : gateRole === "novice" ? (
                 <>
-                  <div style={{ fontSize: 11, fontWeight: "bold", color: "#4b8f5f", textAlign: "center", marginBottom: 6 }}>🌱 초보자(알바)로 시작</div>
-                  <div style={{ fontSize: 13, textAlign: "center", marginBottom: 8 }}>마을에서 사용할 이름을 정해주세요!</div>
-                  <input value={nameInput} onChange={(e) => { setNameInput(e.target.value); setNameErr(""); }} onKeyDown={(e) => { if (e.key === "Enter") confirmName(nameInput, { novice: true }); }} maxLength={8} autoFocus placeholder="예: 정인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${nameErr ? C.danger : C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 15, background: C.white, textAlign: "center" }} />
-                  {nameErr && <div style={{ fontSize: 11, color: C.danger, marginTop: 6, textAlign: "center", fontWeight: "bold" }}>⚠️ {nameErr}</div>}
-                  <PxButton tone="good" onClick={() => confirmName(nameInput, { novice: true })} style={{ width: "100%", padding: 12, fontSize: 14, marginTop: 10 }}>시작하기 🌱</PxButton>
-                  <button type="button" onClick={() => { setGateRole(""); saveJSON("echotown_role", ""); setNameErr(""); }} style={{ width: "100%", cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, color: C.inkSoft, background: "none", border: "none", marginTop: 10 }}>← 코드 다시 입력</button>
+                  <div style={{ fontSize: 11, fontWeight: "bold", color: "#4b8f5f", textAlign: "center", marginBottom: 8 }}>🌱 초보자(알바) 계정</div>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                    {[["signup", "회원가입"], ["login", "로그인"]].map(([m, lb]) => (
+                      <button key={m} type="button" onClick={() => { setNovMode(m); setNovErr(""); }} style={{ flex: 1, cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, fontWeight: "bold", padding: "8px 0", borderRadius: 6, border: `2px solid ${C.ink}`, background: novMode === m ? C.gem : C.white, color: novMode === m ? C.white : C.ink }}>{lb}</button>
+                    ))}
+                  </div>
+                  <input value={novId} onChange={(e) => { setNovId(e.target.value); setNovErr(""); }} maxLength={8} autoFocus placeholder="아이디 (예: hana12)" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${novErr ? C.danger : C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white, marginBottom: 8 }} />
+                  <input value={novPw} onChange={(e) => { setNovPw(e.target.value); setNovErr(""); }} type="password" maxLength={16} onKeyDown={(e) => { if (e.key === "Enter" && novMode === "login") noviceLogin(); }} placeholder="비밀번호" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${novErr ? C.danger : C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white, marginBottom: 8 }} />
+                  {novMode === "signup" && <input value={novPw2} onChange={(e) => { setNovPw2(e.target.value); setNovErr(""); }} type="password" maxLength={16} onKeyDown={(e) => { if (e.key === "Enter") noviceSignup(); }} placeholder="비밀번호 확인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${novErr ? C.danger : C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white, marginBottom: 8 }} />}
+                  {novErr && <div style={{ fontSize: 11, color: C.danger, marginBottom: 8, textAlign: "center", fontWeight: "bold" }}>⚠️ {novErr}</div>}
+                  <PxButton tone="good" disabled={novBusy} onClick={novMode === "signup" ? noviceSignup : noviceLogin} style={{ width: "100%", padding: 12, fontSize: 14 }}>{novBusy ? "처리 중…" : (novMode === "signup" ? "가입하고 시작하기 🌱" : "로그인 🌱")}</PxButton>
+                  <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 8, textAlign: "center", lineHeight: 1.6 }}>{novMode === "signup" ? "아이디가 마을 이름이 돼요 · 다음부턴 아이디·비번으로 로그인해요" : "가입할 때 정한 아이디·비밀번호로 로그인해요"}</div>
+                  <button type="button" onClick={() => { setGateRole(""); saveJSON("echotown_role", ""); setNovErr(""); }} style={{ width: "100%", cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, color: C.inkSoft, background: "none", border: "none", marginTop: 10 }}>← 코드 다시 입력</button>
                 </>
               ) : !discord ? (
                 <>
