@@ -6,7 +6,7 @@ import { AISelfCheck, polishFeedback, ReviewQueue, QueueButton } from "./AIAssis
 import { DEFAULT_PRODUCTS, productReward, SpecBadge, ProductTutorial, SafeZoneDiagram, SourceBelt, KeywordChips, ProductBar, ProductForm } from "./VideoProducts.jsx";
 
 /* 🎬 영상스쿨 제품 편집 관리자 코드 (여기 값만 바꾸면 됨) */
-const VS_ADMIN_PW = "dpzhdnjfem123!";
+const VS_ADMIN_PW = "ckdals987?";
 
 /* 입력창(input/textarea 등)에 타이핑 중이면 게임 키 조작 무시 */
 function isTyping(e) {
