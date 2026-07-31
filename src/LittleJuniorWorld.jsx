@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v161 · 2026-07-30";
+const APP_VERSION = "v162 · 2026-07-30";
 
 /* ───────── 📮→🏭 피드백 허브(정제소) 웹훅 ─────────
  * ⚠️ 브라우저 앱이라 시크릿 토큰을 클라이언트에 둘 수 없어요.
@@ -4365,6 +4365,23 @@ function playBell() {
       g.gain.exponentialRampToValueAtTime(0.35, t + off + 0.02);
       g.gain.exponentialRampToValueAtTime(0.001, t + off + 0.9);
       o.connect(g).connect(ctx.destination); o.start(t + off); o.stop(t + off + 1);
+    });
+  } catch (e) {}
+}
+/* 💌 DM 도착음 — 짧게 "띠링" (통화벨보다 가볍고 짧아요) */
+function playDing() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    const ctx = playDing._c || (playDing._c = new AC());
+    if (ctx.state === "suspended") ctx.resume();
+    const t = ctx.currentTime;
+    [[1245, 0], [1661, 0.09]].forEach(([hz, off]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "sine"; o.frequency.setValueAtTime(hz, t + off);
+      g.gain.setValueAtTime(0.0001, t + off);
+      g.gain.exponentialRampToValueAtTime(0.16, t + off + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + off + 0.3);
+      o.connect(g).connect(ctx.destination); o.start(t + off); o.stop(t + off + 0.35);
     });
   } catch (e) {}
 }
@@ -12634,7 +12651,7 @@ function CornerDock({ onMenu, onProfile, onBag, onGuide, onHub, onHQ, onDict, on
 
 /* ======================= 🧑‍🤝‍🧑 친구 목록 (실시간 · 상태메시지) =======================
  * 접속한 사람이 위로 · 접속=초록 꽉 찬 원 / 미접속=빈 원 · 상태메시지는 본인만 수정 */
-function FriendPanel({ open, onClose, people = [], myName = "", statusMap = {}, onSaveStatus, onGoTo }) {
+function FriendPanel({ open, onClose, people = [], myName = "", statusMap = {}, onSaveStatus, onGoTo, onDm }) {
   const FONT = "var(--game-font, 'DotGothic16', monospace)";
   const [edit, setEdit] = React.useState(false);
   const [draft, setDraft] = React.useState("");
@@ -12661,7 +12678,7 @@ function FriendPanel({ open, onClose, people = [], myName = "", statusMap = {}, 
     <div style={{ position: "fixed", right: 12, top: 54, zIndex: 88, width: 250, maxHeight: "72vh", display: "flex", flexDirection: "column",
       background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, boxShadow: `0 6px 0 ${C.parchEdge}, 0 10px 24px rgba(0,0,0,0.3)`, fontFamily: FONT }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 11px", borderBottom: `3px solid ${C.ink}`, background: C.parchLine, borderRadius: "10px 10px 0 0" }}>
-        <b style={{ fontSize: 13, flex: 1 }}>🧑‍🤝‍🧑 친구 <span style={{ fontSize: 10.5, color: C.good }}>{onlineCount}명 접속</span></b>
+        <b style={{ fontSize: 13, flex: 1 }}>🧑‍🤝‍🧑 친구 <span style={{ fontSize: 10.5, color: C.good }}>{onlineCount}명 접속</span> <span style={{ fontSize: 9, color: C.inkSoft, fontWeight: "normal" }}>· 이름 누르면 DM</span></b>
         <button type="button" onClick={onClose} style={{ cursor: "pointer", background: "none", border: "none", fontSize: 14, fontFamily: FONT }}>✕</button>
       </div>
       {/* 내 상태메시지 */}
@@ -12696,7 +12713,9 @@ function FriendPanel({ open, onClose, people = [], myName = "", statusMap = {}, 
                 background: p.online ? C.good : "transparent", border: `2px solid ${p.online ? C.good : C.inkSoft}`, boxShadow: p.online ? `0 0 6px ${C.good}` : "none" }} />
               <span style={{ fontSize: 15, flexShrink: 0 }}>{p.avatar}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 11.5, fontWeight: "bold", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <div onClick={() => { if (!p.me && onDm) onDm(p); }}
+                  title={p.me ? "" : `${p.name}님과 DM 하기`}
+                  style={{ fontSize: 11.5, fontWeight: "bold", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: p.me ? "default" : "pointer", textDecoration: p.me ? "none" : "underline dotted" }}>
                   {p.name}{p.me ? " (나)" : ""}
                 </div>
                 {st && (
@@ -15214,7 +15233,7 @@ function EchoTown() {
       if (kind === "mchat") { if (p.who !== (myName || "나")) pushMeetingChat(p.room, { who: p.who, text: p.text, me: false }); return; }
       if (kind === "mroom") { if (p.id && p.patch) setMeetingRooms((m) => ({ ...m, [p.id]: { ...m[p.id], ...p.patch } })); return; }
       if (kind === "schat") { if (p.who !== (myName || "나")) pushSmoke({ who: p.who, text: p.text, me: false, at: p.at }); return; }
-      if (kind === "dm") { pushDm(p.from, { me: false, text: p.text }); pushMsg("dm", { from: p.from, text: p.text }); showNotice(`💬 ${p.from}님: ${String(p.text).slice(0, 20)}`); }
+      if (kind === "dm") { playDing(); pushDm(p.from, { me: false, text: p.text }); pushMsg("dm", { from: p.from, text: p.text }); showNotice(`💬 ${p.from}님: ${String(p.text).slice(0, 20)}`); }
       if (kind === "call") {
         playBell();
         setIncomingCall({ from: p.from, avatar: "🧑" });
@@ -16160,7 +16179,8 @@ function EchoTown() {
         </button>
       )}
       <FriendPanel open={friendOpen && view === "world"} onClose={() => setFriendOpen(false)} people={people} myName={myName}
-        statusMap={statusMap} onSaveStatus={saveStatusMsg} />
+        statusMap={statusMap} onSaveStatus={saveStatusMsg}
+        onDm={(p) => { setDmWith({ name: p.name, avatar: p.avatar || "🙂" }); setFriendOpen(false); }} />
       {fontOpen && (
         <div onClick={() => setFontOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 360, maxHeight: "88%", overflow: "auto", background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 18, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
