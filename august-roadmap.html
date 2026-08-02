@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>8월 시스템 로드맵</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F6FA;
+  --surface:#FFFFFF;
+  --ink:#151824;
+  --ink2:#3D4356;
+  --muted:#767D92;
+  --line:#E7E9F1;
+  --line2:#F0F2F7;
+
+  --w1:#F5A524; --w1s:#FEF5E6;
+  --w2:#4C5FD5; --w2s:#EDEFFC;
+  --w3:#10A594; --w3s:#E7F6F4;
+  --w4:#8B5CF6; --w4s:#F3EDFE;
+  --w5:#E5484D; --w5s:#FDECEC;
+
+  --disp:'IBM Plex Sans KR','Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  --body:'IBM Plex Sans KR','Pretendard','Apple SD Gothic Neo',sans-serif;
+  --sh-s:0 1px 2px rgba(21,24,36,.05), 0 1px 1px rgba(21,24,36,.03);
+  --sh-m:0 2px 4px rgba(21,24,36,.04), 0 8px 24px rgba(21,24,36,.06);
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--body);font-weight:400;line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:900px;margin:0 auto;padding:40px 20px 100px;}
+
+.lbl{
+  font-family:var(--body);font-size:10.5px;font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+}
+
+/* ── 헤더 ── */
+header{margin-bottom:28px;}
+.eyebrow{
+  display:inline-block;font-size:11px;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--w2);background:var(--w2s);
+  padding:6px 12px;border-radius:99px;margin-bottom:16px;
+}
+h1{
+  font-family:var(--disp);font-weight:700;font-size:clamp(30px,6vw,46px);
+  letter-spacing:-.025em;line-height:1.15;margin:0 0 18px;
+}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:0 0 18px;}
+.fchip{
+  font-family:var(--disp);font-weight:700;font-size:clamp(13px,2.4vw,16px);
+  background:var(--surface);border:1px solid var(--line);
+  padding:6px 13px;border-radius:99px;box-shadow:var(--sh-s);
+}
+.fchip.hi{background:var(--ink);color:#fff;border-color:var(--ink);}
+.fsep{color:#C3C8D6;font-size:14px;}
+header .desc{margin:0;color:var(--ink2);font-size:15.5px;max-width:62ch;}
+
+/* ── 미니 로드맵 내비 ── */
+.rmnav{
+  position:sticky;top:0;z-index:30;margin:0 -20px;padding:14px 20px 16px;
+  background:rgba(245,246,250,.92);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+}
+.rmrow{display:flex;align-items:stretch;max-width:860px;margin:0 auto;}
+.mar{flex:0 0 20px;display:flex;align-items:center;justify-content:center;color:#C2C7D6;font-size:15px;user-select:none;}
+.mini{
+  flex:1;position:relative;overflow:hidden;text-align:left;cursor:pointer;font-family:inherit;
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:11px 12px 12px;box-shadow:var(--sh-s);
+  transition:transform .18s, box-shadow .18s, border-color .18s;
+}
+.mini::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--line);transition:.18s;}
+.mini .mn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:21px;height:21px;border-radius:7px;font-weight:700;font-size:11.5px;
+  background:var(--line2);color:var(--muted);margin-bottom:7px;transition:.18s;
+}
+.mini .mw{display:block;font-size:11px;font-weight:700;color:var(--muted);line-height:1.3;transition:.18s;}
+.mini .mt{
+  display:block;font-family:var(--disp);font-weight:700;font-size:14px;letter-spacing:-.03em;
+  color:var(--ink2);line-height:1.3;transition:.18s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.mini:hover{transform:translateY(-2px);}
+.mini.on{transform:translateY(-3px);}
+.mini.on .mt{color:var(--ink);}
+.mini[data-c="1"].on{border-color:#F2D9AE;box-shadow:0 3px 6px rgba(245,165,36,.10),0 10px 22px rgba(245,165,36,.16);}
+.mini[data-c="1"].on::before{background:var(--w1);}
+.mini[data-c="1"].on .mn{background:var(--w1s);color:#B9760A;}
+.mini[data-c="1"].on .mw{color:#B9760A;}
+.mini[data-c="2"].on{border-color:#C7CFF6;box-shadow:0 3px 6px rgba(76,95,213,.10),0 10px 22px rgba(76,95,213,.16);}
+.mini[data-c="2"].on::before{background:var(--w2);}
+.mini[data-c="2"].on .mn{background:var(--w2s);color:var(--w2);}
+.mini[data-c="2"].on .mw{color:var(--w2);}
+.mini[data-c="3"].on{border-color:#B4E3DC;box-shadow:0 3px 6px rgba(16,165,148,.10),0 10px 22px rgba(16,165,148,.16);}
+.mini[data-c="3"].on::before{background:var(--w3);}
+.mini[data-c="3"].on .mn{background:var(--w3s);color:#0B7D70;}
+.mini[data-c="3"].on .mw{color:#0B7D70;}
+.mini[data-c="4"].on{border-color:#D9C7FB;box-shadow:0 3px 6px rgba(139,92,246,.10),0 10px 22px rgba(139,92,246,.16);}
+.mini[data-c="4"].on::before{background:var(--w4);}
+.mini[data-c="4"].on .mn{background:var(--w4s);color:#6D3FD4;}
+.mini[data-c="4"].on .mw{color:#6D3FD4;}
+.mini[data-c="5"].on{border-color:#F7C3C4;box-shadow:0 3px 6px rgba(229,72,77,.10),0 10px 22px rgba(229,72,77,.16);}
+.mini[data-c="5"].on::before{background:var(--w5);}
+.mini[data-c="5"].on .mn{background:var(--w5s);color:#C43034;}
+.mini[data-c="5"].on .mw{color:#C43034;}
+.navgap{height:44px;}
+@media(max-width:700px){
+  .rmnav{padding:10px 14px 12px;margin:0 -14px;}
+  .mar{flex:0 0 8px;font-size:11px;}
+  .mini{padding:8px 8px 9px;border-radius:10px;}
+  .mini .mn{width:18px;height:18px;font-size:10px;margin-bottom:5px;}
+  .mini .mw{font-size:9.5px;}
+  .mini .mt{font-size:11px;}
+  .navgap{height:28px;}
+}
+
+/* ── 주차 카드 ── */
+.week{margin-bottom:14px;scroll-margin-top:126px;}
+.card{
+  background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  box-shadow:var(--sh-m);overflow:hidden;
+}
+.chead{padding:22px 26px 20px;position:relative;}
+.chead::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;}
+.w1 .chead::before{background:var(--w1);} .w2 .chead::before{background:var(--w2);}
+.w3 .chead::before{background:var(--w3);} .w4 .chead::before{background:var(--w4);}
+.w5 .chead::before{background:var(--w5);}
+.crow{display:flex;align-items:center;gap:10px;margin-bottom:11px;flex-wrap:wrap;}
+.wbadge{
+  font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.06em;
+  padding:5px 11px;border-radius:8px;
+}
+.w1 .wbadge{background:var(--w1s);color:#B9760A;} .w2 .wbadge{background:var(--w2s);color:var(--w2);}
+.w3 .wbadge{background:var(--w3s);color:#0B7D70;} .w4 .wbadge{background:var(--w4s);color:#6D3FD4;}
+.w5 .wbadge{background:var(--w5s);color:#C43034;}
+.tagchip{
+  font-size:12px;font-weight:500;color:var(--ink2);
+  background:var(--line2);padding:5px 11px;border-radius:99px;
+}
+.chead h2{
+  font-family:var(--disp);font-weight:700;font-size:clamp(20px,3.8vw,26px);
+  letter-spacing:-.02em;line-height:1.3;margin:0 0 8px;
+}
+.chead .one{margin:0;font-size:14.5px;color:var(--ink2);}
+.chead .one b{font-weight:600;color:var(--ink);}
+
+.cbody{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);}
+.blk{padding:20px 26px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);}
+.blk:nth-child(2n){border-right:0;}
+.blk.full{grid-column:1/-1;border-right:0;}
+.cbody .blk:last-child{border-bottom:0;}
+.blk h3{margin:0 0 13px;}
+.blk ul{margin:0;padding:0;list-style:none;}
+.blk li{position:relative;padding-left:17px;font-size:14.5px;margin-bottom:8px;color:var(--ink2);}
+.blk li:last-child{margin-bottom:0;}
+.blk li::before{
+  content:"";position:absolute;left:0;top:9px;width:6px;height:6px;
+  border-radius:2px;background:#C9CEDD;
+}
+.blk li b{font-weight:600;color:var(--ink);}
+.who{
+  display:inline-block;font-size:11.5px;font-weight:600;color:var(--w2);
+  background:var(--w2s);padding:1px 7px;border-radius:6px;margin-left:4px;
+}
+
+/* 시간 구조 */
+.tt{display:flex;flex-direction:column;gap:8px;}
+.trow{display:grid;grid-template-columns:76px 1fr;gap:10px;align-items:stretch;}
+.trow .t{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border-radius:10px;font-family:var(--disp);font-weight:700;font-size:12px;
+  line-height:1.3;text-align:center;padding:8px 4px;
+}
+.trow .v{
+  padding:10px 14px;border-radius:10px;background:#FAFBFD;
+  border:1px solid var(--line2);font-size:14px;color:var(--ink2);
+}
+.trow .v b{font-weight:600;color:var(--ink);}
+.t.a{background:var(--w1s);color:#B9760A;}
+.t.b{background:var(--w2s);color:var(--w2);}
+.t.c{background:var(--w3s);color:#0B7D70;}
+.t.d{background:var(--w4s);color:#6D3FD4;}
+
+/* 남는 것 */
+.blk.out{background:#FAFBFD;}
+.blk.out li::before{background:#10A594;border-radius:50%;}
+
+/* 화살표 */
+.link{
+  display:flex;align-items:center;gap:10px;
+  padding:2px 0 16px 26px;font-size:13.5px;color:var(--muted);font-weight:500;
+}
+.link .ln{width:2px;height:26px;background:linear-gradient(180deg,var(--line),#C9CEDD);border-radius:2px;}
+
+/* 누적 */
+.stack{
+  background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  box-shadow:var(--sh-m);padding:26px;margin-top:34px;
+}
+.stack h3{margin:0 0 4px;}
+.stack .st{font-family:var(--disp);font-weight:700;font-size:19px;margin:0 0 22px;letter-spacing:-.02em;}
+.bars{display:flex;gap:10px;align-items:flex-end;height:140px;margin-bottom:16px;}
+.bcol{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:4px;}
+.seg{height:22px;border-radius:5px;}
+.s1{background:var(--w1);} .s2{background:var(--w2);} .s3{background:var(--w3);}
+.s4{background:var(--w4);} .s5{background:var(--w5);}
+.seg.g1{background:var(--w1s);} .seg.g2{background:var(--w2s);}
+.seg.g3{background:var(--w3s);} .seg.g4{background:var(--w4s);}
+.blabs{display:flex;gap:10px;}
+.blab{flex:1;text-align:center;font-size:12px;color:var(--muted);line-height:1.45;}
+.blab b{display:block;font-family:var(--disp);font-weight:700;font-size:14px;color:var(--ink);margin-bottom:2px;}
+
+/* 목표 */
+.goal{
+  margin-top:16px;border-radius:18px;padding:32px 30px;color:#fff;
+  background:linear-gradient(115deg,#4C5FD5 0%,#6D5BE0 55%,#8B5CF6 100%);
+  box-shadow:0 8px 28px rgba(76,95,213,.24);
+}
+.goal .gl{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;opacity:.75;margin-bottom:12px;}
+.goal h2{font-family:var(--disp);font-weight:700;font-size:clamp(22px,4.4vw,32px);margin:0 0 12px;letter-spacing:-.02em;line-height:1.3;}
+.goal p{margin:0;font-size:15px;opacity:.9;max-width:60ch;}
+
+@media(max-width:640px){
+  .wrap{padding:28px 14px 80px;}
+  .cbody{grid-template-columns:1fr;}
+  .blk{border-right:0;}
+  .chead,.blk{padding-left:20px;padding-right:20px;}
+  .bars{height:118px;}
+  .blab{font-size:10.5px;}
+  .trow{grid-template-columns:64px 1fr;}
+}
+@media (prefers-reduced-motion:no-preference){
+  .card,.stack,.goal{animation:up .45s ease-out both;}
+  @keyframes up{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">August System</span>
+  <h1>8월 시스템 로드맵</h1>
+  <div class="flow">
+    <span class="fchip">배운다</span><span class="fsep">→</span>
+    <span class="fchip">돌린다</span><span class="fsep">→</span>
+    <span class="fchip">넘긴다</span><span class="fsep">→</span>
+    <span class="fchip hi">기획한다</span><span class="fsep">→</span>
+    <span class="fchip">반복한다</span>
+  </div>
+  <p class="desc">5주 뒤에는 각자 R을 기획하고, 실행하고, 남한테 넘길 수 있는 상태가 되는 게 목표입니다. 한 주씩 쌓여서 다음 주가 가능해지는 구조라 순서를 건너뛰기 어렵습니다.</p>
+</header>
+
+<nav class="rmnav">
+  <div class="rmrow">
+    <button class="mini" data-id="w1" data-c="1"><span class="mn">1</span><span class="mw">1주차</span><span class="mt">튜토리얼</span></button>
+    <span class="mar">→</span>
+    <button class="mini" data-id="w2" data-c="2"><span class="mn">2</span><span class="mw">2주차</span><span class="mt">실행</span></button>
+    <span class="mar">→</span>
+    <button class="mini" data-id="w3" data-c="3"><span class="mn">3</span><span class="mw">3주차</span><span class="mt">시스템 구축</span></button>
+    <span class="mar">→</span>
+    <button class="mini" data-id="w4" data-c="4"><span class="mn">4</span><span class="mw">4주차</span><span class="mt">기획 대항전</span></button>
+    <span class="mar">→</span>
+    <button class="mini" data-id="w5" data-c="5"><span class="mn">5</span><span class="mw">5주차 ~</span><span class="mt">3트랙</span></button>
+  </div>
+</nav>
+<div class="navgap"></div>
+
+<!-- 1주차 -->
+<section class="week w1" id="w1">
+  <div class="card">
+    <div class="chead">
+      <div class="crow"><span class="wbadge">WEEK 1</span><span class="tagchip">09:00 – 18:00 전원 통일</span></div>
+      <h2>네이버 튜토리얼 — 기획 · 실행 교육</h2>
+      <p class="one">물길에는 기획과 실행이 따로 있습니다. 어떤 키워드로 유입을 만들지 정하는 게 <b>기획</b>, 실제로 발행하는 게 <b>실행</b>. 이번 주는 둘 다 배웁니다.</p>
+    </div>
+    <div class="cbody">
+      <div class="blk full">
+        <h3 class="lbl">시간 구조</h3>
+        <div class="tt">
+          <div class="trow"><div class="t a">월화수<br>오전</div><div class="v"><b>튜토리얼</b> — 블로그 · 카페 · 지식인. 물길 기획(키워드 · 후킹 잡는 법)과 물길 실행(발행 실무) 둘 다 <span class="who">민지 · 도희 · 정인</span></div></div>
+          <div class="trow"><div class="t b">매일<br>오후</div><div class="v"><b>각자 메인퀘스트</b> — 오전에 배운 걸 자기 파트에 바로 적용</div></div>
+          <div class="trow"><div class="t d">목금<br>오전</div><div class="v"><b>일퀘 도입</b> — 월화수에 익숙해진 물길을 매일 돌리는 걸로 전환</div></div>
+        </div>
+      </div>
+      <div class="blk">
+        <h3 class="lbl">하는 일</h3>
+        <ul>
+          <li>전원 네이버 계정 세팅 완료</li>
+          <li>블로그 · 카페 · 지식인 각각 첫 발행</li>
+          <li>골반안정기구 물길 정리해서 실제로 돌려보기 <span class="who">유리</span></li>
+          <li>네이버 자동화 툴 개발 착수 <span class="who">의준 — 물길 실행 제외</span></li>
+          <li>새로운 R 기획 시작 <span class="who">창민 + 소진</span></li>
+          <li>창민이 디코방 순회하며 진행 상태 확인</li>
+        </ul>
+      </div>
+      <div class="blk out">
+        <h3 class="lbl">끝나면 남는 것</h3>
+        <ul>
+          <li><b>개인별 일퀘 역량 수치</b> — 시간당 몇 개를 하는지. 앞으로의 모든 기준선</li>
+          <li><b>새 R 기획 초안</b> — 2주차에 바로 투입</li>
+          <li><b>금요일 리뷰</b> — 막힌 지점 공유, 2주차 파티 구성 · 근무 시간 확정</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="link"><span class="ln"></span>배운 걸로 실제 제품을 태운다</div>
+
+<!-- 2주차 -->
+<section class="week w2" id="w2">
+  <div class="card">
+    <div class="chead">
+      <div class="crow"><span class="wbadge">WEEK 2</span><span class="tagchip">파티별 유연 근무 시작</span></div>
+      <h2>실행 — 기존 R + 새 R + 자동화 툴 테스트</h2>
+      <p class="one">1주차에 창민이 기획한 새 R이 여기서 들어옵니다. 기존 제품으로 익힌 물길을 새 제품에 그대로 얹어보는 주입니다.</p>
+    </div>
+    <div class="cbody">
+      <div class="blk full">
+        <h3 class="lbl">시간 구조</h3>
+        <div class="tt">
+          <div class="trow"><div class="t a">시간 1</div><div class="v"><b>기존 R 물길</b> + 자동화 툴 테스트 · 피드백 <span class="who">일퀘</span></div></div>
+          <div class="trow"><div class="t b">시간 2</div><div class="v"><b>새로운 R 물길</b> + 자동화 툴 테스트 · 피드백 <span class="who">메인퀘</span></div></div>
+          <div class="trow"><div class="t d">시간 3</div><div class="v"><b>사이드퀘</b> — 있는 사람만. 시간은 각자, 공유는 필수</div></div>
+        </div>
+      </div>
+      <div class="blk">
+        <h3 class="lbl">하는 일</h3>
+        <ul>
+          <li><b>파티 제도 도입</b> — 2~3인 단위, 비슷한 시간대에 근무</li>
+          <li>9-6 해제. 타임테이블에 각자 근무 시간 올리기</li>
+          <li>새 R에 물길 세팅 — 1주차 기획안 그대로 적용</li>
+          <li>자동화 툴 1차 버전 → 쓰면서 피드백 <span class="who">의준</span></li>
+          <li>상세페이지 디자인 템플릿 작업 병행 <span class="who">희정</span></li>
+        </ul>
+      </div>
+      <div class="blk out">
+        <h3 class="lbl">끝나면 남는 것</h3>
+        <ul>
+          <li><b>새 R 물길 가동</b> — 유입 데이터 첫 수치</li>
+          <li><b>자동화 툴 피드백 목록</b> — 실제로 써본 사람들의 불편 지점</li>
+          <li><b>물길 공식 초안</b> — 뭐가 먹히고 뭐가 안 먹히는지</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="link"><span class="ln"></span>내가 하던 걸 남에게 넘긴다</div>
+
+<!-- 3주차 -->
+<section class="week w3" id="w3">
+  <div class="card">
+    <div class="chead">
+      <div class="crow"><span class="wbadge">WEEK 3</span><span class="tagchip">여기가 병목 해소 구간</span></div>
+      <h2>시스템 구축 — 위임 교육 / 자동화 툴</h2>
+      <p class="one">2주 동안 직접 해봤기 때문에 이제 남을 가르칠 수 있습니다. 내가 계속 붙어 있으면 4주차에 기획할 시간이 없습니다.</p>
+    </div>
+    <div class="cbody">
+      <div class="blk">
+        <h3 class="lbl">하는 일</h3>
+        <ul>
+          <li>각자 자기 파트의 <b>프리랜서 관리 · 교육</b></li>
+          <li>2주차에 검증된 물길 공식을 프리랜서에게 이관</li>
+          <li>자동 발행 시스템 구축 — 원고 · 업로드 <span class="who">의준</span></li>
+          <li>상세페이지 템플릿 자동화 완성 <span class="who">희정</span></li>
+          <li>1주차 역량 수치 기준으로 <b>얼마나 넘길지</b> 결정</li>
+        </ul>
+      </div>
+      <div class="blk out">
+        <h3 class="lbl">끝나면 남는 것</h3>
+        <ul>
+          <li><b>프리랜서 온보딩 자료</b> — 다음 제품에도 재사용</li>
+          <li><b>자동 발행 시스템 가동</b></li>
+          <li><b>비워진 시간</b> — 4주차 기획에 쓸 여유</li>
+        </ul>
+      </div>
+      <div class="blk full">
+        <h3 class="lbl">이 주가 중요한 이유</h3>
+        <ul>
+          <li>이 주를 건너뛰면 5주차부터 사이클이 안 돕니다. 새 R을 기획해도 실행할 손이 없어서요.</li>
+          <li>넘기는 게 목적이지 완벽하게 넘기는 게 목적은 아닙니다. <b>70%만 넘겨도 성공.</b></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="link"><span class="ln"></span>이제 기획을 직접 해본다</div>
+
+<!-- 4주차 -->
+<section class="week w4" id="w4">
+  <div class="card">
+    <div class="chead">
+      <div class="crow"><span class="wbadge">WEEK 4</span><span class="tagchip">한 주 안에 기획부터 테스트까지</span></div>
+      <h2>기획 대항전 — 팀별로 R 기획 &amp; 테스트</h2>
+      <p class="one">3주 동안 배운 걸로 각 팀이 R을 하나씩 기획합니다. 발표하고, 피드백 받고, 실제로 물길을 태워서 숫자로 승부를 봅니다.</p>
+    </div>
+    <div class="cbody">
+      <div class="blk full">
+        <h3 class="lbl">시간 구조</h3>
+        <div class="tt">
+          <div class="trow"><div class="t a">월</div><div class="v"><b>기획 데이</b> — 팀별로 R 하나 잡고 물길 기획서까지</div></div>
+          <div class="trow"><div class="t b">화</div><div class="v"><b>발표 + 피드백</b> — 창민이 팀별로 피드백, 그 자리에서 수정</div></div>
+          <div class="trow"><div class="t c">수목</div><div class="v"><b>물길 테스트</b> — 기획안 실제로 태워보기</div></div>
+          <div class="trow"><div class="t d">금</div><div class="v"><b>결과 리뷰</b> — 숫자로 판정, 다음에 갈 R 확정</div></div>
+        </div>
+      </div>
+      <div class="blk">
+        <h3 class="lbl">규칙</h3>
+        <ul>
+          <li>판정 기준은 <b>월요일에 미리 확정</b> — 유입수 / 저장·공유율 / 문의수 중에서</li>
+          <li>기획서에 <b>딸깍인지 관람차인지</b> 먼저 명시</li>
+          <li>이 주 동안 창민은 별도로 다음 R 기획 진행</li>
+        </ul>
+      </div>
+      <div class="blk out">
+        <h3 class="lbl">끝나면 남는 것</h3>
+        <ul>
+          <li><b>테스트를 통과한 R</b> — 다음 주에 프리랜서로 넘길 것</li>
+          <li><b>이긴 물길 포맷</b> — 앞으로 복제할 공식</li>
+          <li><b>각자 기획 경험 1회</b> — 이게 진짜 산출물</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="link"><span class="ln"></span>이제 세 트랙을 동시에 돌린다</div>
+
+<!-- 5주차 -->
+<section class="week w5" id="w5">
+  <div class="card">
+    <div class="chead">
+      <div class="crow"><span class="wbadge">WEEK 5 →</span><span class="tagchip">다음 달 계획은 돌려보면서 확정</span></div>
+      <h2>기획 + 실행 + 위임 — 3트랙 안정적으로 돌리기</h2>
+      <p class="one">4주차까지가 준비였고, 여기서부터가 실제로 숫자를 만드는 구간입니다. 세 트랙이 순서대로가 아니라 <b>동시에</b> 돌아갑니다. 이번 주 기획한 게 다음 주 실행으로, 그 다음 주 위임으로 흘러가는 구조예요.</p>
+    </div>
+    <div class="cbody">
+      <div class="blk full">
+        <h3 class="lbl">3트랙 — 동시에 돌아갑니다</h3>
+        <div class="tt">
+          <div class="trow"><div class="t d">트랙 1<br>기획</div><div class="v"><b>다음 R을 만든다</b> — 대항전으로 발굴 · 창민의 새 알 기획이 병행</div></div>
+          <div class="trow"><div class="t b">트랙 2<br>실행</div><div class="v"><b>지난주 기획을 태운다</b> — 물길 실행 · 상세페이지는 템플릿으로 즉시 제작</div></div>
+          <div class="trow"><div class="t c">트랙 3<br>위임</div><div class="v"><b>검증 끝난 건 손 뗀다</b> — 프리랜서 · 자동화로 이관</div></div>
+        </div>
+      </div>
+      <div class="blk">
+        <h3 class="lbl">계속 굴러가는 것</h3>
+        <ul>
+          <li>2주에 한 번씩 대항전 → 새 R 발굴</li>
+          <li>팀 구성과 업무는 상황 보면서 유기적으로 변경</li>
+          <li>무균속옷 등 사이드퀘가 준비되면 메인퀘로 승격</li>
+        </ul>
+      </div>
+      <div class="blk out">
+        <h3 class="lbl">목표</h3>
+        <ul>
+          <li>2주에 1개씩 새 R이 물길까지 붙어서 나오면 <b>월 5개</b>가 산술적으로 맞습니다</li>
+          <li>12월 말 기준 월 순익 5개 제품</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 누적 -->
+<div class="stack">
+  <h3 class="lbl">Compounding</h3>
+  <p class="st">매주 쌓이는 것</p>
+  <div class="bars">
+    <div class="bcol"><div class="seg s1"></div></div>
+    <div class="bcol"><div class="seg s2"></div><div class="seg g1"></div></div>
+    <div class="bcol"><div class="seg s3"></div><div class="seg g2"></div><div class="seg g1"></div></div>
+    <div class="bcol"><div class="seg s4"></div><div class="seg g3"></div><div class="seg g2"></div><div class="seg g1"></div></div>
+    <div class="bcol"><div class="seg s5"></div><div class="seg g4"></div><div class="seg g3"></div><div class="seg g2"></div><div class="seg g1"></div></div>
+  </div>
+  <div class="blabs">
+    <div class="blab"><b>역량</b>내가 뭘 얼마나<br>할 수 있는지</div>
+    <div class="blab"><b>데이터</b>뭐가 먹히고<br>뭐가 안 먹히는지</div>
+    <div class="blab"><b>시스템</b>남이 대신<br>할 수 있는 구조</div>
+    <div class="blab"><b>기획력</b>직접 만들어서<br>검증해본 경험</div>
+    <div class="blab"><b>사이클</b>계속 돌아가는<br>제조 라인</div>
+  </div>
+</div>
+
+<div class="goal">
+  <div class="gl">Final Target</div>
+  <h2>12월 말까지 월 순익 5개 제품</h2>
+  <p>이 로드맵은 확정이 아닙니다. 매주 금요일 리뷰에서 안 맞는 건 바꿉니다. 다만 순서 — 배우고, 돌리고, 넘기고, 기획한다 — 는 유지하는 게 좋습니다. 앞 주가 뒷 주의 재료라서요.</p>
+</div>
+
+</div>
+
+<script>
+const IDS=['w1','w2','w3','w4','w5'];
+const btns=[...document.querySelectorAll('.mini')];
+btns.forEach(b=>b.onclick=()=>{
+  document.getElementById(b.dataset.id).scrollIntoView({behavior:'smooth',block:'start'});
+});
+function setActive(n){ btns.forEach((b,k)=>b.classList.toggle('on',k===n)); }
+const obs=new IntersectionObserver(es=>{
+  es.forEach(en=>{ if(en.isIntersecting) setActive(IDS.indexOf(en.target.id)); });
+},{rootMargin:'-140px 0px -55% 0px'});
+IDS.forEach(id=>obs.observe(document.getElementById(id)));
+setActive(0);
+</script>
+</body>
+</html>
