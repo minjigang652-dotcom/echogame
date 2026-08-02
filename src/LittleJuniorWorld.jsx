@@ -11,7 +11,7 @@ function isTyping(e) {
   const tag = (t.tagName || "").toUpperCase();
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable === true;
 }
-
+å
 /* 채팅창 자동 스크롤 — 컨테이너에 ref를 걸면 새 메시지마다 맨 아래로 내려갑니다.
    scrollIntoView 대신 scrollTop을 써서 페이지 전체가 튀지 않아요. */
 function useAutoScroll(dep) {
@@ -54,7 +54,7 @@ export const C = {
 
 const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
-const APP_VERSION = "v162 · 2026-07-30";
+const APP_VERSION = "v163 · 2026-07-30";
 
 /* ───────── 📮→🏭 피드백 허브(정제소) 웹훅 ─────────
  * ⚠️ 브라우저 앱이라 시크릿 토큰을 클라이언트에 둘 수 없어요.
@@ -3381,6 +3381,10 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
   const [reqText, setReqText] = useState("");
   const vpRef = useRef(null);
   const [vp, setVp] = useState({ w: 900, h: 480 });
+  /* 🎥 시점 : 3인칭(마을 전체가 보임) ↔ 1인칭(캐릭터에 바짝 붙어서 크게) */
+  const [fpv, setFpv] = useState(() => !!loadJSON("echotown_fpv", false));
+  const ZOOM = fpv ? 2.2 : 1;
+  useEffect(() => { saveJSON("echotown_fpv", fpv); }, [fpv]);
   const keys = useRef({});
   const posRef = useRef(pos);
   const nearRef = useRef(null);
@@ -3414,6 +3418,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
       const raw = e.key.toLowerCase();
       if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d"].includes(raw)) e.preventDefault();
       if (hintRef.current) { hintRef.current = false; setHint(false); }
+      if (raw === "v") { setFpv((v) => !v); return; }   // 🎥 V : 1인칭 ↔ 3인칭 전환
       const k = norm(e.key);
       if (k === " ") {
         const n = nearRef.current;
@@ -3487,8 +3492,9 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
   }, [setPos]);
 
   // 카메라 오프셋(플레이어 중심, 경계 클램프)
-  const camX = Math.max(0, Math.min(WORLD.w - vp.w, pos.x - vp.w / 2));
-  const camY = Math.max(0, Math.min(WORLD.h - vp.h, pos.y - vp.h / 2));
+  const viewW = vp.w / ZOOM, viewH = vp.h / ZOOM;   // 화면에 실제로 보이는 월드 영역
+  const camX = Math.max(0, Math.min(Math.max(0, WORLD.w - viewW), pos.x - viewW / 2));
+  const camY = Math.max(0, Math.min(Math.max(0, WORLD.h - viewH), pos.y - viewH / 2));
 
   /* 🔍 건물 크기 배율 (모두에게 똑같이 적용돼요) */
   const scaleOf = (o) => { const v = Number(scales && scales[o.id]); return v > 0 ? Math.max(0.4, Math.min(3, v)) : 1; };
@@ -3573,7 +3579,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
       <div ref={vpRef} tabIndex={0} onMouseDown={focusGame} className="game-vp" style={{ position: "relative", height: 480, overflow: "hidden", outline: "none",
         background: `repeating-linear-gradient(0deg, ${C.grass} 0 22px, ${C.grassDark} 22px 44px)` }}>
         {/* 월드(카메라 이동) */}
-        <div ref={worldRef} style={{ position: "absolute", width: WORLD.w, height: WORLD.h, left: -camX, top: -camY }}>
+        <div ref={worldRef} style={{ position: "absolute", width: WORLD.w, height: WORLD.h, left: -camX * ZOOM, top: -camY * ZOOM, transform: `scale(${ZOOM})`, transformOrigin: "0 0", imageRendering: "pixelated", transition: "transform 180ms ease-out" }}>
           {/* 흙길: 중앙 광장 십자 */}
           <div style={{ position: "absolute", left: 1290, top: 0, width: 44, height: WORLD.h, background: `repeating-linear-gradient(0deg, ${C.path} 0 10px, ${C.pathDark} 10px 20px)` }} />
           <div style={{ position: "absolute", top: 720, left: 0, width: WORLD.w, height: 44, background: `repeating-linear-gradient(90deg, ${C.path} 0 10px, ${C.pathDark} 10px 20px)` }} />
@@ -3700,6 +3706,12 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
 
         {/* HUD 오버레이: 날짜 */}
         <div style={{ position: "absolute", right: 10, top: 10, display: "flex", gap: 8, alignItems: "center" }}>
+          {/* 🎥 시점 전환 : 3인칭 ↔ 1인칭 */}
+          <button onClick={() => setFpv((v) => !v)} title={fpv ? "1인칭 시점 · 눌러서 마을 전체 보기" : "3인칭 시점 · 눌러서 가까이 보기"}
+            style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", display: "flex", alignItems: "center", gap: 4,
+              background: fpv ? C.gem : C.ink, color: fpv ? C.ink : C.gem, border: `2px solid ${fpv ? C.ink : C.gem}`, borderRadius: 8, padding: "3px 8px", fontSize: 11, fontWeight: "bold" }}>
+            {fpv ? "🔍 1인칭" : "🗺 3인칭"}
+          </button>
           {onMovePos && <button onClick={tryEditMap} title="관리자 코드로 잠금 해제 · 건물을 드래그해 위치를 옮겨요 (모두에게 공유)" style={{ cursor: "pointer", background: editMap ? C.gem : C.ink, color: editMap ? C.ink : C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontWeight: "bold" }}>{editMap ? "✅ 위치편집 끝" : posUnlocked ? "🏠 위치편집" : "🔒 위치편집"}</button>}
           <button onClick={() => setWhoOpen((v) => !v)} title="접속자 보기" style={{ position: "relative", cursor: "pointer", background: netStatus === "접속됨" ? "#2f9e6e" : C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
             👥 {Object.keys(others).length + 1}
