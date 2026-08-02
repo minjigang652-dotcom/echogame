@@ -41,7 +41,8 @@ function useAutoScroll(dep) {
 /* -------------------------- 팔레트 --------------------------- */
 export const C = {
   ink: "#2a1e14", inkSoft: "#4a382a",
-  grass: "#6ab04c", grassDark: "#57a03d", grassShadow: "#3f7d2c",
+  grass: "#71a05e", grassDark: "#628f52", grassShadow: "#3f7d2c",   // 채도를 낮춘 차분한 잔디
+  grassDot: "#67955699",                                            // 잔디 위 풀포기 점무늬(옅게)
   path: "#c9a25f", pathDark: "#a9814a",
   parch: "#f3e2bd", parchLine: "#e6ce9a", parchEdge: "#c39a54",
   wood: "#8b5a2b", woodDark: "#6b4423",
@@ -3472,6 +3473,18 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
   const [fpv, setFpv] = useState(() => !!loadJSON("echotown_fpv", false));
   const ZOOM = fpv ? 2.2 : 0.88;   // 3인칭은 살짝 물러나서 도로망이 한눈에 보이게
   useEffect(() => { saveJSON("echotown_fpv", fpv); }, [fpv]);
+  /* 🎥 카메라 : 데드존(화면 중앙 30% 사각형) 밖으로 나갈 때만, 그것도 보간해서 천천히 따라와요.
+     캐릭터가 한 걸음 뗄 때마다 화면 전체가 같이 흔들리면 어지러워서요. */
+  const DEADZONE = 0.3, CAM_EASE = 0.12;
+  const camClamp = (v, max) => Math.max(0, Math.min(Math.max(0, max), v));
+  const [cam, setCam] = useState(() => {
+    const vw = vp.w / ZOOM, vh = vp.h / ZOOM;
+    return { x: camClamp(pos.x - vw / 2, WORLD.w - vw), y: camClamp(pos.y - vh / 2, WORLD.h - vh) };
+  });
+  const camRef = useRef(null);
+  if (camRef.current === null) camRef.current = { x: cam.x, y: cam.y };
+  const zoomRef = useRef(ZOOM); zoomRef.current = ZOOM;
+  const vpSizeRef = useRef(vp); vpSizeRef.current = vp;
   const keys = useRef({});
   const posRef = useRef(pos);
   const nearRef = useRef(null);
@@ -3575,6 +3588,25 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
         }
       }
       setMoving(Boolean(dx || dy));
+      /* 🎥 카메라 추적 : 데드존을 벗어난 만큼만 목표를 잡고, 그 목표로 부드럽게 다가갑니다 */
+      {
+        const z = zoomRef.current || 1;
+        const vw = vpSizeRef.current.w / z, vh = vpSizeRef.current.h / z;
+        const maxX = WORLD.w - vw, maxY = WORLD.h - vh;
+        const c = camRef.current;
+        const dzW = vw * DEADZONE, dzH = vh * DEADZONE;
+        const relX = x - c.x, relY = y - c.y;
+        let tx = c.x, ty = c.y;
+        if (relX < (vw - dzW) / 2) tx = x - (vw - dzW) / 2;
+        else if (relX > (vw + dzW) / 2) tx = x - (vw + dzW) / 2;
+        if (relY < (vh - dzH) / 2) ty = y - (vh - dzH) / 2;
+        else if (relY > (vh + dzH) / 2) ty = y - (vh + dzH) / 2;
+        tx = camClamp(tx, maxX); ty = camClamp(ty, maxY);
+        // 0.5px 미만은 스냅해서 미세 떨림을 없앱니다
+        const cx = Math.abs(tx - c.x) < 0.5 ? tx : c.x + (tx - c.x) * CAM_EASE;
+        const cy = Math.abs(ty - c.y) < 0.5 ? ty : c.y + (ty - c.y) * CAM_EASE;
+        if (cx !== c.x || cy !== c.y) { c.x = cx; c.y = cy; setCam({ x: cx, y: cy }); }
+      }
       let found = null, best = Infinity;
       for (const o of WORLD_OBJS) {
         if (!o.r) continue;
@@ -3594,10 +3626,14 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
     return () => cancelAnimationFrame(raf);
   }, [setPos]);
 
-  // 카메라 오프셋(플레이어 중심, 경계 클램프)
-  const viewW = vp.w / ZOOM, viewH = vp.h / ZOOM;   // 화면에 실제로 보이는 월드 영역
-  const camX = Math.max(0, Math.min(Math.max(0, WORLD.w - viewW), pos.x - viewW / 2));
-  const camY = Math.max(0, Math.min(Math.max(0, WORLD.h - viewH), pos.y - viewH / 2));
+  // 카메라 오프셋 — 값은 위 rAF 루프가 데드존·보간으로 갱신하고, 여기선 그리기만 합니다.
+  // 소수점이 남으면 픽셀이 어긋나 보이므로 렌더 직전에 정수로 맞춥니다.
+  const camX = Math.round(cam.x), camY = Math.round(cam.y);
+  /* 🔤 글자 역배율 : 월드 레이어의 scale(ZOOM)을 상쇄해 줌과 상관없이 글자 크기를 일정하게 유지합니다.
+     픽셀 폰트는 imageRendering:"pixelated" 를 물려받으면 오히려 흐려져서 auto 로 되돌립니다. */
+  const TXT = 1 / ZOOM;
+  const txtFix = { transformOrigin: "center bottom", imageRendering: "auto" };
+  const OUTLINE = "1px 0 0 rgba(0,0,0,0.7), -1px 0 0 rgba(0,0,0,0.7), 0 1px 0 rgba(0,0,0,0.7), 0 -1px 0 rgba(0,0,0,0.7)";
 
   /* 🔍 건물 크기 배율 (모두에게 똑같이 적용돼요) */
   const scaleOf = (o) => { const v = Number(scales && scales[o.id]); return v > 0 ? Math.max(0.4, Math.min(3, v)) : 1; };
@@ -3680,17 +3716,35 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
       </div>
 
       <div ref={vpRef} tabIndex={0} onMouseDown={focusGame} className="game-vp" style={{ position: "relative", height: 480, overflow: "hidden", outline: "none",
-        background: `repeating-linear-gradient(0deg, ${C.grass} 0 22px, ${C.grassDark} 22px 44px)` }}>
+        // 🌿 잔디: 줄무늬 대신 단색 위에 풀포기 점을 넓은 간격으로 흩어 놓아 움직여도 눈이 편해요
+        background: `radial-gradient(circle at 16px 20px, ${C.grassDot} 0 2.5px, transparent 3px),
+                     radial-gradient(circle at 54px 60px, ${C.grassDot} 0 2px, transparent 2.5px),
+                     radial-gradient(circle at 36px 44px, ${C.grassDot} 0 1.5px, transparent 2px),
+                     ${C.grass}`,
+        backgroundSize: "76px 76px, 76px 76px, 76px 76px, auto" }}>
         {/* 월드(카메라 이동) */}
-        <div ref={worldRef} style={{ position: "absolute", width: WORLD.w, height: WORLD.h, left: -camX * ZOOM, top: -camY * ZOOM, transform: `scale(${ZOOM})`, transformOrigin: "0 0", imageRendering: "pixelated", transition: "transform 180ms ease-out" }}>
-          {/* 🛣 흙길: ROADS 배열대로 깔아요 (캐릭터·건물보다 아래 레이어) */}
+        {/* 카메라는 left/top 으로 매 프레임 옮기고, transition 은 transform(줌)에만 걸어둡니다.
+            → 시점 전환은 부드럽게 보이면서, 카메라 이동에는 CSS 전환이 끼어들지 않아요. */}
+        <div ref={worldRef} style={{ position: "absolute", width: WORLD.w, height: WORLD.h,
+          left: Math.round(-camX * ZOOM), top: Math.round(-camY * ZOOM),
+          transform: `scale(${ZOOM})`, transformOrigin: "0 0", imageRendering: "pixelated",
+          transition: "transform 180ms ease-out", willChange: "left, top" }}>
+          {/* 🛣 흙길 : 테두리를 먼저 전부 깔고 그 위에 바닥을 덮습니다.
+              이렇게 해야 도로가 교차하는 지점에서 테두리가 가로지르지 않고 자연스럽게 이어져요. */}
           {ROAD_BOXES.map((b, i) => (
-            <div key={`road${i}`} style={{ position: "absolute", left: b.x1, top: b.y1, width: b.x2 - b.x1, height: b.y2 - b.y1,
-              background: `repeating-linear-gradient(${b.horiz ? 90 : 0}deg, ${C.path} 0 10px, ${C.pathDark} 10px 20px)` }} />
+            <div key={`re${i}`} style={{ position: "absolute", left: b.x1 - 3, top: b.y1 - 3,
+              width: b.x2 - b.x1 + 6, height: b.y2 - b.y1 + 6, background: C.pathDark }} />
           ))}
-          {/* 🏟 주민센터 앞 광장 : 도로보다 밝은 포장 톤 · 이 안에서는 자유롭게 다녀요 */}
+          {ROAD_BOXES.map((b, i) => (
+            <div key={`rf${i}`} style={{ position: "absolute", left: b.x1, top: b.y1,
+              width: b.x2 - b.x1, height: b.y2 - b.y1, background: C.path }} />
+          ))}
+          {/* 🏟 주민센터 앞 광장 : 도로보다 밝은 포장 + 은은한 격자 타일 · 이 안에서는 자유롭게 다녀요 */}
           <div style={{ position: "absolute", left: PLAZA.x, top: PLAZA.y, width: PLAZA.w, height: PLAZA.h,
-            background: `repeating-linear-gradient(45deg, ${C.parch} 0 14px, ${C.parchLine} 14px 28px)`, border: `4px solid ${C.parchEdge}`, boxSizing: "border-box" }} />
+            background: `linear-gradient(${C.parchLine} 1px, transparent 1px) 0 0 / 34px 34px,
+                         linear-gradient(90deg, ${C.parchLine} 1px, transparent 1px) 0 0 / 34px 34px,
+                         ${C.parch}`,
+            border: `3px solid ${C.parchEdge}`, boxSizing: "border-box" }} />
 
           {/* 강 + 다리(다리에서만 건널 수 있음) */}
           <div style={{ position: "absolute", left: RIVER_X, top: 0, width: RIVER_W, height: WORLD.h,
@@ -3733,8 +3787,8 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
               onPointerUp={(e) => { if (!editMap || !drag || drag.id !== o.id) return; onMovePos && onMovePos(o.id, drag.x, drag.y); setDrag(null); }}
               style={{ position: "absolute", left: bx, top: by, transform: "translate(-50%,-50%)", background: "none", border: editMap ? `2px dashed ${C.gem}` : "none", borderRadius: editMap ? 8 : 0, cursor: editMap ? (isDragging ? "grabbing" : "grab") : (o.r ? "pointer" : "default"), textAlign: "center", padding: 0, touchAction: editMap ? "none" : "auto", zIndex: isDragging ? 30 : "auto" }}>
               <div style={{ transform: `scale(${scaleOf(o)})`, transformOrigin: "bottom center", display: "inline-block", pointerEvents: editMap ? "none" : "auto" }}>{spriteFor(o)}</div>
-              <div style={{ marginTop: -6 }}>
-                <span style={{ display: "inline-block", background: o.kind === "center" ? C.ink : C.parch, color: o.kind === "center" ? C.gem : C.ink, fontSize: 11, padding: "3px 7px", border: `2px solid ${C.ink}`, whiteSpace: "nowrap" }}>
+              <div style={{ marginTop: -6, transform: `scale(${TXT})`, transformOrigin: "top center", imageRendering: "auto" }}>
+                <span style={{ display: "inline-block", background: "rgba(0,0,0,0.62)", color: o.kind === "center" ? C.gem : "#fff", fontSize: 11, padding: "3px 7px", border: `2px solid ${C.ink}`, whiteSpace: "nowrap", textShadow: OUTLINE }}>
                   {o.label}{o.kind === "rent" && rentedHouses[o.id] ? " ✅" : ""}
                 </span>
               </div>
@@ -3748,9 +3802,9 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
           {Object.values(others).filter((o) => (o.v || "world") === "world").map((o) => (
             <div key={o.id} onClick={() => setPicked(o.id)} title={`${o.name} — 눌러서 메뉴 열기`} style={{ position: "absolute", left: o.x, top: o.y, transform: "translate(-50%,-100%)", zIndex: 17, opacity: 0.95, transition: "left .18s linear, top .18s linear", cursor: "pointer" }}>
               {o.bubble && (
-                <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 190, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>{o.bubble}</div>
+                <div className="chat-bubble" style={{ position: "absolute", bottom: "150%", left: "50%", transform: `translateX(-50%) scale(${TXT})`, ...txtFix, whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 190, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>{o.bubble}</div>
               )}
-              <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px" }}>{o.name}</div>
+              <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: `translateX(-50%) scale(${TXT})`, ...txtFix, marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px", textShadow: OUTLINE }}>{o.name}</div>
               <div className={o.dm ? "dance-" + o.dm : ""} style={{ position: "relative", transformOrigin: "bottom center" }}>
                 <Hero facing={o.f || 1} moving={false} size={34} look={o.lk} pet={o.pt} carry={o.cy ? { emoji: o.cy } : null} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
                 {o.vh && <div title={o.vn || "탈것"} style={{ position: "absolute", left: "50%", bottom: -6, transform: "translateX(-50%)", fontSize: 19 }}>{o.vh}</div>}
@@ -3761,12 +3815,12 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
           {/* 플레이어 */}
           <div style={{ position: "absolute", left: pos.x, top: pos.y, transform: "translate(-50%,-70%)", zIndex: 20, pointerEvents: "none" }}>
             {bubble && (
-              <div className="chat-bubble" style={{ position: "absolute", bottom: "112%", left: "50%", transform: "translateX(-50%)", whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 200, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>
+              <div className="chat-bubble" style={{ position: "absolute", bottom: "112%", left: "50%", transform: `translateX(-50%) scale(${TXT})`, ...txtFix, whiteSpace: "normal", wordBreak: "break-word", width: "max-content", maxWidth: 200, lineHeight: 1.4, textAlign: "center", background: C.white, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 8, fontSize: 12, padding: "4px 8px", boxShadow: `0 2px 0 ${C.parchEdge}` }}>
                 {bubble}
               </div>
             )}
             {near && !bubble && (
-              <div className="enter-prompt" style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 4, whiteSpace: "nowrap", background: C.ink, color: C.gem, border: `2px solid ${C.gem}`, fontSize: 11, padding: "3px 7px" }}>
+              <div className="enter-prompt" style={{ position: "absolute", bottom: "100%", left: "50%", transform: `translateX(-50%) scale(${TXT})`, ...txtFix, marginBottom: 4, whiteSpace: "nowrap", background: C.ink, color: C.gem, border: `2px solid ${C.gem}`, fontSize: 11, padding: "3px 7px", textShadow: OUTLINE }}>
                 {near.kind === "npc" ? "💬 Space" : "🚪 Space"} · {near.label}
               </div>
             )}
