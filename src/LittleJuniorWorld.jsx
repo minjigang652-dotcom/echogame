@@ -1013,8 +1013,8 @@ const ROAD_W = 56;                   // 도로 폭
 const ROAD_H = ROAD_W / 2;           // 중심선 → 가장자리
 const DOOR_W = 70, DOOR_H = 60;      // 건물 앞 진입 영역(건물 중심 기준 ±)
 /* 🏟 주민센터 앞 광장 : 이 안에서는 도로 상관없이 자유롭게 다녀요 */
-const PLAZA = { x: 1165, y: 620, w: 290, h: 280 };
-const ROADS = [
+const DEFAULT_PLAZA = { x: 1165, y: 620, w: 290, h: 280 };
+const DEFAULT_ROADS = [
   // ── 간선도로 ──
   { x1: 1300, y1: 60, x2: 1300, y2: 1470 },      // 세로 간선(던전 ~ 바다 가는 길)
   { x1: 260, y1: 720, x2: 2620, y2: 720 },       // 가로 간선(복권방 ~ 다리 ~ 치앙마이)
@@ -1055,19 +1055,23 @@ const ROADS = [
   { x1: 2325, y1: 1020, x2: 2530, y2: 1020 },
   { x1: 2530, y1: 880, x2: 2530, y2: 1020 },
 ];
-/* 매 프레임 판정하므로 사각형은 미리 계산해 둡니다 */
-const ROAD_BOXES = ROADS.map((r) => ({
-  x1: Math.min(r.x1, r.x2) - ROAD_H, x2: Math.max(r.x1, r.x2) + ROAD_H,
-  y1: Math.min(r.y1, r.y2) - ROAD_H, y2: Math.max(r.y1, r.y2) + ROAD_H,
-  horiz: r.y1 === r.y2,
-}));
-const PLAZA_BOX = { x1: PLAZA.x, y1: PLAZA.y, x2: PLAZA.x + PLAZA.w, y2: PLAZA.y + PLAZA.h };
-const inBox = (b, x, y) => x >= b.x1 && x <= b.x2 && y >= b.y1 && y <= b.y2;
+/* 도로 구간 → 판정·렌더에 쓸 사각형으로 (편집으로 목록이 바뀌면 다시 계산해요) */
+function roadBoxes(roads) {
+  return (Array.isArray(roads) ? roads : []).map((r) => ({
+    x1: Math.min(r.x1, r.x2) - ROAD_H, x2: Math.max(r.x1, r.x2) + ROAD_H,
+    y1: Math.min(r.y1, r.y2) - ROAD_H, y2: Math.max(r.y1, r.y2) + ROAD_H,
+    horiz: Math.abs(r.y1 - r.y2) <= Math.abs(r.x1 - r.x2),
+  }));
+}
+const plazaBox = (p) => (p && p.w > 0 && p.h > 0 ? { x1: p.x, y1: p.y, x2: p.x + p.w, y2: p.y + p.h } : null);
+const inBox = (b, x, y) => !!b && x >= b.x1 && x <= b.x2 && y >= b.y1 && y <= b.y2;
 /* 걸을 수 있는 곳인가? (도로 · 광장 · 건물 앞)
-   bpos 는 관리자가 맵 편집으로 옮긴 건물 좌표 — 건물이 움직이면 진입 영역도 따라갑니다. */
-function canWalk(x, y, bpos) {
-  if (inBox(PLAZA_BOX, x, y)) return true;
-  for (let i = 0; i < ROAD_BOXES.length; i++) if (inBox(ROAD_BOXES[i], x, y)) return true;
+   bpos   관리자가 맵 편집으로 옮긴 건물 좌표 — 건물이 움직이면 진입 영역도 따라갑니다.
+   boxes  roadBoxes(도로목록) 결과 · plaza 광장 사각형 — 둘 다 편집으로 바뀔 수 있어서 인자로 받습니다. */
+function canWalk(x, y, bpos, boxes, plaza) {
+  if (inBox(plazaBox(plaza), x, y)) return true;
+  const bs = boxes || [];
+  for (let i = 0; i < bs.length; i++) if (inBox(bs[i], x, y)) return true;
   for (let i = 0; i < WORLD_OBJS.length; i++) {
     const o = WORLD_OBJS[i];
     const p = bpos && bpos[o.id];
@@ -1078,16 +1082,18 @@ function canWalk(x, y, bpos) {
   return false;
 }
 /* 길 밖에 갇혔을 때 되돌아갈 가장 가까운 길 위의 한 점 */
-function nearestWalk(x, y) {
-  let bx = PLAZA.x + PLAZA.w / 2, by = PLAZA.y + PLAZA.h / 2, bd = Infinity;
+function nearestWalk(x, y, boxes, plaza) {
+  let bx = x, by = y, bd = Infinity;
   const test = (b) => {
+    if (!b) return;
     const cx = Math.max(b.x1, Math.min(b.x2, x));
     const cy = Math.max(b.y1, Math.min(b.y2, y));
     const d = Math.hypot(cx - x, cy - y);
     if (d < bd) { bd = d; bx = cx; by = cy; }
   };
-  for (let i = 0; i < ROAD_BOXES.length; i++) test(ROAD_BOXES[i]);
-  test(PLAZA_BOX);
+  const bs = boxes || [];
+  for (let i = 0; i < bs.length; i++) test(bs[i]);
+  test(plazaBox(plaza));
   return { x: bx, y: by };
 }
 /* ===== 건물 이미지 교체 =====
@@ -2639,7 +2645,7 @@ async function dbAllPlayers() {
 async function dbNotices() {
   try {
     const s = await getSupa();
-    const r = await s.from("notices").select("id,type,title,body,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").not("type", "like", "nsp%").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "novlv").neq("type", "mention").neq("type", "sprpos").neq("type", "cocoqa").neq("type", "novacct").neq("type", "fbitem").neq("type", "fbstat").neq("type", "worklog").neq("type", "status").neq("type", "vschool").order("created_at", { ascending: false }).limit(50);
+    const r = await s.from("notices").select("id,type,title,body,created_at").neq("type", "sprite").neq("type", "decor").neq("type", "namemap").neq("type", "meetlog").neq("type", "meetstart").neq("type", "hqquest").neq("type", "hqroad").neq("type", "mypage").neq("type", "ptag").neq("type", "reeldata").not("type", "like", "nsp%").neq("type", "notorder").neq("type", "calevent").neq("type", "community").neq("type", "novrole").neq("type", "novlv").neq("type", "mention").neq("type", "sprpos").neq("type", "road").neq("type", "cocoqa").neq("type", "novacct").neq("type", "fbitem").neq("type", "fbstat").neq("type", "worklog").neq("type", "status").neq("type", "vschool").order("created_at", { ascending: false }).limit(50);
     return ((r && r.data) || [])
       .filter((n) => n.type !== "건의")   // 피드백은 게시판에 노출하지 않아요 (메뉴 안에서만)
       .map((n) => ({ id: "db" + n.id, rawId: n.id, uid: n.uid || null, type: n.type, title: n.title, body: n.body || "", date: new Date(n.created_at).toISOString().slice(0, 10) }));
@@ -2920,6 +2926,24 @@ async function dbSavePositions(obj) {
   try {
     const s = await getSupa();
     const r = await s.from("notices").insert({ type: "sprpos", title: "sprpos", body: JSON.stringify(obj || {}) });
+    return !(r && r.error);
+  } catch (e) { return false; }
+}
+/* 🛣 도로 + 광장을 한 행(JSON)으로 저장 — 건물 위치와 같은 방식 (type="road") */
+async function dbLoadRoads() {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").select("body,created_at").eq("type", "road").order("created_at", { ascending: false }).limit(1);
+    const row = r && r.data && r.data[0];
+    if (!row || !row.body) return null;
+    const v = JSON.parse(row.body);
+    return v && Array.isArray(v.roads) ? v : null;
+  } catch (e) { return null; }
+}
+async function dbSaveRoads(cfg) {
+  try {
+    const s = await getSupa();
+    const r = await s.from("notices").insert({ type: "road", title: "road", body: JSON.stringify(cfg || {}) });
     return !(r && r.error);
   } catch (e) { return false; }
 }
@@ -3250,7 +3274,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
         });
         /* ⚠️ 새 이벤트를 만들면 반드시 여기에 이름을 넣어야 상대에게 도착해요 */
-        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor", "decorreq", "luck", "hq", "hqroad", "qrev", "comm", "mention", "lvl"].forEach((ev) => {
+        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor", "decorreq", "luck", "hq", "hqroad", "qrev", "comm", "mention", "lvl", "sprpos", "road"].forEach((ev) => {
           ch.on("broadcast", { event: ev }, ({ payload }) => {
             if (onChatRef && onChatRef.net) onChatRef.net(ev, payload);
           });
@@ -3412,7 +3436,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
   return { others, count, status, sendChat, sendEvent, reconnect };
 }
 
-function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = null, carry = null, pet = null, shuffle = false, onShuffle, onNextTrack, onPrevTrack, onReconnect, onDismount, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null, onGift = null, myNick = "", scales = {}, positions = {}, onMovePos = null, stepSfx = true }) {
+function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = null, carry = null, pet = null, shuffle = false, onShuffle, onNextTrack, onPrevTrack, onReconnect, onDismount, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null, onGift = null, myNick = "", scales = {}, positions = {}, onMovePos = null, stepSfx = true, roads = DEFAULT_ROADS, plaza = DEFAULT_PLAZA, onSaveMap = null }) {
   const [songOpen, setSongOpen] = useState(false);
   const [teleport, setTeleport] = useState(null);
   const [whoOpen, setWhoOpen] = useState(false);
@@ -3425,13 +3449,52 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
   const worldRef = useRef(null);
   const [editMap, setEditMap] = useState(false);
   const [posUnlocked, setPosUnlocked] = useState(() => { try { return window.localStorage.getItem("echotown_posadmin") === "1"; } catch (e) { return false; } });
+  /* ═══ 🗺 맵 편집 ═══
+     한 번 들어오면 툴바로 「건물 옮기기 / 도로 그리기 / 광장 조절」 을 오가며 편집해요.
+     편집 중에는 draft(초안)만 바뀌고, 저장 버튼을 눌러야 서버·다른 사람에게 반영됩니다. */
+  const [editTool, setEditTool] = useState("obj");        // obj | road | plaza
+  const [dPos, setDPos] = useState(null);                 // 건물 위치 초안
+  const [dRoads, setDRoads] = useState(null);             // 도로 초안
+  const [dPlaza, setDPlaza] = useState(null);             // 광장 초안
+  const [rDraw, setRDraw] = useState(null);               // 그리는 중인 도로/광장 { x1,y1,x2,y2 }
+  const dirty = editMap && (dPos !== null || dRoads !== null || dPlaza !== null);
+  const beginEdit = () => {
+    setEditTool("obj"); setDPos(null); setDRoads(null); setDPlaza(null); setRDraw(null); setEditMap(true);
+  };
+  const resetEdit = () => { setDPos(null); setDRoads(null); setDPlaza(null); setRDraw(null); };
   const tryEditMap = () => {
-    if (editMap) { setEditMap(false); setDrag(null); return; }
-    if (posUnlocked) { setEditMap(true); return; }
+    if (editMap) {
+      if (dirty && !window.confirm("저장하지 않은 편집 내용이 있어요. 그냥 나갈까요?")) return;
+      setEditMap(false); setDrag(null); resetEdit(); return;
+    }
+    if (posUnlocked) { beginEdit(); return; }
     const code = window.prompt("🔒 위치편집은 관리자 코드가 필요해요.\n관리자 코드를 입력하세요:");
     if (code == null) return;
-    if (code.trim() === MAP_ADMIN_CODE) { setPosUnlocked(true); try { window.localStorage.setItem("echotown_posadmin", "1"); } catch (e) {} setEditMap(true); }
+    if (code.trim() === MAP_ADMIN_CODE) { setPosUnlocked(true); try { window.localStorage.setItem("echotown_posadmin", "1"); } catch (e) {} beginEdit(); }
     else window.alert("코드가 올바르지 않아요.");
+  };
+  /* 지금 화면에 그릴 값 — 편집 중이면 초안, 아니면 모두가 공유하는 값 */
+  const curPos = dPos || positions;
+  const curRoads = dRoads || roads;
+  const curPlaza = dPlaza !== null ? dPlaza : plaza;
+  const curBoxes = useMemo(() => roadBoxes(curRoads), [curRoads]);
+  bposRef.current = curPos;                    // 편집 중에는 초안 위치를 따라 건물 진입 영역도 움직여요
+  const boxesRef = useRef(curBoxes); boxesRef.current = curBoxes;
+  const plazaRef = useRef(curPlaza); plazaRef.current = curPlaza;
+  const editRef = useRef(false); editRef.current = editMap;   // 편집 중에는 도로 밖도 자유롭게 다녀요
+  const saveEdit = () => {
+    if (!onSaveMap) return;
+    onSaveMap({ positions: dPos || positions, roads: curRoads, plaza: curPlaza });
+    resetEdit();
+  };
+  /* 화면 좌표 → 월드 좌표 (월드 레이어에 scale 이 걸려 있어 rect 기준으로 환산해요) */
+  const toWorld = (e) => {
+    const el = worldRef.current; if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(WORLD.w, (e.clientX - rect.left) * (WORLD.w / rect.width))),
+      y: Math.max(0, Math.min(WORLD.h, (e.clientY - rect.top) * (WORLD.h / rect.height))),
+    };
   };
   const [drag, setDrag] = useState(null);   // { id, x, y }
   const objX = (o) => (bposRef.current[o.id] && bposRef.current[o.id][0] != null) ? bposRef.current[o.id][0] : o.x;
@@ -3482,7 +3545,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
   const vpRef = useRef(null);
   const [vp, setVp] = useState({ w: 900, h: 480 });
   /* 🎥 시점 : 3인칭(마을 전체가 보임) ↔ 1인칭(캐릭터에 바짝 붙어서 크게) */
-  const [fpv, setFpv] = useState(() => !!loadJSON("echotown_fpv", false));
+  const [fpv, setFpv] = useState(() => !!loadJSON("echotown_fpv", true));   // 저장된 값이 없으면 1인칭으로 시작
   const ZOOM = fpv ? 2.2 : 0.88;   // 3인칭은 살짝 물러나서 도로망이 한눈에 보이게
   useEffect(() => { saveJSON("echotown_fpv", fpv); }, [fpv]);
   /* 👣 걸음 리듬 : 이동 중일 때만 살짝 위아래로 흔들리고, 그 주기에 맞춰 발소리가 납니다 */
@@ -3577,16 +3640,19 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
           if (nx > L && nx < R) nx = px <= L ? L : R;
         }
         // 🛣 도로 위에서만 이동 : x·y 를 따로 판정해서 길가에 비스듬히 붙어도 미끄러지듯 걸어가요
-        const okX = canWalk(nx, py, bpos), okY = canWalk(px, ny, bpos);
+        // (맵 편집 중에는 판정을 건너뛰어 어디든 자유롭게 다니며 편집할 수 있어요)
+        const free = editRef.current;
+        const okX = free || canWalk(nx, py, bpos, boxesRef.current, plazaRef.current);
+        const okY = free || canWalk(px, ny, bpos, boxesRef.current, plazaRef.current);
         x = okX ? nx : px;
         y = okY ? ny : py;
-        if (!okX && !okY && canWalk(nx, ny, bpos)) { x = nx; y = ny; }   // 대각선으로만 열린 모퉁이
+        if (!okX && !okY && canWalk(nx, ny, bpos, boxesRef.current, plazaRef.current)) { x = nx; y = ny; }   // 대각선으로만 열린 모퉁이
         posRef.current = { x, y }; setPos({ x, y });
         if (dx < 0) setFacing(-1); else if (dx > 0) setFacing(1);
       }
       /* 🧭 안전장치 : 순간이동·건물 이동 등으로 길 밖에 서 있으면 가장 가까운 길로 부드럽게 돌아와요 */
-      if (!canWalk(x, y, bpos)) {
-        const t = nearestWalk(x, y);
+      if (!editRef.current && !canWalk(x, y, bpos, boxesRef.current, plazaRef.current)) {
+        const t = nearestWalk(x, y, boxesRef.current, plazaRef.current);
         const d = Math.hypot(t.x - x, t.y - y);
         if (d > 0.5) {
           const step = Math.min(d, Math.max(40, 500 * dt));
@@ -3730,20 +3796,62 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
         <div ref={worldRef} style={{ position: "absolute", width: WORLD.w, height: WORLD.h, left: -camX * ZOOM, top: -camY * ZOOM, transform: `scale(${ZOOM})`, transformOrigin: "0 0", imageRendering: "pixelated", transition: "transform 180ms ease-out" }}>
           {/* 🛣 흙길 : 테두리를 먼저 전부 깔고 그 위에 바닥을 덮습니다.
               이렇게 해야 도로가 교차하는 지점에서 테두리가 가로지르지 않고 자연스럽게 이어져요. */}
-          {ROAD_BOXES.map((b, i) => (
+          {curBoxes.map((b, i) => (
             <div key={`re${i}`} style={{ position: "absolute", left: b.x1 - 3, top: b.y1 - 3,
               width: b.x2 - b.x1 + 6, height: b.y2 - b.y1 + 6, background: C.pathDark }} />
           ))}
-          {ROAD_BOXES.map((b, i) => (
+          {curBoxes.map((b, i) => (
             <div key={`rf${i}`} style={{ position: "absolute", left: b.x1, top: b.y1,
-              width: b.x2 - b.x1, height: b.y2 - b.y1, background: C.path }} />
+              width: b.x2 - b.x1, height: b.y2 - b.y1, background: C.path,
+              outline: editMap && editTool === "road" ? `2px dashed ${C.gem}` : "none", outlineOffset: -2 }} />
           ))}
           {/* 🏟 주민센터 앞 광장 : 도로보다 밝은 포장 + 은은한 격자 타일 · 이 안에서는 자유롭게 다녀요 */}
-          <div style={{ position: "absolute", left: PLAZA.x, top: PLAZA.y, width: PLAZA.w, height: PLAZA.h,
-            background: `linear-gradient(${C.parchLine} 1px, transparent 1px) 0 0 / 34px 34px,
-                         linear-gradient(90deg, ${C.parchLine} 1px, transparent 1px) 0 0 / 34px 34px,
-                         ${C.parch}`,
-            border: `3px solid ${C.parchEdge}`, boxSizing: "border-box" }} />
+          {curPlaza && curPlaza.w > 0 && curPlaza.h > 0 && (
+            <div style={{ position: "absolute", left: curPlaza.x, top: curPlaza.y, width: curPlaza.w, height: curPlaza.h,
+              background: `linear-gradient(${C.parchLine} 1px, transparent 1px) 0 0 / 34px 34px,
+                           linear-gradient(90deg, ${C.parchLine} 1px, transparent 1px) 0 0 / 34px 34px,
+                           ${C.parch}`,
+              border: `3px solid ${editMap && editTool === "plaza" ? C.gem : C.parchEdge}`, boxSizing: "border-box" }} />
+          )}
+          {/* ✏️ 도로·광장 그리기 : 빈 곳을 드래그하면 새로 그리고, 짧게 누르면 그 자리 도로를 지워요 */}
+          {editMap && (editTool === "road" || editTool === "plaza") && (
+            <div
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); try { e.currentTarget.setPointerCapture(e.pointerId); } catch (x) {} const p = toWorld(e); if (p) setRDraw({ x1: p.x, y1: p.y, x2: p.x, y2: p.y }); }}
+              onPointerMove={(e) => { if (!rDraw) return; const p = toWorld(e); if (p) setRDraw((d) => (d ? { ...d, x2: p.x, y2: p.y } : d)); }}
+              onPointerUp={() => {
+                if (!rDraw) return;
+                const d = rDraw; setRDraw(null);
+                const dxr = Math.abs(d.x2 - d.x1), dyr = Math.abs(d.y2 - d.y1);
+                if (editTool === "plaza") {
+                  if (dxr < 24 || dyr < 24) return;   // 너무 작으면 광장으로 안 봐요
+                  setDPlaza({ x: Math.round(Math.min(d.x1, d.x2)), y: Math.round(Math.min(d.y1, d.y2)), w: Math.round(dxr), h: Math.round(dyr) });
+                  return;
+                }
+                if (dxr < 8 && dyr < 8) {
+                  // 짧게 누름 = 그 자리 도로 지우기
+                  const hit = curBoxes.map((b, i) => ({ b, i })).filter(({ b }) => inBox(b, d.x1, d.y1));
+                  if (hit.length) setDRoads(curRoads.filter((_, i) => i !== hit[hit.length - 1].i));
+                  return;
+                }
+                // 가로·세로 중 더 많이 끈 방향으로 직선을 놓습니다
+                const seg = dxr >= dyr
+                  ? { x1: Math.round(Math.min(d.x1, d.x2)), y1: Math.round(d.y1), x2: Math.round(Math.max(d.x1, d.x2)), y2: Math.round(d.y1) }
+                  : { x1: Math.round(d.x1), y1: Math.round(Math.min(d.y1, d.y2)), x2: Math.round(d.x1), y2: Math.round(Math.max(d.y1, d.y2)) };
+                setDRoads([...curRoads, seg]);
+              }}
+              style={{ position: "absolute", inset: 0, zIndex: 25, cursor: "crosshair", touchAction: "none" }}>
+              {rDraw && (() => {
+                const dxr = Math.abs(rDraw.x2 - rDraw.x1), dyr = Math.abs(rDraw.y2 - rDraw.y1);
+                const box = editTool === "plaza"
+                  ? { l: Math.min(rDraw.x1, rDraw.x2), t: Math.min(rDraw.y1, rDraw.y2), w: dxr, h: dyr }
+                  : dxr >= dyr
+                    ? { l: Math.min(rDraw.x1, rDraw.x2), t: rDraw.y1 - ROAD_H, w: dxr, h: ROAD_W }
+                    : { l: rDraw.x1 - ROAD_H, t: Math.min(rDraw.y1, rDraw.y2), w: ROAD_W, h: dyr };
+                return <div style={{ position: "absolute", left: box.l, top: box.t, width: box.w, height: box.h,
+                  background: "rgba(255,203,43,0.45)", border: `2px dashed ${C.ink}`, boxSizing: "border-box", pointerEvents: "none" }} />;
+              })()}
+            </div>
+          )}
 
           {/* 강 + 다리(다리에서만 건널 수 있음) */}
           <div style={{ position: "absolute", left: RIVER_X, top: 0, width: RIVER_W, height: WORLD.h,
@@ -3781,10 +3889,10 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
             return (
             <button key={o.id} className={o.r && !editMap ? "map-obj" : ""} disabled={!o.r && !editMap}
               onClick={() => { if (editMap) return; o.r && handleObj(o); }}
-              onPointerDown={(e) => { if (!editMap || !onMovePos) return; e.preventDefault(); e.stopPropagation(); try { e.currentTarget.setPointerCapture(e.pointerId); } catch (x) {} setDrag({ id: o.id, x: objX(o), y: objY(o) }); }}
-              onPointerMove={(e) => { if (!editMap || !drag || drag.id !== o.id || !worldRef.current) return; const rect = worldRef.current.getBoundingClientRect(); let wx = (e.clientX - rect.left) * (WORLD.w / rect.width); let wy = (e.clientY - rect.top) * (WORLD.h / rect.height); wx = Math.max(20, Math.min(WORLD.w - 20, wx)); wy = Math.max(20, Math.min(WORLD.h - 20, wy)); setDrag({ id: o.id, x: Math.round(wx), y: Math.round(wy) }); }}
-              onPointerUp={(e) => { if (!editMap || !drag || drag.id !== o.id) return; onMovePos && onMovePos(o.id, drag.x, drag.y); setDrag(null); }}
-              style={{ position: "absolute", left: bx, top: by, transform: "translate(-50%,-50%)", background: "none", border: editMap ? `2px dashed ${C.gem}` : "none", borderRadius: editMap ? 8 : 0, cursor: editMap ? (isDragging ? "grabbing" : "grab") : (o.r ? "pointer" : "default"), textAlign: "center", padding: 0, touchAction: editMap ? "none" : "auto", zIndex: isDragging ? 30 : "auto" }}>
+              onPointerDown={(e) => { if (!editMap || editTool !== "obj" || !onSaveMap) return; e.preventDefault(); e.stopPropagation(); try { e.currentTarget.setPointerCapture(e.pointerId); } catch (x) {} setDrag({ id: o.id, x: objX(o), y: objY(o) }); }}
+              onPointerMove={(e) => { if (!editMap || editTool !== "obj" || !drag || drag.id !== o.id) return; const p = toWorld(e); if (!p) return; setDrag({ id: o.id, x: Math.round(Math.max(20, Math.min(WORLD.w - 20, p.x))), y: Math.round(Math.max(20, Math.min(WORLD.h - 20, p.y))) }); }}
+              onPointerUp={(e) => { if (!editMap || !drag || drag.id !== o.id) return; setDPos({ ...curPos, [o.id]: [drag.x, drag.y] }); setDrag(null); }}
+              style={{ position: "absolute", left: bx, top: by, transform: "translate(-50%,-50%)", background: "none", border: editMap && editTool === "obj" ? `2px dashed ${C.gem}` : "none", borderRadius: editMap ? 8 : 0, cursor: editMap ? (editTool === "obj" ? (isDragging ? "grabbing" : "grab") : "default") : (o.r ? "pointer" : "default"), textAlign: "center", padding: 0, touchAction: editMap ? "none" : "auto", zIndex: isDragging ? 30 : "auto" }}>
               <div style={{ transform: `scale(${scaleOf(o)})`, transformOrigin: "bottom center", display: "inline-block", pointerEvents: editMap ? "none" : "auto" }}>{spriteFor(o)}</div>
               <div style={{ marginTop: -6, transform: `scale(${TXT})`, transformOrigin: "top center", imageRendering: "auto" }}>
                 <span style={{ display: "inline-block", background: "rgba(0,0,0,0.62)", color: o.kind === "center" ? C.gem : "#fff", fontSize: 11, padding: "3px 7px", border: `2px solid ${C.ink}`, whiteSpace: "nowrap", textShadow: OUTLINE }}>
@@ -3861,6 +3969,43 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
           </div>
         )}
 
+        {/* 🗺 맵 편집 툴바 — 건물·도로·광장을 여기서 다 바꿔요 (저장해야 반영) */}
+        {editMap && (() => {
+          const TOOLS = [
+            { id: "obj", label: "🏠 건물 옮기기", tip: "건물을 드래그해서 옮겨요" },
+            { id: "road", label: "🛣 도로 그리기", tip: "빈 곳을 드래그하면 길이 생기고, 길을 톡 누르면 지워져요" },
+            { id: "plaza", label: "🟨 광장 조절", tip: "드래그한 사각형이 광장이 돼요" },
+          ];
+          const btn = (on) => ({ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontWeight: "bold",
+            background: on ? C.gem : C.ink, color: on ? C.ink : C.white, border: `2px solid ${C.gem}`, borderRadius: 8, padding: "5px 9px", fontSize: 11.5 });
+          const cur = TOOLS.find((t) => t.id === editTool) || TOOLS[0];
+          return (
+            <div style={{ position: "absolute", left: "50%", top: 8, transform: "translateX(-50%)", zIndex: 40,
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
+              background: "rgba(20,16,10,0.86)", border: `2px solid ${C.gem}`, borderRadius: 12, padding: "7px 10px" }}>
+              <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                <span style={{ color: C.gem, fontSize: 11, fontWeight: "bold", marginRight: 2, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>🗺 맵 편집</span>
+                {TOOLS.map((t) => (
+                  <button key={t.id} title={t.tip} onClick={() => { setEditTool(t.id); setDrag(null); setRDraw(null); }} style={btn(editTool === t.id)}>{t.label}</button>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                <button onClick={saveEdit} disabled={!dirty} title="서버에 저장하고 접속 중인 모두에게 반영해요"
+                  style={{ ...btn(false), background: dirty ? C.good : C.inkSoft, borderColor: dirty ? C.gem : C.inkSoft, cursor: dirty ? "pointer" : "default", opacity: dirty ? 1 : 0.65 }}>💾 저장</button>
+                <button onClick={resetEdit} disabled={!dirty} title="저장 전 편집 내용을 모두 취소해요"
+                  style={{ ...btn(false), opacity: dirty ? 1 : 0.65, cursor: dirty ? "pointer" : "default" }}>↩ 되돌리기</button>
+                <button onClick={tryEditMap} style={{ ...btn(false), background: C.danger }}>✕ 편집 종료</button>
+                <span style={{ color: dirty ? C.gem : "#cbb", fontSize: 10, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
+                  {dirty ? "● 저장 안 된 변경" : "저장됨"}
+                </span>
+              </div>
+              <div style={{ color: "#e8dcc4", fontSize: 10, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
+                {cur.tip} · 도로 {curRoads.length}개 · 편집 중엔 길 밖도 자유롭게 다녀요
+              </div>
+            </div>
+          );
+        })()}
+
         {/* 🌧 내가 있는 지역에 비가 오면 화면 위에 빗줄기 */}
         {(pos.x >= RIVER_X ? cmRain : townRain) && <RainLayer height={480} />}
 
@@ -3879,7 +4024,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
               background: fpv ? C.gem : C.ink, color: fpv ? C.ink : C.gem, border: `2px solid ${fpv ? C.ink : C.gem}`, borderRadius: 8, padding: "3px 8px", fontSize: 11, fontWeight: "bold" }}>
             {fpv ? "🔍 1인칭" : "🗺 3인칭"}
           </button>
-          {onMovePos && <button onClick={tryEditMap} title="관리자 코드로 잠금 해제 · 건물을 드래그해 위치를 옮겨요 (모두에게 공유)" style={{ cursor: "pointer", background: editMap ? C.gem : C.ink, color: editMap ? C.ink : C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontWeight: "bold" }}>{editMap ? "✅ 위치편집 끝" : posUnlocked ? "🏠 위치편집" : "🔒 위치편집"}</button>}
+          {onMovePos && <button onClick={tryEditMap} title="관리자 코드로 잠금 해제 · 건물·도로·광장을 한 곳에서 편집해요 (저장하면 모두에게 공유)" style={{ cursor: "pointer", background: editMap ? C.gem : C.ink, color: editMap ? C.ink : C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontWeight: "bold" }}>{editMap ? "✅ 편집 끝" : posUnlocked ? "🗺 맵편집" : "🔒 맵편집"}</button>}
           <button onClick={() => setWhoOpen((v) => !v)} title="접속자 보기" style={{ position: "relative", cursor: "pointer", background: netStatus === "접속됨" ? "#2f9e6e" : C.ink, color: C.white, fontSize: 12, padding: "5px 9px", border: `2px solid ${C.gem}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
             👥 {Object.keys(others).length + 1}
             {whoOpen && (
@@ -14418,6 +14563,11 @@ function EchoTown() {
   const scaleRef = useRef({});
   scaleRef.current = spriteScale;
   const [spritePos, setSpritePos] = useState(() => loadJSON("echotown_spritepos_v1", {}) || {});   // 🏠 건물 위치 override (모두 공유)
+  /* 🛣 도로 + 광장 (모두 공유) — 저장된 게 없으면 기본 도로망으로 시작해요 */
+  const [roadCfg, setRoadCfg] = useState(() => {
+    const v = loadJSON("echotown_roads_v1", null);
+    return v && Array.isArray(v.roads) ? v : { roads: DEFAULT_ROADS, plaza: DEFAULT_PLAZA };
+  });
   const posRef = useRef({});
   posRef.current = spritePos;
   useEffect(() => {
@@ -14434,12 +14584,32 @@ function EchoTown() {
       if (Object.keys(pos).length) setSpritePos((v) => ({ ...pos, ...v }));
     });
     dbLoadPositions().then((all) => { if (all && typeof all === "object" && Object.keys(all).length) { setSpritePos((v) => ({ ...v, ...all })); try { saveJSON("echotown_spritepos_v1", all); } catch (e) {} } });
+    // 브로드캐스트를 놓쳤을 수도 있으니 접속할 때 서버 값으로 한 번 맞춥니다
+    dbLoadRoads().then((cfg) => { if (cfg) { setRoadCfg(cfg); try { saveJSON("echotown_roads_v1", cfg); } catch (e) {} } });
   }, []);
   /* 🏠 건물 위치 — 모두에게 똑같이 보이도록 공유돼요 */
   const publishPos = (id, x, y) => {
     const p = [Math.round(x), Math.round(y)];
     setSpritePos((m) => { const o = { ...m, [id]: p }; saveJSON("echotown_spritepos_v1", o); dbSavePositions(o); return o; });
     if (netSendEventRef.current) netSendEventRef.current("spr", { id, pos: p, by: myNameRef.current || "익명" });
+  };
+  /* 🗺 맵 편집 저장 — 건물 위치 + 도로/광장을 한 번에 서버에 쓰고 모두에게 전파합니다.
+     저장 버튼을 눌렀을 때만 불려요 (편집 중 실수로 반영되지 않도록). */
+  const saveMapEdit = ({ positions, roads, plaza }) => {
+    if (positions && typeof positions === "object") {
+      setSpritePos(positions);
+      saveJSON("echotown_spritepos_v1", positions);
+      dbSavePositions(positions);
+      if (netSendEventRef.current) netSendEventRef.current("sprpos", { all: positions, by: myNameRef.current || "익명" });
+    }
+    if (Array.isArray(roads)) {
+      const cfg = { roads, plaza: plaza || null };
+      setRoadCfg(cfg);
+      saveJSON("echotown_roads_v1", cfg);
+      dbSaveRoads(cfg);
+      if (netSendEventRef.current) netSendEventRef.current("road", { cfg, by: myNameRef.current || "익명" });
+    }
+    showNotice("🗺 맵을 저장했어요 · 접속 중인 모두에게 반영됩니다");
   };
   /* 🔍 건물 크기 — 모두에게 똑같이 보이도록 공유돼요 */
   const publishScale = (id, v) => {
@@ -15333,7 +15503,7 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
-      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "hq" || kind === "hqroad" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx" || kind === "comm" || kind === "mention" || kind === "lvl" || kind === "stat") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
+      if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "hq" || kind === "hqroad" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx" || kind === "comm" || kind === "mention" || kind === "lvl" || kind === "stat" || kind === "sprpos" || kind === "road") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); showNotice(`🔔 ${p.from}님이 초인종을 눌렀어요`); pushMsg("dm", { from: p.from, text: "🔔 초인종을 눌렀어요 — 집 앞에 찾아왔어요!" }); }
       if (kind === "qrev") { showNotice("🔔 퀘스트 알림이 도착했습니다!", () => setHqOpen(true)); pushMsg("dm", { from: p.by || "HQ", text: p.txt || "🔔 퀘스트 알림" }); return; }
       if (kind === "invite") { playBell(); setInvite(p); pushMsg("invite", { from: p.from, when: p.when, dur: p.dur, room: p.room, roomId: p.roomId }); }
@@ -15549,6 +15719,20 @@ function EchoTown() {
         if (p.cfg && Array.isArray(p.cfg.levels)) {
           const cfg = { levels: p.cfg.levels, assign: p.cfg.assign || {} };
           setLevelCfg(cfg); try { saveJSON("echotown_levels_v1", cfg); } catch (e) {}
+        }
+        return;
+      }
+      /* 🏠 건물 위치 · 🛣 도로/광장 — 관리자가 저장하면 접속 중인 모두에게 바로 반영돼요 */
+      if (kind === "sprpos") {
+        if (p.all && typeof p.all === "object") {
+          setSpritePos(p.all); try { saveJSON("echotown_spritepos_v1", p.all); } catch (e) {}
+        }
+        return;
+      }
+      if (kind === "road") {
+        if (p.cfg && Array.isArray(p.cfg.roads)) {
+          const cfg = { roads: p.cfg.roads, plaza: p.cfg.plaza || null };
+          setRoadCfg(cfg); try { saveJSON("echotown_roads_v1", cfg); } catch (e) {}
         }
         return;
       }
@@ -15894,7 +16078,7 @@ function EchoTown() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gold} sprites={allSprites} cutCfg={cutCfg} scales={spriteScale} look={myLook} carry={carrying} pet={petEmoji} shuffle={shuffle} onShuffle={toggleShuffle} onNextTrack={() => stepTrack(1)} onPrevTrack={() => stepTrack(-1)} onReconnect={netReconnect} onDismount={() => { setVehicle(null); showNotice("🚶 탈것에서 내렸어요"); }} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} myNick={myName} onGift={(n) => setGiftTarget(n)} positions={spritePos} onMovePos={publishPos} stepSfx={stepSfx} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gold} sprites={allSprites} cutCfg={cutCfg} scales={spriteScale} look={myLook} carry={carrying} pet={petEmoji} shuffle={shuffle} onShuffle={toggleShuffle} onNextTrack={() => stepTrack(1)} onPrevTrack={() => stepTrack(-1)} onReconnect={netReconnect} onDismount={() => { setVehicle(null); showNotice("🚶 탈것에서 내렸어요"); }} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} myNick={myName} onGift={(n) => setGiftTarget(n)} positions={spritePos} onMovePos={publishPos} stepSfx={stepSfx} roads={roadCfg.roads} plaza={roadCfg.plaza} onSaveMap={saveMapEdit} />}
         {view === "center" && <CenterView meetings={myMeetings} meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => { setCenterChat((c) => [...c, { who: myName || "나", text: t, me: true }].slice(-80)); if (netSendEvent) netSendEvent("cchat", { who: myName || "나", text: t }); }} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} myName={myName} people={people}
           chat={meetingChat[meetingId] || []}
