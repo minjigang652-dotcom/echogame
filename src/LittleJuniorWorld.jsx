@@ -41,6 +41,7 @@ function useAutoScroll(dep) {
 /* -------------------------- 팔레트 --------------------------- */
 export const C = {
   ink: "#2a1e14", inkSoft: "#4a382a",
+  outline: "#3a2a1d", blush: "#ef9aae",                             // 캐릭터 외곽선(완전 검정보다 부드럽게) · 볼터치
   grass: "#71a05e", grassDark: "#628f52", grassShadow: "#3f7d2c",   // 채도를 낮춘 차분한 잔디
   grassDot: "#67955699",                                            // 잔디 위 풀포기 점무늬(옅게)
   path: "#c9a25f", pathDark: "#a9814a",
@@ -510,6 +511,25 @@ const HAIR_STYLES = [
 ];
 const DEFAULT_LOOK = { skin: "#f4c9a0", hair: "#6b4423", hairStyle: "short" };
 
+/* 🎨 캐릭터 셰이딩용 색 보정 — 고른 색은 그대로 두고 밝은 면·어두운 면만 만들어 씁니다.
+   pastel 은 형광색을 살짝 눌러 파스텔 톤으로 (기본 12% 만큼 흰색과 섞어요). */
+function hexRGB(hex) {
+  let h = String(hex || "").replace("#", "");
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+  const n = parseInt(h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function rgbHex(r, g, b) {
+  const cl = (v) => Math.max(0, Math.min(255, Math.round(v)));
+  return "#" + ((1 << 24) | (cl(r) << 16) | (cl(g) << 8) | cl(b)).toString(16).slice(1);
+}
+function shade(hex, amt) { const c = hexRGB(hex); return c ? rgbHex(c[0] + amt, c[1] + amt, c[2] + amt) : hex; }
+function pastel(hex, k = 0.12) {
+  const c = hexRGB(hex);
+  return c ? rgbHex(c[0] + (255 - c[0]) * k, c[1] + (255 - c[1]) * k, c[2] + (255 - c[2]) * k) : hex;
+}
+
 export function Hero({ facing = 1, moving = false, size = 34, outfit = null, look = null, carry = null, pet = null }) {
   const top = (outfit && outfit.top) ? outfit.top.color : C.bankRoof;
   const bottom = (outfit && outfit.bottom) ? outfit.bottom.color : C.woodDark;
@@ -517,25 +537,111 @@ export function Hero({ facing = 1, moving = false, size = 34, outfit = null, loo
   const skin = (look && look.skin) || DEFAULT_LOOK.skin;
   const hair = (look && look.hair) || DEFAULT_LOOK.hair;
   const style = (look && look.hairStyle) || DEFAULT_LOOK.hairStyle;
+  /* 셰이딩용 파생색 — 고른 색을 살짝 파스텔로 눌러 base 로 쓰고, 밝은 면(H)·어두운 면(D)을 만듭니다 */
+  const OUT = C.outline;
+  const skinB = pastel(skin, 0.06), skinD = shade(skinB, -26);
+  const hairB = pastel(hair, 0.08), hairH = shade(hairB, 38), hairD = shade(hairB, -30);
+  const topB = pastel(top), topH = shade(topB, 26), topD = shade(topB, -34);
+  const botB = pastel(bottom), shoeB = shoes ? pastel(shoes) : shade(botB, -44);
   return (
     <div aria-hidden style={{ position: "relative", transform: `scaleX(${facing})` }}>
-      <svg width={size} height={size * 1.24} viewBox="0 0 17 21" shapeRendering="crispEdges" className={moving ? "hero-bob" : ""}>
-        <rect x="5" y="1" width="7" height="6" fill={skin} stroke={C.ink} strokeWidth="0.6" />
-        {/* 헤어스타일 */}
-        {style !== "bald" && <rect x="4" y="0" width="9" height="3" fill={hair} />}
-        {(style === "bob" || style === "long") && <rect x="3.5" y="1" width="1.8" height={style === "long" ? 9 : 5} fill={hair} />}
-        {(style === "bob" || style === "long") && <rect x="11.7" y="1" width="1.8" height={style === "long" ? 9 : 5} fill={hair} />}
-        {style === "cap" && <rect x="3" y="-0.6" width="11" height="2.4" fill={hair} stroke={C.ink} strokeWidth="0.4" />}
-        {style === "cap" && <rect x="11" y="1.4" width="4.5" height="1.3" fill={hair} stroke={C.ink} strokeWidth="0.4" />}
-        <rect x="6" y="4" width="1" height="1" fill={C.ink} />
-        <rect x="10" y="4" width="1" height="1" fill={C.ink} />
-        <rect x="4" y="7" width="9" height="8" fill={top} stroke={C.ink} strokeWidth="0.6" />
-        <rect x="2" y="8" width="2" height="5" fill={skin} />
-        <rect x="13" y="8" width="2" height="5" fill={skin} />
-        <rect x="5" y="15" width="3" height="5" fill={bottom} />
-        <rect x="9" y="15" width="3" height="5" fill={bottom} />
-        {shoes && <rect x="4.5" y="19" width="3.5" height="2" fill={shoes} stroke={C.ink} strokeWidth="0.4" />}
-        {shoes && <rect x="9" y="19" width="3.5" height="2" fill={shoes} stroke={C.ink} strokeWidth="0.4" />}
+      {/* 🧍 치비(2.5등신) 비율 — 머리가 키의 약 47%.
+          외곽선을 먼저 깔고 그 안에 색을 채우는 식이라, 작게 줄여도 실루엣이 살아 있어요. */}
+      <svg width={size} height={size * 1.25} viewBox="0 0 24 30" shapeRendering="crispEdges" className={moving ? "hero-bob" : ""}>
+        {/* 발밑 그림자 — 땅에 붙어 보이게 */}
+        <ellipse cx="12" cy="28.4" rx="7.2" ry="1.4" fill="rgba(0,0,0,0.22)" />
+
+        {/* 다리 + 신발 (걸을 때 좌우가 번갈아 움직여요) */}
+        <g className={moving ? "hero-legA" : ""}>
+          <rect x="7" y="19" width="4" height="7" fill={OUT} />
+          <rect x="8" y="20" width="2" height="5" fill={botB} />
+          <rect x="6" y="25" width="6" height="3" fill={OUT} />
+          <rect x="7" y="26" width="4" height="1.4" fill={shoeB} />
+        </g>
+        <g className={moving ? "hero-legB" : ""}>
+          <rect x="13" y="19" width="4" height="7" fill={OUT} />
+          <rect x="14" y="20" width="2" height="5" fill={shade(botB, -14)} />
+          <rect x="12" y="25" width="6" height="3" fill={OUT} />
+          <rect x="13" y="26" width="4" height="1.4" fill={shade(shoeB, -12)} />
+        </g>
+
+        {/* 팔 */}
+        <rect x="3" y="15" width="4" height="6" fill={OUT} />
+        <rect x="4" y="16" width="2" height="4" fill={skinB} />
+        <rect x="17" y="15" width="4" height="6" fill={OUT} />
+        <rect x="18" y="16" width="2" height="4" fill={skinD} />
+
+        {/* 몸통 — 밝은 면 / 어두운 면 2단계 */}
+        <rect x="6" y="14" width="12" height="7" fill={OUT} />
+        <rect x="7" y="15" width="10" height="5" fill={topB} />
+        <rect x="7" y="15" width="3" height="5" fill={topH} />
+        <rect x="7" y="18.6" width="10" height="1.4" fill={topD} />
+        <rect x="14" y="15" width="3" height="3.6" fill={topD} />
+
+        {/* 머리 — 둥근 실루엣을 계단식 사각형으로 (모서리를 4단계로 깎아 둥글게) */}
+        <rect x="7" y="1" width="10" height="1" fill={OUT} />
+        <rect x="5" y="2" width="14" height="1" fill={OUT} />
+        <rect x="4" y="3" width="16" height="1" fill={OUT} />
+        <rect x="3" y="4" width="18" height="7" fill={OUT} />
+        <rect x="4" y="11" width="16" height="1" fill={OUT} />
+        <rect x="5" y="12" width="14" height="1" fill={OUT} />
+        <rect x="7" y="13" width="10" height="1" fill={OUT} />
+        <rect x="8" y="2" width="8" height="1" fill={skinB} />
+        <rect x="6" y="3" width="12" height="1" fill={skinB} />
+        <rect x="5" y="4" width="14" height="1" fill={skinB} />
+        <rect x="4" y="5" width="16" height="6" fill={skinB} />
+        <rect x="5" y="11" width="14" height="1" fill={skinD} />
+        <rect x="6" y="12" width="12" height="1" fill={skinD} />
+
+        {/* 머리카락 — 스타일 값(short/bob/long/cap/bald)은 그대로 쓰되 새 비율에 맞게 다시 그렸어요 */}
+        {(style === "bob" || style === "long") && (
+          <>
+            <rect x="1" y="5" width="4" height={(style === "long" ? 15 : 7) + 1} fill={OUT} />
+            <rect x="19" y="5" width="4" height={(style === "long" ? 15 : 7) + 1} fill={OUT} />
+            <rect x="2" y="5" width="2" height={style === "long" ? 15 : 7} fill={hairB} />
+            <rect x="20" y="5" width="2" height={style === "long" ? 15 : 7} fill={hairD} />
+          </>
+        )}
+        {style === "cap" ? (
+          <>
+            <rect x="7" y="1" width="10" height="1" fill={OUT} />
+            <rect x="5" y="2" width="14" height="1" fill={OUT} />
+            <rect x="4" y="3" width="16" height="1" fill={OUT} />
+            <rect x="3" y="4" width="18" height="4" fill={OUT} />
+            <rect x="8" y="2" width="8" height="1" fill={hairB} />
+            <rect x="6" y="3" width="12" height="1" fill={hairB} />
+            <rect x="5" y="4" width="14" height="1" fill={hairB} />
+            <rect x="4" y="5" width="16" height="2" fill={hairB} />
+            <rect x="8" y="3" width="5" height="1" fill={hairH} />
+            <rect x="4" y="6.4" width="16" height="0.6" fill={hairD} />
+            <rect x="17" y="6" width="6.5" height="2" fill={OUT} />
+            <rect x="17" y="6" width="5.5" height="1" fill={hairB} />
+          </>
+        ) : style !== "bald" && (
+          <>
+            <rect x="8" y="2" width="8" height="1" fill={hairB} />
+            <rect x="6" y="3" width="12" height="1" fill={hairB} />
+            <rect x="5" y="4" width="14" height="1" fill={hairB} />
+            <rect x="4" y="5" width="16" height="2" fill={hairB} />
+            <rect x="8" y="3" width="5" height="1" fill={hairH} />
+            <rect x="4" y="6.4" width="16" height="0.6" fill={hairD} />
+          </>
+        )}
+
+        {/* 눈 — 크고 또렷하게, 사이를 넓게 (흰자 + 홍채 + 하이라이트 1픽셀) */}
+        <rect x="5.8" y="7.4" width="4.4" height="4" fill={OUT} />
+        <rect x="13.8" y="7.4" width="4.4" height="4" fill={OUT} />
+        <rect x="6.4" y="8" width="3.2" height="2.8" fill="#ffffff" />
+        <rect x="14.4" y="8" width="3.2" height="2.8" fill="#ffffff" />
+        <rect x="6.9" y="8.2" width="2.2" height="2" fill={C.ink} />
+        <rect x="14.9" y="8.2" width="2.2" height="2" fill={C.ink} />
+        <rect x="7.3" y="8.5" width="0.6" height="0.6" fill="#ffffff" />
+        <rect x="15.3" y="8.5" width="0.6" height="0.6" fill="#ffffff" />
+
+        {/* 볼터치 · 입 */}
+        <rect x="4.4" y="10.2" width="2" height="1" fill={C.blush} opacity="0.85" />
+        <rect x="17.6" y="10.2" width="2" height="1" fill={C.blush} opacity="0.85" />
+        <rect x="11.2" y="11.4" width="1.6" height="0.8" fill={shade(skinD, -50)} />
       </svg>
       {/* 따라다니는 반려동물 */}
       {pet && (
@@ -17256,6 +17362,11 @@ function StyleBlock() {
       @keyframes dockGlow { 0%,100%{ box-shadow: 0 3px 0 #2a1e14, 0 0 0 0 rgba(255,203,43,0);} 50%{ box-shadow: 0 3px 0 #2a1e14, 0 0 15px 5px rgba(255,203,43,0.9);} }
       .dock-glow { animation: dockGlow 1.5s ease-in-out infinite; }
       .hero-bob { animation: bob .45s steps(2) infinite; }
+      /* 🧍 걸을 때 다리 — 큰 머리에 맞춰 좌우 다리가 번갈아 조금씩 올라가요 */
+      @keyframes heroStepA { 0%,49%{ transform: translateY(0);} 50%,100%{ transform: translateY(-1.1px);} }
+      @keyframes heroStepB { 0%,49%{ transform: translateY(-1.1px);} 50%,100%{ transform: translateY(0);} }
+      .hero-legA { animation: heroStepA .45s steps(1) infinite; }
+      .hero-legB { animation: heroStepB .45s steps(1) infinite; }
       @keyframes spin { 0%{transform:rotate(0);} 100%{transform:rotate(360deg);} }
       .gem-spin { display:inline-block; animation: spin 6s linear infinite; }
       @keyframes promptPulse { 0%,100%{ transform: translateX(-50%) translateY(0);} 50%{ transform: translateX(-50%) translateY(-3px);} }
@@ -17359,7 +17470,7 @@ function StyleBlock() {
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .gem-pop,.hero-bob,.gem-spin,.enter-prompt,.chat-bubble,.px-btn,.map-obj,.qs-aura,.qs-ring,.qs-float,.qs-spark circle,.rain-drop,.echo-flag,.red-flag,.palm-sway,.beacon,.chat-line,.pet-trot,.aq-swim,.aq-flip,.aq-bob,.aq-pulse,.aq-bubble,.aq-weed,.aq-caustic,.yd-walk,.yd-cloud,.yd-heart,.yd-pop,.sea-wave,.sea-wave2,.sea-float { animation:none !important; transition:none !important; }
+        .gem-pop,.hero-bob,.hero-legA,.hero-legB,.gem-spin,.enter-prompt,.chat-bubble,.px-btn,.map-obj,.qs-aura,.qs-ring,.qs-float,.qs-spark circle,.rain-drop,.echo-flag,.red-flag,.palm-sway,.beacon,.chat-line,.pet-trot,.aq-swim,.aq-flip,.aq-bob,.aq-pulse,.aq-bubble,.aq-weed,.aq-caustic,.yd-walk,.yd-cloud,.yd-heart,.yd-pop,.sea-wave,.sea-wave2,.sea-float { animation:none !important; transition:none !important; }
       }
     `}</style>
   );
