@@ -1002,6 +1002,13 @@ const BRIDGE_Y1 = 690, BRIDGE_Y2 = 800;   // 이 구간(다리 · 공항 활주�
    ROADS 는 수평 또는 수직 직선 구간이고, 위 buildWorld() 의 건물 좌표를 잇도록 깔았습니다.
    건물이 몰린 구역(우측 중앙 · 남쪽 · 북동쪽 · 강 건너)은 순환도로로 묶어서
    한 건물에서 옆 건물로 되돌아 나오지 않고 바로 갈 수 있어요. */
+/* 🚶 걷기 : 속도와 걸음 리듬 — 여기 숫자만 바꾸면 됩니다
+   WALK_PPS 초당 이동 픽셀 · STEP_HZ 초당 걸음 수 · BOUNCE_PX 위아래 흔들림 폭 */
+const WALK_PPS = 147;                // 예전 210 의 70% — 여유롭게 걷는 속도
+const STEP_HZ = 2.4;                 // 걸음 주기(초당 2.4걸음 ≈ 417ms 간격)
+const BOUNCE_PX = 2;                 // 걸을 때 위아래 흔들림(과하지 않게)
+const STEP_MIN_MS = 300;             // 발소리 최소 간격
+
 const ROAD_W = 56;                   // 도로 폭
 const ROAD_H = ROAD_W / 2;           // 중심선 → 가장자리
 const DOOR_W = 70, DOOR_H = 60;      // 건물 앞 진입 영역(건물 중심 기준 ±)
@@ -3209,7 +3216,12 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
         });
         ch.on("broadcast", { event: "pos" }, ({ payload }) => {
           if (!payload || payload.id === MY_ID) return;
-          setOthers((o) => ({ ...o, [payload.id]: { ...(o[payload.id] || {}), ...payload, ts: Date.now() } }));
+          setOthers((o) => {
+            const prev = o[payload.id] || {};
+            // 좌표가 바뀌었으면 걷는 중 — 걸음 바운스를 보여주려고 표시해 둡니다
+            const mv = prev.x != null && (prev.x !== payload.x || prev.y !== payload.y);
+            return { ...o, [payload.id]: { ...prev, ...payload, mv, ts: Date.now() } };
+          });
         });
         ch.on("broadcast", { event: "chat" }, ({ payload }) => {
           if (!payload) return;
@@ -3400,7 +3412,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
   return { others, count, status, sendChat, sendEvent, reconnect };
 }
 
-function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = null, carry = null, pet = null, shuffle = false, onShuffle, onNextTrack, onPrevTrack, onReconnect, onDismount, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null, onGift = null, myNick = "", scales = {}, positions = {}, onMovePos = null }) {
+function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = null, carry = null, pet = null, shuffle = false, onShuffle, onNextTrack, onPrevTrack, onReconnect, onDismount, rentedHouses, onEnter, onNextDay, bgm, onToggleBgm, onRequestSong, bubble, townRain = false, cmRain = false, tracks = [], onSelectTrack, outfit = null, vehicle = null, houseSkin = null, isMyHouse = () => false, others = {}, netCount = 1, netStatus = "", facingRef = null, bgmVol = 0.6, onBgmVol = null, danceRef = null, onGift = null, myNick = "", scales = {}, positions = {}, onMovePos = null, stepSfx = true }) {
   const [songOpen, setSongOpen] = useState(false);
   const [teleport, setTeleport] = useState(null);
   const [whoOpen, setWhoOpen] = useState(false);
@@ -3473,18 +3485,13 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
   const [fpv, setFpv] = useState(() => !!loadJSON("echotown_fpv", false));
   const ZOOM = fpv ? 2.2 : 0.88;   // 3인칭은 살짝 물러나서 도로망이 한눈에 보이게
   useEffect(() => { saveJSON("echotown_fpv", fpv); }, [fpv]);
-  /* 🎥 카메라 : 데드존(화면 중앙 30% 사각형) 밖으로 나갈 때만, 그것도 보간해서 천천히 따라와요.
-     캐릭터가 한 걸음 뗄 때마다 화면 전체가 같이 흔들리면 어지러워서요. */
-  const DEADZONE = 0.3, CAM_EASE = 0.12;
-  const camClamp = (v, max) => Math.max(0, Math.min(Math.max(0, max), v));
-  const [cam, setCam] = useState(() => {
-    const vw = vp.w / ZOOM, vh = vp.h / ZOOM;
-    return { x: camClamp(pos.x - vw / 2, WORLD.w - vw), y: camClamp(pos.y - vh / 2, WORLD.h - vh) };
-  });
-  const camRef = useRef(null);
-  if (camRef.current === null) camRef.current = { x: cam.x, y: cam.y };
-  const zoomRef = useRef(ZOOM); zoomRef.current = ZOOM;
-  const vpSizeRef = useRef(vp); vpSizeRef.current = vp;
+  /* 👣 걸음 리듬 : 이동 중일 때만 살짝 위아래로 흔들리고, 그 주기에 맞춰 발소리가 납니다 */
+  const [bob, setBob] = useState(0);
+  const bobRef = useRef(0);
+  const stepPhaseRef = useRef(0);
+  const stepIdxRef = useRef(0);
+  const lastStepAtRef = useRef(0);
+  const stepSfxRef = useRef(stepSfx); stepSfxRef.current = stepSfx;
   const keys = useRef({});
   const posRef = useRef(pos);
   const nearRef = useRef(null);
@@ -3541,7 +3548,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
       const t = now || performance.now();
       const dt = Math.min(0.1, Math.max(0, (t - last) / 1000));
       last = t;
-      const SPEED = 210 * dt * vehicleSpeed(vehicleRef.current);
+      const SPEED = WALK_PPS * dt * vehicleSpeed(vehicleRef.current);
       const k = keys.current;
       let { x, y } = posRef.current;
       let dx = 0, dy = 0;
@@ -3587,25 +3594,21 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
           posRef.current = { x, y }; setPos({ x, y });
         }
       }
-      setMoving(Boolean(dx || dy));
-      /* 🎥 카메라 추적 : 데드존을 벗어난 만큼만 목표를 잡고, 그 목표로 부드럽게 다가갑니다 */
-      {
-        const z = zoomRef.current || 1;
-        const vw = vpSizeRef.current.w / z, vh = vpSizeRef.current.h / z;
-        const maxX = WORLD.w - vw, maxY = WORLD.h - vh;
-        const c = camRef.current;
-        const dzW = vw * DEADZONE, dzH = vh * DEADZONE;
-        const relX = x - c.x, relY = y - c.y;
-        let tx = c.x, ty = c.y;
-        if (relX < (vw - dzW) / 2) tx = x - (vw - dzW) / 2;
-        else if (relX > (vw + dzW) / 2) tx = x - (vw + dzW) / 2;
-        if (relY < (vh - dzH) / 2) ty = y - (vh - dzH) / 2;
-        else if (relY > (vh + dzH) / 2) ty = y - (vh + dzH) / 2;
-        tx = camClamp(tx, maxX); ty = camClamp(ty, maxY);
-        // 0.5px 미만은 스냅해서 미세 떨림을 없앱니다
-        const cx = Math.abs(tx - c.x) < 0.5 ? tx : c.x + (tx - c.x) * CAM_EASE;
-        const cy = Math.abs(ty - c.y) < 0.5 ? ty : c.y + (ty - c.y) * CAM_EASE;
-        if (cx !== c.x || cy !== c.y) { c.x = cx; c.y = cy; setCam({ x: cx, y: cy }); }
+      const walking = Boolean(dx || dy);
+      setMoving(walking);
+      /* 👣 걸음 리듬 : 위상이 π 를 지날 때마다 한 걸음 — 그때 발소리를 내고, 사인파로 살짝 튀어오릅니다 */
+      if (walking) {
+        stepPhaseRef.current += dt * STEP_HZ * Math.PI;
+        const idx = Math.floor(stepPhaseRef.current / Math.PI);
+        if (idx !== stepIdxRef.current) {
+          stepIdxRef.current = idx;
+          if (stepSfxRef.current && t - lastStepAtRef.current >= STEP_MIN_MS) { lastStepAtRef.current = t; playStep(); }
+        }
+        const b = -Math.abs(Math.sin(stepPhaseRef.current)) * BOUNCE_PX;
+        if (Math.abs(b - bobRef.current) > 0.05) { bobRef.current = b; setBob(b); }
+      } else if (bobRef.current !== 0 || stepPhaseRef.current !== 0) {
+        // 멈추면 즉시 원위치 (다음 걸음은 처음부터 다시)
+        stepPhaseRef.current = 0; stepIdxRef.current = 0; bobRef.current = 0; setBob(0);
       }
       let found = null, best = Infinity;
       for (const o of WORLD_OBJS) {
@@ -3626,9 +3629,10 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
     return () => cancelAnimationFrame(raf);
   }, [setPos]);
 
-  // 카메라 오프셋 — 값은 위 rAF 루프가 데드존·보간으로 갱신하고, 여기선 그리기만 합니다.
-  // 소수점이 남으면 픽셀이 어긋나 보이므로 렌더 직전에 정수로 맞춥니다.
-  const camX = Math.round(cam.x), camY = Math.round(cam.y);
+  // 카메라 오프셋(플레이어 중심, 경계 클램프)
+  const viewW = vp.w / ZOOM, viewH = vp.h / ZOOM;   // 화면에 실제로 보이는 월드 영역
+  const camX = Math.max(0, Math.min(Math.max(0, WORLD.w - viewW), pos.x - viewW / 2));
+  const camY = Math.max(0, Math.min(Math.max(0, WORLD.h - viewH), pos.y - viewH / 2));
   /* 🔤 글자 역배율 : 월드 레이어의 scale(ZOOM)을 상쇄해 줌과 상관없이 글자 크기를 일정하게 유지합니다.
      픽셀 폰트는 imageRendering:"pixelated" 를 물려받으면 오히려 흐려져서 auto 로 되돌립니다. */
   const TXT = 1 / ZOOM;
@@ -3723,12 +3727,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
                      ${C.grass}`,
         backgroundSize: "76px 76px, 76px 76px, 76px 76px, auto" }}>
         {/* 월드(카메라 이동) */}
-        {/* 카메라는 left/top 으로 매 프레임 옮기고, transition 은 transform(줌)에만 걸어둡니다.
-            → 시점 전환은 부드럽게 보이면서, 카메라 이동에는 CSS 전환이 끼어들지 않아요. */}
-        <div ref={worldRef} style={{ position: "absolute", width: WORLD.w, height: WORLD.h,
-          left: Math.round(-camX * ZOOM), top: Math.round(-camY * ZOOM),
-          transform: `scale(${ZOOM})`, transformOrigin: "0 0", imageRendering: "pixelated",
-          transition: "transform 180ms ease-out", willChange: "left, top" }}>
+        <div ref={worldRef} style={{ position: "absolute", width: WORLD.w, height: WORLD.h, left: -camX * ZOOM, top: -camY * ZOOM, transform: `scale(${ZOOM})`, transformOrigin: "0 0", imageRendering: "pixelated", transition: "transform 180ms ease-out" }}>
           {/* 🛣 흙길 : 테두리를 먼저 전부 깔고 그 위에 바닥을 덮습니다.
               이렇게 해야 도로가 교차하는 지점에서 테두리가 가로지르지 않고 자연스럽게 이어져요. */}
           {ROAD_BOXES.map((b, i) => (
@@ -3806,7 +3805,10 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
               )}
               <div style={{ position: "absolute", bottom: "100%", left: "50%", transform: `translateX(-50%) scale(${TXT})`, ...txtFix, marginBottom: 3, whiteSpace: "nowrap", background: "#5b8def", color: "#fff", border: `2px solid ${C.ink}`, fontSize: 10, padding: "1px 6px", textShadow: OUTLINE }}>{o.name}</div>
               <div className={o.dm ? "dance-" + o.dm : ""} style={{ position: "relative", transformOrigin: "bottom center" }}>
-                <Hero facing={o.f || 1} moving={false} size={34} look={o.lk} pet={o.pt} carry={o.cy ? { emoji: o.cy } : null} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
+                {/* 👣 걷는 중이면 바운스 — 사람마다 시작 시점을 조금씩 어긋나게 해서 발이 맞지 않게 합니다 */}
+                <div className={o.mv && !o.dm ? "walk-bob" : ""} style={o.mv && !o.dm ? { animationDelay: `${-((String(o.id).charCodeAt(0) || 0) % 5) * 0.08}s` } : undefined}>
+                  <Hero facing={o.f || 1} moving={o.mv || false} size={34} look={o.lk} pet={o.pt} carry={o.cy ? { emoji: o.cy } : null} outfit={o.oc ? { top: o.oc[0] ? { color: o.oc[0] } : null, bottom: o.oc[1] ? { color: o.oc[1] } : null, shoes: o.oc[2] ? { color: o.oc[2] } : null } : null} />
+                </div>
                 {o.vh && <div title={o.vn || "탈것"} style={{ position: "absolute", left: "50%", bottom: -6, transform: "translateX(-50%)", fontSize: 19 }}>{o.vh}</div>}
               </div>
             </div>
@@ -3825,7 +3827,10 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
               </div>
             )}
             <div className={danceMove ? "dance-" + danceMove : ""} style={{ transformOrigin: "bottom center" }}>
-              <Hero facing={facing} moving={moving} size={36} outfit={outfit} look={look} carry={carry} pet={pet} />
+              {/* 👣 바운스는 스프라이트에만 — 위 이름표·말풍선은 같이 흔들리지 않아요 */}
+              <div style={{ transform: bob ? `translateY(${bob}px)` : "none" }}>
+                <Hero facing={facing} moving={moving} size={36} outfit={outfit} look={look} carry={carry} pet={pet} />
+              </div>
               {vehicle && <div style={{ position: "absolute", left: "50%", bottom: -6, transform: "translateX(-50%)", fontSize: 20 }}>{vehicle.emoji}</div>}
             </div>
           </div>
@@ -4540,6 +4545,38 @@ function playBell() {
       g.gain.exponentialRampToValueAtTime(0.001, t + off + 0.9);
       o.connect(g).connect(ctx.destination); o.start(t + off); o.stop(t + off + 1);
     });
+  } catch (e) {}
+}
+/* 👣 발걸음 — 흙길 밟는 둔탁하고 아주 짧은 소리.
+   노이즈(흙 질감) + 낮은 사인파(툭 하는 무게)를 겹치고, 매번 음높이를 조금씩 흔들어
+   같은 소리가 반복되는 기계적인 느낌을 없앴어요. 볼륨은 다른 알림음보다 훨씬 작습니다. */
+function playStep() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    const ctx = playStep._c || (playStep._c = new AC());
+    if (ctx.state === "suspended") ctx.resume();   // 사용자가 아직 아무것도 안 눌렀으면 깨웁니다
+    const t = ctx.currentTime;
+    const dur = 0.055 + Math.random() * 0.025;     // 0.055~0.08초
+    const buf = playStep._b || (playStep._b = (() => {
+      const b = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.1), ctx.sampleRate);
+      const d = b.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+      return b;
+    })());
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    src.playbackRate.value = 0.85 + Math.random() * 0.3;
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass";
+    lp.frequency.setValueAtTime(420 + Math.random() * 140, t);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.05, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(lp).connect(g).connect(ctx.destination);
+    src.start(t); src.stop(t + dur + 0.02);
+    const o = ctx.createOscillator(), og = ctx.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(92 + Math.random() * 26, t);
+    og.gain.setValueAtTime(0.04, t);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(og).connect(ctx.destination); o.start(t); o.stop(t + dur + 0.02);
   } catch (e) {}
 }
 /* 💌 DM 도착음 — 짧게 "띠링" (통화벨보다 가볍고 짧아요) */
@@ -15253,6 +15290,9 @@ function EchoTown() {
     setFontId(applyGameFont(id));
     try { window.localStorage.setItem("echotown_font_" + (myName || "guest"), id); } catch (e) {}
   };
+  /* 👣 발걸음 소리 켜기/끄기 — 기본은 켜짐, 고른 값은 다음 접속에도 유지돼요 */
+  const [stepSfx, setStepSfx] = useState(() => loadJSON("echotown_stepsfx", true) !== false);
+  useEffect(() => { saveJSON("echotown_stepsfx", stepSfx); }, [stepSfx]);
 
   const expInfo = useMemo(() => {
     let lv = 1, rem = Math.max(0, Math.round(exp)), need = 100;
@@ -15854,7 +15894,7 @@ function EchoTown() {
       </div>
 
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gold} sprites={allSprites} cutCfg={cutCfg} scales={spriteScale} look={myLook} carry={carrying} pet={petEmoji} shuffle={shuffle} onShuffle={toggleShuffle} onNextTrack={() => stepTrack(1)} onPrevTrack={() => stepTrack(-1)} onReconnect={netReconnect} onDismount={() => { setVehicle(null); showNotice("🚶 탈것에서 내렸어요"); }} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} myNick={myName} onGift={(n) => setGiftTarget(n)} positions={spritePos} onMovePos={publishPos} />}
+        {view === "world" && <WorldView pos={worldPos} setPos={setWorldPos} day={day} gems={gold} sprites={allSprites} cutCfg={cutCfg} scales={spriteScale} look={myLook} carry={carrying} pet={petEmoji} shuffle={shuffle} onShuffle={toggleShuffle} onNextTrack={() => stepTrack(1)} onPrevTrack={() => stepTrack(-1)} onReconnect={netReconnect} onDismount={() => { setVehicle(null); showNotice("🚶 탈것에서 내렸어요"); }} rentedHouses={rented} onEnter={handleEnter} onNextDay={nextDay} bgm={worldBgm} onToggleBgm={() => setWorldBgm((b) => ({ ...b, playing: !b.playing }))} onRequestSong={requestWorldSong} tracks={WORLD_TRACKS} onSelectTrack={selectTrack} outfit={outfit} vehicle={vehicle} houseSkin={houseSkin} isMyHouse={isMyHouse} bubble={bubble} townRain={townRain} cmRain={cmRain} others={netOthers} netCount={netCount} netStatus={netStatus} facingRef={netFacingRef} bgmVol={bgmVol} onBgmVol={setBgmVol} danceRef={netDanceRef} myNick={myName} onGift={(n) => setGiftTarget(n)} positions={spritePos} onMovePos={publishPos} stepSfx={stepSfx} />}
         {view === "center" && <CenterView meetings={myMeetings} meetingRooms={meetingRooms} chat={centerChat} onSend={(t) => { setCenterChat((c) => [...c, { who: myName || "나", text: t, me: true }].slice(-80)); if (netSendEvent) netSendEvent("cchat", { who: myName || "나", text: t }); }} onEnterMeeting={(id) => { setMeetingId(id); setView("meeting"); }} onBack={backToWorld} bubble={bubble} onDrink={() => { setHp((h) => Math.min(100, h + 20)); setMp((m) => Math.min(100, m + 20)); }} />}
         {view === "meeting" && meetingId && <MeetingView roomId={meetingId} room={meetingRooms[meetingId]} myName={myName} people={people}
           chat={meetingChat[meetingId] || []}
@@ -16379,6 +16419,19 @@ function EchoTown() {
               })}
             </div>
             <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 12, lineHeight: 1.6 }}>고른 폰트만 그때 불러와요 (지연 로딩) · 계정마다 저장돼요<br />구글폰트 · 인터넷 연결이 필요해요</div>
+            <div style={{ height: 1, background: C.parchEdge, margin: "16px 0 14px" }} />
+            <div style={{ fontSize: 12.5, fontWeight: "bold", marginBottom: 8 }}>🔊 소리</div>
+            <button type="button" onClick={() => { setStepSfx((v) => !v); if (!stepSfx) playStep(); }}
+              style={{ cursor: "pointer", width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 10,
+                background: stepSfx ? "#fff8e8" : C.white, border: `2px solid ${stepSfx ? "#e0a13d" : C.ink}`, borderRadius: 10, padding: "10px 12px",
+                fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
+              <span style={{ fontSize: 18 }}>👣</span>
+              <span style={{ flex: 1 }}>
+                <b style={{ fontSize: 13, display: "block" }}>발걸음 소리</b>
+                <span style={{ fontSize: 10.5, color: C.inkSoft }}>걸을 때 흙길 밟는 작은 소리가 나요</span>
+              </span>
+              <span style={{ fontSize: 12, fontWeight: "bold", color: stepSfx ? "#e0a13d" : C.inkSoft }}>{stepSfx ? "✓ 켜짐" : "꺼짐"}</span>
+            </button>
           </div>
         </div>
       )}
@@ -17011,6 +17064,9 @@ function StyleBlock() {
       @keyframes gemFloat { 0%{ transform: translateY(0); opacity:0;} 20%{opacity:1;} 100%{ transform: translateY(-40px); opacity:0;} }
       .gem-pop { animation: gemFloat 1.6s ease-out forwards; }
       @keyframes bob { 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-3px);} }
+      /* 👣 다른 접속자가 걸을 때의 위아래 리듬 (내 캐릭터는 발소리와 맞추려고 JS로 계산해요) */
+      @keyframes walkBob { 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-2px);} }
+      .walk-bob { animation: walkBob 0.417s ease-in-out infinite; }
       @keyframes dockShake { 0%,72%,100%{ transform: translateX(0) rotate(0);} 76%{ transform: translateX(-3px) rotate(-8deg);} 80%{ transform: translateX(3px) rotate(8deg);} 84%{ transform: translateX(-3px) rotate(-6deg);} 88%{ transform: translateX(2px) rotate(5deg);} 92%{ transform: translateX(-1px) rotate(-2deg);} }
       .dock-alert { animation: dockShake 2.2s ease-in-out infinite; display: inline-block; }
       @keyframes dockGlow { 0%,100%{ box-shadow: 0 3px 0 #2a1e14, 0 0 0 0 rgba(255,203,43,0);} 50%{ box-shadow: 0 3px 0 #2a1e14, 0 0 15px 5px rgba(255,203,43,0.9);} }
