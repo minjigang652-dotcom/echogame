@@ -11052,6 +11052,8 @@ function dayStartMs(now = Date.now()) {
   if (d.getTime() < b.getTime()) b.setDate(b.getDate() - 1);   // 새벽 0~4시는 어제로 취급
   return b.getTime();
 }
+const STATUS_ASK_KEY = "echotown_statusask";       // 오늘 상태메시지 팝업을 이미 봤는지 (날짜 키 저장)
+const STATUS_TIPS = ["원고 쓰는 중 🔥", "편집 중 ✂️", "소스 찾는 중 🔍", "오늘도 화이팅 💪"];
 function missionDayKey() {
   const d = new Date(dayStartMs());
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -16023,7 +16025,8 @@ function EchoTown() {
 
   const AVATARS = ["🧑", "👩", "🧑‍💻", "👨‍💼", "👩‍🎨", "🧑‍🍳", "👩‍🔬", "🧑‍🎤", "👨‍🌾", "👩‍🏫"];
   /* 💬 상태메시지 : 처음 들어오면 서버에서 불러오고, 저장하면 접속자 모두에게 즉시 반영 */
-  useEffect(() => { dbLoadStatusMsgs().then((m) => setStatusMap(m && typeof m === "object" ? m : {})); }, []);
+  const [statusLoaded, setStatusLoaded] = useState(false);   // 서버에서 다 불러오기 전에는 팝업 판단을 미뤄요
+  useEffect(() => { dbLoadStatusMsgs().then((m) => { setStatusMap(m && typeof m === "object" ? m : {}); setStatusLoaded(true); }); }, []);
   const saveStatusMsg = (msg) => {
     const nm = normName(myName || "");
     if (!nm) return;
@@ -16031,6 +16034,36 @@ function EchoTown() {
     setStatusMap((m) => ({ ...m, [nm]: { msg, at } }));
     dbSaveStatusMsg(nm, msg);
     if (netSendEvent) netSendEvent("stat", { name: nm, msg, at });
+  };
+  /* 💬 오늘의 상태메시지 팝업 — 오늘(오전 4시 기준) 아직 안 쓴 사람에게 접속 시 한 번만 */
+  const [statusAsk, setStatusAsk] = useState(false);
+  const [statusDraft, setStatusDraft] = useState("");
+  const myStatusToday = (() => {
+    const v = statusMap[normName(myName || "")];
+    const o = typeof v === "string" ? { msg: v, at: 0 } : v;
+    return o && o.msg && o.at && o.at >= dayStartMs() ? o : null;
+  })();
+  useEffect(() => {
+    if (statusAsk) return;
+    if (!statusLoaded) return;                       // ① 서버 로딩이 끝난 뒤에 판단 (이미 쓴 사람에게 뜨지 않도록)
+    if (nameOpen || !normName(myName || "")) return; // ② 이름이 정해지고 마을에 들어온 뒤
+    if (view !== "world") return;
+    // ③ 다른 팝업이 열려 있으면 그게 닫힌 뒤에
+    if (menuOpen || profileOpen || bagOpen || guideOpen || msgOpen || hubOpen || hqOpen || friendOpen
+      || shopOpen || dexOpen || boxDexOpen || couponOpen || regionOpen || qcDeclineOpen) return;
+    if (loadJSON(STATUS_ASK_KEY, "") === missionDayKey()) return;   // ④ 오늘 이미 봤음
+    if (myStatusToday) return;                                      // ⑤ 오늘 이미 씀
+    setStatusDraft("");
+    setStatusAsk(true);
+    saveJSON(STATUS_ASK_KEY, missionDayKey());   // 열린 순간 기록 — 건너뛰어도 오늘은 다시 안 떠요
+  }, [statusAsk, statusLoaded, nameOpen, myName, view, myStatusToday,
+      menuOpen, profileOpen, bagOpen, guideOpen, msgOpen, hubOpen, hqOpen, friendOpen,
+      shopOpen, dexOpen, boxDexOpen, couponOpen, regionOpen, qcDeclineOpen]);
+  const submitStatusAsk = () => {
+    const v = statusDraft.trim();
+    if (!v) return;
+    saveStatusMsg(v.slice(0, 40));   // 기존 저장 로직 재사용 (서버 저장 + 실시간 전파)
+    setStatusAsk(false);
   };
   const people = useMemo(() => {
     const online = Object.values(netOthers).map((o) => o.name).filter(Boolean);
@@ -16411,6 +16444,39 @@ function EchoTown() {
           )}
         </div>
       </div>
+
+      {/* 💬 오늘의 상태메시지 팝업 — 바깥을 눌러도 닫히지 않고 버튼으로만 닫혀요 */}
+      {statusAsk && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 118, padding: 14 }}>
+          <div style={{ width: "100%", maxWidth: 330 }}>
+            <Panel style={{ padding: 18, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
+              <div style={{ textAlign: "center", fontSize: 30 }}>💬</div>
+              <div style={{ textAlign: "center", fontSize: 14, fontWeight: "bold", margin: "8px 0 4px" }}>오늘의 상태메시지를 설정해주세요!</div>
+              <div style={{ textAlign: "center", fontSize: 10, color: C.inkSoft, lineHeight: 1.6, marginBottom: 12 }}>
+                다른 주민들이 친구 목록에서 볼 수 있어요<br />매일 오전 4시에 초기화돼요
+              </div>
+              <input value={statusDraft} maxLength={40} autoFocus
+                onChange={(e) => setStatusDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") submitStatusAsk(); }}
+                placeholder="예: 원고 쓰는 중 🔥"
+                style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, borderRadius: 6,
+                  fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
+              <div style={{ display: "flex", justifyContent: "flex-end", fontSize: 9, color: C.inkSoft, marginTop: 3 }}>{statusDraft.length}/40</div>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap", margin: "6px 0 14px" }}>
+                {STATUS_TIPS.map((t) => (
+                  <button key={t} type="button" onClick={() => setStatusDraft(t)}
+                    style={{ cursor: "pointer", background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 12,
+                      padding: "4px 9px", fontSize: 10.5, fontFamily: "var(--game-font, 'DotGothic16', monospace)", color: C.ink }}>{t}</button>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 7 }}>
+                <PxButton tone="ink" onClick={() => setStatusAsk(false)} style={{ flex: 1, padding: 11, fontSize: 12.5 }}>나중에</PxButton>
+                <PxButton tone="good" disabled={!statusDraft.trim()} onClick={submitStatusAsk} style={{ flex: 1.4, padding: 11, fontSize: 12.5 }}>💾 저장</PxButton>
+              </div>
+            </Panel>
+          </div>
+        </div>
+      )}
 
       {/* 항상 떠있는 UI: 채팅 / 메뉴 / 피드백 */}
       {nameOpen && (
