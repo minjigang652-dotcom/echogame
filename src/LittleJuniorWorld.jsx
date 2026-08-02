@@ -995,6 +995,93 @@ const SEA = { w: 1600, h: 1100 };
 const SEA_SAND_Y = 150, SEA_WATER_Y = 392;              // 풀숲 → 모래사장 → 바다
 const SEA_PIER_X = 740, SEA_PIER_W = 96, SEA_PIER_END = 900;
 const BRIDGE_Y1 = 690, BRIDGE_Y2 = 800;   // 이 구간(다리 · 공항 활주로)에서만 강을 건널 수 있음
+
+/* ═══════════ 🛣 도로망 ═══════════
+   마을은 「도로 위 · 광장 안 · 건물 앞」 에서만 걸어다닐 수 있어요.
+   ROADS 는 수평 또는 수직 직선 구간이고, 위 buildWorld() 의 건물 좌표를 잇도록 깔았습니다.
+   건물이 몰린 구역(우측 중앙 · 남쪽 · 북동쪽 · 강 건너)은 순환도로로 묶어서
+   한 건물에서 옆 건물로 되돌아 나오지 않고 바로 갈 수 있어요. */
+const ROAD_W = 56;                   // 도로 폭
+const ROAD_H = ROAD_W / 2;           // 중심선 → 가장자리
+const DOOR_W = 70, DOOR_H = 60;      // 건물 앞 진입 영역(건물 중심 기준 ±)
+/* 🏟 주민센터 앞 광장 : 이 안에서는 도로 상관없이 자유롭게 다녀요 */
+const PLAZA = { x: 1165, y: 620, w: 290, h: 280 };
+const ROADS = [
+  // ── 간선도로 ──
+  { x1: 1300, y1: 60, x2: 1300, y2: 1470 },      // 세로 간선(던전 ~ 바다 가는 길)
+  { x1: 260, y1: 720, x2: 2620, y2: 720 },       // 가로 간선(복권방 ~ 다리 ~ 치앙마이)
+  // ── 서쪽 : 복권방 · 집 클러스터 · 샌드백 · 동상 · 은행 ──
+  { x1: 300, y1: 470, x2: 300, y2: 720 },
+  { x1: 600, y1: 500, x2: 600, y2: 1430 },       // 집 두 줄 사이 세로길
+  { x1: 440, y1: 555, x2: 800, y2: 555 },        // 정인이네 · 창민이네
+  { x1: 440, y1: 778, x2: 760, y2: 778 },        // 도희네 · 유리네
+  { x1: 440, y1: 1000, x2: 760, y2: 1000 },      // 민지네 · 희정이네
+  { x1: 440, y1: 1210, x2: 760, y2: 1210 },      // 의준이네 · 호종이네
+  { x1: 440, y1: 1420, x2: 760, y2: 1420 },      // 슬이네 · 상하네
+  { x1: 800, y1: 360, x2: 800, y2: 720 },        // 샌드백
+  { x1: 900, y1: 720, x2: 900, y2: 910 },        // 황혼의 파수꾼
+  { x1: 1000, y1: 630, x2: 1000, y2: 720 },      // 중앙은행
+  // ── 남서 : 초심자의 행운 · 네버 · 수영장 ──
+  { x1: 1120, y1: 720, x2: 1120, y2: 1250 },
+  { x1: 920, y1: 1250, x2: 1300, y2: 1250 },
+  // ── 북 : 숲속 비밀 던전 ──
+  { x1: 1130, y1: 120, x2: 1300, y2: 120 },
+  // ── 남 : 이케아 · 봉준호 · 헬스장 · 무신사 · 쩝쩝박사 · 형욱이네 (순환) ──
+  { x1: 1300, y1: 1000, x2: 1650, y2: 1000 },
+  { x1: 1440, y1: 1000, x2: 1440, y2: 1270 },
+  { x1: 1440, y1: 1260, x2: 1830, y2: 1260 },
+  { x1: 1650, y1: 1000, x2: 1650, y2: 1260 },
+  { x1: 1820, y1: 1210, x2: 1820, y2: 1400 },
+  // ── 우측 중앙 : 감사 · 커뮤니티 · 리스닝 · 미니게임 / 마음 · 릴스 · 흡연 / 권한관리소 (순환) ──
+  { x1: 1770, y1: 280, x2: 1770, y2: 970 },
+  { x1: 1985, y1: 600, x2: 1985, y2: 1170 },
+  { x1: 1770, y1: 845, x2: 1985, y2: 845 },
+  { x1: 1770, y1: 600, x2: 1985, y2: 600 },
+  // ── 북동 : 네이버스쿨 · 영상스쿨 (순환) ──
+  { x1: 1770, y1: 300, x2: 2030, y2: 300 },
+  { x1: 2030, y1: 300, x2: 2030, y2: 660 },
+  { x1: 1985, y1: 660, x2: 2030, y2: 660 },
+  // ── 강 건너 : 치앙마이공항 · 표지판 · 렌트하우스 (순환) ──
+  { x1: 2325, y1: 620, x2: 2325, y2: 1040 },
+  { x1: 2325, y1: 880, x2: 2530, y2: 880 },
+  { x1: 2325, y1: 1020, x2: 2530, y2: 1020 },
+  { x1: 2530, y1: 880, x2: 2530, y2: 1020 },
+];
+/* 매 프레임 판정하므로 사각형은 미리 계산해 둡니다 */
+const ROAD_BOXES = ROADS.map((r) => ({
+  x1: Math.min(r.x1, r.x2) - ROAD_H, x2: Math.max(r.x1, r.x2) + ROAD_H,
+  y1: Math.min(r.y1, r.y2) - ROAD_H, y2: Math.max(r.y1, r.y2) + ROAD_H,
+  horiz: r.y1 === r.y2,
+}));
+const PLAZA_BOX = { x1: PLAZA.x, y1: PLAZA.y, x2: PLAZA.x + PLAZA.w, y2: PLAZA.y + PLAZA.h };
+const inBox = (b, x, y) => x >= b.x1 && x <= b.x2 && y >= b.y1 && y <= b.y2;
+/* 걸을 수 있는 곳인가? (도로 · 광장 · 건물 앞)
+   bpos 는 관리자가 맵 편집으로 옮긴 건물 좌표 — 건물이 움직이면 진입 영역도 따라갑니다. */
+function canWalk(x, y, bpos) {
+  if (inBox(PLAZA_BOX, x, y)) return true;
+  for (let i = 0; i < ROAD_BOXES.length; i++) if (inBox(ROAD_BOXES[i], x, y)) return true;
+  for (let i = 0; i < WORLD_OBJS.length; i++) {
+    const o = WORLD_OBJS[i];
+    const p = bpos && bpos[o.id];
+    const bx = (p && p[0] != null) ? p[0] : o.x;
+    const by = (p && p[1] != null) ? p[1] : o.y;
+    if (Math.abs(x - bx) <= DOOR_W && Math.abs(y - by) <= DOOR_H) return true;
+  }
+  return false;
+}
+/* 길 밖에 갇혔을 때 되돌아갈 가장 가까운 길 위의 한 점 */
+function nearestWalk(x, y) {
+  let bx = PLAZA.x + PLAZA.w / 2, by = PLAZA.y + PLAZA.h / 2, bd = Infinity;
+  const test = (b) => {
+    const cx = Math.max(b.x1, Math.min(b.x2, x));
+    const cy = Math.max(b.y1, Math.min(b.y2, y));
+    const d = Math.hypot(cx - x, cy - y);
+    if (d < bd) { bd = d; bx = cx; by = cy; }
+  };
+  for (let i = 0; i < ROAD_BOXES.length; i++) test(ROAD_BOXES[i]);
+  test(PLAZA_BOX);
+  return { x: bx, y: by };
+}
 /* ===== 건물 이미지 교체 =====
    1) 프로젝트 폴더 방식 : public/sprites/<건물id>.png 로 파일을 넣으면 자동으로 인식돼요.
       (파일이 없으면 조용히 기본 도트 그림을 씁니다)
@@ -3383,7 +3470,7 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
   const [vp, setVp] = useState({ w: 900, h: 480 });
   /* 🎥 시점 : 3인칭(마을 전체가 보임) ↔ 1인칭(캐릭터에 바짝 붙어서 크게) */
   const [fpv, setFpv] = useState(() => !!loadJSON("echotown_fpv", false));
-  const ZOOM = fpv ? 2.2 : 1;
+  const ZOOM = fpv ? 2.2 : 0.88;   // 3인칭은 살짝 물러나서 도로망이 한눈에 보이게
   useEffect(() => { saveJSON("echotown_fpv", fpv); }, [fpv]);
   const keys = useRef({});
   const posRef = useRef(pos);
@@ -3456,20 +3543,36 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
         const gd = Math.hypot(gx, gy);
         if (gd > 70) { dx = gx / gd; dy = gy / gd; }
       }
+      const bpos = bposRef.current;
       if (dx || dy) {
-        const px = posRef.current.x;
+        const px = posRef.current.x, py = posRef.current.y;
         const len = Math.hypot(dx, dy) || 1;
-        x += (dx / len) * SPEED; y += (dy / len) * SPEED;
-        x = Math.max(30, Math.min(WORLD.w - 30, x));
-        y = Math.max(40, Math.min(WORLD.h - 30, y));
+        let nx = px + (dx / len) * SPEED, ny = py + (dy / len) * SPEED;
+        nx = Math.max(30, Math.min(WORLD.w - 30, nx));
+        ny = Math.max(40, Math.min(WORLD.h - 30, ny));
         // 강: 다리(BRIDGE_Y1~Y2)에서 + 통행코드 통과 시에만 건널 수 있음
-        const canCross = (y >= BRIDGE_Y1 && y <= BRIDGE_Y2) && passRef.current;
+        const canCross = (ny >= BRIDGE_Y1 && ny <= BRIDGE_Y2) && passRef.current;
         if (!canCross) {
           const L = RIVER_X - 6, R = RIVER_X + RIVER_W + 6;
-          if (x > L && x < R) x = px <= L ? L : R;
+          if (nx > L && nx < R) nx = px <= L ? L : R;
         }
+        // 🛣 도로 위에서만 이동 : x·y 를 따로 판정해서 길가에 비스듬히 붙어도 미끄러지듯 걸어가요
+        const okX = canWalk(nx, py, bpos), okY = canWalk(px, ny, bpos);
+        x = okX ? nx : px;
+        y = okY ? ny : py;
+        if (!okX && !okY && canWalk(nx, ny, bpos)) { x = nx; y = ny; }   // 대각선으로만 열린 모퉁이
         posRef.current = { x, y }; setPos({ x, y });
         if (dx < 0) setFacing(-1); else if (dx > 0) setFacing(1);
+      }
+      /* 🧭 안전장치 : 순간이동·건물 이동 등으로 길 밖에 서 있으면 가장 가까운 길로 부드럽게 돌아와요 */
+      if (!canWalk(x, y, bpos)) {
+        const t = nearestWalk(x, y);
+        const d = Math.hypot(t.x - x, t.y - y);
+        if (d > 0.5) {
+          const step = Math.min(d, Math.max(40, 500 * dt));
+          x += ((t.x - x) / d) * step; y += ((t.y - y) / d) * step;
+          posRef.current = { x, y }; setPos({ x, y });
+        }
       }
       setMoving(Boolean(dx || dy));
       let found = null, best = Infinity;
@@ -3580,9 +3683,14 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
         background: `repeating-linear-gradient(0deg, ${C.grass} 0 22px, ${C.grassDark} 22px 44px)` }}>
         {/* 월드(카메라 이동) */}
         <div ref={worldRef} style={{ position: "absolute", width: WORLD.w, height: WORLD.h, left: -camX * ZOOM, top: -camY * ZOOM, transform: `scale(${ZOOM})`, transformOrigin: "0 0", imageRendering: "pixelated", transition: "transform 180ms ease-out" }}>
-          {/* 흙길: 중앙 광장 십자 */}
-          <div style={{ position: "absolute", left: 1290, top: 0, width: 44, height: WORLD.h, background: `repeating-linear-gradient(0deg, ${C.path} 0 10px, ${C.pathDark} 10px 20px)` }} />
-          <div style={{ position: "absolute", top: 720, left: 0, width: WORLD.w, height: 44, background: `repeating-linear-gradient(90deg, ${C.path} 0 10px, ${C.pathDark} 10px 20px)` }} />
+          {/* 🛣 흙길: ROADS 배열대로 깔아요 (캐릭터·건물보다 아래 레이어) */}
+          {ROAD_BOXES.map((b, i) => (
+            <div key={`road${i}`} style={{ position: "absolute", left: b.x1, top: b.y1, width: b.x2 - b.x1, height: b.y2 - b.y1,
+              background: `repeating-linear-gradient(${b.horiz ? 90 : 0}deg, ${C.path} 0 10px, ${C.pathDark} 10px 20px)` }} />
+          ))}
+          {/* 🏟 주민센터 앞 광장 : 도로보다 밝은 포장 톤 · 이 안에서는 자유롭게 다녀요 */}
+          <div style={{ position: "absolute", left: PLAZA.x, top: PLAZA.y, width: PLAZA.w, height: PLAZA.h,
+            background: `repeating-linear-gradient(45deg, ${C.parch} 0 14px, ${C.parchLine} 14px 28px)`, border: `4px solid ${C.parchEdge}`, boxSizing: "border-box" }} />
 
           {/* 강 + 다리(다리에서만 건널 수 있음) */}
           <div style={{ position: "absolute", left: RIVER_X, top: 0, width: RIVER_W, height: WORLD.h,
