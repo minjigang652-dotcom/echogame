@@ -11,7 +11,7 @@ function isTyping(e) {
   const tag = (t.tagName || "").toUpperCase();
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable === true;
 }
-å
+
 /* 채팅창 자동 스크롤 — 컨테이너에 ref를 걸면 새 메시지마다 맨 아래로 내려갑니다.
    scrollIntoView 대신 scrollTop을 써서 페이지 전체가 튀지 않아요. */
 function useAutoScroll(dep) {
