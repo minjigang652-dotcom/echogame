@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
-import { C, NetContext, PixelHouse, Hero, Panel, PxButton, TitleBar } from "./LittleJuniorWorld.jsx";
+import { C, NetContext, PixelHouse, Hero, Panel, PxButton, TitleBar, isImeEnter } from "./LittleJuniorWorld.jsx";
 import { dbLoadVSchool, dbSaveVSchool, logWork, startWorkStay } from "./LittleJuniorWorld.jsx";
 import ChatBot from "./ChatBot.jsx";
 import { AISelfCheck, polishFeedback, ReviewQueue, QueueButton } from "./AIAssist.jsx";
@@ -90,7 +90,7 @@ function QuestAssistant({ questTitle }) {
         ))}
       </div>
       <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
-        <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="예: 이 후크의 다른 버전 3개 만들어줘" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 12, background: C.white }} />
+        <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) send(); }} placeholder="예: 이 후크의 다른 버전 3개 만들어줘" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, fontFamily: "'DotGothic16', monospace", fontSize: 12, background: C.white }} />
         <PxButton tone="blue" onClick={send} style={{ fontSize: 12, padding: "7px 10px" }}>➤</PxButton>
       </div>
     </div>

@@ -4,6 +4,14 @@ import { School, SchoolView } from "./VideoSchool.jsx";
 
 export const NetContext = createContext({ others: {}, view: "world", room: null, roomPosRef: null, me: null });
 
+/* 🇰🇷 한글(IME) 조합 중에 눌린 Enter 인가?
+   한글을 치다 Enter 를 누르면 「조합 확정 Enter」와 「진짜 Enter」가 연달아 들어와
+   같은 메시지가 두 번 전송돼요. 조합 중인 Enter 는 이 함수로 걸러냅니다.
+   isComposing / keyCode 229 는 브라우저마다 한쪽만 주는 경우가 있어 둘 다 봅니다.
+   영문 입력의 평범한 Enter 는 keyCode 13 · isComposing false 라 그대로 통과해요. */
+export function isImeEnter(e) {
+  return !!(e && ((e.nativeEvent && e.nativeEvent.isComposing) || e.keyCode === 229));
+}
 /* 입력창(input/textarea/select)에 타이핑 중이면 게임 키 조작을 무시 */
 function isTyping(e) {
   const t = e && e.target;
@@ -2609,7 +2617,7 @@ function GuardGate({ onPass, onClose, onCross, passed = false, side = "town" }) 
               <div style={{ fontSize: 11.5, color: C.inkSoft, textAlign: "center", marginBottom: 10, lineHeight: 1.7 }}>
                 한 번만 맞히면 그 뒤로는 계속 왔다갔다 할 수 있어요.
               </div>
-              <input value={code} onChange={(e) => { setCode(e.target.value); setErr(false); }} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} autoFocus
+              <input value={code} onChange={(e) => { setCode(e.target.value); setErr(false); }} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) submit(); }} autoFocus
                 placeholder="비밀코드" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 15, background: C.white, textAlign: "center" }} />
               {err && <div style={{ color: C.danger, fontSize: 12, marginTop: 6, textAlign: "center" }}>비밀코드가 달라요. 다시 시도해보세요!</div>}
               <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -4285,7 +4293,7 @@ function ManagerChat({ name, onClose }) {
             ))}
           </div>
           <div style={{ display: "flex", gap: 6, padding: 8, borderTop: `3px solid ${C.ink}` }}>
-            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지 입력 후 Enter" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
+            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) send(); }} placeholder="메시지 입력 후 Enter" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
             <PxButton tone="good" onClick={send} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
           </div>
         </Panel>
@@ -4498,7 +4506,7 @@ function CenterView({ meetingRooms, chat, onSend, onEnterMeeting, onBack, bubble
             ))}
           </div>
           <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) { onSend(text.trim()); setText(""); } }}
+            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e) && text.trim()) { onSend(text.trim()); setText(""); } }}
               placeholder="메시지 입력 후 Enter" style={{ flex: 1, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
             <PxButton tone="good" onClick={() => { if (text.trim()) { onSend(text.trim()); setText(""); } }} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
           </div>
@@ -4647,7 +4655,7 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
             <span style={{ fontSize: 11, color: C.inkSoft }}>{agenda.filter((a) => a.done).length}/{agenda.length} 완료</span>
           </div>
           <div style={{ display: "flex", gap: 6, marginBottom: 9 }}>
-            <input value={agTxt} onChange={(e) => setAgTxt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addAgenda(); }}
+            <input value={agTxt} onChange={(e) => setAgTxt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) addAgenda(); }}
               placeholder="안건을 적고 Enter (예: 7월 리텐션 리뷰)"
               style={{ flex: 1, minWidth: 0, padding: 9, border: `3px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
             <PxButton tone="gold" disabled={!agTxt.trim()} onClick={addAgenda} style={{ fontSize: 12, padding: "9px 13px", whiteSpace: "nowrap" }}>＋ 추가</PxButton>
@@ -4767,7 +4775,7 @@ function MeetingView({ roomId, room, onUpdate, onBack, myName = "", onInvite, pe
           </div>
           <div style={{ display: "flex", gap: 6, padding: 8, borderTop: `3px solid ${C.ink}` }}>
             <input value={cText} onChange={(e) => setCText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && cText.trim()) { onChat(cText.trim()); setCText(""); } }}
+              onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e) && cText.trim()) { onChat(cText.trim()); setCText(""); } }}
               placeholder="메시지 입력 후 Enter"
               style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
             <PxButton tone="good" disabled={!cText.trim()} onClick={() => { onChat(cText.trim()); setCText(""); }} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
@@ -4926,7 +4934,7 @@ function HouseGate({ house, isMine, myName, hasPw, onSetPw, onGetPw, onEnter, on
           <div style={{ fontSize: 44 }}>🎉</div>
           <div style={{ fontSize: 16, fontWeight: "bold", margin: "10px 0 6px" }}>환영합니다 {myName}님!</div>
           <div style={{ fontSize: 13, color: C.inkSoft, marginBottom: 14 }}>우리 집 비밀번호를 설정해주세요.<br />다음부터는 이 창이 뜨지 않아요.</div>
-          <input value={pw2} onChange={(e) => setPw2(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && pw2.trim()) onSetPw(pw2.trim()); }} maxLength={12} autoFocus placeholder="비밀번호 (예: 1234)" style={{ width: "100%", maxWidth: 260, boxSizing: "border-box", padding: 11, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 15, textAlign: "center", background: C.white }} />
+          <input value={pw2} onChange={(e) => setPw2(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e) && pw2.trim()) onSetPw(pw2.trim()); }} maxLength={12} autoFocus placeholder="비밀번호 (예: 1234)" style={{ width: "100%", maxWidth: 260, boxSizing: "border-box", padding: 11, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 15, textAlign: "center", background: C.white }} />
           <PxButton tone="good" disabled={!pw2.trim()} onClick={() => onSetPw(pw2.trim())} style={{ display: "block", width: "100%", maxWidth: 260, margin: "12px auto 0", padding: 12, fontSize: 14 }}>설정하고 들어가기</PxButton>
         </div>
       </Panel>
@@ -4952,7 +4960,7 @@ function HouseGate({ house, isMine, myName, hasPw, onSetPw, onGetPw, onEnter, on
           ) : (
             <>
               <div style={{ display: "flex", gap: 6 }}>
-                <input value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") tryEnter(); }} maxLength={12} type="password" placeholder="비밀번호" style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, textAlign: "center" }} />
+                <input value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) tryEnter(); }} maxLength={12} type="password" placeholder="비밀번호" style={{ flex: 1, minWidth: 0, padding: 10, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, textAlign: "center" }} />
                 <PxButton tone="good" disabled={waiting} onClick={tryEnter} style={{ padding: "10px 14px", fontSize: 13 }}>{waiting ? "확인 중…" : "입장"}</PxButton>
                 {isMine && <PxButton tone="wood" onClick={() => { setChgOpen(true); setChgOld(""); setChgNew(""); setChgMsg(null); }} style={{ padding: "10px 12px", fontSize: 12, whiteSpace: "nowrap" }}>변경</PxButton>}
               </div>
@@ -4963,7 +4971,7 @@ function HouseGate({ house, isMine, myName, hasPw, onSetPw, onGetPw, onEnter, on
                   <input value={chgOld} onChange={(e) => { setChgOld(e.target.value); setChgMsg(null); }} maxLength={12} type="password" placeholder="기존 비밀번호"
                     style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13.5, textAlign: "center", marginBottom: 6 }} />
                   <input value={chgNew} onChange={(e) => { setChgNew(e.target.value); setChgMsg(null); }} maxLength={12} placeholder="새 비밀번호"
-                    onKeyDown={(e) => { if (e.key === "Enter") doChange(); }}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) doChange(); }}
                     style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13.5, textAlign: "center" }} />
                   {chgMsg && <div style={{ fontSize: 11.5, color: chgMsg.ok ? C.good : C.danger, textAlign: "center", marginTop: 6, fontWeight: "bold" }}>{chgMsg.text}</div>}
                   <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
@@ -5290,7 +5298,7 @@ function HomeView({ house, notes = [], onSaveMemo, onDelMemo, onBack, bubble, sk
                   ))}
                   <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
                     <input value={reply[w.id] || ""} onChange={(e) => setReply({ ...reply, [w.id]: e.target.value })}
-                      onKeyDown={(e) => { if (e.key === "Enter" && (reply[w.id] || "").trim()) { onWatchReply && onWatchReply(w.id, reply[w.id].trim()); setReply({ ...reply, [w.id]: "" }); } }}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e) && (reply[w.id] || "").trim()) { onWatchReply && onWatchReply(w.id, reply[w.id].trim()); setReply({ ...reply, [w.id]: "" }); } }}
                       placeholder="💬 댓글 달기"
                       style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
                     <PxButton tone="blue" disabled={!(reply[w.id] || "").trim()}
@@ -5700,7 +5708,7 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
       </div>
       <div style={{ display: "flex", gap: 5, padding: 7, borderTop: `3px solid ${C.ink}` }}>
         <input value={cText} onChange={(e) => setCText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && cText.trim()) { onChat && onChat(cText.trim()); setCText(""); } }}
+          onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e) && cText.trim()) { onChat && onChat(cText.trim()); setCText(""); } }}
           placeholder="메시지 입력"
           style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, background: C.white }} />
         <PxButton tone="gold" disabled={!cText.trim()} onClick={() => { onChat && onChat(cText.trim()); setCText(""); }} style={{ fontSize: 11, padding: "7px 9px" }}>➤</PxButton>
@@ -5737,7 +5745,7 @@ function ListeningView({ onBack, gems, onSpend, bubble, songs, onAddSong, onDelS
               <div style={{ display: "flex", gap: 6 }}>
                 <input value={na} onChange={(e) => setNa(e.target.value)} placeholder="🎤 가수" style={{ ...inp, flex: 1, minWidth: 0 }} />
                 <span style={{ color: "#ffe680", alignSelf: "center", fontWeight: "bold" }}>-</span>
-                <input value={nt} onChange={(e) => setNt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addSong(); }} placeholder="🎵 제목" style={{ ...inp, flex: 1.4, minWidth: 0 }} />
+                <input value={nt} onChange={(e) => setNt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) addSong(); }} placeholder="🎵 제목" style={{ ...inp, flex: 1.4, minWidth: 0 }} />
               </div>
               <input value={nd} onChange={(e) => setNd(e.target.value)} placeholder="한 줄 소개 (선택)" style={{ ...inp, width: "100%", fontSize: 12 }} />
             </div>
@@ -6148,7 +6156,7 @@ function LiarGame({ onClose, onReward, myName = "", people = [], game, onAction 
           {g.phase === "hint" && (
             myTurn ? (
               <div style={{ display: "flex", gap: 6 }}>
-                <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) { send("hint", { text: text.trim() }); setText(""); } }}
+                <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e) && text.trim()) { send("hint", { text: text.trim() }); setText(""); } }}
                   autoFocus placeholder="한 마디로 힌트를 주세요" style={{ flex: 1, minWidth: 0, padding: 9, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
                 <PxButton tone="good" disabled={!text.trim()} onClick={() => { send("hint", { text: text.trim() }); setText(""); }} style={{ fontSize: 12, padding: "9px 12px" }}>말하기</PxButton>
               </div>
@@ -6344,7 +6352,7 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
           {shown.length === 0 && <span style={{ fontSize: 11, color: C.inkSoft }}>탭이 없어요.</span>}
         </div>
         <div style={{ display: "flex", gap: 5, marginBottom: 12 }}>
-          <input value={newTab} onChange={(e) => setNewTab(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") pushTab(newTab); }} placeholder="＋ 이름 탭 추가"
+          <input value={newTab} onChange={(e) => setNewTab(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) pushTab(newTab); }} placeholder="＋ 이름 탭 추가"
             style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
           <PxButton tone="good" onClick={() => pushTab(newTab)} style={{ fontSize: 11, padding: "6px 10px" }}>추가</PxButton>
           {myName && !names.includes(myName) && <PxButton tone="gold" onClick={() => pushTab(myName)} style={{ fontSize: 11, padding: "6px 10px" }}>내 탭</PxButton>}
@@ -6383,7 +6391,7 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
             {admin && (
               <div style={{ background: "#fff6e0", border: `2px solid ${C.ink}`, borderRadius: 8, padding: 10, marginBottom: 10 }}>
                 <div style={{ fontSize: 11.5, fontWeight: "bold", marginBottom: 7 }}>＋ 업무 등록 · 📅 {selDay}</div>
-                <input value={qTitle} onChange={(e) => setQTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addTask(); }} placeholder="퀘스트 내용"
+                <input value={qTitle} onChange={(e) => setQTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) addTask(); }} placeholder="퀘스트 내용"
                   style={{ width: "100%", boxSizing: "border-box", padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, marginBottom: 6 }} />
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <label style={{ fontSize: 10.5, color: C.inkSoft }}>시작</label>
@@ -6443,7 +6451,7 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
               <div style={{ textAlign: "center", fontSize: 30 }}>🔑</div>
               <div style={{ textAlign: "center", fontSize: 14, fontWeight: "bold", margin: "8px 0 12px" }}>관리자 비밀번호</div>
               <input type="password" value={pw} autoFocus onChange={(e) => { setPw(e.target.value); setPwErr(false); }}
-                onKeyDown={(e) => { if (e.key === "Enter") { if (pw === LUCK_ADMIN_PW) { setAdmin(true); setPwOpen(false); } else setPwErr(true); } }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) { if (pw === LUCK_ADMIN_PW) { setAdmin(true); setPwOpen(false); } else setPwErr(true); } }}
                 style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${pwErr ? C.danger : C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, textAlign: "center" }} />
               {pwErr && <div style={{ fontSize: 11, color: C.danger, textAlign: "center", marginTop: 6, fontWeight: "bold" }}>⚠️ 비밀번호가 틀렸어요</div>}
               <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
@@ -6463,7 +6471,7 @@ function LuckRoom({ onBack, bubble, myName = "", people = [], netSendEvent, luck
               <div style={{ textAlign: "center", fontSize: 11.5, color: C.inkSoft, marginBottom: 12, lineHeight: 1.6 }}>몇 분 초과했나요?<br />입력하면 소요시간 옆에 <b style={{ color: C.danger }}>+분</b>으로 표시돼요</div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
                 <span style={{ fontSize: 13 }}>+</span>
-                <input type="number" value={overMin} autoFocus min={0} onChange={(e) => setOverMin(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveOver(); }}
+                <input type="number" value={overMin} autoFocus min={0} onChange={(e) => setOverMin(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) saveOver(); }}
                   style={{ width: 80, padding: 9, border: `3px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 15, textAlign: "center" }} />
                 <span style={{ fontSize: 13 }}>분</span>
               </div>
@@ -6928,7 +6936,7 @@ function JjeopView({ onBack, bubble, onReward, myName = "", recList = [], onRec 
           </div>
           <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
             <input value={recNick} onChange={(e) => setRecNick(e.target.value)} placeholder="닉네임" style={{ width: 90, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
-            <input value={recText} onChange={(e) => setRecText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") postRec(); }} placeholder="멘트 입력 후 Enter" style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
+            <input value={recText} onChange={(e) => setRecText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) postRec(); }} placeholder="멘트 입력 후 Enter" style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
             <PxButton tone="good" onClick={postRec} style={{ fontSize: 12, padding: "8px 12px" }}>등록</PxButton>
           </div>
         </RoomModal>
@@ -7172,7 +7180,7 @@ function SandbagView({ onBack, scores, onEnd, myName = "" }) {
               <PxButton tone="wood" onClick={() => { setTarget(null); setSetupOpen(false); }} style={{ width: "100%", padding: 12, fontSize: 13, marginBottom: 8 }}>🥊 그냥 때리기</PxButton>
               <div style={{ background: C.white, border: `3px solid ${C.ink}`, padding: 10 }}>
                 <div style={{ fontSize: 12, marginBottom: 6 }}>🎯 누구 샌드백을 원하시나요?</div>
-                <input value={targetInput} onChange={(e) => setTargetInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && targetInput.trim()) { setTarget(targetInput.trim()); setSetupOpen(false); } }} maxLength={8} placeholder="이름 입력" style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.parch }} />
+                <input value={targetInput} onChange={(e) => setTargetInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e) && targetInput.trim()) { setTarget(targetInput.trim()); setSetupOpen(false); } }} maxLength={8} placeholder="이름 입력" style={{ width: "100%", boxSizing: "border-box", padding: 8, border: `2px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.parch }} />
                 <PxButton tone="danger" disabled={!targetInput.trim()} onClick={() => { setTarget(targetInput.trim()); setSetupOpen(false); }} style={{ width: "100%", marginTop: 8, padding: 10, fontSize: 13 }}>이 사람 샌드백 만들기</PxButton>
               </div>
               <PxButton tone="ink" onClick={onBack} style={{ width: "100%", marginTop: 10, padding: 9, fontSize: 12 }}>나가기</PxButton>
@@ -7186,7 +7194,7 @@ function SandbagView({ onBack, scores, onEnd, myName = "" }) {
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 320, maxHeight: "calc(100vh - 28px)", overflowY: "auto" }}>
             <Panel style={{ padding: 16 }}>
               <div style={{ textAlign: "center", marginBottom: 10 }}>{target ? <span style={{ fontSize: 12, color: C.danger }}>🎯 {target} 샌드백<br /></span> : null}총 <b style={{ fontSize: 20, color: C.danger }}>{count}</b>번 쳤어요! 💥</div>
-              <input value={nick} onChange={(e) => setNick(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} maxLength={10} placeholder="닉네임 (랭킹 등록)" autoFocus style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white }} />
+              <input value={nick} onChange={(e) => setNick(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) submit(); }} maxLength={10} placeholder="닉네임 (랭킹 등록)" autoFocus style={{ width: "100%", boxSizing: "border-box", padding: 9, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white }} />
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <PxButton tone="ink" onClick={() => setEnding(false)} style={{ flex: 1, padding: 10, fontSize: 13 }}>더 치기</PxButton>
                 <PxButton tone="gold" onClick={submit} style={{ flex: 1, padding: 10, fontSize: 13 }}>랭킹 등록</PxButton>
@@ -8488,7 +8496,7 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
                           ))}
                         </div>
                         <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
-                          <input value={tMsg} onChange={(e) => setTMsg(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} placeholder="메시지" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
+                          <input value={tMsg} onChange={(e) => setTMsg(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e) && tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} placeholder="메시지" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
                           <PxButton tone="blue" onClick={() => { if (tMsg.trim()) { onThreadSend && onThreadSend(sel.id, tMsg.trim()); setTMsg(""); } }} style={{ fontSize: 11, padding: "7px 10px" }}>➤</PxButton>
                         </div>
                         {/* 📓 퀘스트 일지 — 등록하면 파티원 모두에게 보여요 · 여러 개 등록 가능 */}
@@ -8965,7 +8973,7 @@ function CoreDictView({ onBack, myName = "", dict = [], gallery = [], onSaveWord
                     </button>
                     <div style={{ padding: 7 }}>
                       <input defaultValue={ph.caption} onBlur={(e) => onCaption(ph.id, e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                        onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) e.currentTarget.blur(); }}
                         placeholder="한 줄 설명"
                         style={{ width: "100%", boxSizing: "border-box", padding: "6px 7px", border: `2px solid ${C.ink}`, borderRadius: 5, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, background: "#fffdf6" }} />
                       <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 5 }}>
@@ -9101,7 +9109,7 @@ function SmokeChat({ onClose, myName = "", msgs = [], onSend }) {
         ))}
       </div>
       <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-        <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지 입력 후 Enter"
+        <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) send(); }} placeholder="메시지 입력 후 Enter"
           style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
         <PxButton tone="good" disabled={!text.trim()} onClick={send} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
       </div>
@@ -9728,7 +9736,7 @@ function BoardView({ onBack, myName = "", myUid = "", onCommunity }) {
                     </div>
                   ))}
                   <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                    <input value={calInput} onChange={(e) => setCalInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addEvent(); }} placeholder="일정 입력 (예: 10:00 전체 회의)"
+                    <input value={calInput} onChange={(e) => setCalInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) addEvent(); }} placeholder="일정 입력 (예: 10:00 전체 회의)"
                       style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5 }} />
                     <PxButton tone="gold" disabled={!calInput.trim()} onClick={addEvent} style={{ fontSize: 12, padding: "8px 12px" }}>＋ 추가</PxButton>
                   </div>
@@ -9935,7 +9943,7 @@ function ChatDock({ messages, shout, onToggleShout, onSend, gems = 0 }) {
         <button onClick={() => { if (!shout && gems < 1) { setWarn(true); setTimeout(() => setWarn(false), 1600); return; } onToggleShout(); }} title={shout ? "확성기 ON" : "확성기 켜기 (🪙1)"} style={{ position: "relative", background: shout ? C.gem : C.white, border: `2px solid ${C.ink}`, cursor: "pointer", opacity: !shout && gems < 1 ? 0.6 : 1, fontSize: 15, width: 34, flexShrink: 0 }}>
           📢<span style={{ position: "absolute", right: 1, bottom: 0, fontSize: 8, color: C.ink, background: "#ffe680", border: `1px solid ${C.ink}`, padding: "0 1px", lineHeight: 1.2 }}>{shout ? "ON" : "1"}</span>
         </button>
-        <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+        <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) send(); }}
           placeholder={shout ? "📢 확성기 ON · 크게 외치기" : gems < 1 ? "채팅 입력 (확성기는 🪙1 필요)" : "채팅 입력 후 Enter"} style={{ flex: 1, minWidth: 0, border: `2px solid ${C.ink}`, padding: "4px 6px", fontSize: 12, background: C.white, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }} />
         <button onClick={send} style={{ background: C.good, color: C.white, border: `2px solid ${C.ink}`, cursor: "pointer", fontSize: 12, padding: "0 8px", flexShrink: 0 }}>▶</button>
       </div>
@@ -10462,7 +10470,7 @@ function DMChatModal({ person, onClose, thread = [], onSend, online = false, myN
             ))}
           </div>
           <div style={{ display: "flex", gap: 6, padding: 8, borderTop: `3px solid ${C.ink}` }}>
-            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="메시지 입력 후 Enter" style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
+            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) send(); }} placeholder="메시지 입력 후 Enter" style={{ flex: 1, minWidth: 0, padding: 8, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
             <PxButton tone="good" onClick={send} style={{ fontSize: 12, padding: "8px 12px" }}>전송</PxButton>
           </div>
         </Panel>
@@ -11275,7 +11283,7 @@ function HQSidePanel({ myName = "", people = [], questBox = [], hqQuests = [], h
           })()}
           {pSelf && (
           <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
-            <input value={ti} onChange={(e) => setTi(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && ti.trim()) { setTodos((v) => [...v, { t: ti.trim(), done: false, cat: beta ? todoCat : "game" }]); setTi(""); } }}
+            <input value={ti} onChange={(e) => setTi(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e) && ti.trim()) { setTodos((v) => [...v, { t: ti.trim(), done: false, cat: beta ? todoCat : "game" }]); setTi(""); } }}
               placeholder={beta ? (todoCat === "life" ? "현실 할 일 입력" : "게임 할 일 입력") : "개인 할 일 입력 후 Enter"} style={{ flex: 1, minWidth: 0, padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 10.5 }} />
             {addBtn(() => { if (ti.trim()) { setTodos((v) => [...v, { t: ti.trim(), done: false, cat: beta ? todoCat : "game" }]); setTi(""); } })}
           </div>
@@ -11442,7 +11450,7 @@ function MentionField({ value, onChange, expertNames = [], multiline = false, pl
   };
   const pick = (name) => { const v = (value || "").replace(/@([^\s@]*)$/, "@" + name + " "); onChange(v); setDrop(null); if (ref.current) ref.current.focus(); };
   const base = { width: "100%", boxSizing: "border-box", padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white, ...style };
-  const onKey = (e) => { if (drop && drop.length && e.key === "Enter") { e.preventDefault(); pick(drop[0]); return; } if (!drop && onEnter && e.key === "Enter") { if (!multiline) { e.preventDefault(); onEnter(); } } };
+  const onKey = (e) => { if (drop && drop.length && e.key === "Enter" && !isImeEnter(e)) { e.preventDefault(); pick(drop[0]); return; } if (!drop && onEnter && e.key === "Enter" && !isImeEnter(e)) { if (!multiline) { e.preventDefault(); onEnter(); } } };
   return (
     <div style={{ position: "relative" }}>
       {multiline
@@ -11700,7 +11708,7 @@ function HistoryModal({ quest, myName, editingBy, onSaveDoc, onAddComment, onDel
             <div style={{ fontSize: 12, fontWeight: "bold", marginBottom: 6 }}>🗒 회의록</div>
             <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
               <input type="date" value={mDate} onChange={(e) => setMDate(e.target.value)} title="회의록 날짜 (필수)" style={{ padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11 }} />
-              <input value={mText} onChange={(e) => setMText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { if (!mDate) { window.alert("날짜를 선택해주세요."); return; } if (mText.trim()) { onAddMinute(mDate, mText.trim()); setMText(""); } } }} placeholder="회의록 입력" style={{ flex: 1, minWidth: 100, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
+              <input value={mText} onChange={(e) => setMText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) { if (!mDate) { window.alert("날짜를 선택해주세요."); return; } if (mText.trim()) { onAddMinute(mDate, mText.trim()); setMText(""); } } }} placeholder="회의록 입력" style={{ flex: 1, minWidth: 100, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
               <PxButton tone="good" onClick={() => { if (!mDate) { window.alert("날짜를 선택해주세요."); return; } if (mText.trim()) { onAddMinute(mDate, mText.trim()); setMText(""); } }} style={{ fontSize: 11, padding: "8px 10px" }}>＋</PxButton>
             </div>
             {minutes.slice().sort((a, b) => (String(b.date || "").localeCompare(String(a.date || ""))) || ((b.at || 0) - (a.at || 0))).map((m) => (
@@ -12565,7 +12573,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                               ))}
                             </div>
                             <div style={{ display: "flex", gap: 5 }}>
-                              <input value={rwItem} onChange={(e) => setRwItem(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && rwItem.trim()) { setRw({ items: [...(rw.items || []), rwItem.trim()] }); setRwItem(""); } }} placeholder="아이템 이름 (예: 커피 기프티콘)" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5 }} />
+                              <input value={rwItem} onChange={(e) => setRwItem(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e) && rwItem.trim()) { setRw({ items: [...(rw.items || []), rwItem.trim()] }); setRwItem(""); } }} placeholder="아이템 이름 (예: 커피 기프티콘)" style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5 }} />
                               <PxButton tone="wood" onClick={() => { if (rwItem.trim()) { setRw({ items: [...(rw.items || []), rwItem.trim()] }); setRwItem(""); } }} style={{ fontSize: 11, padding: "7px 11px" }}>＋</PxButton>
                             </div>
                             <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 6 }}>* 검토완료 시 담당자 모두에게 자동 지급돼요</div>
@@ -12939,7 +12947,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                   </div>
                   {!mpSelf && (
                   <div style={{ display: "flex", gap: 6 }}>
-                    <input value={mpTagIn} onChange={(e) => setMpTagIn(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") mpAddTag(); }}
+                    <input value={mpTagIn} onChange={(e) => setMpTagIn(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) mpAddTag(); }}
                       placeholder={`${mpView}님에게 해시태그 달기`} maxLength={20}
                       style={{ flex: 1, minWidth: 0, padding: 8, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
                     <PxButton tone="wood" disabled={!mpTagIn.trim()} onClick={mpAddTag} style={{ fontSize: 11, padding: "8px 12px" }}>＋ 태그</PxButton>
@@ -13027,7 +13035,7 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
                 })()}
                 {mpSelf && (
                   <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                    <input value={mpTi} onChange={(e) => setMpTi(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && mpTi.trim()) { setMpTodos((v) => [...v, { t: mpTi.trim(), done: false, cat: mpBeta ? mpTodoCat : "game" }]); setMpTi(""); } }}
+                    <input value={mpTi} onChange={(e) => setMpTi(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e) && mpTi.trim()) { setMpTodos((v) => [...v, { t: mpTi.trim(), done: false, cat: mpBeta ? mpTodoCat : "game" }]); setMpTi(""); } }}
                       placeholder={mpBeta ? (mpTodoCat === "life" ? "현실 할 일 입력" : "게임 할 일 입력") : "개인 할 일 입력 후 Enter"} style={{ flex: 1, minWidth: 0, padding: 9, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5 }} />
                     {addBtn(() => { if (mpTi.trim()) { setMpTodos((v) => [...v, { t: mpTi.trim(), done: false, cat: mpBeta ? mpTodoCat : "game" }]); setMpTi(""); } })}
                   </div>
@@ -13151,7 +13159,7 @@ function FriendPanel({ open, onClose, people = [], myName = "", statusMap = {}, 
         {edit ? (
           <div>
             <input value={draft} maxLength={40} autoFocus onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { onSaveStatus && onSaveStatus(draft.trim()); setEdit(false); } }}
+              onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) { onSaveStatus && onSaveStatus(draft.trim()); setEdit(false); } }}
               placeholder="예: 원고 쓰는 중 🔥" style={{ width: "100%", boxSizing: "border-box", padding: 6, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: FONT, fontSize: 11.5, background: C.white }} />
             <div style={{ display: "flex", gap: 5, marginTop: 5 }}>
               <PxButton tone="ink" onClick={() => { setEdit(false); setDraft(statusMap[mine] || ""); }} style={{ flex: 1, fontSize: 10, padding: 6 }}>취소</PxButton>
@@ -13560,7 +13568,7 @@ function SpriteSkinBody({ sprites, userSprites = {}, cutCfg = {}, onSetCut, onSe
 
               {urlFor === s.id && (
                 <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                  <input value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") applyUrl(); }}
+                  <input value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) applyUrl(); }}
                     placeholder="https://... 이미지 주소"
                     style={{ flex: 1, minWidth: 0, padding: 7, border: `2px solid ${C.ink}`, borderRadius: 6, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12 }} />
                   <PxButton tone="gold" disabled={!url.trim()} onClick={applyUrl} style={{ fontSize: 11, padding: "6px 10px" }}>적용</PxButton>
@@ -13691,7 +13699,7 @@ function QuestFragmentInput({ tone, icon, title, hint, placeholder, value, onCha
         <b style={{ color: line, fontSize: 14, letterSpacing: 0.5 }}>{title}</b>
       </div>
       <div style={{ fontSize: 11, color: "rgba(255,255,255,0.62)", lineHeight: 1.6, marginBottom: 8 }}>{hint}</div>
-      <input value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") onAdd(); }} placeholder={placeholder}
+      <input value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) onAdd(); }} placeholder={placeholder}
         style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `2px solid ${line}`, borderRadius: 7, background: "rgba(255,255,255,0.94)", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13.5 }} />
       <textarea value={detail} onChange={(e) => onDetail(e.target.value)} rows={2} placeholder="세부 내용 · 결과물 링크 · 메모 (선택)"
         style={{ width: "100%", boxSizing: "border-box", marginTop: 7, padding: 9, border: `2px solid ${line}66`, borderRadius: 7, background: "rgba(255,255,255,0.9)", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12.5, resize: "vertical" }} />
@@ -16457,7 +16465,7 @@ function EchoTown() {
               </div>
               <input value={statusDraft} maxLength={40} autoFocus
                 onChange={(e) => setStatusDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") submitStatusAsk(); }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) submitStatusAsk(); }}
                 placeholder="예: 원고 쓰는 중 🔥"
                 style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, borderRadius: 6,
                   fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 13, background: C.white }} />
@@ -16491,7 +16499,7 @@ function EchoTown() {
                   <div style={{ fontSize: 11.5, fontWeight: "bold", marginBottom: 4 }}>👷 숙련자(직원) 코드</div>
                   <input value={expertCodeIn} onChange={(e) => { setExpertCodeIn(e.target.value); setGateErr(""); }} placeholder="숙련자 코드" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white, marginBottom: 10 }} />
                   <div style={{ fontSize: 11.5, fontWeight: "bold", marginBottom: 4 }}>🌱 초보자(알바) 코드</div>
-                  <input value={noviceCodeIn} onChange={(e) => { setNoviceCodeIn(e.target.value); setGateErr(""); }} onKeyDown={(e) => { if (e.key === "Enter") submitGate(); }} placeholder="초보자 코드" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white, marginBottom: 8 }} />
+                  <input value={noviceCodeIn} onChange={(e) => { setNoviceCodeIn(e.target.value); setGateErr(""); }} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) submitGate(); }} placeholder="초보자 코드" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white, marginBottom: 8 }} />
                   {gateErr && <div style={{ fontSize: 11, color: C.danger, marginBottom: 8, textAlign: "center", fontWeight: "bold" }}>⚠️ {gateErr}</div>}
                   <PxButton tone="gold" onClick={submitGate} style={{ width: "100%", padding: 12, fontSize: 14 }}>입력</PxButton>
                   <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 10, textAlign: "center", lineHeight: 1.7 }}>숙련자 코드 → 디스코드 로그인<br />초보자 코드 → 이름만 입력해서 시작</div>
@@ -16505,8 +16513,8 @@ function EchoTown() {
                     ))}
                   </div>
                   <input value={novId} onChange={(e) => { setNovId(e.target.value); setNovErr(""); }} maxLength={8} autoFocus placeholder="아이디 (예: hana12)" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${novErr ? C.danger : C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white, marginBottom: 8 }} />
-                  <input value={novPw} onChange={(e) => { setNovPw(e.target.value); setNovErr(""); }} type="password" maxLength={16} onKeyDown={(e) => { if (e.key === "Enter" && novMode === "login") noviceLogin(); }} placeholder="비밀번호" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${novErr ? C.danger : C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white, marginBottom: 8 }} />
-                  {novMode === "signup" && <input value={novPw2} onChange={(e) => { setNovPw2(e.target.value); setNovErr(""); }} type="password" maxLength={16} onKeyDown={(e) => { if (e.key === "Enter") noviceSignup(); }} placeholder="비밀번호 확인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${novErr ? C.danger : C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white, marginBottom: 8 }} />}
+                  <input value={novPw} onChange={(e) => { setNovPw(e.target.value); setNovErr(""); }} type="password" maxLength={16} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e) && novMode === "login") noviceLogin(); }} placeholder="비밀번호" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${novErr ? C.danger : C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white, marginBottom: 8 }} />
+                  {novMode === "signup" && <input value={novPw2} onChange={(e) => { setNovPw2(e.target.value); setNovErr(""); }} type="password" maxLength={16} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) noviceSignup(); }} placeholder="비밀번호 확인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${novErr ? C.danger : C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 14, background: C.white, marginBottom: 8 }} />}
                   {novErr && <div style={{ fontSize: 11, color: C.danger, marginBottom: 8, textAlign: "center", fontWeight: "bold" }}>⚠️ {novErr}</div>}
                   <PxButton tone="good" disabled={novBusy} onClick={novMode === "signup" ? noviceSignup : noviceLogin} style={{ width: "100%", padding: 12, fontSize: 14 }}>{novBusy ? "처리 중…" : (novMode === "signup" ? "가입하고 시작하기 🌱" : "로그인 🌱")}</PxButton>
                   <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 8, textAlign: "center", lineHeight: 1.6 }}>{novMode === "signup" ? "아이디가 마을 이름이 돼요 · 다음부턴 아이디·비번으로 로그인해요" : "가입할 때 정한 아이디·비밀번호로 로그인해요"}</div>
@@ -16539,7 +16547,7 @@ function EchoTown() {
                   </div>
 
                   <div style={{ fontSize: 13, textAlign: "center", marginBottom: 8 }}>마을에서 사용할 이름을 정해주세요!</div>
-                  <input value={nameInput} onChange={(e) => { setNameInput(e.target.value); setNameErr(""); }} onKeyDown={(e) => { if (e.key === "Enter") confirmName(nameInput); }} maxLength={8} autoFocus placeholder="예: 정인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${nameErr ? C.danger : C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 15, background: C.white, textAlign: "center" }} />
+                  <input value={nameInput} onChange={(e) => { setNameInput(e.target.value); setNameErr(""); }} onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) confirmName(nameInput); }} maxLength={8} autoFocus placeholder="예: 정인" style={{ width: "100%", boxSizing: "border-box", padding: 10, border: `3px solid ${nameErr ? C.danger : C.ink}`, fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 15, background: C.white, textAlign: "center" }} />
                   {nameErr && <div style={{ fontSize: 11, color: C.danger, marginTop: 6, textAlign: "center", fontWeight: "bold" }}>⚠️ {nameErr}</div>}
                   <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 6, textAlign: "center", lineHeight: 1.6 }}>기존에 쓰던 이름이 있다면 <b>그 이름 그대로</b> 넣어주세요 (데이터가 이어져요)<br />한 번 정하면 <b>바꿀 수 없어요</b></div>
                   <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -17321,7 +17329,7 @@ function LevelBoard({ myName = "", novices = [], cfg, onSave, onAddNovice, onBac
               <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 12 }}>레벨을 바꾸는 건 관리자만 할 수 있어요</div>
               <input type="password" autoFocus value={codeIn} style={{ ...inp, width: "100%", textAlign: "center", marginBottom: 8 }}
                 onChange={(e) => { setCodeIn(e.target.value); setCodeErr(false); }}
-                onKeyDown={(e) => { if (e.key === "Enter") tryUnlock(); }} />
+                onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) tryUnlock(); }} />
               {codeErr && <div style={{ color: C.danger, fontSize: 12, marginBottom: 8 }}>코드가 틀렸어요</div>}
               <PxButton tone="gold" onClick={tryUnlock} style={{ width: "100%", padding: 11, fontSize: 13 }}>확인</PxButton>
               <div style={{ marginTop: 14, textAlign: "left", fontSize: 11.5, color: C.inkSoft, lineHeight: 1.7 }}>
@@ -17343,7 +17351,7 @@ function LevelBoard({ myName = "", novices = [], cfg, onSave, onAddNovice, onBac
                 ))}
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
                   <input placeholder="새 레벨 이름 (예: 🌿 중급 제작자)" value={newLvName} onChange={(e) => setNewLvName(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") addLevel(); }} style={{ ...inp, flex: 1 }} />
+                    onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e)) addLevel(); }} style={{ ...inp, flex: 1 }} />
                   <button onClick={() => setNewLvAccess((a) => (a === "full" ? "restricted" : "full"))} style={{ cursor: "pointer", fontFamily: FONT, fontSize: 11.5, fontWeight: "bold", padding: "7px 10px", borderRadius: 8, border: `2px solid ${C.ink}`, background: newLvAccess === "full" ? "#c0563a" : "#3fa07a", color: C.white }}>{newLvAccess === "full" ? "🔓 전체개방" : "🔒 제한"}</button>
                   <PxButton tone="good" onClick={addLevel} style={{ fontSize: 12, padding: "8px 12px" }}>＋ 레벨</PxButton>
                 </div>
@@ -17356,7 +17364,7 @@ function LevelBoard({ myName = "", novices = [], cfg, onSave, onAddNovice, onBac
 
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
                   <input placeholder="초보자 이름 추가" value={newName} onChange={(e) => setNewName(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && newName.trim()) { if (onAddNovice) onAddNovice(newName); assignName(newName, newLevelId || growId); setNewName(""); } }} style={{ ...inp, flex: 1 }} />
+                    onKeyDown={(e) => { if (e.key === "Enter" && !isImeEnter(e) && newName.trim()) { if (onAddNovice) onAddNovice(newName); assignName(newName, newLevelId || growId); setNewName(""); } }} style={{ ...inp, flex: 1 }} />
                   <select value={newLevelId} onChange={(e) => setNewLevelId(e.target.value)} style={sel}>
                     {levels.map((l) => (<option key={l.id} value={l.id}>{l.name}</option>))}
                   </select>
