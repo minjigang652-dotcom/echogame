@@ -11740,6 +11740,357 @@ function HistoryModal({ quest, myName, editingBy, onSaveDoc, onAddComment, onDel
   );
 }
 
+/* ═══════════ 📅 8월 시스템 로드맵 ═══════════
+   주차 내용을 고치려면 아래 AUG_WEEKS 배열만 손대면 돼요.
+   본문 안의 **굵게** 표시는 아래 augRich() 가 <b> 로 바꿔 그립니다. */
+const AUG_WC = {   // 주차별 구분색 (원본 톤을 게임 파스텔에 맞게 살짝 낮춤)
+  1: { line: "#e0952c", soft: "#fbf0d9", deep: "#9a6510" },
+  2: { line: "#4b5fc4", soft: "#e6e9fa", deep: "#33459c" },
+  3: { line: "#1f9b8c", soft: "#e0f2ef", deep: "#0d7264" },
+  4: { line: "#8257e0", soft: "#efe8fc", deep: "#5f3bb0" },
+  5: { line: "#d8484d", soft: "#fbe8e8", deep: "#a82f34" },
+};
+const AUG_FLOW = ["배운다", "돌린다", "넘긴다", "기획한다", "반복한다"];
+const AUG_FLOW_HI = "기획한다";
+const AUG_DESC = "5주 뒤에는 각자 R을 기획하고, 실행하고, 남한테 넘길 수 있는 상태가 되는 게 목표입니다. 한 주씩 쌓여서 다음 주가 가능해지는 구조라 순서를 건너뛰기 어렵습니다.";
+const AUG_WEEKS = [
+  {
+    id: "w1", c: 1, nav: "1주차", navT: "튜토리얼",
+    badge: "WEEK 1", tag: "09:00 – 18:00 전원 통일",
+    title: "네이버 튜토리얼 — 기획 · 실행 교육",
+    one: "물길에는 기획과 실행이 따로 있습니다. 어떤 키워드로 유입을 만들지 정하는 게 **기획**, 실제로 발행하는 게 **실행**. 이번 주는 둘 다 배웁니다.",
+    timeHead: "시간 구조",
+    time: [
+      { k: "월화수 오전", c: 1, v: "**튜토리얼** — 블로그 · 카페 · 지식인. 물길 기획(키워드 · 후킹 잡는 법)과 물길 실행(발행 실무) 둘 다", who: "민지 · 도희 · 정인" },
+      { k: "매일 오후", c: 2, v: "**각자 메인퀘스트** — 오전에 배운 걸 자기 파트에 바로 적용" },
+      { k: "목금 오전", c: 4, v: "**일퀘 도입** — 월화수에 익숙해진 물길을 매일 돌리는 걸로 전환" },
+    ],
+    blocks: [
+      { head: "하는 일", items: [
+        { t: "전원 네이버 계정 세팅 완료" },
+        { t: "블로그 · 카페 · 지식인 각각 첫 발행" },
+        { t: "골반안정기구 물길 정리해서 실제로 돌려보기", who: "유리" },
+        { t: "네이버 자동화 툴 개발 착수", who: "의준 — 물길 실행 제외" },
+        { t: "새로운 R 기획 시작", who: "창민 + 소진" },
+        { t: "창민이 디코방 순회하며 진행 상태 확인" },
+      ] },
+      { head: "끝나면 남는 것", out: true, items: [
+        { t: "**개인별 일퀘 역량 수치** — 시간당 몇 개를 하는지. 앞으로의 모든 기준선" },
+        { t: "**새 R 기획 초안** — 2주차에 바로 투입" },
+        { t: "**금요일 리뷰** — 막힌 지점 공유, 2주차 파티 구성 · 근무 시간 확정" },
+      ] },
+    ],
+    next: "배운 걸로 실제 제품을 태운다",
+  },
+  {
+    id: "w2", c: 2, nav: "2주차", navT: "실행",
+    badge: "WEEK 2", tag: "파티별 유연 근무 시작",
+    title: "실행 — 기존 R + 새 R + 자동화 툴 테스트",
+    one: "1주차에 창민이 기획한 새 R이 여기서 들어옵니다. 기존 제품으로 익힌 물길을 새 제품에 그대로 얹어보는 주입니다.",
+    timeHead: "시간 구조",
+    time: [
+      { k: "시간 1", c: 1, v: "**기존 R 물길** + 자동화 툴 테스트 · 피드백", who: "일퀘" },
+      { k: "시간 2", c: 2, v: "**새로운 R 물길** + 자동화 툴 테스트 · 피드백", who: "메인퀘" },
+      { k: "시간 3", c: 4, v: "**사이드퀘** — 있는 사람만. 시간은 각자, 공유는 필수" },
+    ],
+    blocks: [
+      { head: "하는 일", items: [
+        { t: "**파티 제도 도입** — 2~3인 단위, 비슷한 시간대에 근무" },
+        { t: "9-6 해제. 타임테이블에 각자 근무 시간 올리기" },
+        { t: "새 R에 물길 세팅 — 1주차 기획안 그대로 적용" },
+        { t: "자동화 툴 1차 버전 → 쓰면서 피드백", who: "의준" },
+        { t: "상세페이지 디자인 템플릿 작업 병행", who: "희정" },
+      ] },
+      { head: "끝나면 남는 것", out: true, items: [
+        { t: "**새 R 물길 가동** — 유입 데이터 첫 수치" },
+        { t: "**자동화 툴 피드백 목록** — 실제로 써본 사람들의 불편 지점" },
+        { t: "**물길 공식 초안** — 뭐가 먹히고 뭐가 안 먹히는지" },
+      ] },
+    ],
+    next: "내가 하던 걸 남에게 넘긴다",
+  },
+  {
+    id: "w3", c: 3, nav: "3주차", navT: "시스템 구축",
+    badge: "WEEK 3", tag: "여기가 병목 해소 구간",
+    title: "시스템 구축 — 위임 교육 / 자동화 툴",
+    one: "2주 동안 직접 해봤기 때문에 이제 남을 가르칠 수 있습니다. 내가 계속 붙어 있으면 4주차에 기획할 시간이 없습니다.",
+    blocks: [
+      { head: "하는 일", items: [
+        { t: "각자 자기 파트의 **프리랜서 관리 · 교육**" },
+        { t: "2주차에 검증된 물길 공식을 프리랜서에게 이관" },
+        { t: "자동 발행 시스템 구축 — 원고 · 업로드", who: "의준" },
+        { t: "상세페이지 템플릿 자동화 완성", who: "희정" },
+        { t: "1주차 역량 수치 기준으로 **얼마나 넘길지** 결정" },
+      ] },
+      { head: "끝나면 남는 것", out: true, items: [
+        { t: "**프리랜서 온보딩 자료** — 다음 제품에도 재사용" },
+        { t: "**자동 발행 시스템 가동**" },
+        { t: "**비워진 시간** — 4주차 기획에 쓸 여유" },
+      ] },
+      { head: "이 주가 중요한 이유", full: true, items: [
+        { t: "이 주를 건너뛰면 5주차부터 사이클이 안 돕니다. 새 R을 기획해도 실행할 손이 없어서요." },
+        { t: "넘기는 게 목적이지 완벽하게 넘기는 게 목적은 아닙니다. **70%만 넘겨도 성공.**" },
+      ] },
+    ],
+    next: "이제 기획을 직접 해본다",
+  },
+  {
+    id: "w4", c: 4, nav: "4주차", navT: "기획 대항전",
+    badge: "WEEK 4", tag: "한 주 안에 기획부터 테스트까지",
+    title: "기획 대항전 — 팀별로 R 기획 & 테스트",
+    one: "3주 동안 배운 걸로 각 팀이 R을 하나씩 기획합니다. 발표하고, 피드백 받고, 실제로 물길을 태워서 숫자로 승부를 봅니다.",
+    timeHead: "시간 구조",
+    time: [
+      { k: "월", c: 1, v: "**기획 데이** — 팀별로 R 하나 잡고 물길 기획서까지" },
+      { k: "화", c: 2, v: "**발표 + 피드백** — 창민이 팀별로 피드백, 그 자리에서 수정" },
+      { k: "수목", c: 3, v: "**물길 테스트** — 기획안 실제로 태워보기" },
+      { k: "금", c: 4, v: "**결과 리뷰** — 숫자로 판정, 다음에 갈 R 확정" },
+    ],
+    blocks: [
+      { head: "규칙", items: [
+        { t: "판정 기준은 **월요일에 미리 확정** — 유입수 / 저장·공유율 / 문의수 중에서" },
+        { t: "기획서에 **딸깍인지 관람차인지** 먼저 명시" },
+        { t: "이 주 동안 창민은 별도로 다음 R 기획 진행" },
+      ] },
+      { head: "끝나면 남는 것", out: true, items: [
+        { t: "**테스트를 통과한 R** — 다음 주에 프리랜서로 넘길 것" },
+        { t: "**이긴 물길 포맷** — 앞으로 복제할 공식" },
+        { t: "**각자 기획 경험 1회** — 이게 진짜 산출물" },
+      ] },
+    ],
+    next: "이제 세 트랙을 동시에 돌린다",
+  },
+  {
+    id: "w5", c: 5, nav: "5주차 ~", navT: "3트랙",
+    badge: "WEEK 5 →", tag: "다음 달 계획은 돌려보면서 확정",
+    title: "기획 + 실행 + 위임 — 3트랙 안정적으로 돌리기",
+    one: "4주차까지가 준비였고, 여기서부터가 실제로 숫자를 만드는 구간입니다. 세 트랙이 순서대로가 아니라 **동시에** 돌아갑니다. 이번 주 기획한 게 다음 주 실행으로, 그 다음 주 위임으로 흘러가는 구조예요.",
+    timeHead: "3트랙 — 동시에 돌아갑니다",
+    time: [
+      { k: "트랙 1 기획", c: 4, v: "**다음 R을 만든다** — 대항전으로 발굴 · 창민의 새 알 기획이 병행" },
+      { k: "트랙 2 실행", c: 2, v: "**지난주 기획을 태운다** — 물길 실행 · 상세페이지는 템플릿으로 즉시 제작" },
+      { k: "트랙 3 위임", c: 3, v: "**검증 끝난 건 손 뗀다** — 프리랜서 · 자동화로 이관" },
+    ],
+    blocks: [
+      { head: "계속 굴러가는 것", items: [
+        { t: "2주에 한 번씩 대항전 → 새 R 발굴" },
+        { t: "팀 구성과 업무는 상황 보면서 유기적으로 변경" },
+        { t: "무균속옷 등 사이드퀘가 준비되면 메인퀘로 승격" },
+      ] },
+      { head: "목표", out: true, items: [
+        { t: "2주에 1개씩 새 R이 물길까지 붙어서 나오면 **월 5개**가 산술적으로 맞습니다" },
+        { t: "12월 말 기준 월 순익 5개 제품" },
+      ] },
+    ],
+  },
+];
+const AUG_STACK = [
+  { b: "역량", s: "내가 뭘 얼마나\n할 수 있는지" },
+  { b: "데이터", s: "뭐가 먹히고\n뭐가 안 먹히는지" },
+  { b: "시스템", s: "남이 대신\n할 수 있는 구조" },
+  { b: "기획력", s: "직접 만들어서\n검증해본 경험" },
+  { b: "사이클", s: "계속 돌아가는\n제조 라인" },
+];
+const AUG_GOAL = {
+  label: "FINAL TARGET",
+  title: "12월 말까지 월 순익 5개 제품",
+  desc: "이 로드맵은 확정이 아닙니다. 매주 금요일 리뷰에서 안 맞는 건 바꿉니다. 다만 순서 — 배우고, 돌리고, 넘기고, 기획한다 — 는 유지하는 게 좋습니다. 앞 주가 뒷 주의 재료라서요.",
+};
+/* **굵게** 마크를 <b> 로 */
+function augRich(s) {
+  return String(s || "").split(/(\*\*[^*]+\*\*)/).map((p, i) =>
+    p.startsWith("**") && p.endsWith("**")
+      ? <b key={i} style={{ fontWeight: "bold", color: C.ink }}>{p.slice(2, -2)}</b>
+      : <span key={i}>{p}</span>);
+}
+
+function AugustRoadmap() {
+  const FONT = "var(--game-font, 'DotGothic16', monospace)";
+  const boxRef = useRef(null);
+  const secRefs = useRef([]);
+  const [act, setAct] = useState(0);
+  /* 스크롤 위치로 현재 주차 계산 (IntersectionObserver 없이 간단히) */
+  const onScroll = () => {
+    const box = boxRef.current; if (!box) return;
+    const line = box.scrollTop + 90;
+    let i = 0;
+    secRefs.current.forEach((el, k) => { if (el && el.offsetTop <= line) i = k; });
+    setAct(i);
+  };
+  const go = (i) => {
+    const box = boxRef.current, el = secRefs.current[i];
+    if (box && el) box.scrollTo({ top: Math.max(0, el.offsetTop - 8), behavior: "smooth" });
+    setAct(i);
+  };
+  const lbl = { fontSize: 10, fontWeight: "bold", letterSpacing: "0.08em", color: C.inkSoft, marginBottom: 9 };
+  const card = { background: C.white, border: `3px solid ${C.ink}`, borderRadius: 12, boxShadow: `0 4px 0 ${C.parchEdge}`, overflow: "hidden", marginBottom: 4 };
+
+  return (
+    <div style={{ fontFamily: FONT }}>
+      {/* ── 주차 내비 (고정) ── */}
+      <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 10 }}>
+        {AUG_WEEKS.map((w, i) => {
+          const on = act === i, col = AUG_WC[w.c];
+          return (
+            <button key={w.id} type="button" onClick={() => go(i)}
+              style={{ cursor: "pointer", fontFamily: FONT, flex: "1 1 110px", minWidth: 96, textAlign: "left",
+                background: on ? col.soft : C.white, border: `2px solid ${on ? col.line : C.parchEdge}`,
+                borderTop: `4px solid ${on ? col.line : C.parchEdge}`, borderRadius: 9, padding: "7px 9px",
+                boxShadow: on ? `0 3px 0 ${col.line}` : "none", transform: on ? "translateY(-2px)" : "none" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18,
+                borderRadius: 5, fontSize: 10.5, fontWeight: "bold", marginBottom: 4,
+                background: on ? col.line : C.parchLine, color: on ? C.white : C.inkSoft }}>{i + 1}</span>
+              <span style={{ display: "block", fontSize: 9.5, fontWeight: "bold", color: on ? col.deep : C.inkSoft }}>{w.nav}</span>
+              <span style={{ display: "block", fontSize: 12, fontWeight: "bold", color: on ? C.ink : C.inkSoft, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{w.navT}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── 본문 (자체 스크롤 · 여기 기준으로 현재 주차를 계산해요) ── */}
+      <div ref={boxRef} onScroll={onScroll}
+        style={{ maxHeight: "min(66vh, 620px)", overflowY: "auto", paddingRight: 4 }}>
+
+        {/* 헤더 */}
+        <div style={{ marginBottom: 14 }}>
+          <span style={{ display: "inline-block", fontSize: 9.5, fontWeight: "bold", letterSpacing: "0.1em",
+            color: AUG_WC[2].deep, background: AUG_WC[2].soft, padding: "4px 10px", borderRadius: 20, marginBottom: 9 }}>AUGUST SYSTEM</span>
+          <div style={{ fontSize: 21, fontWeight: "bold", letterSpacing: "-0.02em", marginBottom: 10, color: C.ink }}>8월 시스템 로드맵</div>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 5, marginBottom: 10 }}>
+            {AUG_FLOW.map((f, i) => (
+              <React.Fragment key={f}>
+                <span style={{ fontSize: 12, fontWeight: "bold", padding: "4px 11px", borderRadius: 20,
+                  background: f === AUG_FLOW_HI ? C.ink : C.white, color: f === AUG_FLOW_HI ? C.gem : C.ink,
+                  border: `2px solid ${C.ink}` }}>{f}</span>
+                {i < AUG_FLOW.length - 1 && <span style={{ color: C.inkSoft, fontSize: 12 }}>→</span>}
+              </React.Fragment>
+            ))}
+          </div>
+          <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.75, color: C.inkSoft, maxWidth: "62ch" }}>{AUG_DESC}</p>
+        </div>
+
+        {/* 주차 카드 */}
+        {AUG_WEEKS.map((w, i) => {
+          const col = AUG_WC[w.c];
+          return (
+            <div key={w.id} ref={(el) => { secRefs.current[i] = el; }}>
+              <div style={card}>
+                {/* 카드 머리 */}
+                <div style={{ padding: "14px 16px 13px", borderLeft: `6px solid ${col.line}`, background: C.parch }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginBottom: 8 }}>
+                    <span style={{ fontSize: 10.5, fontWeight: "bold", letterSpacing: "0.06em", padding: "4px 9px",
+                      borderRadius: 6, background: col.soft, color: col.deep, border: `2px solid ${col.line}` }}>{w.badge}</span>
+                    <span style={{ fontSize: 11, color: C.inkSoft, background: C.parchLine, padding: "4px 9px", borderRadius: 20 }}>{w.tag}</span>
+                  </div>
+                  <div style={{ fontSize: 15.5, fontWeight: "bold", lineHeight: 1.4, marginBottom: 6, color: C.ink }}>{w.title}</div>
+                  <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.7, color: C.inkSoft }}>{augRich(w.one)}</p>
+                </div>
+
+                {/* 시간 구조 */}
+                {w.time && (
+                  <div style={{ padding: "13px 16px", borderTop: `2px solid ${C.parchEdge}` }}>
+                    <div style={lbl}>{w.timeHead}</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {w.time.map((t, k) => {
+                        const tc = AUG_WC[t.c];
+                        return (
+                          <div key={k} style={{ display: "grid", gridTemplateColumns: "84px 1fr", gap: 8, alignItems: "stretch" }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center",
+                              borderRadius: 8, fontSize: 11, fontWeight: "bold", lineHeight: 1.35, padding: "7px 4px",
+                              background: tc.soft, color: tc.deep, border: `2px solid ${tc.line}` }}>{t.k}</div>
+                            <div style={{ padding: "8px 11px", borderRadius: 8, background: C.white,
+                              border: `2px solid ${C.parchEdge}`, fontSize: 12.5, lineHeight: 1.65, color: C.inkSoft }}>
+                              {augRich(t.v)}
+                              {t.who && <AugWho who={t.who} />}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 하는 일 · 끝나면 남는 것 (좁으면 자동으로 1단) */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                  borderTop: `2px solid ${C.parchEdge}` }}>
+                  {w.blocks.map((b, k) => (
+                    <div key={k} style={{ padding: "13px 16px", borderTop: k > 1 ? `2px solid ${C.parchEdge}` : "none",
+                      background: b.out ? "#fbfaf5" : C.white, gridColumn: b.full ? "1 / -1" : "auto" }}>
+                      <div style={lbl}>{b.head}</div>
+                      <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                        {b.items.map((it, n) => (
+                          <li key={n} style={{ position: "relative", paddingLeft: 15, fontSize: 12.5, lineHeight: 1.7,
+                            marginBottom: n === b.items.length - 1 ? 0 : 6, color: C.inkSoft }}>
+                            <span style={{ position: "absolute", left: 0, top: 7, width: 6, height: 6,
+                              borderRadius: b.out ? "50%" : 2, background: b.out ? AUG_WC[3].line : C.parchEdge }} />
+                            {augRich(it.t)}
+                            {it.who && <AugWho who={it.who} />}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 주차 사이 연결 문구 */}
+              {w.next && (
+                <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "2px 0 10px 14px" }}>
+                  <span style={{ width: 3, height: 22, background: C.parchEdge, borderRadius: 2 }} />
+                  <span style={{ fontSize: 11.5, fontWeight: "bold", color: C.inkSoft }}>{w.next}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* 매주 쌓이는 것 */}
+        <div style={{ ...card, padding: 16, marginTop: 14 }}>
+          <div style={lbl}>COMPOUNDING</div>
+          <div style={{ fontSize: 15, fontWeight: "bold", marginBottom: 14, color: C.ink }}>매주 쌓이는 것</div>
+          <div style={{ display: "flex", gap: 7, alignItems: "flex-end", height: 118, marginBottom: 10 }}>
+            {AUG_WEEKS.map((_, i) => (
+              <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 3 }}>
+                {/* 위쪽이 그 주에 새로 쌓인 것, 아래는 지난 주에 쌓인 것 */}
+                {Array.from({ length: i + 1 }).map((__, k) => {
+                  const wk = i - k + 1;              // 맨 위 = 이번 주
+                  const cc = AUG_WC[wk];
+                  return <div key={k} style={{ height: 19, borderRadius: 4, border: `2px solid ${cc.line}`,
+                    background: k === 0 ? cc.line : cc.soft }} />;
+                })}
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 7 }}>
+            {AUG_STACK.map((s) => (
+              <div key={s.b} style={{ flex: 1, textAlign: "center", fontSize: 10, color: C.inkSoft, lineHeight: 1.45 }}>
+                <b style={{ display: "block", fontSize: 12, color: C.ink, marginBottom: 2 }}>{s.b}</b>
+                {s.s.split("\n").map((ln, k) => <span key={k} style={{ display: "block" }}>{ln}</span>)}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 최종 목표 배너 */}
+        <div style={{ marginTop: 12, borderRadius: 12, padding: "22px 20px", color: C.white,
+          background: `linear-gradient(115deg, ${AUG_WC[2].line} 0%, #6d5be0 55%, ${AUG_WC[4].line} 100%)`,
+          border: `3px solid ${C.ink}`, boxShadow: `0 4px 0 ${C.parchEdge}` }}>
+          <div style={{ fontSize: 9.5, fontWeight: "bold", letterSpacing: "0.12em", opacity: 0.8, marginBottom: 8 }}>{AUG_GOAL.label}</div>
+          <div style={{ fontSize: 18, fontWeight: "bold", lineHeight: 1.4, marginBottom: 9 }}>{AUG_GOAL.title}</div>
+          <p style={{ margin: 0, fontSize: 12, lineHeight: 1.75, opacity: 0.92, maxWidth: "60ch" }}>{AUG_GOAL.desc}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+/* 사람 이름 태그 */
+function AugWho({ who }) {
+  return (
+    <span style={{ display: "inline-block", fontSize: 10.5, fontWeight: "bold", color: AUG_WC[2].deep,
+      background: AUG_WC[2].soft, border: `1.5px solid ${AUG_WC[2].line}`, padding: "0 6px", borderRadius: 5, marginLeft: 4 }}>{who}</span>
+  );
+}
+
 function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice, bossMaps = [], bossCleared = {}, qAccept = {}, questBox = [], unreadMsgCount = 0, onGo, onGoBoard, hqQuests = [], onHQChange, hqRoad = {}, onRoadChange, bossImg = () => "", onBossImg = () => {}, onNotifyUser = () => {}, mentions = [], onGoMention = () => {}, openHistId = null, onHistOpened = () => {}, expertNames = [], onMention = () => {}, onGold = () => {}, initialCat = null, onInitialCatUsed = () => {} }) {
   const [tab, setTab] = useState(initialCat ? "quest" : "home");
   const [notice, setNotice] = useState("");
@@ -12040,6 +12391,14 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
     setTab("quest"); setQcat(initialCat); onInitialCatUsed();
   }, [initialCat]); // eslint-disable-line
   const TAB = [["home", "🏠 홈"], ["road", "🗺 로드맵"], ["quest", "📋 퀘스트"], ["doc", "📄 문서"], ["me", "🙋 내 페이지"]];
+  /* 🗺 로드맵 탭 안에서 「챕터 트리(기존)」 ↔ 「8월 로드맵」 전환 · 고른 건 다음에도 유지 */
+  const [roadView, setRoadView] = useState(() => (loadJSON("echotown_hqroadview", "chapter") === "aug" ? "aug" : "chapter"));
+  useEffect(() => { saveJSON("echotown_hqroadview", roadView); }, [roadView]);
+  const roadTabBtn = (on) => ({
+    cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold",
+    padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`,
+    background: on ? C.gem : C.white, color: C.ink,
+  });
   const soon = (t) => (
     <div style={{ textAlign: "center", padding: "60px 20px", color: C.inkSoft }}>
       <div style={{ fontSize: 40, marginBottom: 12 }}>🚧</div>
@@ -12677,7 +13036,17 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
             </>
           );
         })()}
-        {tab === "road" && (() => {
+        {tab === "road" && roadView === "aug" && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+              <b style={{ fontSize: 14, marginRight: 4 }}>🗺 로드맵</b>
+              <button type="button" onClick={() => setRoadView("chapter")} style={roadTabBtn(false)}>🧭 챕터 트리</button>
+              <button type="button" onClick={() => setRoadView("aug")} style={roadTabBtn(true)}>📅 8월 로드맵</button>
+            </div>
+            <AugustRoadmap />
+          </>
+        )}
+        {tab === "road" && roadView !== "aug" && (() => {
           const rawCh = hqRoad[rcat] || [];
           const ci = HQ_CATS.find((c) => c.id === rcat) || { color: "#888" };
           const avgPct = avgOf;
@@ -12723,6 +13092,9 @@ function HQView({ onClose, myName = "", people = [], notices = [], onPostNotice,
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
                 <b style={{ fontSize: 14, marginRight: 4 }}>🗺 로드맵</b>
+                <button type="button" onClick={() => setRoadView("chapter")} style={roadTabBtn(true)}>🧭 챕터 트리</button>
+                <button type="button" onClick={() => setRoadView("aug")} style={roadTabBtn(false)}>📅 8월 로드맵</button>
+                <span style={{ width: 1, height: 20, background: C.parchEdge, margin: "0 2px" }} />
                 {HQ_CATS.map((c) => (
                   <button key={c.id} type="button" onClick={() => setRcat(c.id)} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11, fontWeight: "bold", padding: "6px 11px", borderRadius: 16, border: `2px solid ${C.ink}`, background: rcat === c.id ? C.ink : C.white, color: rcat === c.id ? C.white : C.ink }}>{c.icon} {c.name}</button>
                 ))}
