@@ -131,6 +131,87 @@ const GEM_TO_WON = 10000;
 /* 화면 하단에 표시되는 빌드 버전 — 배포된 파일이 최신인지 바로 확인할 수 있어요 */
 const APP_VERSION = "v163 · 2026-07-30";
 
+/* ═══════════ 🔄 새 버전 감지 ═══════════
+   배포하면 vite 플러그인이 위 APP_VERSION 을 그대로 dist/version.json 에 구워둡니다.
+   (vite.config.js 의 versionJson 플러그인 — 배포할 때 손으로 고칠 파일은 없어요)
+   게임은 ① 60초마다 그 파일을 캐시 무시로 확인하고
+        ② 새 버전을 켠 사람이 접속하면 실시간 채널로 바로 알려줍니다. */
+const VER_POLL_MS = 60000;        // 확인 주기 60초 (탭이 백그라운드면 건너뜀)
+const VER_SNOOZE_MS = 10 * 60 * 1000;   // "나중에" 를 누르면 10분 뒤 한 번 더
+
+/* "v163 · 2026-07-30" → 163. 숫자를 못 찾으면 NaN */
+function verNum(s) {
+  const m = /v\s*(\d+)/i.exec(String(s == null ? "" : s));
+  return m ? parseInt(m[1], 10) : NaN;
+}
+/* 상대 버전이 내 것보다 정말 새로운가?
+   숫자를 뽑아 비교하므로 v160 사용자가 v159 사용자를 보고 알림이 뜨는 일은 없습니다.
+   한쪽이라도 숫자를 못 읽으면 false — 애매하면 알리지 않는 쪽이 안전해요. */
+function isVerNewer(cand, mine) {
+  const a = verNum(cand), b = verNum(mine);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+  return a > b;
+}
+/* 개발 중(dev 서버)에는 팝업을 아예 띄우지 않습니다 */
+function verWatchOn() {
+  try { return !!(import.meta && import.meta.env && import.meta.env.PROD); } catch (e) { return false; }
+}
+/* 배포된 version.json 읽기 — 실패하면 조용히 null (다음 주기에 다시 시도) */
+async function fetchLatestVer() {
+  try {
+    let base = "/";
+    try { base = (import.meta && import.meta.env && import.meta.env.BASE_URL) || "/"; } catch (e) {}
+    const url = base + "version.json?t=" + Date.now();   // 쿼리스트링 + no-store 이중으로 캐시 회피
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r || !r.ok) return null;
+    const j = await r.json();
+    return j && j.version ? String(j.version) : null;
+  } catch (e) {
+    return null;
+  }
+}
+/* 다른 모달이 열려 있으면 그 위를 덮지 않도록 잠시 기다립니다.
+   이 파일의 모달은 전부 「전체를 덮는 position:fixed + zIndex 100 이상」 패턴이라 그걸로 판별해요. */
+function anyOverlayOpen() {
+  try {
+    const els = document.querySelectorAll("div[style*='fixed']");
+    for (let i = 0; i < els.length; i++) {
+      const el = els[i];
+      if (el.getAttribute("data-ver-modal")) continue;   // 내 팝업은 제외
+      const cs = window.getComputedStyle(el);
+      if (cs.position !== "fixed" || cs.display === "none" || cs.visibility === "hidden") continue;
+      const z = parseInt(cs.zIndex, 10);
+      if (!Number.isFinite(z) || z < 100) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width >= window.innerWidth * 0.6 && r.height >= window.innerHeight * 0.6) return true;
+    }
+  } catch (e) {}
+  return false;
+}
+/* 캐시를 확실히 버리고 새로 받기 — Cache Storage 까지 비운 뒤 리로드 */
+async function hardReload() {
+  try {
+    if (window.caches && window.caches.keys) {
+      const ks = await window.caches.keys();
+      await Promise.all(ks.map((k) => window.caches.delete(k)));
+    }
+  } catch (e) {}
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+      const rs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(rs.map((r) => r.unregister()));
+    }
+  } catch (e) {}
+  try {
+    /* 주소에 타임스탬프를 얹어 캐시된 index.html 이 아니라 새 문서를 받게 합니다 */
+    const u = new URL(window.location.href);
+    u.searchParams.set("_v", String(Date.now()));
+    window.location.replace(u.toString());
+  } catch (e) {
+    try { window.location.reload(true); } catch (e2) { window.location.reload(); }
+  }
+}
+
 /* ───────── 📮→🏭 피드백 허브(정제소) 웹훅 ─────────
  * ⚠️ 브라우저 앱이라 시크릿 토큰을 클라이언트에 둘 수 없어요.
  *    → 인앱 피드백은 아래 "릴레이 URL"(Supabase Edge Function)로만 보내고,
@@ -3445,7 +3526,7 @@ function useMultiplayer(myName, posRef, facingRef, onChatRef, outfitRef, viewRef
           if (onChatRef && onChatRef.net) onChatRef.net("qleave", payload);
         });
         /* ⚠️ 새 이벤트를 만들면 반드시 여기에 이름을 넣어야 상대에게 도착해요 */
-        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor", "decorreq", "luck", "hq", "hqroad", "qrev", "comm", "mention", "lvl", "sprpos", "road"].forEach((ev) => {
+        ["qcall", "qcallack", "qstart", "qlog", "mroom", "spr", "song", "ytplay", "lchat", "cchat", "roombgm", "follow", "qdone", "grant", "watch", "decor", "decorreq", "luck", "hq", "hqroad", "qrev", "comm", "mention", "lvl", "sprpos", "road", "ver"].forEach((ev) => {
           ch.on("broadcast", { event: ev }, ({ payload }) => {
             if (onChatRef && onChatRef.net) onChatRef.net(ev, payload);
           });
@@ -16256,6 +16337,8 @@ function EchoTown() {
   useEffect(() => {
     onChatRef.net = (kind, p) => {
       if (!p) return;
+      /* 🔄 새 버전을 켠 사람이 접속하면 여기로 알려옵니다 (폴링 주기를 기다리지 않고 즉시) */
+      if (kind === "ver") { onPeerVerRef.current && onPeerVerRef.current(p.v); return; }
       if (kind === "qchat" || kind === "qparty" || kind === "qstart" || kind === "qlog" || kind === "qcall" || kind === "qdone" || kind === "qlock" || kind === "qleave" || kind === "mroom" || kind === "spr" || kind === "song" || kind === "ytplay" || kind === "lchat" || kind === "cchat" || kind === "roombgm" || kind === "follow" || kind === "watch" || kind === "decor" || kind === "decorreq" || kind === "luck" || kind === "hq" || kind === "hqroad" || kind === "mchat" || kind === "dict" || kind === "dictreq" || kind === "gal" || kind === "bmap" || kind === "fb" || kind === "worry" || kind === "lg" || kind === "schat" || kind === "rec" || kind === "reel" || kind === "shr" || kind === "thx" || kind === "comm" || kind === "mention" || kind === "lvl" || kind === "stat" || kind === "sprpos" || kind === "road") { /* 전체 공유 */ } else if (p.to !== (myName || "")) return;
       if (kind === "bell") { playBell(); setVisitor(p.from); showNotice(`🔔 ${p.from}님이 초인종을 눌렀어요`); pushMsg("dm", { from: p.from, text: "🔔 초인종을 눌렀어요 — 집 앞에 찾아왔어요!" }); }
       if (kind === "qrev") { showNotice("🔔 퀘스트 알림이 도착했습니다!", () => setHqOpen(true)); pushMsg("dm", { from: p.by || "HQ", text: p.txt || "🔔 퀘스트 알림" }); return; }
@@ -16667,6 +16750,88 @@ function EchoTown() {
       document.removeEventListener("visibilitychange", onHide);
     };
   }, [flushSave]);
+
+  /* ═══════════ 🔄 새 버전 감지 & 안내 팝업 ═══════════
+     감지 경로는 둘(60초 폴링 · 실시간 브로드캐스트)이지만 상태는 verLatest 하나뿐이라
+     몇 개 버전이 밀렸든, 두 경로가 겹치든 팝업은 한 번만 뜹니다. */
+  const [verLatest, setVerLatest] = useState(null);   // 감지된 최신 버전 (없으면 null)
+  const [verOpen, setVerOpen] = useState(false);      // 팝업이 떠 있는가
+  const verSnoozeRef = useRef({ until: 0, used: 0 }); // "나중에" — 10분 뒤 한 번만 더
+  const verEchoRef = useRef(0);                       // 내 버전 재알림 throttle
+  const onPeerVerRef = useRef(null);
+
+  /* 새 버전을 봤다고 기록 — 내 것보다 최신일 때만. 더 새 게 또 오면 번호만 갱신됩니다. */
+  const noteVer = useCallback((v) => {
+    if (!verWatchOn() || !v) return;
+    if (!isVerNewer(v, APP_VERSION)) return;
+    setVerLatest((prev) => (prev && !isVerNewer(v, prev) ? prev : v));
+  }, []);
+
+  /* 상대가 알려온 버전 처리 */
+  const onPeerVer = useCallback((v) => {
+    if (!verWatchOn() || !v) return;
+    if (isVerNewer(v, APP_VERSION)) { noteVer(v); return; }
+    /* 상대가 나보다 옛 버전이면 내 버전을 알려줍니다 (30초에 한 번으로 제한) */
+    if (isVerNewer(APP_VERSION, v)) {
+      const now = Date.now();
+      if (now - verEchoRef.current < 30000) return;
+      verEchoRef.current = now;
+      try { netSendEvent("ver", { v: APP_VERSION }); } catch (e) {}
+    }
+  }, [noteVer, netSendEvent]);
+  onPeerVerRef.current = onPeerVer;
+
+  /* 접속되면 내 버전을 한 번 알립니다 — 옛 버전을 켜둔 사람이 즉시 알게 돼요 */
+  useEffect(() => {
+    if (!verWatchOn() || netStatus !== "접속됨") return;
+    const t = setTimeout(() => { try { netSendEvent("ver", { v: APP_VERSION }); } catch (e) {} }, 1200);
+    return () => clearTimeout(t);
+  }, [netStatus, netSendEvent]);
+
+  /* 60초마다 version.json 확인 (탭이 백그라운드면 건너뛰고, 돌아왔을 때 한 번 확인) */
+  useEffect(() => {
+    if (!verWatchOn()) return;
+    let alive = true;
+    const check = () => {
+      if (!alive || document.hidden) return;
+      fetchLatestVer().then((v) => { if (alive) noteVer(v); });   // 실패하면 null → 조용히 무시
+    };
+    const first = setTimeout(check, 4000);
+    const iv = setInterval(check, VER_POLL_MS);
+    const onVis = () => { if (!document.hidden) check(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      alive = false;
+      clearTimeout(first); clearInterval(iv);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [noteVer]);
+
+  /* 띄울 타이밍 고르기 — 다른 모달이 열려 있으면 닫힐 때까지 기다립니다.
+     이미 떠 있으면(verOpen) 다시 열지 않으므로 중복 팝업이 생기지 않아요. */
+  useEffect(() => {
+    if (!verLatest || verOpen) return;
+    const tryOpen = () => {
+      const s = verSnoozeRef.current;
+      if (s.used > 1) return;                 // "나중에" 두 번이면 이 세션에서는 끝
+      if (Date.now() < s.until) return;       // 스누즈 중
+      if (anyOverlayOpen()) return;           // 다른 모달 위를 덮지 않기
+      setVerOpen(true);
+    };
+    tryOpen();
+    const iv = setInterval(tryOpen, 3000);
+    return () => clearInterval(iv);
+  }, [verLatest, verOpen]);
+
+  /* 새로고침 — 저장부터 끝내고, 캐시를 버린 뒤 새 문서를 받습니다 */
+  const onVerRefresh = useCallback(() => {
+    try { if (myNameRef.current && flushSaveRef.current) flushSaveRef.current(myNameRef.current); } catch (e) {}
+    setTimeout(() => { hardReload(); }, 400);   // 로컬 저장이 끝날 짧은 여유
+  }, []);
+  const onVerLater = useCallback(() => {
+    verSnoozeRef.current = { until: Date.now() + VER_SNOOZE_MS, used: verSnoozeRef.current.used + 1 };
+    setVerOpen(false);
+  }, []);
 
   const AVATARS = ["🧑", "👩", "🧑‍💻", "👨‍💼", "👩‍🎨", "🧑‍🍳", "👩‍🔬", "🧑‍🎤", "👨‍🌾", "👩‍🏫"];
   /* 💬 상태메시지 : 처음 들어오면 서버에서 불러오고, 저장하면 접속자 모두에게 즉시 반영 */
@@ -17687,8 +17852,35 @@ function EchoTown() {
           </div>
         </div>
       )}
+      {verOpen && verLatest && (
+        <VersionModal current={APP_VERSION} latest={verLatest} onRefresh={onVerRefresh} onLater={onVerLater} />
+      )}
     </div>
     </NetContext.Provider>
+  );
+}
+
+/* 🔄 새 버전 안내 팝업 — 기존 모달과 같은 톤(두꺼운 테두리·픽셀 그림자·딤 배경) */
+function VersionModal({ current, latest, onRefresh, onLater }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <div data-ver-modal="1" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 400, padding: 14, fontFamily: "var(--game-font, 'DotGothic16', monospace)" }}>
+      <div style={{ width: "100%", maxWidth: 330, background: C.parch, border: `4px solid ${C.ink}`, borderRadius: 14, padding: 20, textAlign: "center", boxShadow: `0 10px 0 ${C.parchEdge}, 0 16px 34px rgba(0,0,0,0.45)` }}>
+        <div style={{ fontSize: 40, lineHeight: 1 }}>🎉</div>
+        <div style={{ fontSize: 17, fontWeight: "bold", margin: "10px 0 4px" }}>새 버전이 나왔어요!</div>
+        <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.6 }}>새로고침하면 최신 버전으로<br />플레이할 수 있어요.</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, margin: "14px 0 16px", fontSize: 10, color: C.inkSoft }}>
+          <span style={{ background: C.white, border: `2px solid ${C.parchEdge}`, borderRadius: 6, padding: "3px 7px" }}>{current || "?"}</span>
+          <span style={{ fontWeight: "bold" }}>→</span>
+          <span style={{ background: C.good, color: C.white, border: `2px solid ${C.ink}`, borderRadius: 6, padding: "3px 7px", fontWeight: "bold" }}>{latest || "?"}</span>
+        </div>
+        <div style={{ display: "flex", gap: 7 }}>
+          <PxButton tone="good" onClick={() => { if (busy) return; setBusy(true); onRefresh(); }} style={{ flex: 1.6, padding: 11, fontSize: 13 }}>{busy ? "불러오는 중…" : "🔄 새로고침"}</PxButton>
+          <PxButton tone="wood" onClick={onLater} style={{ flex: 1, padding: 11, fontSize: 12 }}>나중에</PxButton>
+        </div>
+        <div style={{ fontSize: 9.5, color: C.inkSoft, marginTop: 9 }}>진행 상황은 저장된 뒤에 새로고침돼요</div>
+      </div>
+    </div>
   );
 }
 
