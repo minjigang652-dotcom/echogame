@@ -20,6 +20,71 @@ function isTyping(e) {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable === true;
 }
 
+/* ⌨️ 게임 조작키는 「물리 키 위치(e.code)」로 판정합니다 ═══════════════════
+   한글 자판 상태에서는 W 를 눌러도 e.key 가 "ㅁ" 로 들어옵니다. 그래서 e.key 로
+   판정하면 WASD 가 통째로 먹통이 돼요. (Shift 를 누르면 "W" 로 들어와서 그때만
+   우연히 통과하던 게 그동안의 증상이었습니다. 다른 창에 갔다 오면 OS 가 IME 를
+   한글로 되돌리기 때문에 재현됐고요.)
+   e.code 는 한/영·대소문자·Shift 와 무관하게 물리 키 위치를 그대로 주므로
+   keydown·keyup·이동 루프 전부 이 기준 하나로 통일합니다.
+   e.code 가 없는 환경(구형 브라우저·일부 가상 키보드)에서만 e.key 로 보정해요. */
+const MOVE_BY_CODE = {
+  KeyW: "up", ArrowUp: "up",
+  KeyS: "down", ArrowDown: "down",
+  KeyA: "left", ArrowLeft: "left",
+  KeyD: "right", ArrowRight: "right",
+};
+const MOVE_BY_KEY = {
+  w: "up", arrowup: "up",
+  s: "down", arrowdown: "down",
+  a: "left", arrowleft: "left",
+  d: "right", arrowright: "right",
+};
+/* 이동 방향 하나로 정규화 — 키 상태 객체는 "up"/"down"/"left"/"right" 만 씁니다 */
+function moveDir(e) {
+  if (!e) return null;
+  if (e.code && MOVE_BY_CODE[e.code]) return MOVE_BY_CODE[e.code];
+  const k = typeof e.key === "string" ? e.key.toLowerCase() : "";
+  return MOVE_BY_KEY[k] || null;
+}
+/* 글자 단축키 판정 — ch 는 "e" "v" "c" 같은 소문자 한 글자, 스페이스는 " " */
+function isKey(e, ch) {
+  if (!e || !ch) return false;
+  if (e.code) {
+    if (ch === " ") { if (e.code === "Space") return true; }
+    else if (e.code === "Key" + ch.toUpperCase()) return true;
+  }
+  const k = typeof e.key === "string" ? e.key.toLowerCase() : "";
+  return k === ch;
+}
+/* 게임이 가로채는 키인가 — 브라우저 기본 동작(스크롤 등)을 막을 대상 */
+function isGameKey(e) {
+  return !!moveDir(e) || isKey(e, " ") || isKey(e, "e") || isKey(e, "v") || isKey(e, "c");
+}
+/* 포커스를 잃으면 키가 눌린 채로 남아 캐릭터가 계속 걷는 문제가 생깁니다.
+   객체를 갈아끼우지 않고 제자리에서 비워서, 이미 참조를 들고 있는 루프도 그대로 안전해요. */
+function clearKeys(ref) {
+  const o = ref && ref.current;
+  if (!o) return;
+  Object.keys(o).forEach((k) => { o[k] = false; });
+}
+/* keydown·keyup·blur·visibilitychange 를 한 번에 등록 — 네 화면(마을·바다·실내·보스맵)이 같은 규칙을 씁니다 */
+function bindGameKeys(keysRef, down, up) {
+  const reset = () => clearKeys(keysRef);
+  const onUp = (e) => { const d = moveDir(e); if (d) keysRef.current[d] = false; if (up) up(e); };
+  const onVis = () => { if (document.hidden) reset(); };
+  window.addEventListener("keydown", down);
+  window.addEventListener("keyup", onUp);
+  window.addEventListener("blur", reset);
+  document.addEventListener("visibilitychange", onVis);
+  return () => {
+    window.removeEventListener("keydown", down);
+    window.removeEventListener("keyup", onUp);
+    window.removeEventListener("blur", reset);
+    document.removeEventListener("visibilitychange", onVis);
+  };
+}
+
 /* 채팅창 자동 스크롤 — 컨테이너에 ref를 걸면 새 메시지마다 맨 아래로 내려갑니다.
    scrollIntoView 대신 scrollTop을 써서 페이지 전체가 튀지 않아요. */
 function useAutoScroll(dep) {
@@ -852,18 +917,16 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
   const showToast = useCallback((t) => { setToast(t); window.clearTimeout(showToast._t); showToast._t = window.setTimeout(() => setToast(null), 1600); }, []);
 
   useEffect(() => {
-    const norm = (k) => (k.length === 1 ? k.toLowerCase() : k);
     const down = (e) => {
       if (isTyping(e)) return;
-      const raw = e.key.toLowerCase();
-      if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d"].includes(raw)) e.preventDefault();
+      if (isGameKey(e)) e.preventDefault();
       if (pausedRef.current) return;
-      const k = norm(e.key);
-      if (sitRef.current && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "a", "d", "w", "s"].includes(k)) {
+      const dir = moveDir(e);
+      if (sitRef.current && dir) {
         if (onStandRef.current) onStandRef.current();
         return;
       }
-      if (k === " ") {
+      if (isKey(e, " ")) {
         const n = nearRef.current;
         if (n) {
           const f = furRef.current.find((x) => x.id === n);
@@ -871,12 +934,9 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
         }
         return;
       }
-      keys.current[k] = true;
+      if (dir) keys.current[dir] = true;
     };
-    const up = (e) => { keys.current[norm(e.key)] = false; };
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
+    return bindGameKeys(keys, down);
   }, [showToast]);
 
   useEffect(() => {
@@ -893,10 +953,10 @@ function RoomView({ title, icon, sub, bg, roomW = 640, roomH = 400, furniture, s
         const k = keys.current;
         let { x, y } = posRef.current;
         let dx = 0, dy = 0;
-        if (k["ArrowLeft"] || k["a"]) dx -= 1;
-        if (k["ArrowRight"] || k["d"]) dx += 1;
-        if (k["ArrowUp"] || k["w"]) dy -= 1;
-        if (k["ArrowDown"] || k["s"]) dy += 1;
+        if (k.left) dx -= 1;
+        if (k.right) dx += 1;
+        if (k.up) dy -= 1;
+        if (k.down) dy += 1;
         if (dx || dy) {
           const len = Math.hypot(dx, dy) || 1;
           x += (dx / len) * SPEED; y += (dy / len) * SPEED;
@@ -2280,15 +2340,12 @@ function SeaView({ pos, setPos, onBack, onFish, onShop, onDex, look = null, carr
   useEffect(() => {
     const down = (e) => {
       if (isTyping(e)) return;
-      const raw = e.key.toLowerCase();
-      if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d"].includes(raw)) e.preventDefault();
-      if (raw === " ") { const n = nearRef.current; if (n) actRef.current(n); return; }
-      keys.current[raw] = true;
+      if (isGameKey(e)) e.preventDefault();
+      if (isKey(e, " ")) { const n = nearRef.current; if (n) actRef.current(n); return; }
+      const dir = moveDir(e);
+      if (dir) keys.current[dir] = true;
     };
-    const up = (e) => { keys.current[e.key.toLowerCase()] = false; };
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
+    return bindGameKeys(keys, down);
   }, []);
 
   useEffect(() => {
@@ -2302,10 +2359,10 @@ function SeaView({ pos, setPos, onBack, onFish, onShop, onDex, look = null, carr
         const k = keys.current;
         let { x, y } = posRef.current;
         let dx = 0, dy = 0;
-        if (k["arrowleft"] || k["a"]) dx -= 1;
-        if (k["arrowright"] || k["d"]) dx += 1;
-        if (k["arrowup"] || k["w"]) dy -= 1;
-        if (k["arrowdown"] || k["s"]) dy += 1;
+        if (k.left) dx -= 1;
+        if (k.right) dx += 1;
+        if (k.up) dy -= 1;
+        if (k.down) dy += 1;
         if (dx || dy) {
           const len = Math.hypot(dx, dy) || 1;
           x += (dx / len) * SPEED; y += (dy / len) * SPEED;
@@ -3696,25 +3753,20 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
   }, []);
 
   useEffect(() => {
-    const norm = (k) => (k.length === 1 ? k.toLowerCase() : k);
     const down = (e) => {
       if (isTyping(e)) return;
-      const raw = e.key.toLowerCase();
-      if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d"].includes(raw)) e.preventDefault();
+      if (isGameKey(e)) e.preventDefault();
       if (hintRef.current) { hintRef.current = false; setHint(false); }
-      if (raw === "v") { setFpv((v) => !v); return; }   // 🎥 V : 1인칭 ↔ 3인칭 전환
-      const k = norm(e.key);
-      if (k === " ") {
+      if (isKey(e, "v")) { setFpv((v) => !v); return; }   // 🎥 V : 1인칭 ↔ 3인칭 전환
+      if (isKey(e, " ")) {
         const n = nearRef.current;
         if (n) handleRef.current(n);
         return;
       }
-      keys.current[k] = true;
+      const dir = moveDir(e);
+      if (dir) keys.current[dir] = true;
     };
-    const up = (e) => { keys.current[norm(e.key)] = false; };
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
+    return bindGameKeys(keys, down);
   }, []);
 
   useEffect(() => {
@@ -3729,10 +3781,10 @@ function WorldView({ pos, setPos, day, gems, sprites = {}, cutCfg = {}, look = n
       const k = keys.current;
       let { x, y } = posRef.current;
       let dx = 0, dy = 0;
-      if (k["ArrowLeft"] || k["a"]) dx -= 1;
-      if (k["ArrowRight"] || k["d"]) dx += 1;
-      if (k["ArrowUp"] || k["w"]) dy -= 1;
-      if (k["ArrowDown"] || k["s"]) dy += 1;
+      if (k.left) dx -= 1;
+      if (k.right) dx += 1;
+      if (k.up) dy -= 1;
+      if (k.down) dy += 1;
       // 🏃 따라가기 : 키 입력이 없으면 친구 쪽으로 자동 이동 (70px 이내면 멈춤)
       const fo = followRef.current;
       if (!dx && !dy && fo && fo.v === "world") {
@@ -6727,7 +6779,7 @@ function SwimRace({ onClose, onReward, scores, onRecord, myName = "" }) {
   useEffect(() => {
     const onKey = (e) => {
       if (isTyping(e)) return;
-      if (e.code === "Space" || e.key === " ") {
+      if (isKey(e, " ")) {
         e.preventDefault();
         if (phase === "ready" || phase === "done") { startRace(); return; }
         if (phase === "go" && !e.repeat) {
@@ -7127,7 +7179,7 @@ function SandbagView({ onBack, scores, onEnd, myName = "" }) {
   const submit = () => { onEnd(nick.trim() || myName || "익명", count, target); setCount(0); setNick(myName); setEnding(false); };
   useEffect(() => {
     if (mode !== "keyboard") return;
-    const onKey = (e) => { if (isTyping(e)) return; if ((e.code === "Space" || e.key === " ") && !ending) { e.preventDefault(); hit(); } };
+    const onKey = (e) => { if (isTyping(e)) return; if (isKey(e, " ") && !ending) { e.preventDefault(); hit(); } };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [mode, ending]);
@@ -7579,19 +7631,17 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
   useEffect(() => {
     const down = (e) => {
       if (isTyping(e)) return;
-      const k = e.key.toLowerCase();
-      if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d", "e"].includes(k)) e.preventDefault();
+      if (isGameKey(e)) e.preventDefault();
       if (openRef.current) return;
-      if (k === "e" || k === " ") {
+      if (isKey(e, "e") || isKey(e, " ")) {
         const n = nearRef.current;
         if (n) { const nd = nodesRef.current.find((x) => x.id === n); if (nd) setSel(nd); }
         return;
       }
-      keys.current[k] = true;
+      const dir = moveDir(e);
+      if (dir) keys.current[dir] = true;
     };
-    const up = (e) => { keys.current[e.key.toLowerCase()] = false; };
-    window.addEventListener("keydown", down); window.addEventListener("keyup", up);
-    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
+    return bindGameKeys(keys, down);
   }, []);
 
   useEffect(() => {
@@ -7606,10 +7656,10 @@ function BossMapView({ onBack, onReward, onGoSchool, onClearQuest, myName = "", 
       const SPEED = 276 * dt;
       if (!openRef.current) {
         const k = keys.current; let { x, y } = posRef.current; let dx = 0, dy = 0;
-        if (k["arrowleft"] || k["a"]) dx -= 1;
-        if (k["arrowright"] || k["d"]) dx += 1;
-        if (k["arrowup"] || k["w"]) dy -= 1;
-        if (k["arrowdown"] || k["s"]) dy += 1;
+        if (k.left) dx -= 1;
+        if (k.right) dx += 1;
+        if (k.up) dy -= 1;
+        if (k.down) dy += 1;
         const isMoving = !!(dx || dy);
         if (isMoving) {
           const len = Math.hypot(dx, dy) || 1;
