@@ -11614,19 +11614,228 @@ function CommunityView({ posts = [], myName = "", myUid = "", onSave, onBack, ex
   );
 }
 
+/* ═══════════ 📜 히스토리 리치 에디터 공통 유틸 ═══════════
+   토글은 contentEditable 안의 raw <details> 라서 React 로 직접 그릴 수가 없어요.
+   그래서 ① 안내 문구는 CSS ::before(placeholder)로만 그리고
+        ② 삭제 버튼은 편집을 켤 때 DOM 에 주입했다가 저장할 때 걷어냅니다.
+   → 저장되는 innerHTML 에는 안내 문구도 버튼도 절대 남지 않습니다. */
+const HIST_PH_DOC = "내용을 입력하세요. 위 버튼으로 제목 · 목록 · 토글을 넣을 수 있어요.";
+const HIST_PH_TITLE = "토글 제목을 입력하세요";
+const HIST_PH_BODY = "내용을 입력하세요";
+/* 예전 버전이 '값'으로 박아 넣던 안내 문구 — 그대로 남아 있으면 비워서 placeholder 로 되돌립니다 */
+const HIST_LEGACY = ["토글 제목 (클릭해서 접기/펼치기)", "여기에 내용을 적어주세요"];
+
+const HIST_RICH_CSS = `
+.hist-rich[data-empty="1"]::before, .hist-rich [data-empty="1"]::before {
+  content: attr(data-ph); color: #a09a90; font-weight: normal; font-style: normal;
+  pointer-events: none; cursor: text;
+}
+/* 토글 본문은 제목 색(초록·주황)을 상속받지 않고 언제나 기본 글자색으로 고정 */
+.hist-rich details > *:not(summary), .hist-rich details > *:not(summary) *,
+.hist-view details > *:not(summary), .hist-view details > *:not(summary) * { color: ${C.ink} !important; }
+/* 토글 제목만 섹션 강조색 유지 — 본문 규칙보다 뒤에 와서 우선 적용됩니다 */
+.hist-rich details > summary, .hist-rich details > summary *,
+.hist-view details > summary, .hist-view details > summary * { color: var(--hist-accent, ${C.ink}) !important; }
+/* 토글 삭제 버튼 — summary 는 접혀 있어도 항상 보이므로 늘 노출됩니다 */
+.hist-rich [data-del-toggle] {
+  float: right; margin-left: 8px; cursor: pointer; user-select: none;
+  font-family: var(--game-font, 'DotGothic16', monospace); font-size: 11px; font-weight: bold; line-height: 1;
+  padding: 2px 6px; border: 2px solid ${C.danger}; border-radius: 6px;
+  background: ${C.white}; color: ${C.danger} !important;
+}
+.hist-view [data-del-toggle] { display: none !important; }
+`;
+
+/* summary 안의 실제 제목 텍스트 (삭제 버튼 글자는 빼고 셈) */
+function histSummaryText(sm) {
+  if (!sm) return "";
+  let t = "";
+  Array.prototype.forEach.call(sm.childNodes, (n) => {
+    if (n.nodeType === 1 && n.hasAttribute && n.hasAttribute("data-del-toggle")) return;
+    t += n.textContent || "";
+  });
+  return t.replace(/\u00a0/g, " ").trim();
+}
+/* 눈에 보이는 내용이 있는지 — 글자가 없어도 이미지·구분선·토글·목록은 내용으로 칩니다 */
+function histHasContent(el) {
+  if (!el) return false;
+  if ((el.textContent || "").replace(/\u00a0/g, "").trim()) return true;
+  return !!el.querySelector("img, hr, details, ul, ol, table");
+}
+/* 예전 글 보정: 제목(summary) 안으로 밀려 들어간 본문 줄을 본문 영역으로 빼내고,
+   본문에 박혀 있는 색 지정을 지웁니다. 제목 서식이 본문까지 이어지던 예전 데이터 대응. */
+function histLiftSummaryBody(root) {
+  if (!root || typeof document === "undefined") return;
+  const BLOCKS = ["DIV", "P", "H1", "H2", "H3", "UL", "OL", "BLOCKQUOTE"];
+  Array.prototype.forEach.call(root.querySelectorAll("details"), (d) => {
+    const sm = d.querySelector("summary");
+    if (!sm || sm.parentElement !== d) return;
+    const blocks = Array.prototype.filter.call(sm.children, (el) => BLOCKS.indexOf(el.tagName) >= 0);
+    if (!blocks.length) return;
+    let body = null;
+    for (let i = 0; i < d.children.length; i++) { if (d.children[i].tagName !== "SUMMARY") { body = d.children[i]; break; } }
+    if (!body) {
+      body = document.createElement("div");
+      body.style.marginTop = "6px";
+      body.setAttribute("data-tg-body", "1");
+      d.appendChild(body);
+    }
+    const frag = document.createDocumentFragment();
+    blocks.forEach((el) => frag.appendChild(el));   // 순서 그대로 옮깁니다
+    body.insertBefore(frag, body.firstChild);
+  });
+  /* 본문에 남은 색 지정 제거 — 초록으로 저장돼 있던 본문도 기본 글자색으로 보이게 */
+  Array.prototype.forEach.call(root.querySelectorAll("details > *:not(summary)"), (body) => {
+    if (body.style && body.style.color) body.style.color = "";
+    Array.prototype.forEach.call(body.querySelectorAll("[style]"), (el) => { if (el.style && el.style.color) el.style.color = ""; });
+    Array.prototype.forEach.call(body.querySelectorAll("font[color]"), (el) => el.removeAttribute("color"));
+  });
+}
+/* 보기 전용 HTML — 예전 데이터를 보정하고 편집용 버튼·속성을 걷어냅니다 */
+function histForView(html) {
+  if (!html || typeof document === "undefined") return html || "";
+  try {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    histLiftSummaryBody(tmp);
+    Array.prototype.forEach.call(tmp.querySelectorAll("[data-del-toggle]"), (b) => { if (b.parentNode) b.parentNode.removeChild(b); });
+    Array.prototype.forEach.call(tmp.querySelectorAll("[data-empty]"), (n) => n.removeAttribute("data-empty"));
+    Array.prototype.forEach.call(tmp.querySelectorAll("[data-ph]"), (n) => n.removeAttribute("data-ph"));
+    return tmp.innerHTML;
+  } catch (e) { return html; }
+}
+/* 편집을 켤 때 한 번: 토글마다 삭제 버튼 주입 · 본문 컨테이너 표시 · 옛 안내 문구 제거 */
+function histNormalize(root) {
+  if (!root || typeof document === "undefined") return;
+  histLiftSummaryBody(root);
+  Array.prototype.forEach.call(root.querySelectorAll("details"), (d) => {
+    let sm = d.querySelector("summary");
+    if (!sm || sm.parentElement !== d) { sm = document.createElement("summary"); d.insertBefore(sm, d.firstChild); }
+    if (HIST_LEGACY.indexOf(histSummaryText(sm)) >= 0) {
+      Array.prototype.slice.call(sm.childNodes).forEach((n) => {
+        if (!(n.nodeType === 1 && n.hasAttribute && n.hasAttribute("data-del-toggle"))) sm.removeChild(n);
+      });
+    }
+    if (!sm.querySelector("[data-del-toggle]")) {
+      const b = document.createElement("button");
+      b.setAttribute("type", "button");
+      b.setAttribute("data-del-toggle", "1");
+      b.setAttribute("contenteditable", "false");
+      b.setAttribute("title", "이 토글 삭제");
+      b.textContent = "✕";
+      sm.appendChild(b);
+    }
+    let body = null;
+    for (let i = 0; i < d.children.length; i++) { if (d.children[i].tagName !== "SUMMARY") { body = d.children[i]; break; } }
+    if (!body) { body = document.createElement("div"); body.style.marginTop = "6px"; d.appendChild(body); }
+    body.setAttribute("data-tg-body", "1");
+    if (HIST_LEGACY.indexOf((body.textContent || "").trim()) >= 0) body.innerHTML = "";
+  });
+}
+/* 비어 있는 곳에만 data-empty 를 붙여 placeholder 를 띄웁니다 (입력이 시작되면 사라짐).
+   속성만 건드리므로 타이핑 중에 불러도 캐럿이 흔들리지 않아요. */
+function histRefreshPh(root) {
+  if (!root) return;
+  const set = (el, ph, empty) => {
+    if (!el) return;
+    el.setAttribute("data-ph", ph);
+    if (empty) el.setAttribute("data-empty", "1"); else el.removeAttribute("data-empty");
+  };
+  set(root, HIST_PH_DOC, !histHasContent(root));
+  Array.prototype.forEach.call(root.querySelectorAll("details"), (d) => {
+    const sm = d.querySelector("summary");
+    if (sm && sm.parentElement === d) set(sm, HIST_PH_TITLE, !histSummaryText(sm));
+    const body = d.querySelector("[data-tg-body]");
+    if (body) set(body, HIST_PH_BODY, !histHasContent(body));
+  });
+}
+/* 저장용: UI 전용 버튼·속성을 걷어낸 깨끗한 HTML (내용이 하나도 없으면 빈 문자열) */
+function histCleanHtml(root) {
+  if (!root || typeof document === "undefined") return "";
+  const tmp = document.createElement("div");
+  tmp.innerHTML = root.innerHTML;
+  Array.prototype.forEach.call(tmp.querySelectorAll("[data-del-toggle]"), (b) => { if (b.parentNode) b.parentNode.removeChild(b); });
+  Array.prototype.forEach.call(tmp.querySelectorAll("[data-empty]"), (n) => n.removeAttribute("data-empty"));
+  Array.prototype.forEach.call(tmp.querySelectorAll("[data-ph]"), (n) => n.removeAttribute("data-ph"));
+  return histHasContent(tmp) ? tmp.innerHTML : "";
+}
+/* 캐럿을 el 안쪽 맨 앞으로 — 제목 서식(초록·굵게)이 따라붙지 않게 위치만 옮깁니다 */
+function histCaretTo(el) {
+  if (!el || typeof window === "undefined") return;
+  try {
+    if (!el.firstChild) el.appendChild(document.createElement("br"));
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    r.collapse(true);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(r);
+  } catch (e) {}
+}
+
 /* 진행상황 / 아이디어&피드백 섹션: 한 글을 계속 업데이트 (저장=글만 보임, 수정=편집창) + 댓글 스레드 */
 function DocSection({ title, color, html, comments, onSave, onAddComment, onDelComment, myName, expertNames = [] }) {
   const [editing, setEditing] = useState(!html);
   const [showCm, setShowCm] = useState(false);
   const [cmIn, setCmIn] = useState("");
   const edRef = useRef(null);
-  useEffect(() => { if (editing && edRef.current) edRef.current.innerHTML = html || ""; }, [editing]);
+  useEffect(() => {
+    if (!editing || !edRef.current) return;
+    edRef.current.innerHTML = html || "";
+    histNormalize(edRef.current);   // 예전 글의 토글에도 삭제 버튼·본문 표시를 붙여줍니다
+    histRefreshPh(edRef.current);
+  }, [editing]);
+  const syncEd = () => { histNormalize(edRef.current); histRefreshPh(edRef.current); };
   const exec = (cmd, val) => { try { document.execCommand(cmd, false, val || null); } catch (e) {} if (edRef.current) edRef.current.focus(); };
+  /* ▸토글 넣기 — 제목·본문 모두 빈 값으로 시작하고 안내는 placeholder 로만 보여줍니다 */
+  const insertToggle = () => {
+    exec("insertHTML", `<details open data-tg-new="1" style="border:2px solid ${color};border-radius:8px;padding:6px 10px;margin:8px 0;background:#faf7ef;"><summary style="cursor:pointer;font-weight:bold;color:${color};outline:none;"></summary><div data-tg-body="1" style="margin-top:6px;"></div></details><p><br></p>`);
+    setTimeout(() => {
+      const root = edRef.current;
+      if (!root) return;
+      syncEd();
+      const d = root.querySelector("[data-tg-new]");
+      if (d) { d.removeAttribute("data-tg-new"); root.focus(); histCaretTo(d.querySelector("summary")); }
+    }, 0);
+  };
+  /* 제목(summary)에서 Enter → 본문으로 내려보냅니다. 제목 서식이 아래로 이어지지 않아요. */
+  const onEdKeyDown = (e) => {
+    if (e.key !== "Enter" || e.shiftKey || isImeEnter(e)) return;
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    let node = sel.anchorNode;
+    if (node && node.nodeType === 3) node = node.parentNode;
+    const sm = node && node.closest ? node.closest("summary") : null;
+    if (!sm || !edRef.current || !edRef.current.contains(sm)) return;
+    e.preventDefault();
+    const d = sm.parentElement;
+    if (!d) return;
+    d.open = true;   // 접혀 있었다면 펼쳐서 본문이 보이게
+    let body = d.querySelector("[data-tg-body]");
+    if (!body) { body = document.createElement("div"); body.style.marginTop = "6px"; body.setAttribute("data-tg-body", "1"); d.appendChild(body); }
+    histCaretTo(body);
+    histRefreshPh(edRef.current);
+  };
+  /* 토글 오른쪽 ✕ — 접힘/펼침 상태와 무관하게 항상 보이고, 클릭이 토글로 새지 않게 막습니다 */
+  const onEdClick = (e) => {
+    const btn = e.target && e.target.closest ? e.target.closest("[data-del-toggle]") : null;
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const d = btn.closest("details");
+    if (!d) return;
+    const t = histSummaryText(d.querySelector("summary"));
+    if (!window.confirm(t ? `"${t}" 토글을 삭제할까요?` : "이 토글을 삭제할까요?")) return;
+    d.parentNode && d.parentNode.removeChild(d);
+    syncEd();
+  };
   const insertImage = async (file) => { if (!file) return; try { const url = await compressImage(file, 700, 0.7, "image/jpeg"); exec("insertHTML", `<img src="${url}" style="max-width:100%;border-radius:6px;margin:4px 0;" />`); } catch (e) { window.alert("이미지를 넣지 못했어요"); } };
   const tbBtn = (label, fn, t) => (<button type="button" title={t} onMouseDown={(e) => { e.preventDefault(); fn(); }} style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 12, fontWeight: "bold", minWidth: 28, height: 26, border: `2px solid ${C.ink}`, borderRadius: 6, background: C.white, color: C.ink }}>{label}</button>);
   const cms = comments || [];
+  const viewHtml = useMemo(() => histForView(html), [html]);
   return (
     <div style={{ border: `2px solid ${color}`, borderRadius: 10, padding: 12, marginBottom: 12, background: C.white }}>
+      <style>{HIST_RICH_CSS}</style>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <b style={{ fontSize: 13.5, color }}>{title}</b>
         <span style={{ flex: 1 }} />
@@ -11635,16 +11844,22 @@ function DocSection({ title, color, html, comments, onSave, onAddComment, onDelC
       </div>
       {editing ? (<>
         <div style={{ display: "flex", gap: 4, marginBottom: 6, flexWrap: "wrap", alignItems: "center" }}>
-          {tbBtn("B", () => exec("bold"), "굵게")}{tbBtn("H", () => exec("formatBlock", "H3"), "제목")}{tbBtn("•", () => exec("insertUnorderedList"), "목록")}{tbBtn("―", () => exec("insertHorizontalRule"), "구분선")}{tbBtn("▸토글", () => exec("insertHTML", `<details open style='border:2px solid ${color};border-radius:8px;padding:6px 10px;margin:8px 0;background:#faf7ef;'><summary style='cursor:pointer;font-weight:bold;color:${color};outline:none;'>토글 제목 (클릭해서 접기/펼치기)</summary><div style='margin-top:6px;'>여기에 내용을 적어주세요</div></details><p><br></p>`), "접기/펼치기 토글")}
+          {tbBtn("B", () => exec("bold"), "굵게")}{tbBtn("H", () => exec("formatBlock", "H3"), "제목")}{tbBtn("•", () => exec("insertUnorderedList"), "목록")}{tbBtn("―", () => exec("insertHorizontalRule"), "구분선")}{tbBtn("▸토글", insertToggle, "접기/펼치기 토글")}
           <label style={{ cursor: "pointer", fontFamily: "var(--game-font, 'DotGothic16', monospace)", fontSize: 11.5, fontWeight: "bold", height: 26, lineHeight: "22px", padding: "0 9px", border: `2px solid ${C.ink}`, borderRadius: 6, background: "#4b3fb0", color: C.white }}>🖼<input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; insertImage(f); }} /></label>
         </div>
-        <div ref={edRef} contentEditable suppressContentEditableWarning style={{ minHeight: 110, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 10, background: C.white, fontSize: 13, lineHeight: 1.6, overflowY: "auto", outline: "none" }} />
+        <div ref={edRef} className="hist-rich" contentEditable suppressContentEditableWarning
+          data-ph={HIST_PH_DOC}
+          onInput={() => histRefreshPh(edRef.current)}
+          onKeyDown={onEdKeyDown}
+          onClick={onEdClick}
+          onMouseDown={(e) => { if (e.target && e.target.closest && e.target.closest("[data-del-toggle]")) e.preventDefault(); }}
+          style={{ "--hist-accent": color, minHeight: 110, border: `2px solid ${C.ink}`, borderRadius: 8, padding: 10, background: C.white, color: C.ink, fontSize: 13, lineHeight: 1.6, overflowY: "auto", outline: "none" }} />
         <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-          <PxButton tone="good" onClick={() => { onSave(edRef.current ? edRef.current.innerHTML : ""); setEditing(false); }} style={{ flex: 1, fontSize: 12, padding: 8 }}>저장</PxButton>
+          <PxButton tone="good" onClick={() => { onSave(histCleanHtml(edRef.current)); setEditing(false); }} style={{ flex: 1, fontSize: 12, padding: 8 }}>저장</PxButton>
           {html && <PxButton tone="wood" onClick={() => setEditing(false)} style={{ fontSize: 11.5, padding: 8 }}>취소</PxButton>}
         </div>
       </>) : (
-        html ? <div style={{ fontSize: 13, lineHeight: 1.65, wordBreak: "break-word" }} dangerouslySetInnerHTML={{ __html: html }} /> : <div style={{ fontSize: 11.5, color: C.inkSoft }}>아직 작성된 내용이 없어요. ✏️ 로 작성하세요.</div>
+        html ? <div className="hist-view" style={{ "--hist-accent": color, fontSize: 13, lineHeight: 1.65, color: C.ink, wordBreak: "break-word" }} dangerouslySetInnerHTML={{ __html: viewHtml }} /> : <div style={{ fontSize: 11.5, color: C.inkSoft }}>아직 작성된 내용이 없어요. ✏️ 로 작성하세요.</div>
       )}
       {showCm && (
         <div style={{ marginTop: 10, borderTop: `1px dashed ${C.parchEdge}`, paddingTop: 8 }}>
